@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Rezerwacja zajęć</title>
+</head>
+<body>
+    <h2>Rezerwacja terminu z nauczycielem {{ termin.nauczyciel.get_full_name }}</h2>
+    <p>Data: {{ termin.data }} Godzina: {{ termin.godzina }}</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="termin_id" value="{{ termin.id }}">
+        <label>Temat lekcji:</label><br>
+        <input type="text" name="temat" required><br><br>
+
+        <label>Dodaj plik (PDF, JPG, JPEG):</label><br>
+        <input type="file" name="plik" accept=".pdf,.jpg,.jpeg"><br><br>
+
+        <button type="submit">Zarezerwuj termin</button>
+    </form>
+</body>
+</html>

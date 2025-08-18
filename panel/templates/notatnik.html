@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wirtualny Pokój - Notatnik</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+    <div class="virtual-room">
+        <div class="toolbar">
+            <button onclick="toggleMenu('colorMenu')">
+                <img src="{% static 'icons/kolor.png' %}" alt="Kolor" title="Kolor">
+            </button>
+            <button onclick="toggleMenu('sizeMenu')">
+                <img src="{% static 'icons/grubosc_linii.png' %}" alt="Grubość linii" title="Grubość linii">
+            </button>
+            <button onclick="toggleMenu('eraserMenu')">
+                <img src="{% static 'icons/gumka.png' %}" alt="Gumka" title="Gumka">
+            </button>
+        </div>
+
+        <div id="colorMenu" class="menu">
+            <label for="colorPicker">Wybierz kolor:</label>
+            <input type="color" id="colorPicker">
+        </div>
+
+        <div id="sizeMenu" class="menu">
+            <label for="sizePicker">Wybierz grubość:</label>
+            <select id="sizePicker">
+                <option value="1">1px</option>
+                <option value="3">3px</option>
+                <option value="5">5px</option>
+                <option value="8">8px</option>
+                <option value="12">12px</option>
+            </select>
+        </div>
+
+        <canvas id="notebookCanvas" width="800" height="600" style="border: 1px solid #000;"></canvas>
+    </div>
+
+    <script src="{% static 'script.js' %}"></script>
+</body>
+</html>

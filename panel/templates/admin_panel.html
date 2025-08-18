@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Administratora</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .admin-box {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 600px;
+            text-align: center;
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn {
+            width: 95%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-box">
+    <h2>Panel Administratora</h2>
+    
+    <h3>Dodaj nauczyciela</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="text" name="first_name" placeholder="Imię" required>
+        <input type="text" name="last_name" placeholder="Nazwisko" required>
+        <input type="email" name="email" placeholder="E-mail" required>
+        <input type="password" name="password" placeholder="Tymczasowe hasło" required>
+        <input type="text" name="numer_telefonu" placeholder="Numer telefonu" required>
+        <button class="btn" type="submit">Dodaj nauczyciela</button>
+    </form>
+
+    <h3>Lista nauczycieli</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Imię i Nazwisko</th>
+                <th>E-mail</th>
+                <th>Telefon</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for nauczyciel in nauczyciele %}
+                <tr>
+                    <td>{{ nauczyciel.user.first_name }} {{ nauczyciel.user.last_name }}</td>
+                    <td>{{ nauczyciel.user.email }}</td>
+                    <td>{{ nauczyciel.numer_telefonu }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3">Brak nauczycieli</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

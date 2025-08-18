@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wirtualny Pokój - Notatnik</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .icon { cursor: pointer; padding: 10px; background: #ddd; border-radius: 5px; }
+        .menu { display: none; position: absolute; background: #fff; border: 1px solid #ccc; padding: 10px; }
+        .menu.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="virtual-room">
+        <div class="toolbar">
+            <button onclick="activateDraw()"><img src="{% static 'icons/rysuj.png' %}" alt="Pisz/Rysuj" title="Pisz/Rysuj"></button>
+            <button onclick="toggleColorPicker()"><img src="{% static 'icons/kolor.png' %}" alt="Kolor" title="Kolor"></button>
+            <button onclick="toggleThicknessPicker()"><img src="{% static 'icons/grubosc_linii.png' %}" alt="Grubość linii" title="Grubość linii"></button>
+            <button onclick="activateEraser()"><img src="{% static 'icons/gumka.png' %}" alt="Gumka" title="Gumka"></button>
+            <button onclick="openFilePicker()">
+                <img src="{% static 'icons/dodaj_plik.png' %}" alt="Dodaj Plik" title="Dodaj Plik lub Zdjęcie">
+            </button>
+            <input type="file" id="fileInput" accept=".jpeg, .jpg, .png, .pdf, .doc, .docx" style="display: none;">
+
+            <div class="dropdown">
+                <button onclick="toggleGridMenu()" id="gridButton">
+                    <img src="{% static 'icons/dodaj_szablon.png' %}" alt="Dodaj szablon" title="Dodaj Szablon Strony">
+                </button>
+                <div id="gridMenu" class="menu">
+                    <select id="gridSizePicker" onchange="addGrid(this.value)">
+                        <option value="small">Mała kratka</option>
+                        <option value="medium">Średnia kratka</option>
+                        <option value="large">Duża kratka</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="activateTextMode()">
+                <img src="{% static 'icons/text.png' %}" alt="Text" title="Text">
+            </button>
+            <button onclick="toggleMojeZajecia()">
+                <img src="{% static 'icons/moje_zajecia.png' %}" alt="Moje Zajęcia" title="Moje Zajęcia">
+            </button>
+        </div>
+
+        <div id="colorMenu" class="menu">
+            <input type="color" id="colorPicker" onchange="setColor(this.value)">
+        </div>
+
+        <div id="sizeMenu" class="menu">
+            <select id="sizePicker" onchange="setThickness(this.value)">
+                <option value="1">1px</option>
+                <option value="3">3px</option>
+                <option value="5">5px</option>
+                <option value="8">8px</option>
+                <option value="12">12px</option>
+            </select>
+        </div>
+
+        <!-- Panel Moje Zajęcia -->
+        <div id="mojeZajeciaPanel" class="zajecia-panel" style="display: none;">
+            <h3>Moje Zajęcia</h3>
+            <input type="text" id="filtrTemat" placeholder="Filtruj po temacie" onkeyup="filtrujZajecia()">
+            <input type="date" id="filtrData" onchange="filtrujZajecia()">
+            <ul id="listaZajec">
+                <!-- Lista zajęć będzie tu generowana -->
+            </ul>
+        </div>
+
+        <!-- Szablon niewidoczny -->
+        <template id="zajecie-template">
+            <li class="zajecie">
+                <div><strong class="tytul"></strong> <span class="data"></span></div>
+                <div class="opis"></div>
+                <button onclick="edytujZajecie(this)">Edytuj</button>
+                <button onclick="usunZajecie(this)">Usuń</button>
+            </li>
+        </template>
+
+        <canvas id="notebookCanvas" width="800" height="600" style="border: 1px solid #000; z-index: 5; position: absolute;"></canvas>
+    </div>
+
+    <script src="{% static 'script.js' %}"></script>
+</body>
+</html>

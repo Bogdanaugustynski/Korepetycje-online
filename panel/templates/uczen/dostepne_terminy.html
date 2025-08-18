@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dostępne terminy</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background-color: #f9f9f9; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; background-color: #fff; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        .hidden { display: none; }
+        .form-box {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Dostępne terminy nauczycieli</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nauczyciel</th>
+                <th>Data</th>
+                <th>Godzina</th>
+                <th>Akcja</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in terminy %}
+            <tr>
+                <td>{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}</td>
+                <td>{{ t.data }}</td>
+                <td>{{ t.godzina }}</td>
+                <td>
+                    <button onclick="showForm('{{ t.id }}', '{{ t.data }} {{ t.godzina }}', '{{ t.nauczyciel.id }}')">Zarezerwuj</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">Brak dostępnych terminów</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="formularz" class="form-box hidden">
+        <h3>Podaj temat i załaduj plik:</h3>
+        <form method="POST" action="{% url 'zarezerwuj_zajecia' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="termin" id="termin">
+            <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
+            <input type="hidden" name="termin_id" id="termin_id">
+
+            <label>Temat lekcji:</label>
+            <input type="text" name="temat" required>
+
+            <label>Dodaj plik (.pdf, .jpg, .jpeg):</label>
+            <input type="file" name="plik" accept=".pdf,.jpg,.jpeg">
+
+            <button type="submit">Zarezerwuj</button>
+        </form>
+    </div>
+
+    <script>
+        function showForm(terminId, opis, nauczycielId) {
+            document.getElementById('formularz').classList.remove('hidden');
+            document.getElementById('termin').value = opis;
+            document.getElementById('nauczyciel_id').value = nauczycielId;
+            document.getElementById('termin_id').value = terminId;
+            window.scrollTo({ top: document.getElementById('formularz').offsetTop - 20, behavior: 'smooth' });
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Zajęcia online</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+    }
+    .header-left { font-size: 18px; font-weight: bold; }
+    .header-right {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .mic-button {
+      cursor: pointer;
+      background-color: #fff;
+      color: #000;
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .countdown { font-weight: bold; }
+    .countdown.red { color: red; }
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #f4f4f4;
+    }
+    .btn-tablica {
+      padding: 12px 24px;
+      font-size: 18px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      margin-bottom: 20px;
+    }
+    .form-link {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-left">Zajęcia online: rozmowa i tablica</div>
+  <div class="header-right">
+    <div id="online-status-icon">🔴 Niedostępny</div>
+    <div class="mic-button" id="mic-toggle" onclick="toggleMic()">🔇 Wycisz mikrofon</div>
+    <div id="countdown" class="countdown">Pozostało: --:--</div>
+  </div>
+</header>
+
+<div class="content">
+  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link }}">
+    🖊️ Otwórz tablicę
+  </a>
+  {% if is_teacher %}
+  <form method="POST" class="form-link">
+    {% csrf_token %}
+    <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required>
+    <button type="submit">Zapisz link</button>
+  </form>
+  {% endif %}
+</div>
+
+<script src='https://meet.jit.si/external_api.js'></script>
+<script>
+  const rezerwacjaId = "{{ rezerwacja.id }}";
+  let api = null;
+  let isMuted = false;
+
+  function startSilentJitsi() {
+    const domain = "meet.jit.si";
+    const options = {
+      roomName: "ZajeciaOnline_{{ rezerwacja.id }}",
+      parentNode: document.createElement("div"),
+      configOverwrite: {
+        startWithAudioMuted: false,
+        startWithVideoMuted: true,
+      },
+      interfaceConfigOverwrite: {
+        TOOLBAR_BUTTONS: [],
+      }
+    };
+    api = new JitsiMeetExternalAPI(domain, options);
+  }
+
+  function toggleMic() {
+    if (!api) return;
+    isMuted = !isMuted;
+    api.executeCommand('toggleAudio');
+    const btn = document.getElementById("mic-toggle");
+    btn.textContent = isMuted ? "🎙️ Włącz mikrofon" : "🔇 Wycisz mikrofon";
+  }
+
+  function pingOnlineStatus() {
+    fetch("{% url 'ping_online_status' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
+    });
+  }
+
+  function checkOtherUserStatus() {
+    fetch(`/check-online-status/${rezerwacjaId}/`)
+      .then(response => response.json())
+      .then(data => {
+        const icon = document.getElementById("online-status-icon");
+        icon.textContent = data.online ? "🟢 Dostępny" : "🔴 Niedostępny";
+      });
+  }
+
+  function initCountdown() {
+    const countdownEl = document.getElementById("countdown");
+    const startTime = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}");
+    const endTime = new Date(startTime.getTime() + 55 * 60 * 1000);
+
+    function updateCountdown() {
+      const now = new Date();
+      const diff = endTime - now;
+      if (diff <= 0) {
+        countdownEl.textContent = "Zakończone";
+        countdownEl.classList.add("red");
+        return;
+      }
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      countdownEl.textContent = `Pozostało: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      if (minutes < 5) countdownEl.classList.add("red");
+      else countdownEl.classList.remove("red");
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    startSilentJitsi();
+    pingOnlineStatus();
+    checkOtherUserStatus();
+    initCountdown();
+    setInterval(pingOnlineStatus, 10000);
+    setInterval(checkOtherUserStatus, 10000);
+  });
+</script>
+</body>
+</html>

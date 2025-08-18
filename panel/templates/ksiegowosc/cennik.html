@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Cennik przedmiotów</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .form-box {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 900px;
+        }
+
+        h2, h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        input, select {
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #218838;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .btn-add {
+            background-color: #007bff;
+            margin-top: 10px;
+        }
+
+        .btn-add:hover {
+            background-color: #0069d9;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 30px;
+            text-align: center;
+            text-decoration: none;
+            background-color: #6c757d;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .back-link:hover {
+            background-color: #5a6268;
+        }
+
+        .action-forms {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+<div class="form-box">
+    <h2>Cennik przedmiotów</h2>
+
+    <table>
+        <tr>
+            <th>Przedmiot</th>
+            <th>Poziom</th>
+            <th>Aktualna cena</th>
+            <th>Edytuj cenę</th>
+            <th>Akcje</th>
+        </tr>
+        {% for p in przedmioty %}
+        <tr>
+            <td>{{ p.nazwa }}</td>
+            <td>{{ p.poziom|title }}</td>
+            <td><strong>{{ p.cena|floatformat:2 }} zł</strong></td>
+            <td>
+                <form method="post" onsubmit="return confirmZapis(this);">
+                    {% csrf_token %}
+                    <input type="hidden" name="zapisz_id" value="{{ p.id }}">
+                    <input type="number" name="cena" step="0.01" placeholder="Nowa cena" required>
+            </td>
+            <td class="action-forms">
+                    <button type="submit" class="btn">Zapisz</button>
+                </form>
+                <form method="post" onsubmit="return confirmUsun(this);">
+                    {% csrf_token %}
+                    <input type="hidden" name="usun_id" value="{{ p.id }}">
+                    <button type="submit" class="btn btn-delete">Usuń</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Brak przedmiotów w cenniku</td></tr>
+        {% endfor %}
+    </table>
+
+    <h3>Dodaj nowy przedmiot</h3>
+    <form method="post">
+        {% csrf_token %}
+        <label>Nazwa przedmiotu</label>
+        <input type="text" name="nazwa" required>
+
+        <label>Poziom</label>
+        <select name="poziom" required>
+            <option value="podstawowy">Podstawowy</option>
+            <option value="rozszerzony">Rozszerzony</option>
+        </select>
+
+        <label>Cena [zł/h]</label>
+        <input type="number" step="0.01" name="nowa_cena" required>
+
+        <div style="text-align: center;">
+            <button type="submit" name="dodaj_przedmiot" class="btn btn-add">Dodaj przedmiot</button>
+        </div>
+    </form>
+
+    <a href="{% url 'panel_ksiegowosc' %}" class="back-link">Powrót do panelu księgowości</a>
+</div>
+
+<script>
+    function confirmZapis(form) {
+        return confirm("Czy na pewno chcesz zapisać nową cenę?");
+    }
+
+    function confirmUsun(form) {
+        return confirm("Czy na pewno chcesz usunąć ten przedmiot?");
+    }
+</script>
+</body>
+</html>

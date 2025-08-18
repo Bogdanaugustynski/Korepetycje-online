@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Moje Konto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .account-box {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: auto;
+        }
+        h2 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 15px;
+            display: block;
+        }
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="account-box">
+    <h2>Moje Konto</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <label>Imię:</label>
+        <input type="text" name="first_name" value="{{ user.first_name }}">
+
+        <label>Nazwisko:</label>
+        <input type="text" name="last_name" value="{{ user.last_name }}">
+
+        <label>Adres email (niezmienialny):</label>
+        <input type="text" value="{{ user.email }}" disabled>
+
+        <label>Numer telefonu:</label>
+        <input type="text" name="numer_telefonu" value="{{ profil.numer_telefonu }}">
+
+        <label>Stopień naukowy:</label>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="tytul_naukowy" value="licencjat" {% if "licencjat" in profil.tytul_naukowy %}checked{% endif %}> Licencjat</label>
+            <label><input type="checkbox" name="tytul_naukowy" value="inżynier" {% if "inżynier" in profil.tytul_naukowy %}checked{% endif %}> Inżynier</label>
+            <label><input type="checkbox" name="tytul_naukowy" value="magister" {% if "magister" in profil.tytul_naukowy %}checked{% endif %}> Magister</label>
+            <label><input type="checkbox" name="tytul_naukowy" value="doktor" {% if "doktor" in profil.tytul_naukowy %}checked{% endif %}> Doktor</label>
+            <label><input type="checkbox" name="tytul_naukowy" value="profesor" {% if "profesor" in profil.tytul_naukowy %}checked{% endif %}> Profesor</label>
+        </div>
+
+        <label style="font-weight: bold; margin-top: 20px; display: block;">Przedmioty nauczania (z poziomem):</label>
+        <div style="margin-top: 10px; margin-bottom: 20px;">
+            {% regroup cennik by nazwa as przedmioty_zgrupowane %}
+            {% for przedmiot in przedmioty_zgrupowane %}
+                <div style="margin-bottom: 15px; background-color: #f8f9fa; padding: 15px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+                    <div style="font-weight: bold; font-size: 16px; color: #333; margin-bottom: 8px;">
+                        {{ przedmiot.grouper }}
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 25px; padding-left: 5px;">
+                        {% for p in przedmiot.list %}
+                            {% with full_label=p.nazwa|stringformat:"s"|add:" - "|add:p.poziom %}
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 14px;">
+                                    <input type="checkbox" name="przedmioty" value="{{ full_label }}"
+                                           {% if full_label in profil.przedmioty %}checked{% endif %}>
+                                    {{ p.poziom|title }}
+                                    <span style="font-size: 12px; color: #777;">({{ p.cena|floatformat:2 }} zł/h)</span>
+                                </label>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <label>Opis o sobie:</label>
+        <textarea name="opis" rows="4">{{ profil.opis }}</textarea>
+
+        <div class="buttons">
+            <button type="submit" class="btn">Zapisz zmiany</button>
+           <a href="{% url 'panel_nauczyciela' %}" class="btn">Powrót</a>
+            <a href="{% url 'zmien_haslo' %}" class="btn">Zmień hasło</a>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

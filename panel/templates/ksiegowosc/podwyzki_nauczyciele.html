@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Podwyżki nauczycieli</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 30px;
+        }
+        .box {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 1000px;
+            margin: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+        }
+        .btn {
+            padding: 6px 12px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #218838;
+        }
+        .back-link {
+            display: block;
+            margin-top: 30px;
+            text-align: center;
+            background-color: #6c757d;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>Podwyżki indywidualne nauczycieli</h2>
+
+    <table>
+        <tr>
+            <th>Nauczyciel</th>
+            <th>Przedmiot</th>
+            <th>Poziom</th>
+            <th>Aktualna stawka</th>
+            <th>Nowa stawka</th>
+            <th>Akcja</th>
+        </tr>
+        {% for entry in nauczyciele_dane %}
+            {% for s in entry.stawki %}
+                <tr>
+                    <td>{{ entry.nauczyciel.first_name }} {{ entry.nauczyciel.last_name }}</td>
+                    <td>{{ s.przedmiot }}</td>
+                    <td>{{ s.poziom|title }}</td>
+                    <td>{{ s.stawka|default:"-" }} zł</td>
+                    <td>
+                        <form method="post" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="nauczyciel_id" value="{{ entry.nauczyciel.id }}">
+                            <input type="hidden" name="przedmiot" value="{{ s.przedmiot }}">
+                            <input type="hidden" name="poziom" value="{{ s.poziom }}">
+                            <input type="number" name="stawka" step="0.01" placeholder="Nowa">
+                    </td>
+                    <td>
+                            <button type="submit" class="btn">Zapisz</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        {% endfor %}
+    </table>
+
+    <a href="{% url 'panel_ksiegowosc' %}" class="back-link">Powrót do panelu księgowości</a>
+</div>
+</body>
+</html>

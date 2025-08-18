@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Edytuj dane płatności</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .form-box {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 500px;
+            text-align: left;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 4px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 16px;
+            text-align: center;
+            width: 100%;
+            background-color: #6c757d;
+        }
+        .back-link:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-box">
+    <h2>Edytuj dane płatności</h2>
+    <form method="POST">
+        {% csrf_token %}
+
+        <label for="cena">Cena za godzinę</label>
+        <input type="text" name="cena" id="cena" value="{{ ustawienia.cena_za_godzine }}" required>
+
+        <label for="telefon">Numer telefonu (BLIK)</label>
+        <input type="text" name="telefon" id="telefon" value="{{ ustawienia.numer_telefonu }}">
+
+        <label for="konto">Numer konta bankowego</label>
+        <input type="text" name="konto" id="konto" value="{{ ustawienia.numer_konta }}">
+
+        <label for="wlasciciel">Imię i nazwisko właściciela konta</label>
+        <input type="text" name="wlasciciel" id="wlasciciel" value="{{ ustawienia.wlasciciel_konta }}">
+
+        <button class="btn" type="submit">Zapisz</button>
+    </form>
+
+    <a href="{% url 'panel_ksiegowosc' %}" class="btn back-link">Powrót do panelu księgowości</a>
+</div>
+
+</body>
+</html>

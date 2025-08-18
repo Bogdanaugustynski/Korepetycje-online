@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Archiwum rezerwacji</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+        h2, h3 { color: #007bff; }
+        .month, .student { margin: 10px 0; }
+        details { background: white; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<h2>Archiwum rezerwacji z ostatnich 12 miesięcy</h2>
+
+{% for miesiac, uczniowie in archiwum.items %}
+    <details class="month">
+        <summary><strong>{{ miesiac }}</strong></summary>
+        {% for uczen, rezerwacje in uczniowie.items %}
+            <details class="student">
+                <summary>{{ uczen.first_name }} {{ uczen.last_name }}</summary>
+                <ul>
+                    {% for r in rezerwacje %}
+                        <li>
+                            {{ r.termin|date:"Y-m-d H:i" }} – {{ r.temat }}
+                            {% if r.plik %}
+                                – <a href="{{ r.plik.url }}" target="_blank">Pobierz plik</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </details>
+        {% endfor %}
+    </details>
+{% empty %}
+    <p>Brak rezerwacji z ostatnich 12 miesięcy.</p>
+{% endfor %}
+
+</body>
+</html>

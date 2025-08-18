@@ -1,0 +1,224 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.virtual-room {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    background: #fff;
+    padding: 0;
+    border: 1px solid #000;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 800px;
+    width: 100%;
+}
+
+.toolbar {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 5px;
+    border-radius: 5px;
+    outline: 2px solid red;
+}
+
+
+.toolbar button {
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.toolbar button img {
+    width: 24px;
+    height: 24px;
+}
+
+.menu {
+    display: none;
+    position: absolute;
+    z-index: 1001;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.menu.active {
+    display: block;
+}
+
+canvas {
+    border: 1px solid #000;
+    background-color: #ffffff;
+    position: absolute;
+    z-index: 1;
+}
+
+.virtual-room img,
+.virtual-room iframe {
+    position: absolute;
+    cursor: alias;
+    resize: both;
+    overflow: auto;
+    border: 1px solid #ddd;
+    max-width: 100%;
+    max-height: 100%;
+    z-index: 1;
+}
+
+
+
+.draggable {
+    z-index: 5;
+    position: absolute;
+    cursor: move;
+    border: 1px solid #ddd;
+    min-width: 50px;
+    min-height: 50px;
+    width: 300px;
+    height: 300px;
+    transform-origin: center center;
+}
+
+.resizable {
+    resize: both;
+    overflow: hidden;
+    position: absolute;
+    cursor: grab;
+}
+
+.resizable iframe,
+.resizable img {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.rotate-handle {
+    width: 30px;
+    height: 30px;
+    background-color: red;
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    cursor: grab;
+    border-radius: 50%;
+    z-index: 1000;
+
+    display: none; /* <- ukryj domyślnie */
+}
+
+/* Pokazuj obracanie tylko po najechaniu na cały obiekt */
+.draggable:hover .rotate-handle {
+    display: block;
+}
+
+.resize-handle {
+    width: 30px;
+    height: 30px;
+    background-color: blue;
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    cursor: default;
+    z-index: 1000;
+    border-radius: 3px;
+    display: none;
+}
+
+.draggable:hover .resize-handle {
+    display: block;
+}
+
+/* Styl menu kratki */
+#gridMenu {
+    position: absolute;
+    top: 60px;
+    left: 10px;
+    z-index: 20;
+}
+
+/* Styl kratki */
+.canvas-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+#notebookCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;  /* canvas do rysowania wyżej niż kratka */
+}
+
+.text-input {
+    position: absolute;
+    min-width: 100px;
+    min-height: 30px;
+    padding: 5px;
+    font-size: 16px;
+    border: 1px dashed #333;
+    background: white;
+    color: black;
+    outline: none;
+    resize: both;
+    z-index: 9999;           /* ← musi być wyżej niż canvas */
+    pointer-events: auto;    /* ← bardzo ważne, żeby można było kliknąć */
+}
+
+.zajecia-panel {
+    position: absolute;
+    top: 70px;
+    right: 10px;
+    width: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    z-index: 1002;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.zajecia-panel input[type="text"],
+.zajecia-panel input[type="date"] {
+    width: 100%;
+    margin-bottom: 5px;
+    padding: 5px;
+}
+
+.zajecie {
+    padding: 5px;
+    border-bottom: 1px solid #ddd;
+}
+
+.zajecie button {
+    margin-top: 5px;
+    margin-right: 5px;
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Rejestracja Ucznia</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .register-box {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 320px;
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn {
+            width: 95%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="register-box">
+    <h2>Rejestracja Ucznia</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="text" name="first_name" placeholder="Imię" required>
+        <input type="text" name="last_name" placeholder="Nazwisko" required>
+        <input type="text" name="city" placeholder="Miejscowość" required>
+        <input type="email" name="email" placeholder="E-mail" required>
+        <input type="tel" name="phone" placeholder="Numer telefonu" required>
+        <input type="password" name="password" placeholder="Hasło" required>
+        {% if error %}
+            <p style="color:red;">{{ error }}</p>
+        {% endif %}
+        <button class="btn" type="submit">Zarejestruj się</button>
+    </form>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Python / Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.env
+.env.*
+*.sqlite3
+db.sqlite3
+
+# Django: statyki i uploady
+staticfiles/
+media/
+
+# IDE / system
+.DS_Store
+Thumbs.db
+
+# Venv
+venv/
+.venv/
+
+# Node (gdyby kiedyś doszedł frontend)
+node_modules/
+
+# Render/Build artefacts
+*.whl
