@@ -42,9 +42,10 @@ MIDDLEWARE = [
 ]
 
 # === PROJEKT (PODMIEŃ NA SWOJĄ NAZWĘ PAKIETU) ===
-ROOT_URLCONF = "PROJECT.urls"
-WSGI_APPLICATION = "PROJECT.wsgi.application"
-ASGI_APPLICATION = "PROJECT.asgi.application"
+ROOT_URLCONF = "korepetycje.urls"
+WSGI_APPLICATION = "korepetycje.wsgi.application"
+ASGI_APPLICATION = "korepetycje.asgi.application"
+
 
 # === SZABLONY ===
 TEMPLATES = [
