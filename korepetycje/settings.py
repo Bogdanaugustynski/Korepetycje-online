@@ -1,88 +1,109 @@
 from pathlib import Path
+import os
+import dj_database_url
 
+# === ŚCIEŻKI ===
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'xt8qatjkb(7sgtwd9$wh8z-eah3bkbhb#mo)x_dd^(l8tvkfcg'
+# === BEZPIECZEŃSTWO / DEBUG ===
+DEBUG = os.getenv("DEBUG", "0") == "1"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-DEBUG = False
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'onrender.com', 'polubiszto.pl', '192.168.1.20']
+# Hosty i CSRF (z ENV; na start są lokalne)
+def _csv_env(name):
+    val = os.getenv(name, "")
+    return [x.strip() for x in val.split(",") if x.strip()]
 
+ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS") or ["localhost", "127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = _csv_env("CSRF_TRUSTED_ORIGINS")
+
+# === APLIKACJE ===
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'panel',
-    'channels',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "panel",
+    "channels",
 ]
 
+# === MIDDLEWARE ===
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware'
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",   # <- Whitenoise zaraz po Security
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'korepetycje.urls'
+# === PROJEKT (PODMIEŃ NA SWOJĄ NAZWĘ PAKIETU) ===
+ROOT_URLCONF = "PROJECT.urls"
+WSGI_APPLICATION = "PROJECT.wsgi.application"
+ASGI_APPLICATION = "PROJECT.asgi.application"
 
+# === SZABLONY ===
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'korepetycje.wsgi.application'
-ASGI_APPLICATION = "korepetycje.asgi.application"
-
-
+# === BAZA DANYCH ===
+# Lokalnie: sqlite; produkcja: Postgres z DATABASE_URL (Render -> env var)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": dj_database_url.config(
+        default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        conn_max_age=600,
+    )
+}
+
+# === CHANNELS (Redis w produkcji, InMemory lokalnie) ===
+if os.getenv("REDIS_URL"):
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [os.getenv("REDIS_URL")]},
+        }
     }
-}
+else:
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
-
-AUTH_PASSWORD_VALIDATORS = []
-LANGUAGE_CODE = 'pl-pl'
-TIME_ZONE = 'Europe/Warsaw'
+# === INTERNACJONALIZACJA ===
+LANGUAGE_CODE = "pl-pl"
+TIME_ZONE = "Europe/Warsaw"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-import os
+# === STATIC / MEDIA ===
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"   # Uwaga: na Render Free pliki są efemeryczne
 
-LOGIN_URL = '/ukryty_admin/login/'
+# === LOGOWANIE / SESJE ===
+LOGIN_URL = "/ukryty_admin/login/"
+AUTH_PASSWORD_VALIDATORS = []
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+# === SECURITY HEADERS (ok na Render/HTTPS; lokalnie mogą przeszkadzać) ===
 SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
-
+X_FRAME_OPTIONS = "DENY"
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
