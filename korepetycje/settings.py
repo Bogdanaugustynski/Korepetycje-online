@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "panel",
-    "channels",  # ok jeśli planujesz websockety; można zostawić
+    "channels",  # ok jeśli planujesz websockety; może zostać
 ]
 
 # === MIDDLEWARE ===
@@ -42,7 +42,6 @@ MIDDLEWARE = [
 ]
 
 # === NAZWY MODUŁÓW PROJEKTU ===
-# U CIEBIE projekt to "korepetycje" (folder z settings.py/wsgi.py)
 ROOT_URLCONF = "korepetycje.urls"
 WSGI_APPLICATION = "korepetycje.wsgi.application"
 ASGI_APPLICATION = "korepetycje.asgi.application"
@@ -65,10 +64,16 @@ TEMPLATES = [
 ]
 
 # === BAZA DANYCH ===
-# Lokalnie: sqlite; produkcja: Postgres z DATABASE_URL (Render -> env var)
+# Preferuj DATABASE_URL (Render), ew. wstecznie URL_BAZY_DANYCH; jeśli puste → SQLite
+_db_url = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("URL_BAZY_DANYCH")
+    or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+)
+
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        default=_db_url,
         conn_max_age=600,
     )
 }
@@ -109,8 +114,9 @@ LOGIN_URL = "/ukryty_admin/login/"
 AUTH_PASSWORD_VALIDATORS = []
 
 # === SECURITY HEADERS ===
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = "DENY"
+# (w produkcji cookie tylko po HTTPS; na DEV – luzujemy)
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+X_FRAME_OPTIONS = "DENY"
+# SECURE_BROWSER_XSS_FILTER było historyczne; zostawiamy pominięte w Django 5+
