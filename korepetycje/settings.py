@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import dj_database_url
+from dj_database_url import UnknownSchemeError  # <-- ważne
 
 # === ŚCIEŻKI ===
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.getenv("DEBUG", "0") == "1"
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-# Hosty i CSRF (ENV → jeśli brak, ustaw domyślki z onrender.com)
+# Hosty i CSRF (ENV → jeśli brak, domyślki dla Render)
 def _csv_env(name: str):
     val = os.getenv(name, "")
     return [x.strip() for x in val.split(",") if x.strip()]
@@ -64,12 +65,15 @@ TEMPLATES = [
 ]
 
 # === BAZA DANYCH ===
-# Preferuj poprawne env, ignoruj puste/zepsute; inaczej SQLite
+# Spróbuj z poprawnym ENV; jeśli złe/puste → przełącz na SQLite bez wywrotki
 def _valid_env(name: str):
     val = os.getenv(name)
-    if val and val.strip() and val.strip() != "://":
-        return val.strip()
-    return None
+    if not val:
+        return None
+    val = val.strip()
+    if not val or val == "://":
+        return None
+    return val
 
 _db_url = (
     _valid_env("DATABASE_URL")
@@ -77,11 +81,17 @@ _db_url = (
     or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
 )
 
-DATABASES = {
-    "default": dj_database_url.parse(_db_url, conn_max_age=600),
-}
+try:
+    DATABASES = {
+        "default": dj_database_url.parse(_db_url, conn_max_age=600),
+    }
+except UnknownSchemeError:
+    # Ostateczny bezpiecznik na wypadek zepsutego ENV
+    DATABASES = {
+        "default": dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600),
+    }
 
-# === CHANNELS ===
+# === CHANNELS (Redis w produkcji, InMemory lokalnie) ===
 if os.getenv("REDIS_URL"):
     CHANNEL_LAYERS = {
         "default": {
@@ -101,14 +111,12 @@ USE_TZ = True
 # === STATIC / MEDIA ===
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS = [BASE_DIR / "static"]
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = BASE_DIR / "media"   # Uwaga: na Render Free pliki są efemeryczne
 
 # === LOGOWANIE / SESJE ===
 LOGIN_URL = "/ukryty_admin/login/"
