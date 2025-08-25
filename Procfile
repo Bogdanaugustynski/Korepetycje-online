@@ -1,0 +1,1 @@
+web: gunicorn korepetycje_django_gotowy_projekt.wsgi:application
