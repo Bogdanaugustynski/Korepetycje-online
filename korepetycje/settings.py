@@ -26,13 +26,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "panel",
-    "channels",  # ok jeśli planujesz websockety; może zostać
+    "channels",
 ]
 
 # === MIDDLEWARE ===
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",   # Whitenoise zaraz po Security
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -64,7 +64,7 @@ TEMPLATES = [
 ]
 
 # === BAZA DANYCH ===
-# Preferuj DATABASE_URL (Render), ew. wstecznie URL_BAZY_DANYCH; jeśli puste → SQLite
+# Preferuj poprawne env, ignoruj puste/zepsute; inaczej SQLite
 def _valid_env(name: str):
     val = os.getenv(name)
     if val and val.strip() and val.strip() != "://":
@@ -78,13 +78,10 @@ _db_url = (
 )
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default=_db_url,
-        conn_max_age=600,
-    )
+    "default": dj_database_url.parse(_db_url, conn_max_age=600),
 }
 
-# === CHANNELS (Redis w produkcji, InMemory lokalnie) ===
+# === CHANNELS ===
 if os.getenv("REDIS_URL"):
     CHANNEL_LAYERS = {
         "default": {
@@ -105,24 +102,20 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# jeśli masz folder "static" w repo – dodaj go
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# WhiteNoise – produkcja
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"   # Uwaga: na Render Free pliki są efemeryczne
+MEDIA_ROOT = BASE_DIR / "media"
 
 # === LOGOWANIE / SESJE ===
 LOGIN_URL = "/ukryty_admin/login/"
 AUTH_PASSWORD_VALIDATORS = []
 
 # === SECURITY HEADERS ===
-# (w produkcji cookie tylko po HTTPS; na DEV – luzujemy)
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 X_FRAME_OPTIONS = "DENY"
-# SECURE_BROWSER_XSS_FILTER było historyczne; pomijamy w Django 5+
