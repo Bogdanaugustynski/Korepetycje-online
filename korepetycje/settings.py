@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import dj_database_url
-from dj_database_url import UnknownSchemeError  # <-- ważne
+from dj_database_url import UnknownSchemeError
 
 # === ŚCIEŻKI ===
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -10,13 +10,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.getenv("DEBUG", "0") == "1"
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-# Hosty i CSRF (ENV → jeśli brak, domyślki dla Render)
+# === HOSTS / CSRF (ENV -> jeśli brak, domyślki dla Render) ===
 def _csv_env(name: str):
     val = os.getenv(name, "")
     return [x.strip() for x in val.split(",") if x.strip()]
 
-ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS") or ["localhost", "127.0.0.1", ".onrender.com"]
-CSRF_TRUSTED_ORIGINS = _csv_env("CSRF_TRUSTED_ORIGINS") or ["https://*.onrender.com"]
+ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS") or [
+    "localhost",
+    "127.0.0.1",
+    "korepetycje-online.onrender.com",
+    ".onrender.com",
+]
+
+CSRF_TRUSTED_ORIGINS = _csv_env("CSRF_TRUSTED_ORIGINS") or [
+    "https://korepetycje-online.onrender.com",
+    "https://*.onrender.com",
+]
 
 # === APLIKACJE ===
 INSTALLED_APPS = [
@@ -29,6 +38,8 @@ INSTALLED_APPS = [
     "panel",
     "channels",
 ]
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # === MIDDLEWARE ===
 MIDDLEWARE = [
@@ -65,7 +76,7 @@ TEMPLATES = [
 ]
 
 # === BAZA DANYCH ===
-# Spróbuj z poprawnym ENV; jeśli złe/puste → przełącz na SQLite bez wywrotki
+# Preferuj poprawne ENV; jeśli puste/zepsute -> SQLite (bez wywrotki)
 def _valid_env(name: str):
     val = os.getenv(name)
     if not val:
@@ -86,7 +97,6 @@ try:
         "default": dj_database_url.parse(_db_url, conn_max_age=600),
     }
 except UnknownSchemeError:
-    # Ostateczny bezpiecznik na wypadek zepsutego ENV
     DATABASES = {
         "default": dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600),
     }
@@ -116,13 +126,12 @@ if (BASE_DIR / "static").exists():
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"   # Uwaga: na Render Free pliki są efemeryczne
+MEDIA_ROOT = BASE_DIR / "media"  # Uwaga: na Render Free pliki są efemeryczne
 
-# === LOGOWANIE / SESJE ===
+# === LOGOWANIE / SESJE / SECURITY ===
 LOGIN_URL = "/ukryty_admin/login/"
 AUTH_PASSWORD_VALIDATORS = []
 
-# === SECURITY HEADERS ===
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
