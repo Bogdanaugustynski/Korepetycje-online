@@ -1,79 +1,21 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <title>Korepetycje Online - Twój Sukces w Nauce</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-        }
-        header {
-            background-color: #007bff;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 26px;
-            font-weight: bold;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 30px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .btn {
-            display: inline-block;
-            padding: 14px 28px;
-            margin: 15px;
-            font-size: 18px;
-            color: white;
-            background-color: #007bff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .section {
-            padding: 20px;
-            text-align: center;
-        }
-        .features {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .feature-box {
-            width: 30%;
-            background: #e9ecef;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin: 10px;
-        }
-        .quote {
-            font-style: italic;
-            font-size: 18px;
-            margin: 20px 0;
-            color: #555;
-        }
-        footer {
-            background-color: #007bff;
-            color: white;
-            text-align: center;
-            padding: 15px;
-            margin-top: 30px;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        header { background-color: #007bff; color: white; padding: 20px; text-align: center; font-size: 26px; font-weight: bold; }
+        .container { max-width: 1000px; margin: 30px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        .btn { display: inline-block; padding: 14px 28px; margin: 15px; font-size: 18px; color: white; background-color: #007bff; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; transition: 0.3s; }
+        .btn:hover { background-color: #0056b3; }
+        .section { padding: 20px; text-align: center; }
+        .features { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; }
+        .feature-box { width: 30%; background: #e9ecef; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 10px; min-width: 260px; }
+        .quote { font-style: italic; font-size: 18px; margin: 20px 0; color: #555; }
+        footer { background-color: #007bff; color: white; text-align: center; padding: 15px; margin-top: 30px; }
     </style>
 </head>
 <body>
@@ -85,8 +27,8 @@
 <div class="container">
     <h2>Ucz się skutecznie i rozwijaj swoje umiejętności!</h2>
     <p>Znajdź nauczyciela, rezerwuj zajęcia i osiągaj sukcesy w nauce.</p>
-    <a href="login" class="btn">Zaloguj się</a>
-    <a href="register" class="btn">Zarejestruj się</a>
+    <a href="{% url 'login' %}" class="btn">Zaloguj się</a>
+    <a href="{% url 'register' %}" class="btn">Zarejestruj się</a>
 </div>
 
 <div class="section">
@@ -135,7 +77,7 @@
 <div class="section">
     <h3>🚀 ZACZNIJ JUŻ DZIŚ! 🚀</h3>
     <p>Nie czekaj! Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami!</p>
-    <a href="register" class="btn">Zarejestruj się teraz</a>
+    <a href="{% url 'register' %}" class="btn">Zarejestruj się teraz</a>
 </div>
 
 <footer>
