@@ -38,9 +38,16 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponse
+
+def public_test(request):
+    return HttpResponse("PUBLIC OK")
+
+def test_publiczny(request):
+    return HttpResponse("PUBLIC OK")
 
 
-@login_required
+
 def strona_glowna_view(request):
     return render(request, 'index.html')
 
