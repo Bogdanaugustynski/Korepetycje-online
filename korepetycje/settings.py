@@ -65,9 +65,15 @@ TEMPLATES = [
 
 # === BAZA DANYCH ===
 # Preferuj DATABASE_URL (Render), ew. wstecznie URL_BAZY_DANYCH; jeśli puste → SQLite
+def _valid_env(name: str):
+    val = os.getenv(name)
+    if val and val.strip() and val.strip() != "://":
+        return val.strip()
+    return None
+
 _db_url = (
-    os.getenv("DATABASE_URL")
-    or os.getenv("URL_BAZY_DANYCH")
+    _valid_env("DATABASE_URL")
+    or _valid_env("URL_BAZY_DANYCH")
     or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
 )
 
@@ -119,4 +125,4 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 X_FRAME_OPTIONS = "DENY"
-# SECURE_BROWSER_XSS_FILTER było historyczne; zostawiamy pominięte w Django 5+
+# SECURE_BROWSER_XSS_FILTER było historyczne; pomijamy w Django 5+
