@@ -9,13 +9,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.getenv("DEBUG", "0") == "1"
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-# Hosty i CSRF (z ENV; na start są lokalne)
-def _csv_env(name):
+# Hosty i CSRF (ENV → jeśli brak, ustaw domyślki z onrender.com)
+def _csv_env(name: str):
     val = os.getenv(name, "")
     return [x.strip() for x in val.split(",") if x.strip()]
 
-ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS") or ["localhost", "127.0.0.1"]
-CSRF_TRUSTED_ORIGINS = _csv_env("CSRF_TRUSTED_ORIGINS")
+ALLOWED_HOSTS = _csv_env("ALLOWED_HOSTS") or ["localhost", "127.0.0.1", ".onrender.com"]
+CSRF_TRUSTED_ORIGINS = _csv_env("CSRF_TRUSTED_ORIGINS") or ["https://*.onrender.com"]
 
 # === APLIKACJE ===
 INSTALLED_APPS = [
@@ -26,13 +26,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "panel",
-    "channels",
+    "channels",  # ok jeśli planujesz websockety; można zostawić
 ]
 
 # === MIDDLEWARE ===
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",   # <- Whitenoise zaraz po Security
+    "whitenoise.middleware.WhiteNoiseMiddleware",   # Whitenoise zaraz po Security
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -41,11 +41,11 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# === PROJEKT (PODMIEŃ NA SWOJĄ NAZWĘ PAKIETU) ===
+# === NAZWY MODUŁÓW PROJEKTU ===
+# U CIEBIE projekt to "korepetycje" (folder z settings.py/wsgi.py)
 ROOT_URLCONF = "korepetycje.urls"
 WSGI_APPLICATION = "korepetycje.wsgi.application"
 ASGI_APPLICATION = "korepetycje.asgi.application"
-
 
 # === SZABLONY ===
 TEMPLATES = [
@@ -93,6 +93,12 @@ USE_TZ = True
 # === STATIC / MEDIA ===
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# jeśli masz folder "static" w repo – dodaj go
+if (BASE_DIR / "static").exists():
+    STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# WhiteNoise – produkcja
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
@@ -102,9 +108,9 @@ MEDIA_ROOT = BASE_DIR / "media"   # Uwaga: na Render Free pliki są efemeryczne
 LOGIN_URL = "/ukryty_admin/login/"
 AUTH_PASSWORD_VALIDATORS = []
 
-# === SECURITY HEADERS (ok na Render/HTTPS; lokalnie mogą przeszkadzać) ===
+# === SECURITY HEADERS ===
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
