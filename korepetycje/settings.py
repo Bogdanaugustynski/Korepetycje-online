@@ -129,7 +129,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"  # Uwaga: na Render Free pliki są efemeryczne
 
 # === LOGOWANIE / SESJE / SECURITY ===
-LOGIN_URL = "/login/"
+LOGIN_URL = "/ukryty_admin/login/"
 AUTH_PASSWORD_VALIDATORS = []
 
 CSRF_COOKIE_SECURE = not DEBUG
