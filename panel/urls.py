@@ -5,10 +5,10 @@ from .views import virtual_room
 from .views import zajecia_online_view
 from .views import dodaj_material_po_zajeciach
 from django.contrib import admin
-
+from django.views.generic import TemplateView
 
 urlpatterns = [
-    path('', views.strona_glowna_view, name='strona_glowna'),
+    path("", TemplateView.as_view(template_name="index.html"), name="strona_glowna"),
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
     path('panel_ucznia/', views.panel_ucznia_view, name='panel_ucznia'),
@@ -38,6 +38,8 @@ urlpatterns = [
     path("pobierz-plik/<int:id>/", views.pobierz_plik, name="pobierz_plik"),
     path("pobierz-material/<int:id>/", views.pobierz_material_po_zajeciach, name="pobierz_material"),
     path('zmien_haslo/', views.zmien_haslo_view, name='zmien_haslo'),
+    path("public-test/", views.public_test, name="public_test"),
+
 ]
 from . import views
 
