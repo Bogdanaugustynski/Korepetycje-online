@@ -47,7 +47,6 @@ def test_publiczny(request):
     return HttpResponse("PUBLIC OK")
 
 
-
 def strona_glowna_view(request):
     return render(request, 'index.html')
 
@@ -222,7 +221,7 @@ def zajecia_online_view(request, rezerwacja_id):
             return redirect('zajecia_online', rezerwacja_id=rezerwacja.id)
 
     # Sprawdzenie dostępu — jeśli to NIE testowy pokój
-    if rezerwacja.id != 22:
+    if rezerwacja.id != 1:
         if user == rezerwacja.uczen:
             start = rezerwacja.termin
             koniec = start + timedelta(minutes=55)
@@ -233,7 +232,7 @@ def zajecia_online_view(request, rezerwacja_id):
         elif user != rezerwacja.nauczyciel:
             return HttpResponseForbidden("Brak dostępu do tej tablicy.")
     else:
-        # Dla pokoju testowego (np. ID=22), dostęp mają tylko nauczyciel i uczeń tej rezerwacji
+        # Dla pokoju testowego (np. ID=1), dostęp mają tylko nauczyciel i uczeń tej rezerwacji
         if user != rezerwacja.uczen and user != rezerwacja.nauczyciel:
             return HttpResponseForbidden("Brak dostępu do tej tablicy.")
 
