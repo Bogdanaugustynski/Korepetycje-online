@@ -29,8 +29,9 @@
     .hint {
       max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
     }
-    /* niewidoczny kontener Jitsi */
     #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
+    .vol-wrap { display:flex; align-items:center; gap:8px; min-width:200px; }
+    .vol-range { width:120px; }
   </style>
 </head>
 <body>
@@ -47,6 +48,12 @@
     <span id="mic-icon">🔇</span>
     <span id="mic-label">Wycisz mikrofon</span>
   </button>
+
+  <div class="pill vol-wrap" title="Głośność odsłuchu">
+    <span>🔊</span>
+    <input id="vol" class="vol-range" type="range" min="0" max="100" step="1" value="100" oninput="setOutputVolume(this.value)">
+    <span id="vol-val">100%</span>
+  </div>
 
   <div class="pill">
     <span>⏱</span>
@@ -68,25 +75,27 @@
   </form>
   {% endif %}
 
+  <div class="hint" id="vol-hint" style="display:none">
+    💡 Nie udało się sterować głośnością przez API. Użyj przycisków głośności urządzenia lub miksera systemowego (ikonka głośnika obok paska adresu).
+  </div>
+
   <div class="hint">
     ℹ️ Jeśli przeglądarka (zwłaszcza w telefonie) zablokuje automatyczny start audio,
     <b>stuknij raz w przycisk mikrofonu lub w dowolne miejsce strony</b>, aby połączyć dźwięk.
   </div>
 </main>
 
-<!-- ukryty kontener na osadzony obiekt Jitsi -->
 <div id="jitsi-container"></div>
 
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
-  // --- Dane kontekstowe
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken = "{{ csrf_token }}";
 
-  // --- Jitsi: prosty, mini embed tylko do AUDIO
   let api = null;
   let isMuted = false;
-  window.audioActivated = false; // czy już spełniono wymóg "user gesture" dla audio
+  window.audioActivated = false;
+  let volumeSupported = true; // wykryjemy po próbnym wywołaniu
 
   function startJitsiAudio() {
     const domain = "meet.jit.si";
@@ -101,7 +110,7 @@
         disableDeepLinking: true
       },
       interfaceConfigOverwrite: {
-        TOOLBAR_BUTTONS: [], // bez GUI
+        TOOLBAR_BUTTONS: [],
         SHOW_JITSI_WATERMARK: false,
         HIDE_DEEP_LINKING_LOGO: true,
         MOBILE_APP_PROMO: false
@@ -110,20 +119,28 @@
 
     api = new JitsiMeetExternalAPI(domain, options);
 
-    // Gdy API gotowe – nic nie wyświetlamy, tylko czekamy na pierwszy klik
     api.addListener('audioMuteStatusChanged', ({ muted }) => {
       isMuted = muted;
       syncMicLabel();
     });
+
+    // spróbujmy od razu ustawić głośność na 100 – jeśli rzuci wyjątek, pokażemy tip
+    setTimeout(() => {
+      try {
+        api.executeCommand('setAudioOutputVolume', 100);
+        volumeSupported = true;
+      } catch (e) {
+        volumeSupported = false;
+        document.getElementById('vol-hint').style.display = 'block';
+      }
+    }, 500);
   }
 
-  // Pierwszy gest użytkownika -> aktywacja audio (mobilne przeglądarki tego wymagają)
   function activateAudioOnce() {
     if (window.audioActivated || !api) return;
     window.audioActivated = true;
-    // Wywołujemy toggleAudio dwukrotnie, żeby na pewno przełamać autoplay policy
-    api.executeCommand('toggleAudio'); // mute/unmute -> gest
-    api.executeCommand('toggleAudio'); // wróć do docelowego stanu (niezmutowany)
+    api.executeCommand('toggleAudio');
+    api.executeCommand('toggleAudio');
     isMuted = false;
     syncMicLabel();
     document.removeEventListener('click', activateAudioOnce, true);
@@ -140,7 +157,6 @@
 
   function toggleMic() {
     if (!api) return;
-    // jeśli to pierwszy klik – aktywuj audio
     if (!window.audioActivated) {
       activateAudioOnce();
       return;
@@ -150,7 +166,22 @@
     syncMicLabel();
   }
 
-  // --- Presence (nauczyciel/uczeń online)
+  function setOutputVolume(val) {
+    const v = Number(val);
+    document.getElementById('vol-val').textContent = v + '%';
+    if (!api) return;
+    try {
+      api.executeCommand('setAudioOutputVolume', v);
+      if (!volumeSupported) {
+        volumeSupported = true;
+        document.getElementById('vol-hint').style.display = 'none';
+      }
+    } catch (e) {
+      volumeSupported = false;
+      document.getElementById('vol-hint').style.display = 'block';
+    }
+  }
+
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
@@ -169,7 +200,6 @@
       .catch(()=>{});
   }
 
-  // --- Odliczanie do końca lekcji
   function initCountdown() {
     const el = document.getElementById('countdown');
     const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
@@ -191,7 +221,6 @@
     setInterval(tick, 1000);
   }
 
-  // --- Start
   document.addEventListener('DOMContentLoaded', () => {
     startJitsiAudio();
     syncMicLabel();
