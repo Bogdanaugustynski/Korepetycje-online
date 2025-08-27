@@ -39,9 +39,16 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
       background-color: #f4f4f4;
+      padding: 10px;
+    }
+    #jitsi {
+      width: 100%;
+      height: 60vh;
+      margin-bottom: 20px;
+      background: #000;
     }
     .btn-tablica {
       padding: 12px 24px;
@@ -70,6 +77,9 @@
 </header>
 
 <div class="content">
+  <!-- Kontener na Jitsi -->
+  <div id="jitsi"></div>
+
   <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link }}">
     🖊️ Otwórz tablicę
   </a>
@@ -82,7 +92,7 @@
   {% endif %}
 </div>
 
-<script src='https://meet.jit.si/external_api.js'></script>
+<script src="https://meet.jit.si/external_api.js"></script>
 <script>
   const rezerwacjaId = "{{ rezerwacja.id }}";
   let api = null;
@@ -92,16 +102,26 @@
     const domain = "meet.jit.si";
     const options = {
       roomName: "ZajeciaOnline_{{ rezerwacja.id }}",
-      parentNode: document.createElement("div"),
+      parentNode: document.getElementById("jitsi"),
+      width: "100%",
+      height: "100%",
       configOverwrite: {
+        prejoinPageEnabled: true,
         startWithAudioMuted: false,
         startWithVideoMuted: true,
       },
-      interfaceConfigOverwrite: {
-        TOOLBAR_BUTTONS: [],
-      }
+      userInfo: {
+        displayName: "{{ request.user.get_full_name|default:request.user.username }}",
+      },
     };
+
     api = new JitsiMeetExternalAPI(domain, options);
+
+    // Nadanie uprawnień dla iframa
+    const iframe = api.getIFrame();
+    iframe.setAttribute("allow", "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write");
+    iframe.setAttribute("allowfullscreen", "true");
+    iframe.style.border = "0";
   }
 
   function toggleMic() {
