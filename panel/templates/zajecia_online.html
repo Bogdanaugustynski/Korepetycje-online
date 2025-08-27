@@ -30,8 +30,10 @@
     .hint {
       max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
     }
-    /* ukryty kontener Jitsi */
+    /* ukryty Jitsi */
     #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
+    /* mini-podgląd (do debugowania) */
+    #jitsi-preview { width:200px; height:120px; border:1px solid #ddd; border-radius:8px; overflow:hidden; background:#000; display:none; }
     .vol-wrap { display:flex; align-items:center; gap:10px; }
     input[type="range"] { width:200px; }
   </style>
@@ -66,6 +68,11 @@
     <span>⏱</span>
     <span id="countdown" class="countdown">Pozostało: --:--</span>
   </div>
+
+  <label class="pill" style="cursor:pointer;">
+    <input type="checkbox" id="toggle-preview" onchange="togglePreview(this.checked)">
+    Podgląd
+  </label>
 </header>
 
 <main>
@@ -82,36 +89,39 @@
   </form>
   {% endif %}
 
+  <div id="jitsi-preview"></div>
+
   <div class="hint">
     ℹ️ Jeśli przeglądarka (szczególnie na telefonie) zablokuje autoplay audio,
     <b>stuknij gdziekolwiek w stronę albo w przycisk mikrofonu</b>, aby połączyć dźwięk.
   </div>
 </main>
 
-<!-- ukryty kontener na osadzony obiekt Jitsi -->
 <div id="jitsi-container"></div>
 
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
-  // --- Dane kontekstowe
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken = "{{ csrf_token }}";
 
-  // --- Jitsi: embed w tle tylko do AUDIO (bez przycisków; użytkownik nic nie widzi)
   let api = null;
   let isMuted = false;
-  let audioActivated = false; // czy spełniono gest użytkownika
+  let audioActivated = false;
 
-  function startJitsiAudio() {
+  function startJitsiAudio(parentNode) {
     const domain = "meet.jit.si";
     const options = {
       roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
-      parentNode: document.getElementById("jitsi-container"),
+      parentNode,
       configOverwrite: {
         startWithAudioMuted: false,
         startWithVideoMuted: true,
         prejoinConfig: { enabled: false },
-        disableDeepLinking: true
+        disableDeepLinking: true,
+        // >>> ważne: omijamy blokady sieci
+        p2p: { enabled: false },
+        webrtcIceUdpDisable: true,
+        webrtcIceTcpDisable: false
       },
       interfaceConfigOverwrite: {
         TOOLBAR_BUTTONS: [],
@@ -126,13 +136,25 @@
       isMuted = muted;
       syncMicLabel();
     });
+
+    // Debug: pokaż czy Jitsi widzi uczestników
+    api.addListener('participantJoined', updateJitsiCount);
+    api.addListener('participantLeft', updateJitsiCount);
+    api.addListener('videoConferenceJoined', updateJitsiCount);
   }
 
-  // Pierwszy gest użytkownika -> aktywacja audio
+  function updateJitsiCount() {
+    try {
+      api.getParticipantsInfo().then(list => {
+        // lista zawiera także nas samych
+        // Możesz podejrzeć w konsoli: console.log('Jitsi participants', list);
+      });
+    } catch(e) {}
+  }
+
   function activateAudioOnce() {
     if (audioActivated || !api) return;
     audioActivated = true;
-    // dwukrotny toggle żeby „przełamać” politykę autoplay
     api.executeCommand('toggleAudio');
     api.executeCommand('toggleAudio');
     isMuted = false;
@@ -156,13 +178,12 @@
     syncMicLabel();
   }
 
-  // Głośność (po stronie klienta – skaluje głośność elementu audio w iframe)
   function setVolume(percent) {
     document.getElementById('vol-val').textContent = percent + '%';
     try { api.setAudioVolume(Number(percent)); } catch(e) {}
   }
 
-  // --- Presence (nauczyciel/uczeń online) -> na podstawie Twojej kontrolki
+  // Presence (Twoja kontrolka)
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
@@ -181,14 +202,11 @@
         dot.classList.toggle('status--on', online);
         dot.classList.toggle('status--off', !online);
         text.textContent = online ? "Dostępny" : "Niedostępny";
-
-        // Licznik uczestników: ja (1) + drugi użytkownik (0/1)
         document.getElementById('participants-count').textContent = online ? '2' : '1';
       })
       .catch(()=>{});
   }
 
-  // --- Odliczanie do końca lekcji
   function initCountdown() {
     const el = document.getElementById('countdown');
     const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
@@ -210,9 +228,25 @@
     setInterval(tick, 1000);
   }
 
-  // --- Start
+  // Podgląd (debug)
+  function togglePreview(on) {
+    const previewBox = document.getElementById('jitsi-preview');
+    if (on) {
+      // przenosimy osadzony Jitsi do mini-podglądu
+      previewBox.style.display = 'block';
+      previewBox.innerHTML = '';
+      startJitsiAudio(previewBox);
+    } else {
+      previewBox.style.display = 'none';
+      previewBox.innerHTML = '';
+      const hidden = document.getElementById('jitsi-container');
+      startJitsiAudio(hidden);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    startJitsiAudio();
+    // start w ukrytym kontenerze
+    startJitsiAudio(document.getElementById('jitsi-container'));
     syncMicLabel();
     initCountdown();
     pingOnlineStatus();
