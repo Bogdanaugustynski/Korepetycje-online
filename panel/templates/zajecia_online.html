@@ -1,205 +1,227 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Zajęcia online — audio + tablica</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Zajęcia online</title>
   <style>
-    :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+    }
     header {
-      background: var(--primary); color:#fff; padding:10px 14px;
-      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+      background-color: #007bff;
+      color: white;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
     }
-    .title { font-weight:700; font-size:18px; flex: 1 1 auto; }
-    .status-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:6px; background:#b1b1b1; }
-    .status--on { background:#39d158; }
-    .pill {
-      background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
-      display:flex; align-items:center; gap:8px; font-weight:600;
+    .header-left { font-size: 18px; font-weight: bold; }
+    .header-right {
+      display: flex;
+      gap: 20px;
+      align-items: center;
     }
-    .countdown { font-weight:700; }
-    .countdown.red { color:#ffeb3b; }
-    main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+    .mic-button {
+      cursor: pointer;
+      background-color: #fff;
+      color: #000;
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .countdown { font-weight: bold; }
+    .countdown.red { color: red; }
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #f4f4f4;
+    }
     .btn-tablica {
-      padding:14px 24px; font-size:18px; background:var(--ok); color:#fff;
-      border:none; border-radius:10px; text-decoration:none; display:inline-block;
+      padding: 12px 24px;
+      font-size: 18px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      margin-bottom: 20px;
     }
-    .hint {
-      max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
+    .form-link { margin-top: 20px; }
+    .info {
+      margin-top: 20px;
+      background: #eef5ff;
+      padding: 10px;
+      border: 1px solid #aac;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #333;
+      max-width: 500px;
+      text-align: center;
     }
-    /* niewidoczny kontener Jitsi */
-    #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
   </style>
 </head>
 <body>
-
 <header>
-  <div class="title">Zajęcia online — tryb audio</div>
-
-  <div class="pill" id="presence-pill">
-    <span id="presence-dot" class="status-dot"></span>
-    <span id="presence-text">Niedostępny</span>
-  </div>
-
-  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()">
-    <span id="mic-icon">🔇</span>
-    <span id="mic-label">Wycisz mikrofon</span>
-  </button>
-
-  <div class="pill">
-    <span>⏱</span>
-    <span id="countdown" class="countdown">Pozostało: --:--</span>
+  <div class="header-left">Zajęcia online — tryb audio</div>
+  <div class="header-right">
+    <div id="online-status-icon">🔴 Niedostępny</div>
+    <div class="mic-button" id="mic-toggle" onclick="toggleMic()">🔇 Wycisz mikrofon</div>
+    <div id="countdown" class="countdown">Pozostało: --:--</div>
   </div>
 </header>
 
-<main>
-  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">
-    ✏️ Otwórz tablicę
+<div class="content">
+  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link }}">
+    🖊️ Otwórz tablicę
   </a>
-
   {% if is_teacher %}
-  <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">
+  <form method="POST" class="form-link">
     {% csrf_token %}
-    <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required
-           style="min-width:280px; width:420px; max-width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cfd6e4;">
-    <button type="submit" class="pill">💾 Zapisz link</button>
+    <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required>
+    <button type="submit">Zapisz link</button>
   </form>
   {% endif %}
-
-  <div class="hint">
-    ℹ️ Jeśli przeglądarka (zwłaszcza w telefonie) zablokuje automatyczny start audio,
-    <b>stuknij raz w przycisk mikrofonu lub w dowolne miejsce strony</b>, aby połączyć dźwięk.
+  <div class="info">
+    ℹ️ Jeśli przeglądarka zablokuje automatyczny start dźwięku, kliknij przycisk „Wycisz/Włącz mikrofon”, aby go uruchomić.
   </div>
-</main>
+</div>
 
-<!-- ukryty kontener na osadzony obiekt Jitsi -->
-<div id="jitsi-container"></div>
-
+<!-- Jitsi -->
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
-  // --- Dane kontekstowe
   const rezerwacjaId = "{{ rezerwacja.id }}";
-  const csrfToken = "{{ csrf_token }}";
-
-  // --- Jitsi: prosty, mini embed tylko do AUDIO
   let api = null;
   let isMuted = false;
-  window.audioActivated = false; // czy już spełniono wymóg "user gesture" dla audio
+  let joined = false;
 
-  function startJitsiAudio() {
+  // ukryty kontener Jitsi
+  const hidden = document.createElement("div");
+  hidden.id = "jitsi-container";
+  hidden.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;";
+  document.body.appendChild(hidden);
+
+  function setStatus(txt) {
+    const icon = document.getElementById("online-status-icon");
+    if (txt === "joined") {
+      icon.textContent = "🟢 Połączono z pokojem";
+    } else if (txt === "connecting") {
+      icon.textContent = "🟡 Łączenie…";
+    } else {
+      icon.textContent = "🔴 Niedostępny";
+    }
+  }
+
+  function startJitsi() {
+    setStatus("connecting");
     const domain = "meet.jit.si";
     const options = {
       roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
       parentNode: document.getElementById("jitsi-container"),
+      width: 1,
+      height: 1,
+      userInfo: {
+        displayName: "{{ request.user.get_full_name|default:request.user.username }}"
+      },
       configOverwrite: {
         startWithAudioMuted: false,
         startWithVideoMuted: true,
-        disableVideoBackground: true,
-        prejoinConfig: { enabled: false },
-        disableDeepLinking: true
+        startAudioOnly: true,
+        disableDeepLinking: true,
+        prejoinConfig: { enabled: false }
       },
       interfaceConfigOverwrite: {
-        TOOLBAR_BUTTONS: [], // bez GUI
-        SHOW_JITSI_WATERMARK: false,
-        HIDE_DEEP_LINKING_LOGO: true,
+        TOOLBAR_BUTTONS: [],
         MOBILE_APP_PROMO: false
       }
     };
 
     api = new JitsiMeetExternalAPI(domain, options);
 
-    // Gdy API gotowe – nic nie wyświetlamy, tylko czekamy na pierwszy klik
-    api.addListener('audioMuteStatusChanged', ({ muted }) => {
-      isMuted = muted;
-      syncMicLabel();
+    api.addEventListener('videoConferenceJoined', () => {
+      joined = true;
+      setStatus("joined");
+      api.isAudioMuted().then(m => {
+        if (m) api.executeCommand('toggleAudio');
+      });
     });
-  }
 
-  // Pierwszy gest użytkownika -> aktywacja audio (mobilne przeglądarki tego wymagają)
-  function activateAudioOnce() {
-    if (window.audioActivated || !api) return;
-    window.audioActivated = true;
-    // Wywołujemy toggleAudio dwukrotnie, żeby na pewno przełamać autoplay policy
-    api.executeCommand('toggleAudio'); // mute/unmute -> gest
-    api.executeCommand('toggleAudio'); // wróć do docelowego stanu (niezmutowany)
-    isMuted = false;
-    syncMicLabel();
-    document.removeEventListener('click', activateAudioOnce, true);
-    document.removeEventListener('touchstart', activateAudioOnce, true);
-  }
-
-  document.addEventListener('click', activateAudioOnce, true);
-  document.addEventListener('touchstart', activateAudioOnce, true);
-
-  function syncMicLabel() {
-    document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
-    document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
+    api.addEventListener('readyToClose', () => {
+      joined = false;
+      setStatus("down");
+    });
   }
 
   function toggleMic() {
     if (!api) return;
-    // jeśli to pierwszy klik – aktywuj audio
-    if (!window.audioActivated) {
-      activateAudioOnce();
-      return;
-    }
-    isMuted = !isMuted;
     api.executeCommand('toggleAudio');
-    syncMicLabel();
+    isMuted = !isMuted;
+    const btn = document.getElementById("mic-toggle");
+    btn.textContent = isMuted ? "🎙️ Włącz mikrofon" : "🔇 Wycisz mikrofon";
   }
 
-  // --- Presence (nauczyciel/uczeń online)
+  // obecność
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
-      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
       body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
-    }).catch(()=>{});
+    });
   }
-
   function checkOtherUserStatus() {
     fetch(`/check-online-status/${rezerwacjaId}/`)
       .then(r => r.json())
       .then(data => {
-        document.getElementById('presence-dot').classList.toggle('status--on', !!data.online);
-        document.getElementById('presence-text').textContent = data.online ? "Dostępny" : "Niedostępny";
-      })
-      .catch(()=>{});
+        if (!joined) {
+          const icon = document.getElementById("online-status-icon");
+          icon.textContent = data.online ? "🟢 Dostępny" : "🔴 Niedostępny";
+        }
+      });
   }
 
-  // --- Odliczanie do końca lekcji
+  // licznik
   function initCountdown() {
-    const el = document.getElementById('countdown');
-    const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
-    const end = start + 55 * 60 * 1000;
+    const countdownEl = document.getElementById("countdown");
+    const startTime = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}");
+    const endTime = new Date(startTime.getTime() + 55 * 60 * 1000);
 
-    function tick() {
-      const now = Date.now();
-      const diff = end - now;
+    function updateCountdown() {
+      const now = new Date();
+      const diff = endTime - now;
       if (diff <= 0) {
-        el.textContent = "Zakończone";
-        el.classList.add('red');
+        countdownEl.textContent = "Zakończone";
+        countdownEl.classList.add("red");
         return;
       }
-      const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
-      el.textContent = `Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-      el.classList.toggle('red', m < 5);
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      countdownEl.textContent = `Pozostało: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      if (minutes < 5) countdownEl.classList.add("red");
+      else countdownEl.classList.remove("red");
     }
-    tick();
-    setInterval(tick, 1000);
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
   }
 
-  // --- Start
-  document.addEventListener('DOMContentLoaded', () => {
-    startJitsiAudio();
-    syncMicLabel();
-    initCountdown();
+  document.addEventListener("DOMContentLoaded", function () {
+    startJitsi();
     pingOnlineStatus();
     checkOtherUserStatus();
-    setInterval(pingOnlineStatus, 10_000);
-    setInterval(checkOtherUserStatus, 10_000);
+    initCountdown();
+    setInterval(pingOnlineStatus, 10000);
+    setInterval(checkOtherUserStatus, 10000);
   });
 </script>
 </body>
