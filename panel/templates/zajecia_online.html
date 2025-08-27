@@ -5,7 +5,7 @@
   <title>Zajęcia online — audio + tablica</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; }
+    :root { --primary:#007bff; --ok:#28a745; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
     header {
@@ -13,75 +13,67 @@
       display:flex; align-items:center; gap:14px; flex-wrap:wrap;
     }
     .title { font-weight:700; font-size:18px; flex: 1 1 auto; }
-    .status-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:6px; background:#b1b1b1; }
+    .pill { background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
+      display:flex; align-items:center; gap:8px; font-weight:600; }
+    .status-dot { width:12px; height:12px; border-radius:50%; background:#b1b1b1; }
     .status--on { background:#39d158; }
-    .pill {
-      background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
-      display:flex; align-items:center; gap:8px; font-weight:600;
-    }
-    .countdown { font-weight:700; }
-    .countdown.red { color:#ffeb3b; }
-    main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
-    .btn-tablica {
-      padding:14px 24px; font-size:18px; background:var(--ok); color:#fff;
-      border:none; border-radius:10px; text-decoration:none; display:inline-block;
-    }
-    .hint {
-      max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
-    }
-    #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
-    .vol-wrap { display:flex; align-items:center; gap:8px; min-width:200px; }
+    main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+    .btn { padding:12px 16px; border-radius:10px; border:1px solid #ddd; cursor:pointer; }
+    .btn-primary { background:var(--ok); color:#fff; border:none; }
+    .btn-ghost { background:#fff; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .hint { max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
+    /* IFRAME Jitsi – nie ukrywamy całkiem; zostawiamy 10×10 px i prawie przezroczyste (Chrome chętniej pozwala na audio) */
+    #jitsi-container { position:fixed; left:0; bottom:0; width:10px; height:10px; opacity:0.01; pointer-events:none; }
+    .vol-wrap { display:flex; align-items:center; gap:8px; }
     .vol-range { width:120px; }
   </style>
 </head>
 <body>
-
 <header>
   <div class="title">Zajęcia online — tryb audio</div>
 
-  <div class="pill" id="presence-pill">
+  <div class="pill">
     <span id="presence-dot" class="status-dot"></span>
     <span id="presence-text">Niedostępny</span>
   </div>
 
-  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()">
-    <span id="mic-icon">🔇</span>
-    <span id="mic-label">Wycisz mikrofon</span>
-  </button>
-
-  <div class="pill vol-wrap" title="Głośność odsłuchu">
-    <span>🔊</span>
-    <input id="vol" class="vol-range" type="range" min="0" max="100" step="1" value="100" oninput="setOutputVolume(this.value)">
-    <span id="vol-val">100%</span>
+  <div class="pill">
+    👥 <span id="pcount">0</span>
   </div>
 
-  <div class="pill">
-    <span>⏱</span>
-    <span id="countdown" class="countdown">Pozostało: --:--</span>
+  <button id="mic-toggle" class="pill btn-ghost" type="button" disabled>🔇 Wycisz mikrofon</button>
+
+  <div class="pill vol-wrap" title="Głośność odsłuchu">
+    🔊 <input id="vol" class="vol-range" type="range" min="0" max="100" step="1" value="100" disabled>
+    <span id="vol-val">100%</span>
   </div>
 </header>
 
 <main>
-  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">
-    ✏️ Otwórz tablicę
-  </a>
+  <div class="row">
+    <a class="btn btn-primary" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
+    <button id="connect-audio" class="btn btn-ghost" type="button">🎙️ Połącz audio</button>
+    <a class="btn btn-ghost" id="open-full" target="_blank" rel="noopener">🔗 Otwórz pełne Jitsi</a>
+  </div>
 
   {% if is_teacher %}
-  <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">
+  <form method="POST" class="row">
     {% csrf_token %}
-    <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required
-           style="min-width:280px; width:420px; max-width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cfd6e4;">
-    <button type="submit" class="pill">💾 Zapisz link</button>
+    <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..."
+           required style="min-width:280px; width:420px; max-width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cfd6e4;">
+    <button type="submit" class="btn btn-ghost">💾 Zapisz link</button>
   </form>
   {% endif %}
 
   <div class="hint" id="vol-hint" style="display:none">
-    💡 Nie udało się sterować głośnością przez API. Użyj przycisków głośności urządzenia lub miksera systemowego (ikonka głośnika obok paska adresu).
+    💡 Suwak głośności przeglądarki jest niedostępny na tym urządzeniu. Użyj przycisków głośności
+    lub miksera systemowego/ikony głośnika obok paska adresu.
   </div>
 
   <div class="hint">
-    ℹ️ Jeśli przeglądarka (zwłaszcza w telefonie) zablokuje automatyczny start audio,
-    <b>stuknij raz w przycisk mikrofonu lub w dowolne miejsce strony</b>, aby połączyć dźwięk.
+    ℹ️ Najpierw kliknij <b>„Połącz audio”</b> na obu urządzeniach (to wywoła prośbę o dostęp do mikrofonu).
+    Potem możesz używać „Wycisz mikrofon”. Upewnij się, że na obu urządzeniach zezwoliłeś na mikrofon dla domeny.
   </div>
 </main>
 
@@ -91,23 +83,26 @@
 <script>
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken = "{{ csrf_token }}";
+  const roomName = "ZajeciaAudio_{{ rezerwacja.id }}";
 
   let api = null;
   let isMuted = false;
-  window.audioActivated = false;
-  let volumeSupported = true; // wykryjemy po próbnym wywołaniu
+  let volumeSupported = true;
 
-  function startJitsiAudio() {
+  document.getElementById('open-full').href = "https://meet.jit.si/" + encodeURIComponent(roomName);
+
+  function initJitsi() {
     const domain = "meet.jit.si";
     const options = {
-      roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
+      roomName,
       parentNode: document.getElementById("jitsi-container"),
+      userInfo: { displayName: "{{ request.user.get_full_name|default:request.user.username }}" },
       configOverwrite: {
+        startAudioOnly: true,
         startWithAudioMuted: false,
         startWithVideoMuted: true,
-        disableVideoBackground: true,
         prejoinConfig: { enabled: false },
-        disableDeepLinking: true
+        disableDeepLinking: true,
       },
       interfaceConfigOverwrite: {
         TOOLBAR_BUTTONS: [],
@@ -121,10 +116,18 @@
 
     api.addListener('audioMuteStatusChanged', ({ muted }) => {
       isMuted = muted;
-      syncMicLabel();
+      syncMicUI();
     });
+    const updateCount = () => {
+      api.getParticipantsInfo().then(list => {
+        document.getElementById('pcount').textContent = String(list.length + 1); // +1 bo Ty też uczestnik
+      }).catch(()=>{});
+    };
+    api.addListener('participantJoined', updateCount);
+    api.addListener('participantLeft', updateCount);
+    setTimeout(updateCount, 1000);
 
-    // spróbujmy od razu ustawić głośność na 100 – jeśli rzuci wyjątek, pokażemy tip
+    // spróbuj ustawić głośność – jeśli się nie uda, pokaż tip
     setTimeout(() => {
       try {
         api.executeCommand('setAudioOutputVolume', 100);
@@ -133,41 +136,27 @@
         volumeSupported = false;
         document.getElementById('vol-hint').style.display = 'block';
       }
+      enableControls();
     }, 500);
   }
 
-  function activateAudioOnce() {
-    if (window.audioActivated || !api) return;
-    window.audioActivated = true;
-    api.executeCommand('toggleAudio');
-    api.executeCommand('toggleAudio');
-    isMuted = false;
-    syncMicLabel();
-    document.removeEventListener('click', activateAudioOnce, true);
-    document.removeEventListener('touchstart', activateAudioOnce, true);
+  function enableControls() {
+    document.getElementById('mic-toggle').disabled = false;
+    document.getElementById('vol').disabled = false;
   }
 
-  document.addEventListener('click', activateAudioOnce, true);
-  document.addEventListener('touchstart', activateAudioOnce, true);
-
-  function syncMicLabel() {
-    document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
-    document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
+  function syncMicUI() {
+    const btn = document.getElementById('mic-toggle');
+    btn.textContent = isMuted ? '🎙️ Włącz mikrofon' : '🔇 Wycisz mikrofon';
   }
 
-  function toggleMic() {
+  document.getElementById('mic-toggle').addEventListener('click', () => {
     if (!api) return;
-    if (!window.audioActivated) {
-      activateAudioOnce();
-      return;
-    }
-    isMuted = !isMuted;
     api.executeCommand('toggleAudio');
-    syncMicLabel();
-  }
+  });
 
-  function setOutputVolume(val) {
-    const v = Number(val);
+  document.getElementById('vol').addEventListener('input', (e) => {
+    const v = Number(e.target.value);
     document.getElementById('vol-val').textContent = v + '%';
     if (!api) return;
     try {
@@ -176,12 +165,19 @@
         volumeSupported = true;
         document.getElementById('vol-hint').style.display = 'none';
       }
-    } catch (e) {
+    } catch (e2) {
       volumeSupported = false;
       document.getElementById('vol-hint').style.display = 'block';
     }
-  }
+  });
 
+  // „Połącz audio” — wywołuje powstanie iframu Jitsi (gest użytkownika!)
+  document.getElementById('connect-audio').addEventListener('click', () => {
+    if (api) return;
+    initJitsi();
+  });
+
+  // Presence
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
@@ -189,47 +185,18 @@
       body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
     }).catch(()=>{});
   }
-
   function checkOtherUserStatus() {
     fetch(`/check-online-status/${rezerwacjaId}/`)
       .then(r => r.json())
       .then(data => {
         document.getElementById('presence-dot').classList.toggle('status--on', !!data.online);
         document.getElementById('presence-text').textContent = data.online ? "Dostępny" : "Niedostępny";
-      })
-      .catch(()=>{});
+      }).catch(()=>{});
   }
-
-  function initCountdown() {
-    const el = document.getElementById('countdown');
-    const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
-    const end = start + 55 * 60 * 1000;
-
-    function tick() {
-      const now = Date.now();
-      const diff = end - now;
-      if (diff <= 0) {
-        el.textContent = "Zakończone";
-        el.classList.add('red');
-        return;
-      }
-      const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
-      el.textContent = `Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-      el.classList.toggle('red', m < 5);
-    }
-    tick();
-    setInterval(tick, 1000);
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    startJitsiAudio();
-    syncMicLabel();
-    initCountdown();
-    pingOnlineStatus();
-    checkOtherUserStatus();
-    setInterval(pingOnlineStatus, 10_000);
-    setInterval(checkOtherUserStatus, 10_000);
-  });
+  setInterval(pingOnlineStatus, 10000);
+  setInterval(checkOtherUserStatus, 10000);
+  pingOnlineStatus();
+  checkOtherUserStatus();
 </script>
 </body>
 </html>
