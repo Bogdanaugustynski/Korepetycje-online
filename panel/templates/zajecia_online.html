@@ -8,25 +8,15 @@
     :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
-    header {
-      background: var(--primary); color:#fff; padding:10px 14px;
-      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-    }
+    header { background: var(--primary); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
     .title { font-weight:700; font-size:18px; flex: 1 1 auto; }
-    .pill {
-      background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
-      display:flex; align-items:center; gap:8px; font-weight:600;
-    }
+    .pill { background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
+      display:flex; align-items:center; gap:8px; font-weight:600; }
     .dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
     .dot.on { background:#39d158; } .dot.off { background:#b1b1b1; }
     main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
-    .btn {
-      padding:14px 24px; font-size:18px; background:var(--ok); color:#fff;
-      border:none; border-radius:10px; text-decoration:none; display:inline-block; cursor:pointer;
-    }
+    .btn { padding:14px 24px; font-size:18px; background:var(--ok); color:#fff; border:none; border-radius:10px; text-decoration:none; display:inline-block; cursor:pointer; }
     .hint { max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
-    /* Jitsi schowane całkowicie */
-    #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
   </style>
 </head>
 <body>
@@ -41,7 +31,9 @@
 
   <div class="pill" id="presence-count">👥 0</div>
 
-  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()">
+  <button class="pill" id="connect-btn" type="button">🔊 Połącz audio</button>
+
+  <button class="pill" id="mic-toggle" type="button" disabled>
     <span id="mic-icon">🔇</span>
     <span id="mic-label">Wycisz mikrofon</span>
   </button>
@@ -62,83 +54,32 @@
   {% endif %}
 
   <div class="hint">
-    ℹ️ Jeśli przeglądarka (szczególnie na telefonie) zablokuje start audio,
-    <b>stuknij raz w dowolne miejsce strony lub w przycisk „Wycisz mikrofon”</b>, aby połączyć dźwięk.
+    ℹ️ Kliknij „Połącz audio” na obu urządzeniach, zezwól na mikrofon, a potem używaj „Wycisz mikrofon”.
   </div>
 </main>
 
-<!-- ukryty kontener Jitsi -->
-<div id="jitsi-container"></div>
-
-<script src="https://meet.jit.si/external_api.js"></script>
 <script>
-  // --- kontekst
+  // === KONFIG ===
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken = "{{ csrf_token }}";
+  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = `${wsScheme}://${window.location.host}/ws/audio/${rezerwacjaId}/`;
 
-  // --- Jitsi: embed bez prejoin, bez UI
-  let api = null;
-  let isMuted = false;
-  let audioActivated = false; // czy wykonano pierwszy gest wymagany przez przeglądarkę
+  // STUN publiczny – wystarczy do P2P (możesz dodać własny TURN, gdyby sieć blokowała)
+  const RTC_CONFIG = { iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }] };
 
-  function startJitsiAudio() {
-    const domain = "meet.jit.si";
-    const options = {
-      roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
-      parentNode: document.getElementById("jitsi-container"),
-      configOverwrite: {
-        // kluczowe: wyłączamy prejoin i startujemy tylko audio
-        prejoinConfig: { enabled: false },
-        startWithAudioMuted: false,
-        startWithVideoMuted: true,
-        disableDeepLinking: true
-      },
-      interfaceConfigOverwrite: {
-        TOOLBAR_BUTTONS: [],
-        SHOW_JITSI_WATERMARK: false,
-        MOBILE_APP_PROMO: false,
-      }
-    };
+  // === UI ===
+  const connectBtn = document.getElementById("connect-btn");
+  const micBtn = document.getElementById("mic-toggle");
+  const micIcon = document.getElementById("mic-icon");
+  const micLabel = document.getElementById("mic-label");
 
-    api = new JitsiMeetExternalAPI(domain, options);
-
-    // synchronizacja etykiety przy każdej zmianie mute
-    api.addListener('audioMuteStatusChanged', ({ muted }) => {
-      isMuted = muted;
-      syncMicLabel();
-    });
+  function setMicLabel(muted) {
+    micIcon.textContent = muted ? "🎙️" : "🔇";
+    micLabel.textContent = muted ? "Włącz mikrofon" : "Wycisz mikrofon";
   }
 
-  // pierwszy gest użytkownika musi „aktywować” audio (policy mobilnych przeglądarek)
-  function activateAudioOnce() {
-    if (audioActivated || !api) return;
-    audioActivated = true;
-    // podwójny toggle żeby przełamać autoplay i wrócić do stanu „nie wyciszony”
-    api.executeCommand('toggleAudio');
-    api.executeCommand('toggleAudio');
-    isMuted = false;
-    syncMicLabel();
-    // już nie podsłuchujemy kolejnych kliknięć
-    document.removeEventListener('click', activateAudioOnce, true);
-    document.removeEventListener('touchstart', activateAudioOnce, true);
-  }
-  document.addEventListener('click', activateAudioOnce, true);
-  document.addEventListener('touchstart', activateAudioOnce, true);
-
-  function syncMicLabel() {
-    document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
-    document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
-  }
-
-  function toggleMic() {
-    if (!api) return;
-    if (!audioActivated) { activateAudioOnce(); return; }
-    api.executeCommand('toggleAudio');
-    isMuted = !isMuted;
-    syncMicLabel();
-  }
-
-  // --- status obecności (Twoje endpointy)
+  // === Presence (Twoje endpointy – zostawiamy jak było) ===
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
@@ -153,39 +94,119 @@
         const on = !!data.online;
         document.getElementById('presence-dot').className = 'dot ' + (on ? 'on' : 'off');
         document.getElementById('presence-text').textContent = on ? 'Dostępny' : 'Niedostępny';
-        // jeżeli backend zwraca licznik, pokaż; jeśli nie – proste 0/1/2 z heurystyki
         const count = (typeof data.count === 'number') ? data.count : (on ? 2 : 1);
         document.getElementById('presence-count').textContent = '👥 ' + count;
       })
       .catch(()=>{});
   }
 
-  // --- odliczanie
-  function initCountdown() {
+  // === Countdown ===
+  (function initCountdown(){
     const el = document.getElementById('countdown');
     const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
     const end = start + 55 * 60 * 1000;
-
-    function tick() {
-      const now = Date.now();
-      const diff = end - now;
-      if (diff <= 0) { el.textContent = 'Zakończone'; return; }
+    const tick = () => {
+      const diff = end - Date.now();
+      if (diff <= 0) { el.textContent = "Zakończone"; return; }
       const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
       el.textContent = `Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-    }
+    };
     tick(); setInterval(tick, 1000);
+  })();
+
+  // === WebRTC + WS sygnalizacja ===
+  let pc = null;
+  let ws = null;
+  let localStream = null;
+  let started = false;
+  let polite = false;  // prosty tryb „polite peer” (kolejność łączenia nie zabije sesji)
+
+  async function startAudio() {
+    if (started) return;
+    started = true;
+    connectBtn.disabled = true;
+
+    // 1) Media local
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    // 2) PeerConnection
+    pc = new RTCPeerConnection(RTC_CONFIG);
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+    // 3) Gdy przyjdą remote-tracki (audio z drugiej strony) – nic nie wstawiamy do DOM,
+    //    bo audio-tag nie jest konieczny przy direct audio? -> jednak jest:
+    pc.addEventListener("track", (e) => {
+      let el = document.getElementById("remoteAudio");
+      if (!el) {
+        el = document.createElement("audio");
+        el.id = "remoteAudio";
+        el.autoplay = true;
+        el.playsInline = true;
+        document.body.appendChild(el);
+      }
+      el.srcObject = e.streams[0];
+    });
+
+    // 4) ICE – wysyłamy kandydatów do drugiej strony
+    pc.onicecandidate = (e) => {
+      if (e.candidate && ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: "candidate", candidate: e.candidate }));
+      }
+    };
+
+    // 5) WebSocket do sygnalizacji
+    ws = new WebSocket(wsUrl);
+    ws.onopen = async () => {
+      // heurystyka: pierwszy kto się połączy – nie składa oferty; drugi – składa
+      polite = false; // możesz też przekazać z backendu rolę (nauczyciel/uczeń)
+      // tu zrobimy inicjację po 300 ms – jeśli druga strona już jest, złożymy offer
+      setTimeout(async () => {
+        if (pc.signalingState === "stable") {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          ws.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
+        }
+      }, 300);
+    };
+
+    ws.onmessage = async (event) => {
+      const data = JSON.parse(event.data || "{}");
+      try {
+        if (data.type === "offer") {
+          await pc.setRemoteDescription({ type: "offer", sdp: data.sdp });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
+        } else if (data.type === "answer") {
+          await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+        } else if (data.type === "candidate") {
+          await pc.addIceCandidate(data.candidate);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    ws.onclose = () => { /* opcjonalnie: retry */ };
+
+    // aktywuj przycisk mikrofonu
+    micBtn.disabled = false;
+    setMicLabel(false);
   }
 
-  // --- start
-  document.addEventListener('DOMContentLoaded', () => {
-    startJitsiAudio();
-    syncMicLabel();
-    initCountdown();
-    pingOnlineStatus();
-    checkOtherUserStatus();
-    setInterval(pingOnlineStatus, 10_000);
-    setInterval(checkOtherUserStatus, 10_000);
-  });
+  function toggleMic() {
+    if (!localStream) return;
+    const track = localStream.getAudioTracks()[0];
+    track.enabled = !track.enabled;
+    setMicLabel(!track.enabled);
+  }
+
+  document.getElementById("connect-btn").addEventListener("click", startAudio);
+  document.getElementById("mic-toggle").addEventListener("click", toggleMic);
+
+  // presence ping
+  pingOnlineStatus(); checkOtherUserStatus();
+  setInterval(pingOnlineStatus, 10000);
+  setInterval(checkOtherUserStatus, 10000);
 </script>
 </body>
 </html>
