@@ -106,12 +106,17 @@ if os.getenv("REDIS_URL"):
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")],
+            "CONFIG": {
+                "hosts": [os.getenv("REDIS_URL")],
+            },
         }
     }
 else:
-    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
-
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 # === INTERNACJONALIZACJA ===
 LANGUAGE_CODE = "pl-pl"
 TIME_ZONE = "Europe/Warsaw"
