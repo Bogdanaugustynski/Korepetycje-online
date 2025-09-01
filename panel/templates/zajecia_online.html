@@ -32,8 +32,16 @@
     }
     /* ukryty Jitsi */
     #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
-    /* mini-podgląd (do debugowania) */
-    #jitsi-preview { width:200px; height:120px; border:1px solid #ddd; border-radius:8px; overflow:hidden; background:#000; display:none; }
+    /* pełny podgląd Jitsi */
+    #jitsi-preview {
+      width: 100%;
+      height: 70vh;         /* duże okno podglądu */
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+      display: none;        /* przełączane checkboxem */
+    }
     .vol-wrap { display:flex; align-items:center; gap:10px; }
     input[type="range"] { width:200px; }
   </style>
@@ -107,26 +115,40 @@
   let api = null;
   let isMuted = false;
   let audioActivated = false;
+  let currentMode = "compact"; // "compact" (ukryty, audio-only) lub "full" (pełny podgląd)
 
-  function startJitsiAudio(parentNode) {
+  function disposeJitsi() {
+    try { api && api.dispose(); } catch(e) {}
+    api = null;
+  }
+
+  function startJitsiAudio(parentNode, mode = "compact") {
+    disposeJitsi();
+    currentMode = mode;
+
     const domain = "meet.jit.si";
     const options = {
       roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
       parentNode,
       configOverwrite: {
+        startWithVideoMuted: (mode === "compact"),
         startWithAudioMuted: false,
-        startWithVideoMuted: true,
-        prejoinConfig: { enabled: false },
+        prejoinConfig: { enabled: (mode === "full") },  // ekran wstępny tylko w podglądzie
         disableDeepLinking: true,
-        // >>> ważne: omijamy blokady sieci
+        // obejście blokad UDP — pozostawiamy jak było
         p2p: { enabled: false },
         webrtcIceUdpDisable: true,
         webrtcIceTcpDisable: false
       },
-      interfaceConfigOverwrite: {
+      interfaceConfigOverwrite: (mode === "compact") ? {
         TOOLBAR_BUTTONS: [],
         SHOW_JITSI_WATERMARK: false,
         MOBILE_APP_PROMO: false
+      } : {
+        MOBILE_APP_PROMO: false
+      },
+      userInfo: {
+        displayName: "{{ request.user.get_full_name|default:request.user.username|default:'Gość' }}"
       }
     };
 
@@ -137,7 +159,7 @@
       syncMicLabel();
     });
 
-    // Debug: pokaż czy Jitsi widzi uczestników
+    // Debug licznika uczestników
     api.addListener('participantJoined', updateJitsiCount);
     api.addListener('participantLeft', updateJitsiCount);
     api.addListener('videoConferenceJoined', updateJitsiCount);
@@ -146,8 +168,7 @@
   function updateJitsiCount() {
     try {
       api.getParticipantsInfo().then(list => {
-        // lista zawiera także nas samych
-        // Możesz podejrzeć w konsoli: console.log('Jitsi participants', list);
+        // Możesz sprawdzić w devtools: console.log(list);
       });
     } catch(e) {}
   }
@@ -228,25 +249,25 @@
     setInterval(tick, 1000);
   }
 
-  // Podgląd (debug)
+  // Podgląd (pełny Jitsi z toolbarami)
   function togglePreview(on) {
     const previewBox = document.getElementById('jitsi-preview');
+    const hidden = document.getElementById('jitsi-container');
+
     if (on) {
-      // przenosimy osadzony Jitsi do mini-podglądu
       previewBox.style.display = 'block';
       previewBox.innerHTML = '';
-      startJitsiAudio(previewBox);
+      startJitsiAudio(previewBox, "full");     // pełny interfejs
     } else {
       previewBox.style.display = 'none';
       previewBox.innerHTML = '';
-      const hidden = document.getElementById('jitsi-container');
-      startJitsiAudio(hidden);
+      startJitsiAudio(hidden, "compact");      // audio w tle
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // start w ukrytym kontenerze
-    startJitsiAudio(document.getElementById('jitsi-container'));
+    // start w trybie ukrytym (compact)
+    startJitsiAudio(document.getElementById('jitsi-container'), "compact");
     syncMicLabel();
     initCountdown();
     pingOnlineStatus();
