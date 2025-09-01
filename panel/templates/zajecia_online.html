@@ -2,10 +2,10 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto)</title>
+  <title>Zajęcia online — audio + tablica</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --muted:#ccc; }
+    :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
     header {
@@ -17,36 +17,58 @@
       background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
       display:flex; align-items:center; gap:8px; font-weight:600;
     }
+    .status-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; }
+    .status--on { background:#39d158; }
+    .status--off { background:#b1b1b1; }
     .countdown { font-weight:700; }
     .countdown.red { color:#ffeb3b; }
-    main { padding:16px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+    main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
     .btn-tablica {
-      padding:12px 18px; font-size:16px; background:var(--ok); color:#fff;
+      padding:14px 24px; font-size:18px; background:var(--ok); color:#fff;
       border:none; border-radius:10px; text-decoration:none; display:inline-block;
     }
-    /* Jitsi osadzony w tle (niewidoczny) */
-    #jitsi-hidden { position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none; }
-    /* Pasek awaryjny dla autoplay (znika po sukcesie) */
-    #autoplay-banner {
-      display:none; gap:10px; align-items:center;
-      background:#fff3cd; border:1px solid #ffe08a; color:#663c00;
-      padding:10px 12px; border-radius:8px;
+    .hint {
+      max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
     }
-    #autoplay-banner button {
-      border:0; border-radius:8px; padding:8px 10px; cursor:pointer; background:var(--warn); color:#000; font-weight:700;
+
+    /* ---- ZMIANA: okno Jitsi na stronie jest ukryte ---- */
+    #jitsi-preview {
+      width: 100%;
+      height: 70vh;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+      display: none; /* ukryte */
     }
+
+    /* ukryty, techniczny kontener dla Jitsi (render w tle) */
+    #jitsi-hidden {
+      position: fixed;
+      left: -9999px; top: -9999px;
+      width: 1px; height: 1px;
+      opacity: 0; pointer-events: none;
+    }
+
     .vol-wrap { display:flex; align-items:center; gap:10px; }
-    input[type="range"] { width:180px; }
+    input[type="range"] { width:200px; }
+    select { padding:6px 8px; border-radius:8px; border:1px solid #ddd; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="title">Zajęcia online — tryb audio (auto)</div>
+  <div class="title">Zajęcia online — audio</div>
 
   <div class="pill">
-    <span>👥</span> <span id="participants-count">1</span>
+    <span>👥</span>
+    <span id="participants-count">1</span>
   </div>
+
+  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()">
+    <span id="mic-icon">🔇</span>
+    <span id="mic-label">Wycisz mikrofon</span>
+  </button>
 
   <div class="pill vol-wrap">
     <span>🔈</span>
@@ -58,6 +80,13 @@
     <span>⏱</span>
     <span id="countdown" class="countdown">Pozostało: --:--</span>
   </div>
+
+  <div class="pill">
+    🔊 Wyjście:
+    <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
+  </div>
+
+  <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
 </header>
 
 <main>
@@ -72,154 +101,170 @@
   </form>
   {% endif %}
 
-  <!-- Pasek autoodtwarzania (pokazuje się tylko jeśli przeglądarka zablokuje dźwięk) -->
-  <div id="autoplay-banner">
-    🔇 Przeglądarka zablokowała automatyczny dźwięk.
-    <button type="button" id="autoplay-btn">Połącz audio</button>
+  <!-- Zostawiamy element (żeby nie usuwać niczego), ale jest ukryty przez CSS -->
+  <div id="jitsi-preview"></div>
+
+  <div class="hint">
+    Jeśli dźwięk znika po sekundzie: często Windows przełącza słuchawki w tryb „Połączenie telefoniczne” (HFP) i zmienia urządzenie.
+    Wybierz właściwe <b>Wyjście</b> z listy powyżej. W Windows → Dźwięk → <i>Komunikacja</i> ustaw „Nie rób nic”.
+    Upewnij się, że karta przeglądarki nie jest wyciszona (prawy klik na zakładce → Włącz dźwięk).
   </div>
 </main>
 
-<!-- Niewidoczny kontener Jitsi -->
+<!-- NOWE: ukryty kontener, w którym Jitsi działa w tle -->
 <div id="jitsi-hidden"></div>
 
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
   const rezerwacjaId = "{{ rezerwacja.id }}";
   let api = null;
-  let audioArmed = false;
-  let autoplayOk = false;
+  let isMuted = false;
 
-  // ——— Init Jitsi W TLE, bez prejoin, bez toolbara ———
-  function startJitsiHidden() {
+  // ——— Jitsi init ———
+  function startJitsi(parentNode) {
     if (api) { try { api.dispose(); } catch(e) {} api = null; }
 
-    api = new JitsiMeetExternalAPI("meet.jit.si", {
+    const domain = "meet.jit.si";
+    api = new JitsiMeetExternalAPI(domain, {
       roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
-      parentNode: document.getElementById('jitsi-hidden'),
+      parentNode,
       configOverwrite: {
-        // Bez prejoin, bez video
-        prejoinConfig: { enabled: false },
         startWithVideoMuted: true,
         startWithAudioMuted: false,
 
-        // Stabilny tor audio (pozwól na UDP)
+        /* ZMIANA: bez prejoin/okna „gospodarza” */
+        prejoinConfig: { enabled: false },
+
+        disableDeepLinking: true,
+
+        // pozwól na normalny tor audio
         p2p: { enabled: true },
         webrtcIceUdpDisable: false,
         webrtcIceTcpDisable: false,
 
-        // Audio sanity
+        // audio sanity
         startSilent: false,
         disableAudioLevels: false,
         enableNoAudioDetection: true,
         enableNoisyMicDetection: true,
         constraints: {
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        },
-
-        disableDeepLinking: true
+        }
       },
       interfaceConfigOverwrite: {
-        // Brak UI
+        /* ZMIANA: UI Jitsi wyłączone (i tak render w tle) */
         TOOLBAR_BUTTONS: [],
         MOBILE_APP_PROMO: false,
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_BRAND_WATERMARK: false
+        SHOW_JITSI_WATERMARK: false
       },
       userInfo: { displayName: "{{ request.user.get_full_name|default:request.user.username|default:'Gość' }}" }
     });
 
     // Zdarzenia
-    api.addListener('videoConferenceJoined', () => {
-      setVolume(100);
-      armAudio();
-      refreshCount();
+    api.addListener('audioMuteStatusChanged', ({ muted }) => {
+      isMuted = muted;
+      syncMicLabel();
     });
     api.addListener('participantJoined', refreshCount);
     api.addListener('participantLeft', refreshCount);
+    api.addListener('videoConferenceJoined', () => {
+      refreshCount();
+      setVolume(100);
+      populateOutputs();        // wypełnij listę wyjść
+    });
     api.addListener('devicesChanged', () => {
-      // Jeśli system zmieni urządzenie — odśwież głośność po chwili
-      setTimeout(() => setVolume(document.getElementById('vol').value), 100);
+      // urządzenia się zmieniły (np. BT przełączyło profil) — odśwież selektor
+      populateOutputs(true);
     });
 
-    // Spróbuj kilka razy odblokować audio (na wypadek opóźnień)
-    tryAutoConnectAudio(6, 400); // 6 prób co 400 ms
+    // Re-aplikuj wyjście gdy Jitsi je zgubi
+    api.addListener('audioAvailabilityChanged', ({ available }) => {
+      if (available) { setTimeout(populateOutputs, 200); }
+    });
   }
 
   function refreshCount() {
-    try {
-      api.getParticipantsInfo().then(list => {
-        document.getElementById('participants-count').textContent = Math.max(1, list.length);
-      });
-    } catch(e) {}
+    try { api.getParticipantsInfo().then(list => {
+      document.getElementById('participants-count').textContent = Math.max(1, list.length);
+    }); } catch(e) {}
   }
 
-  // ——— Głośność (tylko odbiór) ———
+  function syncMicLabel() {
+    document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
+    document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
+  }
+
+  function toggleMic() {
+    if (!api) return;
+    api.executeCommand('toggleAudio');         // tylko raz, bez „podwójnych” tricków
+  }
+
   function setVolume(val) {
     document.getElementById('vol-val').textContent = val + '%';
     try { api && api.setAudioVolume(Number(val)); } catch(e) {}
   }
 
-  // ——— Autoplay: „zbroimy” audio i próbujemy w tle ———
-  function warmAudioContext() {
-    // Ciche piknięcie; część przeglądarek pozwala bez gestu, część wymaga kliknięcia
+  // ——— WYJŚCIE audio (głośnik) ———
+  async function populateOutputs(keepCurrent=false) {
+    if (!api) return;
+    try {
+      const devs = await api.getAvailableDevices();
+      const select = document.getElementById('audio-output');
+      const current = select.value || '';
+
+      // zresetuj
+      select.innerHTML = '';
+
+      const outs = devs.audioOutput || [];
+      if (!outs.length) {
+        const opt = document.createElement('option');
+        opt.textContent = 'Brak wyboru (domyślne)';
+        opt.value = '';
+        select.appendChild(opt);
+        return;
+      }
+
+      // preferuj „default” na górze
+      outs.sort((a,b) => (b.label.toLowerCase().includes('default')?1:0) - (a.label.toLowerCase().includes('default')?1:0));
+
+      outs.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.deviceId;
+        opt.textContent = o.label || o.deviceId;
+        select.appendChild(opt);
+      });
+
+      // wybierz zachowane albo pierwsze
+      let target = outs[0].deviceId;
+      if (keepCurrent && outs.some(o => o.deviceId === current)) target = current;
+
+      await changeOutput(target);
+      select.value = target;
+
+    } catch(e) {
+      // brak wsparcia enumerate w przeglądarce
+      const select = document.getElementById('audio-output');
+      select.innerHTML = '<option value="">Domyślne</option>';
+    }
+  }
+
+  async function changeOutput(deviceId) {
+    try { if (api && deviceId) await api.setAudioOutputDevice(deviceId); } catch(e) {}
+    // „odśwież” głośność (część przeglądarek ścisza do 0 przy zmianie wyjścia)
+    setTimeout(() => setVolume(document.getElementById('vol').value), 50);
+  }
+
+  // ——— Narzędzie: test głośnika ———
+  function playSpeakerTest() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      g.gain.value = 0.0001;
+      g.gain.value = 0.03;
+      o.type = 'sine'; o.frequency.value = 880;
       o.connect(g); g.connect(ctx.destination);
       o.start();
-      setTimeout(() => { try { o.stop(); ctx.close(); } catch(e){} }, 40);
-    } catch(e) {}
-  }
-
-  async function armAudio() {
-    if (!api) return;
-    audioArmed = true;
-    warmAudioContext();
-    try { api.setAudioVolume(100); } catch(e) {}
-    // Nie używamy podwójnych toggle; tylko upewniamy się, że nie jest zmutowane
-    try {
-      const muted = await api.isAudioMuted();
-      if (muted) await api.executeCommand('toggleAudio');
-    } catch(e) {}
-  }
-
-  // Próbujemy kilkukrotnie po starcie konferencji
-  async function tryAutoConnectAudio(tries=5, delay=300) {
-    for (let i=0;i<tries;i++) {
-      await new Promise(r => setTimeout(r, delay));
-      if (!api) break;
-      try {
-        // test: jeśli nadal zmutowane albo nie gra, spróbuj ustawić głośność i unmute
-        const muted = await api.isAudioMuted();
-        if (muted) await api.executeCommand('toggleAudio');
-        await api.setAudioVolume(100);
-        // Jeżeli przeglądarka blokuje autoplay — pokaż pasek
-        if (!autoplayOk && i >= 1) showAutoplayBanner();
-      } catch(e) {
-        showAutoplayBanner();
-      }
-    }
-  }
-
-  // ——— Pasek do ręcznego odblokowania (tylko jeśli trzeba) ———
-  function showAutoplayBanner() {
-    if (autoplayOk) return;
-    const bar = document.getElementById('autoplay-banner');
-    bar.style.display = 'flex';
-  }
-
-  async function manualConnectAudio() {
-    autoplayOk = true;
-    const bar = document.getElementById('autoplay-banner');
-    bar.style.display = 'none';
-    try {
-      await armAudio();
-      // niektóre przeglądarki „łapią” po drugim wywołaniu
-      await api.executeCommand('toggleAudio'); 
-      await api.executeCommand('toggleAudio');
-      await api.setAudioVolume(100);
+      setTimeout(() => { try { o.stop(); ctx.close(); } catch(e) {} }, 400);
     } catch(e) {}
   }
 
@@ -239,11 +284,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    startJitsiHidden();      // start od razu w tle, bez okienka i bez prejoin
+    // ZMIANA: uruchamiamy Jitsi w ukrytym kontenerze (render w tle, bez okna i bez prejoin)
+    startJitsi(document.getElementById('jitsi-hidden'));
     initCountdown();
-
-    // guzik do ręcznego odblokowania (pokazuje się tylko gdy trzeba)
-    document.getElementById('autoplay-btn').addEventListener('click', manualConnectAudio);
   });
 </script>
 </body>
