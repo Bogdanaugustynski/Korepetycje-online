@@ -31,7 +31,7 @@
       max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
     }
 
-    /* ---- ZMIANA: okno Jitsi na stronie jest ukryte ---- */
+    /* UKRYTE okno Jitsi (zostawiamy element, ale go nie pokazujemy) */
     #jitsi-preview {
       width: 100%;
       height: 70vh;
@@ -39,10 +39,9 @@
       border-radius: 8px;
       overflow: hidden;
       background: #000;
-      display: none; /* ukryte */
+      display: none; /* <- ukryte */
     }
-
-    /* ukryty, techniczny kontener dla Jitsi (render w tle) */
+    /* techniczny kontener do renderu Jitsi w tle */
     #jitsi-hidden {
       position: fixed;
       left: -9999px; top: -9999px;
@@ -59,6 +58,12 @@
 
 <header>
   <div class="title">Zajęcia online — audio</div>
+
+  <!-- PRZYWRÓCONA KONTROLKA OBECNOŚCI -->
+  <div class="pill" id="presence-pill">
+    <span id="presence-dot" class="status-dot status--off"></span>
+    <span id="presence-text">Niedostępny</span>
+  </div>
 
   <div class="pill">
     <span>👥</span>
@@ -101,7 +106,7 @@
   </form>
   {% endif %}
 
-  <!-- Zostawiamy element (żeby nie usuwać niczego), ale jest ukryty przez CSS -->
+  <!-- Zostawiamy, ale ukryte -->
   <div id="jitsi-preview"></div>
 
   <div class="hint">
@@ -111,33 +116,35 @@
   </div>
 </main>
 
-<!-- NOWE: ukryty kontener, w którym Jitsi działa w tle -->
+<!-- Kontener do Jitsi działającego w tle -->
 <div id="jitsi-hidden"></div>
 
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
   const rezerwacjaId = "{{ rezerwacja.id }}";
+  const csrfToken   = "{{ csrf_token }}";
+
   let api = null;
   let isMuted = false;
 
-  // ——— Jitsi init ———
+  // Licznik wg Jitsi i wg backendu presence
+  let jitsiCount = 1;
+  let otherOnline = false;
+
+  // ——— Jitsi init (hidden) ———
   function startJitsi(parentNode) {
     if (api) { try { api.dispose(); } catch(e) {} api = null; }
 
-    const domain = "meet.jit.si";
-    api = new JitsiMeetExternalAPI(domain, {
+    api = new JitsiMeetExternalAPI("meet.jit.si", {
       roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
       parentNode,
       configOverwrite: {
         startWithVideoMuted: true,
         startWithAudioMuted: false,
-
-        /* ZMIANA: bez prejoin/okna „gospodarza” */
-        prejoinConfig: { enabled: false },
-
+        prejoinConfig: { enabled: false },   // bez prejoin/„gospodarza”
         disableDeepLinking: true,
 
-        // pozwól na normalny tor audio
+        // stabilny tor audio
         p2p: { enabled: true },
         webrtcIceUdpDisable: false,
         webrtcIceTcpDisable: false,
@@ -152,43 +159,74 @@
         }
       },
       interfaceConfigOverwrite: {
-        /* ZMIANA: UI Jitsi wyłączone (i tak render w tle) */
-        TOOLBAR_BUTTONS: [],
         MOBILE_APP_PROMO: false,
+        TOOLBAR_BUTTONS: [],                 // i tak hidden
         SHOW_JITSI_WATERMARK: false
       },
       userInfo: { displayName: "{{ request.user.get_full_name|default:request.user.username|default:'Gość' }}" }
     });
 
-    // Zdarzenia
     api.addListener('audioMuteStatusChanged', ({ muted }) => {
-      isMuted = muted;
-      syncMicLabel();
+      isMuted = muted; syncMicLabel();
     });
     api.addListener('participantJoined', refreshCount);
     api.addListener('participantLeft', refreshCount);
     api.addListener('videoConferenceJoined', () => {
       refreshCount();
       setVolume(100);
-      populateOutputs();        // wypełnij listę wyjść
+      populateOutputs();
     });
     api.addListener('devicesChanged', () => {
-      // urządzenia się zmieniły (np. BT przełączyło profil) — odśwież selektor
       populateOutputs(true);
     });
-
-    // Re-aplikuj wyjście gdy Jitsi je zgubi
     api.addListener('audioAvailabilityChanged', ({ available }) => {
       if (available) { setTimeout(populateOutputs, 200); }
     });
   }
 
   function refreshCount() {
-    try { api.getParticipantsInfo().then(list => {
-      document.getElementById('participants-count').textContent = Math.max(1, list.length);
-    }); } catch(e) {}
+    try {
+      api.getParticipantsInfo().then(list => {
+        jitsiCount = Math.max(1, list.length);
+        updateParticipantsBadge();
+      });
+    } catch(e) {}
   }
 
+  // ——— Presence (backend) ———
+  function pingOnlineStatus() {
+    fetch("{% url 'ping_online_status' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
+    }).catch(()=>{});
+  }
+
+  function checkOtherUserStatus() {
+    fetch(`/check-online-status/${rezerwacjaId}/`)
+      .then(r => r.json())
+      .then(data => {
+        otherOnline = !!data.online;
+        const dot = document.getElementById('presence-dot');
+        const text = document.getElementById('presence-text');
+        dot.classList.toggle('status--on', otherOnline);
+        dot.classList.toggle('status--off', !otherOnline);
+        text.textContent = otherOnline ? "Dostępny" : "Niedostępny";
+        updateParticipantsBadge();
+      })
+      .catch(()=>{});
+  }
+
+  function updateParticipantsBadge() {
+    // Jeśli druga osoba jest online wg backendu → pokaż min. 2
+    const count = otherOnline ? Math.max(2, jitsiCount) : jitsiCount;
+    document.getElementById('participants-count').textContent = count;
+  }
+
+  // ——— UI mic/vol ———
   function syncMicLabel() {
     document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
     document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
@@ -196,7 +234,7 @@
 
   function toggleMic() {
     if (!api) return;
-    api.executeCommand('toggleAudio');         // tylko raz, bez „podwójnych” tricków
+    api.executeCommand('toggleAudio');
   }
 
   function setVolume(val) {
@@ -211,8 +249,6 @@
       const devs = await api.getAvailableDevices();
       const select = document.getElementById('audio-output');
       const current = select.value || '';
-
-      // zresetuj
       select.innerHTML = '';
 
       const outs = devs.audioOutput || [];
@@ -224,9 +260,7 @@
         return;
       }
 
-      // preferuj „default” na górze
       outs.sort((a,b) => (b.label.toLowerCase().includes('default')?1:0) - (a.label.toLowerCase().includes('default')?1:0));
-
       outs.forEach(o => {
         const opt = document.createElement('option');
         opt.value = o.deviceId;
@@ -234,15 +268,11 @@
         select.appendChild(opt);
       });
 
-      // wybierz zachowane albo pierwsze
       let target = outs[0].deviceId;
       if (keepCurrent && outs.some(o => o.deviceId === current)) target = current;
-
       await changeOutput(target);
       select.value = target;
-
     } catch(e) {
-      // brak wsparcia enumerate w przeglądarce
       const select = document.getElementById('audio-output');
       select.innerHTML = '<option value="">Domyślne</option>';
     }
@@ -250,11 +280,10 @@
 
   async function changeOutput(deviceId) {
     try { if (api && deviceId) await api.setAudioOutputDevice(deviceId); } catch(e) {}
-    // „odśwież” głośność (część przeglądarek ścisza do 0 przy zmianie wyjścia)
     setTimeout(() => setVolume(document.getElementById('vol').value), 50);
   }
 
-  // ——— Narzędzie: test głośnika ———
+  // ——— Test głośnika ———
   function playSpeakerTest() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -284,9 +313,15 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // ZMIANA: uruchamiamy Jitsi w ukrytym kontenerze (render w tle, bez okna i bez prejoin)
+    // Jitsi działa w tle (bez okienka)
     startJitsi(document.getElementById('jitsi-hidden'));
     initCountdown();
+
+    // Presence online (backend)
+    pingOnlineStatus();
+    checkOtherUserStatus();
+    setInterval(pingOnlineStatus, 10_000);
+    setInterval(checkOtherUserStatus, 10_000);
   });
 </script>
 </body>
