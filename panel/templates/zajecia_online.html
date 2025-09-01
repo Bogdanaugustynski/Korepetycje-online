@@ -8,15 +8,34 @@
     :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
-    header { background: var(--primary); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    header {
+      background: var(--primary); color:#fff; padding:10px 14px;
+      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    }
     .title { font-weight:700; font-size:18px; flex: 1 1 auto; }
-    .pill { background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
-      display:flex; align-items:center; gap:8px; font-weight:600; }
-    .dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
-    .dot.on { background:#39d158; } .dot.off { background:#b1b1b1; }
+    .pill {
+      background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
+      display:flex; align-items:center; gap:8px; font-weight:600;
+    }
+    .status-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; }
+    .status--on { background:#39d158; }
+    .status--off { background:#b1b1b1; }
+    .countdown { font-weight:700; }
+    .countdown.red { color:#ffeb3b; }
     main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
-    .btn { padding:14px 24px; font-size:18px; background:var(--ok); color:#fff; border:none; border-radius:10px; text-decoration:none; display:inline-block; cursor:pointer; }
-    .hint { max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
+    .btn-tablica {
+      padding:14px 24px; font-size:18px; background:var(--ok); color:#fff;
+      border:none; border-radius:10px; text-decoration:none; display:inline-block;
+    }
+    .hint {
+      max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
+    }
+    /* ukryty Jitsi */
+    #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
+    /* mini-podgląd (do debugowania) */
+    #jitsi-preview { width:200px; height:120px; border:1px solid #ddd; border-radius:8px; overflow:hidden; background:#000; display:none; }
+    .vol-wrap { display:flex; align-items:center; gap:10px; }
+    input[type="range"] { width:200px; }
   </style>
 </head>
 <body>
@@ -24,25 +43,42 @@
 <header>
   <div class="title">Zajęcia online — tryb audio</div>
 
-  <div class="pill">
-    <span id="presence-dot" class="dot off"></span>
+  <div class="pill" id="presence-pill">
+    <span id="presence-dot" class="status-dot status--off"></span>
     <span id="presence-text">Niedostępny</span>
   </div>
 
-  <div class="pill" id="presence-count">👥 0</div>
+  <div class="pill">
+    <span>👥</span>
+    <span id="participants-count">1</span>
+  </div>
 
-  <button class="pill" id="connect-btn" type="button">🔊 Połącz audio</button>
-
-  <button class="pill" id="mic-toggle" type="button" disabled>
+  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()">
     <span id="mic-icon">🔇</span>
     <span id="mic-label">Wycisz mikrofon</span>
   </button>
 
-  <div class="pill">⏱ <span id="countdown">Pozostało: --:--</span></div>
+  <div class="pill vol-wrap">
+    <span>🔈</span>
+    <input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
+    <span id="vol-val">100%</span>
+  </div>
+
+  <div class="pill">
+    <span>⏱</span>
+    <span id="countdown" class="countdown">Pozostało: --:--</span>
+  </div>
+
+  <label class="pill" style="cursor:pointer;">
+    <input type="checkbox" id="toggle-preview" onchange="togglePreview(this.checked)">
+    Podgląd
+  </label>
 </header>
 
 <main>
-  <a class="btn" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
+  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">
+    ✏️ Otwórz tablicę
+  </a>
 
   {% if is_teacher %}
   <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -53,33 +89,101 @@
   </form>
   {% endif %}
 
+  <div id="jitsi-preview"></div>
+
   <div class="hint">
-    ℹ️ Kliknij „Połącz audio” na obu urządzeniach, zezwól na mikrofon, a potem używaj „Wycisz mikrofon”.
+    ℹ️ Jeśli przeglądarka (szczególnie na telefonie) zablokuje autoplay audio,
+    <b>stuknij gdziekolwiek w stronę albo w przycisk mikrofonu</b>, aby połączyć dźwięk.
   </div>
 </main>
 
+<div id="jitsi-container"></div>
+
+<script src="https://meet.jit.si/external_api.js"></script>
 <script>
-  // === KONFIG ===
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken = "{{ csrf_token }}";
-  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const wsUrl = `${wsScheme}://${window.location.host}/ws/audio/${rezerwacjaId}/`;
 
-  // STUN publiczny – wystarczy do P2P (możesz dodać własny TURN, gdyby sieć blokowała)
-  const RTC_CONFIG = { iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }] };
+  let api = null;
+  let isMuted = false;
+  let audioActivated = false;
 
-  // === UI ===
-  const connectBtn = document.getElementById("connect-btn");
-  const micBtn = document.getElementById("mic-toggle");
-  const micIcon = document.getElementById("mic-icon");
-  const micLabel = document.getElementById("mic-label");
+  function startJitsiAudio(parentNode) {
+    const domain = "meet.jit.si";
+    const options = {
+      roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
+      parentNode,
+      configOverwrite: {
+        startWithAudioMuted: false,
+        startWithVideoMuted: true,
+        prejoinConfig: { enabled: false },
+        disableDeepLinking: true,
+        // >>> ważne: omijamy blokady sieci
+        p2p: { enabled: false },
+        webrtcIceUdpDisable: true,
+        webrtcIceTcpDisable: false
+      },
+      interfaceConfigOverwrite: {
+        TOOLBAR_BUTTONS: [],
+        SHOW_JITSI_WATERMARK: false,
+        MOBILE_APP_PROMO: false
+      }
+    };
 
-  function setMicLabel(muted) {
-    micIcon.textContent = muted ? "🎙️" : "🔇";
-    micLabel.textContent = muted ? "Włącz mikrofon" : "Wycisz mikrofon";
+    api = new JitsiMeetExternalAPI(domain, options);
+
+    api.addListener('audioMuteStatusChanged', ({ muted }) => {
+      isMuted = muted;
+      syncMicLabel();
+    });
+
+    // Debug: pokaż czy Jitsi widzi uczestników
+    api.addListener('participantJoined', updateJitsiCount);
+    api.addListener('participantLeft', updateJitsiCount);
+    api.addListener('videoConferenceJoined', updateJitsiCount);
   }
 
-  // === Presence (Twoje endpointy – zostawiamy jak było) ===
+  function updateJitsiCount() {
+    try {
+      api.getParticipantsInfo().then(list => {
+        // lista zawiera także nas samych
+        // Możesz podejrzeć w konsoli: console.log('Jitsi participants', list);
+      });
+    } catch(e) {}
+  }
+
+  function activateAudioOnce() {
+    if (audioActivated || !api) return;
+    audioActivated = true;
+    api.executeCommand('toggleAudio');
+    api.executeCommand('toggleAudio');
+    isMuted = false;
+    syncMicLabel();
+    document.removeEventListener('click', activateAudioOnce, true);
+    document.removeEventListener('touchstart', activateAudioOnce, true);
+  }
+  document.addEventListener('click', activateAudioOnce, true);
+  document.addEventListener('touchstart', activateAudioOnce, true);
+
+  function syncMicLabel() {
+    document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
+    document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
+  }
+
+  function toggleMic() {
+    if (!api) return;
+    if (!audioActivated) { activateAudioOnce(); return; }
+    isMuted = !isMuted;
+    api.executeCommand('toggleAudio');
+    syncMicLabel();
+  }
+
+  function setVolume(percent) {
+    document.getElementById('vol-val').textContent = percent + '%';
+    try { api.setAudioVolume(Number(percent)); } catch(e) {}
+  }
+
+  // Presence (Twoja kontrolka)
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
@@ -87,126 +191,69 @@
       body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
     }).catch(()=>{});
   }
+
   function checkOtherUserStatus() {
     fetch(`/check-online-status/${rezerwacjaId}/`)
       .then(r => r.json())
       .then(data => {
-        const on = !!data.online;
-        document.getElementById('presence-dot').className = 'dot ' + (on ? 'on' : 'off');
-        document.getElementById('presence-text').textContent = on ? 'Dostępny' : 'Niedostępny';
-        const count = (typeof data.count === 'number') ? data.count : (on ? 2 : 1);
-        document.getElementById('presence-count').textContent = '👥 ' + count;
+        const online = !!data.online;
+        const dot = document.getElementById('presence-dot');
+        const text = document.getElementById('presence-text');
+        dot.classList.toggle('status--on', online);
+        dot.classList.toggle('status--off', !online);
+        text.textContent = online ? "Dostępny" : "Niedostępny";
+        document.getElementById('participants-count').textContent = online ? '2' : '1';
       })
       .catch(()=>{});
   }
 
-  // === Countdown ===
-  (function initCountdown(){
+  function initCountdown() {
     const el = document.getElementById('countdown');
     const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
     const end = start + 55 * 60 * 1000;
-    const tick = () => {
-      const diff = end - Date.now();
-      if (diff <= 0) { el.textContent = "Zakończone"; return; }
+
+    function tick() {
+      const now = Date.now();
+      const diff = end - now;
+      if (diff <= 0) {
+        el.textContent = "Zakończone";
+        el.classList.add('red');
+        return;
+      }
       const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
       el.textContent = `Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-    };
-    tick(); setInterval(tick, 1000);
-  })();
-
-  // === WebRTC + WS sygnalizacja ===
-  let pc = null;
-  let ws = null;
-  let localStream = null;
-  let started = false;
-  let polite = false;  // prosty tryb „polite peer” (kolejność łączenia nie zabije sesji)
-
-  async function startAudio() {
-    if (started) return;
-    started = true;
-    connectBtn.disabled = true;
-
-    // 1) Media local
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    // 2) PeerConnection
-    pc = new RTCPeerConnection(RTC_CONFIG);
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-    // 3) Gdy przyjdą remote-tracki (audio z drugiej strony) – nic nie wstawiamy do DOM,
-    //    bo audio-tag nie jest konieczny przy direct audio? -> jednak jest:
-    pc.addEventListener("track", (e) => {
-      let el = document.getElementById("remoteAudio");
-      if (!el) {
-        el = document.createElement("audio");
-        el.id = "remoteAudio";
-        el.autoplay = true;
-        el.playsInline = true;
-        document.body.appendChild(el);
-      }
-      el.srcObject = e.streams[0];
-    });
-
-    // 4) ICE – wysyłamy kandydatów do drugiej strony
-    pc.onicecandidate = (e) => {
-      if (e.candidate && ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: "candidate", candidate: e.candidate }));
-      }
-    };
-
-    // 5) WebSocket do sygnalizacji
-    ws = new WebSocket(wsUrl);
-    ws.onopen = async () => {
-      // heurystyka: pierwszy kto się połączy – nie składa oferty; drugi – składa
-      polite = false; // możesz też przekazać z backendu rolę (nauczyciel/uczeń)
-      // tu zrobimy inicjację po 300 ms – jeśli druga strona już jest, złożymy offer
-      setTimeout(async () => {
-        if (pc.signalingState === "stable") {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          ws.send(JSON.stringify({ type: "offer", sdp: offer.sdp }));
-        }
-      }, 300);
-    };
-
-    ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data || "{}");
-      try {
-        if (data.type === "offer") {
-          await pc.setRemoteDescription({ type: "offer", sdp: data.sdp });
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          ws.send(JSON.stringify({ type: "answer", sdp: answer.sdp }));
-        } else if (data.type === "answer") {
-          await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
-        } else if (data.type === "candidate") {
-          await pc.addIceCandidate(data.candidate);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    ws.onclose = () => { /* opcjonalnie: retry */ };
-
-    // aktywuj przycisk mikrofonu
-    micBtn.disabled = false;
-    setMicLabel(false);
+      el.classList.toggle('red', m < 5);
+    }
+    tick();
+    setInterval(tick, 1000);
   }
 
-  function toggleMic() {
-    if (!localStream) return;
-    const track = localStream.getAudioTracks()[0];
-    track.enabled = !track.enabled;
-    setMicLabel(!track.enabled);
+  // Podgląd (debug)
+  function togglePreview(on) {
+    const previewBox = document.getElementById('jitsi-preview');
+    if (on) {
+      // przenosimy osadzony Jitsi do mini-podglądu
+      previewBox.style.display = 'block';
+      previewBox.innerHTML = '';
+      startJitsiAudio(previewBox);
+    } else {
+      previewBox.style.display = 'none';
+      previewBox.innerHTML = '';
+      const hidden = document.getElementById('jitsi-container');
+      startJitsiAudio(hidden);
+    }
   }
 
-  document.getElementById("connect-btn").addEventListener("click", startAudio);
-  document.getElementById("mic-toggle").addEventListener("click", toggleMic);
-
-  // presence ping
-  pingOnlineStatus(); checkOtherUserStatus();
-  setInterval(pingOnlineStatus, 10000);
-  setInterval(checkOtherUserStatus, 10000);
+  document.addEventListener('DOMContentLoaded', () => {
+    // start w ukrytym kontenerze
+    startJitsiAudio(document.getElementById('jitsi-container'));
+    syncMicLabel();
+    initCountdown();
+    pingOnlineStatus();
+    checkOtherUserStatus();
+    setInterval(pingOnlineStatus, 10_000);
+    setInterval(checkOtherUserStatus, 10_000);
+  });
 </script>
 </body>
 </html>
