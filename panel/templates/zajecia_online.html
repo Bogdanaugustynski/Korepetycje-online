@@ -12,7 +12,7 @@
       background: var(--primary); color:#fff; padding:10px 14px;
       display:flex; align-items:center; gap:14px; flex-wrap:wrap;
     }
-    .title { font-weight:700; font-size:18px; flex: 1 1 auto; }
+    .title { font-weight:700; font-size:18px; flex:1 1 auto; }
     .pill {
       background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
       display:flex; align-items:center; gap:8px; font-weight:600;
@@ -28,11 +28,8 @@
       border:none; border-radius:10px; text-decoration:none; display:inline-block;
     }
     .hint {
-      max-width:850px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
+      max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
     }
-    /* ukryty Jitsi */
-    #jitsi-container { position:fixed; inset:auto auto 0 0; width:1px; height:1px; opacity:0; pointer-events:none; }
-    /* pełny podgląd Jitsi */
     #jitsi-preview {
       width: 100%;
       height: 70vh;
@@ -40,21 +37,17 @@
       border-radius: 8px;
       overflow: hidden;
       background: #000;
-      display: none;
+      display: block;
     }
     .vol-wrap { display:flex; align-items:center; gap:10px; }
     input[type="range"] { width:200px; }
+    select { padding:6px 8px; border-radius:8px; border:1px solid #ddd; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="title">Zajęcia online — tryb audio</div>
-
-  <div class="pill" id="presence-pill">
-    <span id="presence-dot" class="status-dot status--off"></span>
-    <span id="presence-text">Niedostępny</span>
-  </div>
+  <div class="title">Zajęcia online — audio</div>
 
   <div class="pill">
     <span>👥</span>
@@ -77,21 +70,16 @@
     <span id="countdown" class="countdown">Pozostało: --:--</span>
   </div>
 
-  <label class="pill" style="cursor:pointer;">
-    <input type="checkbox" id="toggle-preview" onchange="togglePreview(this.checked)">
-    Podgląd
-  </label>
+  <div class="pill">
+    🔊 Wyjście:
+    <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
+  </div>
 
-  <!-- NOWE: ręczne odblokowanie audio -->
-  <button class="pill" id="join-audio" type="button" onclick="ensureAudio()">
-    🔊 Połącz dźwięk
-  </button>
+  <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
 </header>
 
 <main>
-  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">
-    ✏️ Otwórz tablicę
-  </a>
+  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
 
   {% if is_teacher %}
   <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -105,137 +93,80 @@
   <div id="jitsi-preview"></div>
 
   <div class="hint">
-    ℹ️ Jeśli przeglądarka (szczególnie na telefonie) zablokuje autoplay audio,
-    <b>stuknij gdziekolwiek w stronę</b> lub użyj przycisku <b>„Połącz dźwięk”</b>.
-    Upewnij się też, że karta przeglądarki nie jest wyciszona.
+    Jeśli dźwięk znika po sekundzie: często Windows przełącza słuchawki w tryb „Połączenie telefoniczne” (HFP) i zmienia urządzenie.
+    Wybierz właściwe <b>Wyjście</b> z listy powyżej. W Windows → Dźwięk → <i>Komunikacja</i> ustaw „Nie rób nic”.
+    Upewnij się, że karta przeglądarki nie jest wyciszona (prawy klik na zakładce → Włącz dźwięk).
   </div>
 </main>
-
-<div id="jitsi-container"></div>
 
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
   const rezerwacjaId = "{{ rezerwacja.id }}";
-  const csrfToken = "{{ csrf_token }}";
-
   let api = null;
   let isMuted = false;
-  let audioActivated = false;
-  let currentMode = "compact"; // "compact" (ukryty, audio-only) lub "full" (pełny podgląd)
 
-  function disposeJitsi() {
-    try { api && api.dispose(); } catch(e) {}
-    api = null;
-  }
-
-  function startJitsiAudio(parentNode, mode = "compact") {
-    disposeJitsi();
-    currentMode = mode;
+  // ——— Jitsi init ———
+  function startJitsi(parentNode) {
+    if (api) { try { api.dispose(); } catch(e) {} api = null; }
 
     const domain = "meet.jit.si";
-    const options = {
+    api = new JitsiMeetExternalAPI(domain, {
       roomName: "ZajeciaAudio_{{ rezerwacja.id }}",
       parentNode,
       configOverwrite: {
-        startWithVideoMuted: (mode === "compact"),
+        startWithVideoMuted: true,
         startWithAudioMuted: false,
-        prejoinConfig: { enabled: (mode === "full") },  // ekran wstępny tylko w podglądzie
+        prejoinConfig: { enabled: true },
         disableDeepLinking: true,
 
-        // sieciowe obejścia
-        p2p: { enabled: false },
-        webrtcIceUdpDisable: true,
+        // pozwól na normalny tor audio
+        p2p: { enabled: true },
+        webrtcIceUdpDisable: false,
         webrtcIceTcpDisable: false,
 
-        // AUDIO sanity
+        // audio sanity
         startSilent: false,
         disableAudioLevels: false,
         enableNoAudioDetection: true,
         enableNoisyMicDetection: true,
         constraints: {
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         }
       },
-      interfaceConfigOverwrite: (mode === "compact") ? {
-        TOOLBAR_BUTTONS: [],
-        SHOW_JITSI_WATERMARK: false,
-        MOBILE_APP_PROMO: false
-      } : {
+      interfaceConfigOverwrite: {
         MOBILE_APP_PROMO: false
       },
-      userInfo: {
-        displayName: "{{ request.user.get_full_name|default:request.user.username|default:'Gość' }}"
-      }
-    };
+      userInfo: { displayName: "{{ request.user.get_full_name|default:request.user.username|default:'Gość' }}" }
+    });
 
-    api = new JitsiMeetExternalAPI(domain, options);
-
+    // Zdarzenia
     api.addListener('audioMuteStatusChanged', ({ muted }) => {
       isMuted = muted;
       syncMicLabel();
     });
-    api.addListener('participantJoined', updateJitsiCount);
-    api.addListener('participantLeft', updateJitsiCount);
-    api.addListener('videoConferenceJoined', updateJitsiCount);
+    api.addListener('participantJoined', refreshCount);
+    api.addListener('participantLeft', refreshCount);
+    api.addListener('videoConferenceJoined', () => {
+      refreshCount();
+      setVolume(100);
+      populateOutputs();        // wypełnij listę wyjść
+    });
+    api.addListener('devicesChanged', () => {
+      // urządzenia się zmieniły (np. BT przełączyło profil) — odśwież selektor
+      populateOutputs(true);
+    });
 
-    // Po zainicjowaniu spróbuj delikatnie "rozruszać" audio
-    setTimeout(() => { try { api.setAudioVolume(100); } catch(e) {} }, 200);
+    // Re-aplikuj wyjście gdy Jitsi je zgubi
+    api.addListener('audioAvailabilityChanged', ({ available }) => {
+      if (available) { setTimeout(populateOutputs, 200); }
+    });
   }
 
-  function updateJitsiCount() {
-    try { api.getParticipantsInfo().then(() => {}); } catch(e) {}
+  function refreshCount() {
+    try { api.getParticipantsInfo().then(list => {
+      document.getElementById('participants-count').textContent = Math.max(1, list.length);
+    }); } catch(e) {}
   }
-
-  // --- Odblokowanie autoplay + wymuszenie audio ---
-  let warmAudioEl = null;
-  function warmUpAudio() {
-    try {
-      if (!warmAudioEl) {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        g.gain.value = 0.0001; // praktycznie cisza
-        o.connect(g); g.connect(ctx.destination);
-        o.start();
-        setTimeout(() => { try { o.stop(); ctx.close(); } catch(e) {} }, 50);
-        warmAudioEl = true;
-      }
-    } catch(e) {}
-  }
-
-  async function ensureAudio() {
-    warmUpAudio();
-    if (!api) return;
-    try {
-      const muted = await api.isAudioMuted();
-      if (muted) api.executeCommand('toggleAudio');
-
-      try { api.setAudioVolume(100); } catch(e) {}
-
-      // niektóre przeglądarki "łapią" po dwukliku
-      api.executeCommand('toggleAudio');
-      api.executeCommand('toggleAudio');
-
-      isMuted = false;
-      syncMicLabel();
-      audioActivated = true;
-    } catch (e) {}
-  }
-
-  // Jednorazowa aktywacja przy pierwszym kliknięciu na stronie
-  function activateAudioOnce() {
-    if (audioActivated || !api) return;
-    audioActivated = true;
-    ensureAudio();
-    document.removeEventListener('click', activateAudioOnce, true);
-    document.removeEventListener('touchstart', activateAudioOnce, true);
-  }
-  document.addEventListener('click', activateAudioOnce, true);
-  document.addEventListener('touchstart', activateAudioOnce, true);
 
   function syncMicLabel() {
     document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
@@ -244,92 +175,96 @@
 
   function toggleMic() {
     if (!api) return;
-    if (!audioActivated) { ensureAudio(); return; }
-    isMuted = !isMuted;
-    api.executeCommand('toggleAudio');
-    syncMicLabel();
+    api.executeCommand('toggleAudio');         // tylko raz, bez „podwójnych” tricków
   }
 
-  function setVolume(percent) {
-    document.getElementById('vol-val').textContent = percent + '%';
-    try { api.setAudioVolume(Number(percent)); } catch(e) {}
+  function setVolume(val) {
+    document.getElementById('vol-val').textContent = val + '%';
+    try { api && api.setAudioVolume(Number(val)); } catch(e) {}
   }
 
-  // Presence (Twoja kontrolka)
-  function pingOnlineStatus() {
-    fetch("{% url 'ping_online_status' %}", {
-      method: "POST",
-      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
-      body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
-    }).catch(()=>{});
+  // ——— WYJŚCIE audio (głośnik) ———
+  async function populateOutputs(keepCurrent=false) {
+    if (!api) return;
+    try {
+      const devs = await api.getAvailableDevices();
+      const select = document.getElementById('audio-output');
+      const current = select.value || '';
+
+      // zresetuj
+      select.innerHTML = '';
+
+      const outs = devs.audioOutput || [];
+      if (!outs.length) {
+        const opt = document.createElement('option');
+        opt.textContent = 'Brak wyboru (domyślne)';
+        opt.value = '';
+        select.appendChild(opt);
+        return;
+      }
+
+      // preferuj „default” na górze
+      outs.sort((a,b) => (b.label.toLowerCase().includes('default')?1:0) - (a.label.toLowerCase().includes('default')?1:0));
+
+      outs.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.deviceId;
+        opt.textContent = o.label || o.deviceId;
+        select.appendChild(opt);
+      });
+
+      // wybierz zachowane albo pierwsze
+      let target = outs[0].deviceId;
+      if (keepCurrent && outs.some(o => o.deviceId === current)) target = current;
+
+      await changeOutput(target);
+      select.value = target;
+
+    } catch(e) {
+      // brak wsparcia enumerate w przeglądarce
+      const select = document.getElementById('audio-output');
+      select.innerHTML = '<option value="">Domyślne</option>';
+    }
   }
 
-  function checkOtherUserStatus() {
-    fetch(`/check-online-status/${rezerwacjaId}/`)
-      .then(r => r.json())
-      .then(data => {
-        const online = !!data.online;
-        const dot = document.getElementById('presence-dot');
-        const text = document.getElementById('presence-text');
-        dot.classList.toggle('status--on', online);
-        dot.classList.toggle('status--off', !online);
-        text.textContent = online ? "Dostępny" : "Niedostępny";
-        document.getElementById('participants-count').textContent = online ? '2' : '1';
-      })
-      .catch(()=>{});
+  async function changeOutput(deviceId) {
+    try { if (api && deviceId) await api.setAudioOutputDevice(deviceId); } catch(e) {}
+    // „odśwież” głośność (część przeglądarek ścisza do 0 przy zmianie wyjścia)
+    setTimeout(() => setVolume(document.getElementById('vol').value), 50);
   }
 
+  // ——— Narzędzie: test głośnika ———
+  function playSpeakerTest() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.value = 0.03;
+      o.type = 'sine'; o.frequency.value = 880;
+      o.connect(g); g.connect(ctx.destination);
+      o.start();
+      setTimeout(() => { try { o.stop(); ctx.close(); } catch(e) {} }, 400);
+    } catch(e) {}
+  }
+
+  // ——— Odliczanie ———
   function initCountdown() {
     const el = document.getElementById('countdown');
     const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
     const end = start + 55 * 60 * 1000;
-
     function tick() {
-      const now = Date.now();
-      const diff = end - now;
-      if (diff <= 0) {
-        el.textContent = "Zakończone";
-        el.classList.add('red');
-        return;
-      }
+      const diff = end - Date.now();
+      if (diff <= 0) { el.textContent = "Zakończone"; el.classList.add('red'); return; }
       const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
       el.textContent = `Pozostało: ${m}:${String(s).padStart(2,'0')}`;
       el.classList.toggle('red', m < 5);
     }
-    tick();
-    setInterval(tick, 1000);
-  }
-
-  // Podgląd (pełny Jitsi z toolbarami)
-  function togglePreview(on) {
-    const previewBox = document.getElementById('jitsi-preview');
-    const hidden = document.getElementById('jitsi-container');
-
-    if (on) {
-      previewBox.style.display = 'block';
-      previewBox.innerHTML = '';
-      startJitsiAudio(previewBox, "full");     // pełny interfejs
-      setTimeout(ensureAudio, 200);            // spróbuj od razu odblokować audio
-    } else {
-      previewBox.style.display = 'none';
-      previewBox.innerHTML = '';
-      startJitsiAudio(hidden, "compact");      // audio w tle
-    }
+    tick(); setInterval(tick, 1000);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // start w trybie ukrytym (compact)
-    startJitsiAudio(document.getElementById('jitsi-container'), "compact");
-    syncMicLabel();
+    startJitsi(document.getElementById('jitsi-preview'));
     initCountdown();
-    pingOnlineStatus();
-    checkOtherUserStatus();
-    setInterval(pingOnlineStatus, 10_000);
-    setInterval(checkOtherUserStatus, 10_000);
-
-    // zapasowy listener do przycisku
-    const joinBtn = document.getElementById('join-audio');
-    if (joinBtn) joinBtn.addEventListener('click', ensureAudio);
   });
 </script>
 </body>
