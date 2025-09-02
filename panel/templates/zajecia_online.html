@@ -2,93 +2,37 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (WebRTC)</title>
+  <title>Zajęcia online — audio (WebRTC + TURN)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; --warn:#ffb300; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
-    header {
-      background: var(--primary); color:#fff; padding:10px 14px;
-      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-    }
+    header { background: var(--primary); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
     .title { font-weight:700; font-size:18px; flex:1 1 auto; }
-    .pill {
-      background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd;
-      display:flex; align-items:center; gap:8px; font-weight:600;
-    }
+    .pill { background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd; display:flex; align-items:center; gap:8px; font-weight:600; }
     .status-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; }
-    .status--on { background:#39d158; }
-    .status--off { background:#b1b1b1; }
-    .countdown { font-weight:700; }
-    .countdown.red { color:#ffeb3b; }
+    .status--on { background:#39d158; } .status--off { background:#b1b1b1; }
+    .countdown { font-weight:700; } .countdown.red { color:#ffeb3b; }
     main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
-    .btn-tablica {
-      padding:14px 24px; font-size:18px; background:var(--ok); color:#fff;
-      border:none; border-radius:10px; text-decoration:none; display:inline-block;
-    }
-    .hint {
-      max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a;
-    }
-    .vol-wrap { display:flex; align-items:center; gap:10px; }
-    input[type="range"] { width:200px; }
-    select { padding:6px 8px; border-radius:8px; border:1px solid #ddd; }
+    .btn-tablica { padding:14px 24px; font-size:18px; background:var(--ok); color:#fff; border:none; border-radius:10px; text-decoration:none; display:inline-block; }
+    .hint { max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
+    .vol-wrap { display:flex; align-items:center; gap:10px; } input[type="range"] { width:200px; } select { padding:6px 8px; border-radius:8px; border:1px solid #ddd; }
     #remote-audio { width:0; height:0; opacity:0; pointer-events:none; }
-
-    /* Baner odblokowania audio (pokazuje się tylko, gdy play() zostanie zablokowane) */
-    #autoplay-banner {
-      display:none; align-items:center; gap:10px;
-      background:#fff3cd; border:1px solid #ffe08a; color:#663c00;
-      padding:10px 12px; border-radius:8px;
-    }
-    #autoplay-banner button {
-      border:0; border-radius:8px; padding:8px 10px; cursor:pointer;
-      background:var(--warn); color:#000; font-weight:700;
-    }
+    #autoplay-banner { display:none; align-items:center; gap:10px; background:#fff3cd; border:1px solid #ffe08a; color:#663c00; padding:10px 12px; border-radius:8px; }
+    #autoplay-banner button { border:0; border-radius:8px; padding:8px 10px; cursor:pointer; background:var(--warn); color:#000; font-weight:700; }
   </style>
 </head>
 <body>
-
 <header>
   <div class="title">Zajęcia online — audio</div>
-
-  <!-- Presence -->
-  <div class="pill" id="presence-pill">
-    <span id="presence-dot" class="status-dot status--off"></span>
-    <span id="presence-text">Niedostępny</span>
-  </div>
-
-  <div class="pill">
-    <span>👥</span>
-    <span id="participants-count">1</span>
-  </div>
-
-  <!-- MIC -->
-  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()">
-    <span id="mic-icon">🔇</span>
-    <span id="mic-label">Wycisz mikrofon</span>
-  </button>
-
-  <div class="pill vol-wrap">
-    <span>🔈</span>
-    <input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
-    <span id="vol-val">100%</span>
-  </div>
-
-  <div class="pill">
-    <span>⏱</span>
-    <span id="countdown" class="countdown">Pozostało: --:--</span>
-  </div>
-
-  <!-- Selektor wyjścia: ukryje się na przeglądarkach bez setSinkId -->
-  <div class="pill" id="output-pill">
-    🔊 Wyjście:
-    <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
-  </div>
-
+  <div class="pill" id="presence-pill"><span id="presence-dot" class="status-dot status--off"></span><span id="presence-text">Niedostępny</span></div>
+  <div class="pill"><span>👥</span><span id="participants-count">1</span></div>
+  <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()"><span id="mic-icon">🔇</span><span id="mic-label">Wycisz mikrofon</span></button>
+  <div class="pill vol-wrap"><span>🔈</span><input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)"><span id="vol-val">100%</span></div>
+  <div class="pill"><span>⏱</span><span id="countdown" class="countdown">Pozostało: --:--</span></div>
+  <div class="pill" id="output-pill">🔊 Wyjście: <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select></div>
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
-
-  <!-- Rola -->
   {% if is_teacher %}
     <button class="pill" id="host-start" type="button" onclick="startHost()">🔑 Start (gospodarz)</button>
     <button class="pill" id="host-stop"  type="button" onclick="stopPeer()" style="display:none;">⏹ Zakończ</button>
@@ -100,24 +44,15 @@
 
 <main>
   <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
-
   {% if is_teacher %}
-  <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">
-    {% csrf_token %}
+  <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">{% csrf_token %}
     <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required
            style="min-width:280px; width:420px; max-width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cfd6e4;">
     <button type="submit" class="pill">💾 Zapisz link</button>
   </form>
   {% endif %}
-
-  <div id="autoplay-banner">
-    🔇 Przeglądarka zablokowała dźwięk. Kliknij:
-    <button type="button" id="autoplay-btn">Włącz audio</button>
-  </div>
-
-  <div class="hint">
-    Na iOS/Android dźwięk może wymagać jednego kliknięcia. Upewnij się, że karta/telefon nie jest w trybie „cichy”.
-  </div>
+  <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
+  <div class="hint">Jeśli nadal cisza: sprawdź czy <b>TURN</b> działa (porty 3478/udp, 3478/tcp), a na telefonie nie jest włączony tryb „cichy”.</div>
 </main>
 
 <audio id="remote-audio" autoplay playsinline></audio>
@@ -126,329 +61,182 @@
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // ——— WebRTC zmienne ———
-  let pc = null;
-  let localStream = null;
-  let remoteStream = null;
-  let joined = false;
-  let remoteConnected = false;
-  let isMuted = false;
+  // ====== KONFIG: wpisz adres swojego TURN ======
+  const TURN = { host: "YOUR_TURN_HOST", username: "webrtc", credential: "webrtc123" };
 
-  // Presence/licznik
+  // ==== WebRTC / ICE (STUN + TURN) ====
+  const rtcConfig = {
+    iceServers: [
+      { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
+      { urls: [
+          `turn:${TURN.host}:3478?transport=udp`,
+          `turn:${TURN.host}:3478?transport=tcp`
+          // `turns:${TURN.host}:5349?transport=tcp` // włącz gdy masz TLS na coturn
+        ],
+        username: TURN.username,
+        credential: TURN.credential
+      }
+    ],
+    iceTransportPolicy: "all",
+    bundlePolicy: "max-bundle"
+  };
+
+  // ====== Zmienne ======
+  let pc = null, localStream = null, remoteStream = null;
+  let joined = false, remoteConnected = false, isMuted = false;
   let otherOnline = false;
 
-  // STUN (możesz dodać TURN później)
-  const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-
-  // wsparcie wyboru wyjścia
-  const supportsSinkId = (typeof HTMLMediaElement !== 'undefined') && ('setSinkId' in HTMLMediaElement.prototype);
-
-  // odblokowanie audio
-  let audioReady = false;
+  const supportsSinkId = ('setSinkId' in HTMLMediaElement.prototype);
   let audioCtx = null;
 
-  // ——— helpers ———
+  // ====== Helpers ======
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  async function postJSON(url, data){ const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},body:JSON.stringify(data)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+  async function getJSON(url){ const r=await fetch(url); if(r.status===404) return null; if(!r.ok) throw new Error(await r.text()); return r.json(); }
 
-  async function postJSON(url, data) {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type":"application/json", "X-CSRFToken": csrfToken },
-      body: JSON.stringify(data)
-    });
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  }
-  async function getJSON(url) {
-    const r = await fetch(url);
-    if (r.status === 404) return null;
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  }
-
-  function updateParticipantsBadge() {
+  function updateParticipantsBadge(){
     const base = joined ? 1 : 1;
     const withRemote = remoteConnected ? 2 : base;
     const count = otherOnline ? Math.max(2, withRemote) : withRemote;
     document.getElementById('participants-count').textContent = count;
   }
 
-  // ——— AUDIO UNLOCK ———
-  async function ensureAudio() {
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state !== 'running') {
-        await audioCtx.resume();
-      }
-    } catch(e) {}
-    try {
-      const el = document.getElementById('remote-audio');
-      await el.play();
-      audioReady = true;
-      const bar = document.getElementById('autoplay-banner');
-      if (bar) bar.style.display = 'none';
-    } catch (e) {
-      // pokaż baner, użytkownik musi kliknąć
-      const bar = document.getElementById('autoplay-banner');
-      if (bar) bar.style.display = 'flex';
-    }
+  // ====== AUDIO UNLOCK ======
+  async function ensureAudio(){
+    try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state!=='running') await audioCtx.resume(); }catch(e){}
+    try{ const el=document.getElementById('remote-audio'); await el.play(); const bar=document.getElementById('autoplay-banner'); if(bar) bar.style.display='none'; }catch(e){ const bar=document.getElementById('autoplay-banner'); if(bar) bar.style.display='flex'; }
   }
 
-  // ——— Audio UI ———
-  function toggleMic() {
-    if (!localStream) return;
-    const track = localStream.getAudioTracks()[0];
-    if (!track) return;
-    track.enabled = !track.enabled;
-    isMuted = !track.enabled;
+  // ====== Audio UI ======
+  function toggleMic(){
+    if(!localStream) return;
+    const track=localStream.getAudioTracks()[0]; if(!track) return;
+    track.enabled=!track.enabled; isMuted=!track.enabled;
     document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
     document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
   }
-  function setVolume(val) {
-    document.getElementById('vol-val').textContent = val + '%';
-    const el = document.getElementById('remote-audio');
-    el.volume = Math.max(0, Math.min(1, Number(val)/100));
+  function setVolume(val){ document.getElementById('vol-val').textContent = val+'%'; const el=document.getElementById('remote-audio'); el.volume=Math.max(0,Math.min(1,Number(val)/100)); }
+  async function populateOutputs(){
+    const pill=document.getElementById('output-pill'); const sel=document.getElementById('audio-output');
+    if(!supportsSinkId){ if(pill) pill.style.display='none'; return; }
+    try{
+      const devs=await navigator.mediaDevices.enumerateDevices();
+      const outs=devs.filter(d=>d.kind==='audiooutput'); sel.innerHTML='';
+      if(!outs.length){ const opt=document.createElement('option'); opt.textContent='Domyślne'; opt.value=''; sel.appendChild(opt); return; }
+      outs.forEach(d=>{ const opt=document.createElement('option'); opt.value=d.deviceId; opt.textContent=d.label||d.deviceId; sel.appendChild(opt); });
+    }catch(e){ if(pill) pill.style.display='none'; }
   }
-
-  async function populateOutputs() {
-    const pill = document.getElementById('output-pill');
-    const sel  = document.getElementById('audio-output');
-    if (!supportsSinkId) { if (pill) pill.style.display = 'none'; return; }
-
-    try {
-      const devs = await navigator.mediaDevices.enumerateDevices();
-      const outs = devs.filter(d => d.kind === 'audiooutput');
-      sel.innerHTML = '';
-      if (!outs.length) {
-        const opt = document.createElement('option'); opt.textContent = 'Domyślne'; opt.value = '';
-        sel.appendChild(opt); return;
-      }
-      outs.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d.deviceId; opt.textContent = d.label || d.deviceId;
-        sel.appendChild(opt);
-      });
-    } catch(e) { if (pill) pill.style.display = 'none'; }
-  }
-
-  async function changeOutput(deviceId) {
-    const el = document.getElementById('remote-audio');
-    if (!supportsSinkId) return;
-    try { await el.setSinkId(deviceId || ''); } catch(e) {}
+  async function changeOutput(deviceId){
+    const el=document.getElementById('remote-audio');
+    if(!supportsSinkId) return;
+    try{ await el.setSinkId(deviceId||''); }catch(e){}
     setVolume(document.getElementById('vol').value);
   }
 
-  // ——— WEBRTC wspólne ———
-  function attachRemoteAudio() {
-    const el = document.getElementById('remote-audio');
-    remoteStream = new MediaStream();
-    el.srcObject = remoteStream;
+  // ====== WEBRTC wspólne ======
+  function attachRemoteAudio(){ const el=document.getElementById('remote-audio'); remoteStream=new MediaStream(); el.srcObject=remoteStream; ensureAudio(); }
+  function setupPeerBase(){
+    pc=new RTCPeerConnection(rtcConfig);
 
-    // spróbuj od razu odblokować audio
-    ensureAudio();
-  }
-
-  function setupPeerBase() {
-    pc = new RTCPeerConnection(rtcConfig);
-
-    pc.ontrack = (ev) => {
-      ev.streams[0].getAudioTracks().forEach(t => remoteStream.addTrack(t));
-      remoteConnected = true;
-      updateParticipantsBadge();
-      // gdy pojawi się tor, spróbuj jeszcze raz zagrać (często dopiero teraz się udaje)
+    pc.ontrack=(ev)=>{
+      ev.streams[0].getAudioTracks().forEach(t=>remoteStream.addTrack(t));
+      remoteConnected=true; updateParticipantsBadge();
+      // auto-play gdy faktycznie pojawi się audio
+      ev.track.onunmute = ()=> ensureAudio();
       ensureAudio();
     };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-        remoteConnected = false; updateParticipantsBadge();
+
+    // DIAGNOSTYKA ICE
+    pc.oniceconnectionstatechange=()=>{
+      console.log('iceConnectionState:', pc.iceConnectionState);
+      if(["failed","disconnected"].includes(pc.iceConnectionState)){
+        const bar=document.getElementById('autoplay-banner');
+        if(bar){ bar.style.display='flex'; bar.firstChild.textContent="🔌 Brak ścieżki audio (NAT/firewall). Włącz audio lub spróbuj ponownie."; }
       }
     };
+    pc.onconnectionstatechange=()=> console.log('connectionState:', pc.connectionState);
+
+    // (nie używamy trickle – tylko log dla debug)
+    pc.onicecandidate=(e)=>{ if(!e.candidate) console.log('ICE gathering complete'); };
+  }
+  async function getMic(){ localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); return localStream; }
+  function addLocalTracks(){ localStream.getAudioTracks().forEach(t=>pc.addTrack(t,localStream)); }
+  function waitIceComplete(){
+    if(!pc) return Promise.resolve();
+    if(pc.iceGatheringState==='complete') return Promise.resolve();
+    return new Promise(res=>{ const check=()=>{ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange',check); res(); } }; pc.addEventListener('icegatheringstatechange',check); });
+  }
+  function teardown(){ try{ pc&&pc.close(); }catch(e){} pc=null; try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){} localStream=null; remoteConnected=false; joined=false; updateParticipantsBadge(); updateRoleButtons(); }
+
+  // ====== HOST ======
+  async function startHost(){
+    if(joined) return;
+    attachRemoteAudio(); setupPeerBase(); await getMic(); addLocalTracks(); await ensureAudio();
+    const offer=await pc.createOffer({offerToReceiveAudio:true}); await pc.setLocalDescription(offer); await waitIceComplete();
+    await postJSON(`/webrtc/offer/${rezerwacjaId}/`, {type:pc.localDescription.type,sdp:pc.localDescription.sdp});
+    joined=true; updateParticipantsBadge(); updateRoleButtons(); await populateOutputs();
   }
 
-  async function getMic() {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: {
-      echoCancellation:true, noiseSuppression:true, autoGainControl:true
-    }});
-    return localStream;
-  }
-
-  function addLocalTracks() {
-    localStream.getAudioTracks().forEach(t => pc.addTrack(t, localStream));
-  }
-
-  function waitIceComplete() {
-    if (!pc) return Promise.resolve();
-    if (pc.iceGatheringState === 'complete') return Promise.resolve();
-    return new Promise(resolve => {
-      const check = () => {
-        if (pc.iceGatheringState === 'complete') {
-          pc.removeEventListener('icegatheringstatechange', check);
-          resolve();
-        }
-      };
-      pc.addEventListener('icegatheringstatechange', check);
-    });
-  }
-
-  function teardown() {
-    try { pc && pc.close(); } catch(e) {}
-    pc = null;
-    try { localStream && localStream.getTracks().forEach(t => t.stop()); } catch(e) {}
-    localStream = null;
-    remoteConnected = false;
-    joined = false;
-    updateParticipantsBadge();
-    updateRoleButtons();
-  }
-
-  // ——— HOST ———
-  async function startHost() {
-    if (joined) return;
-    attachRemoteAudio();
-    setupPeerBase();
-    await getMic();
-    addLocalTracks();
-
-    // najpierw odblokuj dźwięk (gest użytkownika)
-    await ensureAudio();
-
-    const offer = await pc.createOffer({ offerToReceiveAudio: true });
-    await pc.setLocalDescription(offer);
-    await waitIceComplete();
-
-    await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type: pc.localDescription.type, sdp: pc.localDescription.sdp });
-
-    joined = true; updateParticipantsBadge(); updateRoleButtons();
-    await populateOutputs();
-  }
-
-  // ——— STUDENT ———
-  async function joinMeeting() {
-    if (joined) return;
-    attachRemoteAudio();
-    setupPeerBase();
-
-    // odblokuj audio przy kliknięciu „Dołącz”
-    await ensureAudio();
-
-    // czekaj aż host utworzy offer
-    const waitEl = document.getElementById('waiting-host');
-    if (waitEl) waitEl.style.display='inline-flex';
-    let offer = null;
-    for (let i=0; i<120; i++) {
-      offer = await getJSON(`/webrtc/offer/${rezerwacjaId}/`);
-      if (offer && offer.type === 'offer' && offer.sdp) break;
-      await sleep(1000);
-    }
-    if (waitEl) waitEl.style.display='none';
-    if (!offer) { alert('Brak gospodarza (offer). Spróbuj za chwilę.'); return; }
-
+  // ====== STUDENT ======
+  async function joinMeeting(){
+    if(joined) return;
+    attachRemoteAudio(); setupPeerBase(); await ensureAudio();
+    const waitEl=document.getElementById('waiting-host'); if(waitEl) waitEl.style.display='inline-flex';
+    let offer=null; for(let i=0;i<120;i++){ offer=await getJSON(`/webrtc/offer/${rezerwacjaId}/`); if(offer&&offer.type==='offer'&&offer.sdp) break; await sleep(1000); }
+    if(waitEl) waitEl.style.display='none';
+    if(!offer){ alert('Brak gospodarza (offer). Spróbuj za chwilę.'); return; }
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    await getMic();
-    addLocalTracks();
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await waitIceComplete();
-
-    await postJSON(`/webrtc/answer/${rezerwacjaId}/`, { type: pc.localDescription.type, sdp: pc.localDescription.sdp });
-
-    joined = true; updateParticipantsBadge(); updateRoleButtons();
-    await populateOutputs();
+    await getMic(); addLocalTracks();
+    const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIceComplete();
+    await postJSON(`/webrtc/answer/${rezerwacjaId}/`, {type:pc.localDescription.type,sdp:pc.localDescription.sdp});
+    joined=true; updateParticipantsBadge(); updateRoleButtons(); await populateOutputs();
   }
 
-  function stopPeer() { teardown(); }
+  function stopPeer(){ teardown(); }
 
-  // ——— Presence (Twoje endpointy) ———
-  function pingOnlineStatus() {
-    fetch("{% url 'ping_online_status' %}", {
-      method: "POST",
-      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
-      body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
+  // ====== Presence (Twoje endpointy) ======
+  function pingOnlineStatus(){ fetch("{% url 'ping_online_status' %}", { method:"POST", headers:{ "X-CSRFToken":csrfToken, "Content-Type":"application/x-www-form-urlencoded"}, body:"rezerwacja_id="+encodeURIComponent(rezerwacjaId) }).catch(()=>{}); }
+  function checkOtherUserStatus(){
+    fetch(`/check-online-status/${rezerwacjaId}/`).then(r=>r.json()).then(data=>{
+      otherOnline=!!data.online;
+      const dot=document.getElementById('presence-dot'); const text=document.getElementById('presence-text');
+      dot.classList.toggle('status--on', otherOnline); dot.classList.toggle('status--off', !otherOnline);
+      text.textContent = otherOnline ? "Dostępny" : "Niedostępny";
+      updateParticipantsBadge(); updateRoleButtons();
     }).catch(()=>{});
   }
-  function checkOtherUserStatus() {
-    fetch(`/check-online-status/${rezerwacjaId}/`)
-      .then(r => r.json())
-      .then(data => {
-        otherOnline = !!data.online;
-        const dot = document.getElementById('presence-dot');
-        const text = document.getElementById('presence-text');
-        dot.classList.toggle('status--on', otherOnline);
-        dot.classList.toggle('status--off', !otherOnline);
-        text.textContent = otherOnline ? "Dostępny" : "Niedostępny";
-        updateParticipantsBadge();
-        updateRoleButtons();
-      })
-      .catch(()=>{});
+
+  // ====== UI: role ======
+  function updateRoleButtons(){
+    const hostStart=document.getElementById('host-start'), hostStop=document.getElementById('host-stop');
+    const joinBtn=document.getElementById('join-meeting'), waitHost=document.getElementById('waiting-host');
+    if(hostStart&&hostStop){ hostStart.style.display=joined?'none':'inline-flex'; hostStop.style.display=joined?'inline-flex':'none'; }
+    if(joinBtn&&waitHost){ waitHost.style.display=otherOnline?'none':'inline-flex'; }
   }
 
-  // ——— UI: role ———
-  function updateRoleButtons() {
-    const hostStart = document.getElementById('host-start');
-    const hostStop  = document.getElementById('host-stop');
-    const joinBtn   = document.getElementById('join-meeting');
-    const waitHost  = document.getElementById('waiting-host');
-
-    if (hostStart && hostStop) {
-      hostStart.style.display = joined ? 'none' : 'inline-flex';
-      hostStop.style.display  = joined ? 'inline-flex' : 'none';
-    }
-    if (joinBtn && waitHost) {
-      waitHost.style.display = otherOnline ? 'none' : 'inline-flex';
-    }
+  // ====== Beep test ======
+  async function playSpeakerTest(){
+    try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); await audioCtx.resume();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(880, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>{ try{o.stop();}catch(e){} }, 350);
+      const bar=document.getElementById('autoplay-banner'); if(bar) bar.style.display='none';
+    }catch(e){}
   }
 
-  // ——— Beep: poprawiony test głośnika ———
-  async function playSpeakerTest() {
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      await audioCtx.resume(); // krytyczne na iOS/Safari
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-      g.gain.setValueAtTime(0.08, audioCtx.currentTime);     // ciut głośniej
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start();
-      setTimeout(() => { try { o.stop(); } catch(e){} }, 350);
-      // schowaj baner, bo mamy gest użytkownika
-      const bar = document.getElementById('autoplay-banner');
-      if (bar) bar.style.display = 'none';
-    } catch(e) {}
-  }
-
-  // ——— Odliczanie ———
-  function initCountdown() {
-    const el = document.getElementById('countdown');
-    const start = new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
-    const end = start + 55 * 60 * 1000;
-    function tick() {
-      const diff = end - Date.now();
-      if (diff <= 0) { el.textContent = "Zakończone"; el.classList.add('red'); return; }
-      const m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
-      el.textContent = `Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-      el.classList.toggle('red', m < 5);
-    }
+  // ====== Odliczanie ======
+  function initCountdown(){
+    const el=document.getElementById('countdown'); const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime(); const end=start+55*60*1000;
+    function tick(){ const diff=end-Date.now(); if(diff<=0){ el.textContent="Zakończone"; el.classList.add('red'); return; }
+      const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000); el.textContent=`Pozostało: ${m}:${String(s).padStart(2,'0')}`; el.classList.toggle('red', m<5); }
     tick(); setInterval(tick, 1000);
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    initCountdown();
-    updateParticipantsBadge();
-
-    // Wyjście audio: ukryj selektor jeśli brak wsparcia
-    populateOutputs();
-
-    // Presence
-    pingOnlineStatus();
-    checkOtherUserStatus();
-    setInterval(pingOnlineStatus, 10_000);
-    setInterval(checkOtherUserStatus, 10_000);
-
-    // przycisk banera
-    const btn = document.getElementById('autoplay-btn');
-    if (btn) btn.addEventListener('click', ensureAudio);
+  document.addEventListener('DOMContentLoaded', ()=>{
+    initCountdown(); updateParticipantsBadge(); populateOutputs();
+    pingOnlineStatus(); checkOtherUserStatus(); setInterval(pingOnlineStatus,10_000); setInterval(checkOtherUserStatus,10_000);
+    document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
   });
 </script>
 </body>
