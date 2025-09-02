@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (WebRTC + TURN, FIX)</title>
+  <title>Zajęcia online — audio (WebRTC + TURN + BOOST)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; --warn:#ffb300; }
@@ -26,13 +26,25 @@
 <body>
 <header>
   <div class="title">Zajęcia online — audio</div>
+
   <div class="pill" id="presence-pill"><span id="presence-dot" class="status-dot status--off"></span><span id="presence-text">Niedostępny</span></div>
   <div class="pill"><span>👥</span><span id="participants-count">1</span></div>
+
   <button class="pill" id="mic-toggle" type="button" onclick="toggleMic()"><span id="mic-icon">🔇</span><span id="mic-label">Wycisz mikrofon</span></button>
-  <div class="pill vol-wrap"><span>🔈</span><input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)"><span id="vol-val">100%</span></div>
+
+  <div class="pill vol-wrap">
+    <span>🔈</span><input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)"><span id="vol-val">100%</span>
+  </div>
+
   <div class="pill"><span>⏱</span><span id="countdown" class="countdown">Pozostało: --:--</span></div>
+
   <div class="pill" id="output-pill">🔊 Wyjście: <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select></div>
+
+  <!-- NOWE: wzmocnienie software’owe -->
+  <div class="pill" id="boost-pill">💥 Wzmocnienie: <input id="boost" type="range" min="100" max="300" value="100" oninput="setBoost(this.value)"><span id="boost-val">100%</span></div>
+
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
+
   {% if is_teacher %}
     <button class="pill" id="host-start" type="button" onclick="startHost()">🔑 Start (gospodarz)</button>
     <button class="pill" id="host-stop"  type="button" onclick="stopPeer()" style="display:none;">⏹ Zakończ</button>
@@ -44,6 +56,7 @@
 
 <main>
   <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
+
   {% if is_teacher %}
   <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">{% csrf_token %}
     <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required
@@ -51,8 +64,12 @@
     <button type="submit" class="pill">💾 Zapisz link</button>
   </form>
   {% endif %}
+
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
-  <div class="hint">Jeśli nadal cisza: sprawdź czy <b>TURN</b> działa (porty 3478/udp, 3478/tcp). Na telefonie wyłącz „cichy”.</div>
+
+  <div class="hint">
+    Jeśli dźwięk słaby: podbij „Wzmocnienie”. Uwaga: >100% może zignorować wybór „Wyjście” (gra przez domyślne urządzenie).
+  </div>
 </main>
 
 <audio id="remote-audio" autoplay playsinline></audio>
@@ -61,37 +78,28 @@
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // === UZUPEŁNIJ swój TURN ===
+  // UZUPEŁNIJ, jeśli używasz własnego TURN
   const TURN = { host: "YOUR_TURN_HOST", username: "webrtc", credential: "webrtc123" };
 
-  // === ICE (STUN + TURN) ===
   const rtcConfig = {
     iceServers: [
       { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
-      {
-        urls: [
-          `turn:${TURN.host}:3478?transport=udp`,
-          `turn:${TURN.host}:3478?transport=tcp`
-          // `turns:${TURN.host}:5349?transport=tcp` // gdy skonfigurujesz TLS
-        ],
-        username: TURN.username,
-        credential: TURN.credential
-      }
+      { urls: [`turn:${TURN.host}:3478?transport=udp`,`turn:${TURN.host}:3478?transport=tcp`], username: TURN.username, credential: TURN.credential }
+      // + ewentualnie turns:5349 po TLS
     ],
     iceTransportPolicy: "all",
     bundlePolicy: "max-bundle"
   };
 
-  let pc = null, localStream = null, remoteStream = null;
-  let joined = false, remoteConnected = false, isMuted = false;
-  let otherOnline = false;
-  const supportsSinkId = ('setSinkId' in HTMLMediaElement.prototype);
-  let audioCtx = null;
+  let pc=null, localStream=null, remoteStream=null;
+  let joined=false, remoteConnected=false, isMuted=false, otherOnline=false;
 
-  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
-  async function postJSON(url,data){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
-  async function getJSON(url){const r=await fetch(url);if(r.status===404)return null;if(!r.ok)throw new Error(await r.text());return r.json();}
-  const log=(...a)=>{try{console.log('[RTC]',...a);}catch(_){}};
+  const supportsSinkId = ('setSinkId' in HTMLMediaElement.prototype);
+  let audioCtx=null, boostNode=null, sourceNode=null; // BOOST chain
+
+  const sleep=(ms)=>new Promise(r=>setTimeout(r, ms));
+  async function postJSON(url,data){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},body:JSON.stringify(data)}); if(!r.ok) throw new Error(await r.text()); return r.json();}
+  async function getJSON(url){const r=await fetch(url); if(r.status===404) return null; if(!r.ok) throw new Error(await r.text()); return r.json();}
 
   function updateParticipantsBadge(){
     const base = joined ? 1 : 1;
@@ -100,24 +108,53 @@
     document.getElementById('participants-count').textContent = count;
   }
 
-  // === AUDIO UNLOCK ===
+  // ===== AUDIO UNLOCK =====
   async function ensureAudio(){
     try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state!=='running') await audioCtx.resume(); }catch(e){}
     try{ const el=document.getElementById('remote-audio'); await el.play(); document.getElementById('autoplay-banner').style.display='none'; }
     catch(e){ document.getElementById('autoplay-banner').style.display='flex'; }
   }
 
-  // === Audio UI ===
+  // ===== UI MIC/VOL =====
   function toggleMic(){
     if(!localStream) return;
-    const track=localStream.getAudioTracks()[0]; if(!track) return;
-    track.enabled=!track.enabled; isMuted=!track.enabled;
-    document.getElementById('mic-icon').textContent = isMuted ? '🎙️' : '🔇';
-    document.getElementById('mic-label').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
+    const t=localStream.getAudioTracks()[0]; if(!t) return;
+    t.enabled=!t.enabled; isMuted=!t.enabled;
+    document.getElementById('mic-icon').textContent=isMuted?'🎙️':'🔇';
+    document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
   function setVolume(v){ document.getElementById('vol-val').textContent=v+'%'; const el=document.getElementById('remote-audio'); el.volume=Math.max(0,Math.min(1,Number(v)/100)); }
+
+  // ===== BOOST =====
+  async function setBoost(val){
+    document.getElementById('boost-val').textContent = val + '%';
+    const el=document.getElementById('remote-audio');
+    if (Number(val) <= 100) {
+      // wyłącz boost: wróć do elementu audio
+      if (sourceNode){ try{ sourceNode.disconnect(); }catch(e){} sourceNode=null; }
+      if (boostNode){ try{ boostNode.disconnect(); }catch(e){} boostNode=null; }
+      el.muted = false;
+      return;
+    }
+    try{
+      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      await audioCtx.resume();
+      if (!boostNode) {
+        boostNode = audioCtx.createGain();
+      }
+      boostNode.gain.value = Number(val)/100; // 1.0–3.0x
+      if (!sourceNode && remoteStream) {
+        sourceNode = audioCtx.createMediaStreamSource(remoteStream);
+        sourceNode.connect(boostNode).connect(audioCtx.destination);
+      }
+      // uniknij podwójnego dźwięku
+      el.muted = true;
+    }catch(e){}
+  }
+
   async function populateOutputs(){
-    const pill=document.getElementById('output-pill'); const sel=document.getElementById('audio-output');
+    const pill=document.getElementById('output-pill');
+    const sel=document.getElementById('audio-output');
     if(!supportsSinkId){ pill.style.display='none'; return; }
     try{
       const devs=await navigator.mediaDevices.enumerateDevices();
@@ -128,66 +165,82 @@
   }
   async function changeOutput(deviceId){
     const el=document.getElementById('remote-audio');
+    // jeśli BOOST > 100%, element jest wyciszony i gra przez WebAudio → wybór wyjścia nie zadziała
     if(!supportsSinkId) return;
     try{ await el.setSinkId(deviceId||''); }catch(e){}
     setVolume(document.getElementById('vol').value);
   }
 
-  // === WEBRTC wspólne ===
+  // ===== WEBRTC =====
   function attachRemoteAudio(){ const el=document.getElementById('remote-audio'); remoteStream=new MediaStream(); el.srcObject=remoteStream; ensureAudio(); }
+
   function setupPeerBase(){
     pc=new RTCPeerConnection(rtcConfig);
 
-    // Zadbaj o ścieżkę odbioru niezależnie od addTrack (część przeglądarek lubi widzieć transceiver)
-    try { pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch(_){}
+    // wymuś dwukierunkowy tor (pomaga na część przeglądarek)
+    try { pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch(_) {}
 
     pc.ontrack=(ev)=>{
-      // pewniej: dodaj pojedynczy track, nie kopiuj całego streamu
       if (ev.track && ev.track.kind === 'audio') remoteStream.addTrack(ev.track);
       remoteConnected=true; updateParticipantsBadge();
       ev.track.onunmute = ()=> ensureAudio();
       ensureAudio();
+      // jeśli boost aktywny — podłącz DSP
+      const boostVal = Number(document.getElementById('boost').value||'100');
+      if (boostVal>100) setBoost(boostVal);
     };
 
-    pc.oniceconnectionstatechange=()=>{ log('iceConnectionState:', pc.iceConnectionState); };
-    pc.onconnectionstatechange=()=>{ log('connectionState:', pc.connectionState); };
-    pc.onicecandidate=(e)=>{ if(!e.candidate) log('ICE gathering complete'); };
+    pc.oniceconnectionstatechange=()=>{ /* podgląd: console.log('ice', pc.iceConnectionState); */ };
+    pc.onconnectionstatechange=()=>{ /* console.log('conn', pc.connectionState); */ };
   }
-  async function getMic(){ localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); return localStream; }
+
+  async function getMic(){
+    localStream=await navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+    return localStream;
+  }
   function addLocalTracks(){ localStream.getAudioTracks().forEach(t=>pc.addTrack(t, localStream)); }
+
   function waitIceComplete(){
     if(!pc) return Promise.resolve();
     if(pc.iceGatheringState==='complete') return Promise.resolve();
-    return new Promise(res=>{ const check=()=>{ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', check); res(); } }; pc.addEventListener('icegatheringstatechange', check); });
+    return new Promise(res=>{ const f=()=>{ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', f); res(); } }; pc.addEventListener('icegatheringstatechange', f); });
   }
-  function teardown(){ try{ pc&&pc.close(); }catch(e){} pc=null; try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){} localStream=null; remoteConnected=false; joined=false; updateParticipantsBadge(); updateRoleButtons(); }
+
+  function teardown(){
+    try{ pc&&pc.close(); }catch(e){} pc=null;
+    try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){} localStream=null;
+    remoteConnected=false; joined=false;
+    // wyłącz boost pipeline
+    if (sourceNode){ try{ sourceNode.disconnect(); }catch(e){} sourceNode=null; }
+    if (boostNode){ try{ boostNode.disconnect(); }catch(e){} boostNode=null; }
+    document.getElementById('remote-audio').muted = false;
+    updateParticipantsBadge(); updateRoleButtons();
+  }
+
   function amHost(){ return !!document.getElementById('host-start'); }
 
-  // === HOST ===
+  // ===== HOST =====
   async function startHost(){
     if(joined) return;
     attachRemoteAudio(); setupPeerBase(); await getMic(); addLocalTracks(); await ensureAudio();
 
     const offer=await pc.createOffer({ offerToReceiveAudio:true });
-    await pc.setLocalDescription(offer);
-    await waitIceComplete();
-
+    await pc.setLocalDescription(offer); await waitIceComplete();
     await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
 
-    // ⬇⬇⬇ KLUCZ: czekamy na ANSWER i ustawiamy zdalny opis
-    for (let i=0; i<120 && pc; i++) { // do 2 min
+    // CZEKAJ NA ANSWER i ustaw remote SDP (klucz!)
+    for (let i=0; i<120 && pc; i++) {
       const ans = await getJSON(`/webrtc/answer/${rezerwacjaId}/`);
-      if (ans && ans.type === 'answer' && ans.sdp) {
-        await pc.setRemoteDescription(new RTCSessionDescription(ans));
-        break;
-      }
+      if (ans && ans.type === 'answer' && ans.sdp) { await pc.setRemoteDescription(new RTCSessionDescription(ans)); break; }
       await sleep(1000);
     }
 
     joined=true; updateParticipantsBadge(); updateRoleButtons(); await populateOutputs();
   }
 
-  // === STUDENT ===
+  // ===== STUDENT =====
   async function joinMeeting(){
     if(joined) return;
     attachRemoteAudio(); setupPeerBase(); await ensureAudio();
@@ -201,9 +254,7 @@
     await getMic(); addLocalTracks();
 
     const answer=await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await waitIceComplete();
-
+    await pc.setLocalDescription(answer); await waitIceComplete();
     await postJSON(`/webrtc/answer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
 
     joined=true; updateParticipantsBadge(); updateRoleButtons(); await populateOutputs();
@@ -211,20 +262,19 @@
 
   function stopPeer(){ teardown(); }
 
-  // === Presence (Twoje endpointy) ===
+  // ===== Presence =====
   function pingOnlineStatus(){ fetch("{% url 'ping_online_status' %}", { method:"POST", headers:{ "X-CSRFToken":csrfToken, "Content-Type":"application/x-www-form-urlencoded" }, body:"rezerwacja_id="+encodeURIComponent(rezerwacjaId) }).catch(()=>{}); }
   function checkOtherUserStatus(){
     fetch(`/check-online-status/${rezerwacjaId}/`).then(r=>r.json()).then(data=>{
       otherOnline=!!data.online;
       const dot=document.getElementById('presence-dot'), text=document.getElementById('presence-text');
-      dot.classList.toggle('status--on', otherOnline);
-      dot.classList.toggle('status--off', !otherOnline);
+      dot.classList.toggle('status--on', otherOnline); dot.classList.toggle('status--off', !otherOnline);
       text.textContent = otherOnline ? "Dostępny" : "Niedostępny";
       updateParticipantsBadge(); updateRoleButtons();
     }).catch(()=>{});
   }
 
-  // === UI: role ===
+  // ===== Role UI =====
   function updateRoleButtons(){
     const hostStart=document.getElementById('host-start'), hostStop=document.getElementById('host-stop');
     const joinBtn=document.getElementById('join-meeting'), waitHost=document.getElementById('waiting-host');
@@ -232,32 +282,23 @@
     if(joinBtn&&waitHost){ waitHost.style.display=otherOnline?'none':'inline-flex'; }
   }
 
-  // === Beep test ===
+  // ===== Beep =====
   async function playSpeakerTest(){
-    try{
-      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      await audioCtx.resume();
+    try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); await audioCtx.resume();
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      o.type='sine'; o.frequency.setValueAtTime(880, audioCtx.currentTime);
-      g.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start(); setTimeout(()=>{ try{o.stop();}catch(e){} }, 350);
+      o.type='sine'; o.frequency.setValueAtTime(880, audioCtx.currentTime); g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>{ try{o.stop();}catch(e){} }, 350);
       document.getElementById('autoplay-banner').style.display='none';
     }catch(e){}
   }
 
-  // === Timer ===
+  // ===== Timer =====
   function initCountdown(){
     const el=document.getElementById('countdown');
     const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
     const end=start+55*60*1000;
-    function tick(){
-      const diff=end-Date.now();
-      if(diff<=0){ el.textContent="Zakończone"; el.classList.add('red'); return; }
-      const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000);
-      el.textContent=`Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-      el.classList.toggle('red', m<5);
-    }
+    function tick(){ const diff=end-Date.now(); if(diff<=0){ el.textContent="Zakończone"; el.classList.add('red'); return; }
+      const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000); el.textContent=`Pozostało: ${m}:${String(s).padStart(2,'0')}`; el.classList.toggle('red', m<5); }
     tick(); setInterval(tick, 1000);
   }
 
