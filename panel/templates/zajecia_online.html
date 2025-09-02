@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (WebRTC + TURN + BOOST)</title>
+  <title>Zajęcia online — audio (WebRTC + TURN + BOOST, single-transceiver)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; --warn:#ffb300; }
@@ -40,7 +40,6 @@
 
   <div class="pill" id="output-pill">🔊 Wyjście: <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select></div>
 
-  <!-- NOWE: wzmocnienie software’owe -->
   <div class="pill" id="boost-pill">💥 Wzmocnienie: <input id="boost" type="range" min="100" max="300" value="100" oninput="setBoost(this.value)"><span id="boost-val">100%</span></div>
 
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
@@ -67,9 +66,7 @@
 
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
-  <div class="hint">
-    Jeśli dźwięk słaby: podbij „Wzmocnienie”. Uwaga: >100% może zignorować wybór „Wyjście” (gra przez domyślne urządzenie).
-  </div>
+  <div class="hint">Jeśli nadal cisza: upewnij się, że obie strony mają tę samą wersję i działa <b>TURN</b> (3478 UDP/TCP).</div>
 </main>
 
 <audio id="remote-audio" autoplay playsinline></audio>
@@ -78,31 +75,31 @@
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // UZUPEŁNIJ, jeśli używasz własnego TURN
+  // TURN – podmień hosta jak używasz
   const TURN = { host: "YOUR_TURN_HOST", username: "webrtc", credential: "webrtc123" };
 
   const rtcConfig = {
     iceServers: [
       { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
-      { urls: [`turn:${TURN.host}:3478?transport=udp`,`turn:${TURN.host}:3478?transport=tcp`], username: TURN.username, credential: TURN.credential }
-      // + ewentualnie turns:5349 po TLS
+      { urls: [`turn:${TURN.host}:3478?transport=udp`,`turn:${TURN.host}:3478?transport=tcp`],
+        username: TURN.username, credential: TURN.credential }
     ],
     iceTransportPolicy: "all",
     bundlePolicy: "max-bundle"
   };
 
-  let pc=null, localStream=null, remoteStream=null;
+  let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
   let joined=false, remoteConnected=false, isMuted=false, otherOnline=false;
 
   const supportsSinkId = ('setSinkId' in HTMLMediaElement.prototype);
-  let audioCtx=null, boostNode=null, sourceNode=null; // BOOST chain
+  let audioCtx=null, boostNode=null, sourceNode=null;
 
   const sleep=(ms)=>new Promise(r=>setTimeout(r, ms));
   async function postJSON(url,data){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},body:JSON.stringify(data)}); if(!r.ok) throw new Error(await r.text()); return r.json();}
   async function getJSON(url){const r=await fetch(url); if(r.status===404) return null; if(!r.ok) throw new Error(await r.text()); return r.json();}
 
   function updateParticipantsBadge(){
-    const base = joined ? 1 : 1;
+    const base = 1;
     const withRemote = remoteConnected ? 2 : base;
     const count = otherOnline ? Math.max(2, withRemote) : withRemote;
     document.getElementById('participants-count').textContent = count;
@@ -115,7 +112,7 @@
     catch(e){ document.getElementById('autoplay-banner').style.display='flex'; }
   }
 
-  // ===== UI MIC/VOL =====
+  // ===== UI MIC/VOL/BOOST =====
   function toggleMic(){
     if(!localStream) return;
     const t=localStream.getAudioTracks()[0]; if(!t) return;
@@ -124,37 +121,29 @@
     document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
   function setVolume(v){ document.getElementById('vol-val').textContent=v+'%'; const el=document.getElementById('remote-audio'); el.volume=Math.max(0,Math.min(1,Number(v)/100)); }
-
-  // ===== BOOST =====
   async function setBoost(val){
     document.getElementById('boost-val').textContent = val + '%';
     const el=document.getElementById('remote-audio');
     if (Number(val) <= 100) {
-      // wyłącz boost: wróć do elementu audio
       if (sourceNode){ try{ sourceNode.disconnect(); }catch(e){} sourceNode=null; }
       if (boostNode){ try{ boostNode.disconnect(); }catch(e){} boostNode=null; }
-      el.muted = false;
-      return;
+      el.muted = false; return;
     }
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
       await audioCtx.resume();
-      if (!boostNode) {
-        boostNode = audioCtx.createGain();
-      }
-      boostNode.gain.value = Number(val)/100; // 1.0–3.0x
+      if (!boostNode) boostNode = audioCtx.createGain();
+      boostNode.gain.value = Number(val)/100;
       if (!sourceNode && remoteStream) {
         sourceNode = audioCtx.createMediaStreamSource(remoteStream);
         sourceNode.connect(boostNode).connect(audioCtx.destination);
       }
-      // uniknij podwójnego dźwięku
       el.muted = true;
     }catch(e){}
   }
 
   async function populateOutputs(){
-    const pill=document.getElementById('output-pill');
-    const sel=document.getElementById('audio-output');
+    const pill=document.getElementById('output-pill'), sel=document.getElementById('audio-output');
     if(!supportsSinkId){ pill.style.display='none'; return; }
     try{
       const devs=await navigator.mediaDevices.enumerateDevices();
@@ -165,7 +154,6 @@
   }
   async function changeOutput(deviceId){
     const el=document.getElementById('remote-audio');
-    // jeśli BOOST > 100%, element jest wyciszony i gra przez WebAudio → wybór wyjścia nie zadziała
     if(!supportsSinkId) return;
     try{ await el.setSinkId(deviceId||''); }catch(e){}
     setVolume(document.getElementById('vol').value);
@@ -177,30 +165,34 @@
   function setupPeerBase(){
     pc=new RTCPeerConnection(rtcConfig);
 
-    // wymuś dwukierunkowy tor (pomaga na część przeglądarek)
-    try { pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch(_) {}
+    // KLUCZ: JEDEN transceiver 'sendrecv'
+    audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
 
     pc.ontrack=(ev)=>{
       if (ev.track && ev.track.kind === 'audio') remoteStream.addTrack(ev.track);
       remoteConnected=true; updateParticipantsBadge();
       ev.track.onunmute = ()=> ensureAudio();
       ensureAudio();
-      // jeśli boost aktywny — podłącz DSP
       const boostVal = Number(document.getElementById('boost').value||'100');
       if (boostVal>100) setBoost(boostVal);
     };
 
-    pc.oniceconnectionstatechange=()=>{ /* podgląd: console.log('ice', pc.iceConnectionState); */ };
-    pc.onconnectionstatechange=()=>{ /* console.log('conn', pc.connectionState); */ };
+    pc.oniceconnectionstatechange=()=>{ /* console.log('ice:', pc.iceConnectionState); */ };
+    pc.onconnectionstatechange=()=>{ /* console.log('conn:', pc.connectionState); */ };
   }
 
   async function getMic(){
+    // pobierz mikrofon
     localStream=await navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true }
     });
+    // wstaw lokalny track do JEDYNEGO sendera
+    const track = localStream.getAudioTracks()[0];
+    if (audioTransceiver && audioTransceiver.sender) {
+      await audioTransceiver.sender.replaceTrack(track);
+    }
     return localStream;
   }
-  function addLocalTracks(){ localStream.getAudioTracks().forEach(t=>pc.addTrack(t, localStream)); }
 
   function waitIceComplete(){
     if(!pc) return Promise.resolve();
@@ -210,9 +202,9 @@
 
   function teardown(){
     try{ pc&&pc.close(); }catch(e){} pc=null;
+    audioTransceiver=null;
     try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){} localStream=null;
     remoteConnected=false; joined=false;
-    // wyłącz boost pipeline
     if (sourceNode){ try{ sourceNode.disconnect(); }catch(e){} sourceNode=null; }
     if (boostNode){ try{ boostNode.disconnect(); }catch(e){} boostNode=null; }
     document.getElementById('remote-audio').muted = false;
@@ -224,13 +216,13 @@
   // ===== HOST =====
   async function startHost(){
     if(joined) return;
-    attachRemoteAudio(); setupPeerBase(); await getMic(); addLocalTracks(); await ensureAudio();
+    attachRemoteAudio(); setupPeerBase(); await getMic(); await ensureAudio();
 
-    const offer=await pc.createOffer({ offerToReceiveAudio:true });
+    const offer=await pc.createOffer(); // transceiver już definiuje recv/send
     await pc.setLocalDescription(offer); await waitIceComplete();
     await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
 
-    // CZEKAJ NA ANSWER i ustaw remote SDP (klucz!)
+    // czekaj na ANSWER i ustaw remote SDP
     for (let i=0; i<120 && pc; i++) {
       const ans = await getJSON(`/webrtc/answer/${rezerwacjaId}/`);
       if (ans && ans.type === 'answer' && ans.sdp) { await pc.setRemoteDescription(new RTCSessionDescription(ans)); break; }
@@ -251,8 +243,7 @@
     if(!offer){ alert('Brak gospodarza (offer). Spróbuj za chwilę.'); return; }
 
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    await getMic(); addLocalTracks();
-
+    await getMic(); // replaceTrack na transceiverze
     const answer=await pc.createAnswer();
     await pc.setLocalDescription(answer); await waitIceComplete();
     await postJSON(`/webrtc/answer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
@@ -298,7 +289,8 @@
     const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
     const end=start+55*60*1000;
     function tick(){ const diff=end-Date.now(); if(diff<=0){ el.textContent="Zakończone"; el.classList.add('red'); return; }
-      const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000); el.textContent=`Pozostało: ${m}:${String(s).padStart(2,'0')}`; el.classList.toggle('red', m<5); }
+      const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000); el.textContent=`Pozostało: ${m}:${String(s).padStart(2,'0')}`;
+      el.classList.toggle('red', m<5); }
     tick(); setInterval(tick, 1000);
   }
 
