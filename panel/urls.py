@@ -39,6 +39,8 @@ urlpatterns = [
     path("pobierz-material/<int:id>/", views.pobierz_material_po_zajeciach, name="pobierz_material"),
     path('zmien_haslo/', views.zmien_haslo_view, name='zmien_haslo'),
     path("public-test/", views.public_test, name="public_test"),
+    path("webrtc/offer/<int:rez_id>/", views.webrtc_offer, name="webrtc_offer"),
+    path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
 
 ]
 from . import views

@@ -39,6 +39,8 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
+from django.http import JsonResponse, HttpResponseNotFound, HttpResponseBadRequest
+from django.core.cache import cache
 
 def public_test(request):
     return HttpResponse("PUBLIC OK")
@@ -49,6 +51,49 @@ def test_publiczny(request):
 
 def strona_glowna_view(request):
     return render(request, 'index.html')
+
+def _key(kind, rez_id):
+    return f"webrtc:{kind}:{rez_id}"
+
+@csrf_exempt
+def webrtc_offer(request, rez_id):
+    key = _key("offer", rez_id)
+    if request.method == "GET":
+        data = cache.get(key)
+        if not data:
+            return HttpResponseNotFound()
+        return JsonResponse(data)
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+            if payload.get("type") != "offer" or "sdp" not in payload:
+                return HttpResponseBadRequest("Invalid offer")
+            cache.set(key, payload, 60*10)  # 10 min
+            # wyczyszczamy starą odpowiedź
+            cache.delete(_key("answer", rez_id))
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            return HttpResponseBadRequest(str(e))
+    return HttpResponseBadRequest("Method not allowed")
+
+@csrf_exempt
+def webrtc_answer(request, rez_id):
+    key = _key("answer", rez_id)
+    if request.method == "GET":
+        data = cache.get(key)
+        if not data:
+            return HttpResponseNotFound()
+        return JsonResponse(data)
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+            if payload.get("type") != "answer" or "sdp" not in payload:
+                return HttpResponseBadRequest("Invalid answer")
+            cache.set(key, payload, 60*10)
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            return HttpResponseBadRequest(str(e))
+    return HttpResponseBadRequest("Method not allowed")
 
 @login_required
 def pobierz_plik(request, id):
