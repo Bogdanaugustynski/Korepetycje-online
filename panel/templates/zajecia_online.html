@@ -70,7 +70,8 @@
     <span id="countdown" class="countdown">Pozostało: --:--</span>
   </div>
 
-  <div class="pill">
+  <!-- ⬇️ DODAŁEM id="output-pill" żeby można było ukryć na niewspieranych przeglądarkach -->
+  <div class="pill" id="output-pill">
     🔊 Wyjście:
     <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
   </div>
@@ -100,8 +101,8 @@
   {% endif %}
 
   <div class="hint">
-    Jeśli dźwięk znika po sekundzie: Windows potrafi przełączyć słuchawki w tryb „HFP”.
-    Wybierz właściwe <b>Wyjście</b> z listy powyżej. W Windows → Dźwięk → <i>Komunikacja</i> ustaw „Nie rób nic”.
+    Na telefonach wybór wyjścia (głośnik/Bluetooth) konfiguruje się w systemie.
+    Połącz słuchawki BT przed wejściem albo użyj przełącznika audio w centrum sterowania.
   </div>
 </main>
 
@@ -124,9 +125,10 @@
   let otherOnline = false;
 
   // STUN (możesz dodać swój TURN później)
-  const rtcConfig = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  };
+  const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+  // Czy przeglądarka wspiera wybór wyjścia (setSinkId)?
+  const supportsSinkId = (typeof HTMLMediaElement !== 'undefined') && ('setSinkId' in HTMLMediaElement.prototype);
 
   // ——— Pomocnicze ———
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -171,12 +173,15 @@
   }
 
   async function populateOutputs() {
-    const sel = document.getElementById('audio-output');
-    if (!('setSinkId' in HTMLMediaElement.prototype)) {
-      sel.innerHTML = '<option value="">Niedostępne w tej przeglądarce</option>';
-      sel.disabled = true;
+    const pill = document.getElementById('output-pill');
+    const sel  = document.getElementById('audio-output');
+
+    // ⬇️ BRAK setSinkId → ukryj cały „Wyjście” na tej przeglądarce (telefony iOS/niektóre Androidy)
+    if (!supportsSinkId) {
+      if (pill) pill.style.display = 'none';
       return;
     }
+
     try {
       const devs = await navigator.mediaDevices.enumerateDevices();
       const outs = devs.filter(d => d.kind === 'audiooutput');
@@ -195,12 +200,14 @@
         sel.appendChild(opt);
       });
     } catch(e) {
-      sel.innerHTML = '<option value="">Domyślne</option>';
+      // w razie błędu po prostu ukryj selektor (działa domyślne wyjście)
+      if (pill) pill.style.display = 'none';
     }
   }
+
   async function changeOutput(deviceId) {
     const el = document.getElementById('remote-audio');
-    if (!('setSinkId' in el)) return;
+    if (!supportsSinkId) return; // brak wsparcia — nic nie robimy
     try { await el.setSinkId(deviceId || ''); } catch(e) {}
     setVolume(document.getElementById('vol').value);
   }
@@ -211,7 +218,7 @@
     remoteStream = new MediaStream();
     el.srcObject = remoteStream;
 
-    // autoplay fallback: jeśli play() się nie powiedzie, spróbuj po kliknięciu
+    // autoplay fallback
     el.play().catch(() => {
       const once = () => { el.play().catch(()=>{}); document.removeEventListener('click', once, true); };
       document.addEventListener('click', once, true);
@@ -234,7 +241,6 @@
   }
 
   async function getMic() {
-    // pobranie mikrofonu (bez odtwarzania lokalnie, żeby nie było echa)
     localStream = await navigator.mediaDevices.getUserMedia({ audio: {
       echoCancellation:true, noiseSuppression:true, autoGainControl:true
     }});
@@ -267,7 +273,6 @@
     remoteConnected = false;
     joined = false;
     updateParticipantsBadge();
-    // reset przycisków roli
     updateRoleButtons();
   }
 
@@ -279,19 +284,17 @@
     await getMic();
     addLocalTracks();
 
-    // Offer (bez trickle – czekamy aż zbierze ICE)
     const offer = await pc.createOffer({ offerToReceiveAudio: true });
     await pc.setLocalDescription(offer);
     await waitIceComplete();
 
-    // Wyślij offer
     await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type: pc.localDescription.type, sdp: pc.localDescription.sdp });
 
     joined = true; updateParticipantsBadge(); updateRoleButtons();
     await populateOutputs();
 
     // Polluj odpowiedź ucznia
-    for (let i=0; i<120 && pc; i++) { // do 2 minut
+    for (let i=0; i<120 && pc; i++) {
       const ans = await getJSON(`/webrtc/answer/${rezerwacjaId}/`);
       if (ans && ans.type === 'answer' && ans.sdp) {
         await pc.setRemoteDescription(new RTCSessionDescription(ans));
@@ -308,21 +311,21 @@
     setupPeerBase();
 
     // czekaj aż host utworzy offer
-    document.getElementById('waiting-host')?.style && (document.getElementById('waiting-host').style.display='inline-flex');
+    const waitEl = document.getElementById('waiting-host');
+    if (waitEl) waitEl.style.display='inline-flex';
     let offer = null;
     for (let i=0; i<120; i++) {
       offer = await getJSON(`/webrtc/offer/${rezerwacjaId}/`);
       if (offer && offer.type === 'offer' && offer.sdp) break;
       await sleep(1000);
     }
+    if (waitEl) waitEl.style.display='none';
     if (!offer) { alert('Brak gospodarza (offer). Spróbuj za chwilę.'); return; }
-    document.getElementById('waiting-host')?.style && (document.getElementById('waiting-host').style.display='none');
 
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
     await getMic();
     addLocalTracks();
 
-    // Answer (bez trickle)
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await waitIceComplete();
@@ -335,7 +338,7 @@
 
   function stopPeer() { teardown(); }
 
-  // ——— Presence (Twoje istniejące endpointy) ———
+  // ——— Presence (Twoje endpointy) ———
   function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
       method: "POST",
@@ -393,6 +396,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     initCountdown();
     updateParticipantsBadge();
+
+    // Wyjście audio: ukryj selektor jeśli brak wsparcia
     populateOutputs();
 
     // Presence
