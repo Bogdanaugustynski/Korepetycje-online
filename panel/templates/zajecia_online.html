@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (WebRTC, single-transceiver)</title>
+  <title>Zajęcia online — audio (WebRTC, presence fix)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; --warn:#ffb300; }
@@ -23,8 +23,7 @@
     #remote-audio { width:0; height:0; opacity:0; pointer-events:none; }
     #autoplay-banner { display:none; align-items:center; gap:10px; background:#fff3cd; border:1px solid #ffe08a; color:#663c00; padding:10px 12px; border-radius:8px; }
     #autoplay-banner button { border:0; border-radius:8px; padding:8px 10px; cursor:pointer; background:var(--warn); color:#000; font-weight:700; }
-
-    /* VU meter (pokazuje, czy dochodzi audio z drugiej strony) */
+    /* VU meter (czy dochodzi audio z drugiej strony) */
     #vu { width:120px;height:10px;background:#eee;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle }
     #vu > span { display:block;height:100%;width:0;background:#28a745;transition:width .08s linear }
   </style>
@@ -68,7 +67,7 @@
     <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
   </div>
 
-  <!-- VU meter: czy DOCHODZI dźwięk z drugiej strony -->
+  <!-- VU meter -->
   <div class="pill">📶 Wejście: <div id="vu"><span></span></div></div>
 
   <!-- Test -->
@@ -103,22 +102,21 @@
   </div>
 </main>
 
-<!-- element, który odtwarza zdalny dźwięk -->
 <audio id="remote-audio" autoplay playsinline></audio>
 
 <script>
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // (opcjonalny) własny TURN — PODMIEŃ host na swój serwer, albo zostaw tylko STUN
+  // (opcjonalnie) własny TURN — odkomentuj blok w iceServers i podmień host/hasła
   const TURN = { host: "YOUR_TURN_HOST", username: "webrtc", credential: "webrtc123" };
 
   // ICE
   const rtcConfig = {
     iceServers: [
       { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
-      // włącz jeśli masz TURN:
-      { urls: [`turn:${TURN.host}:3478?transport=udp`, `turn:${TURN.host}:3478?transport=tcp`], username: TURN.username, credential: TURN.credential }
+      // { urls: [`turn:${TURN.host}:3478?transport=udp`, `turn:${TURN.host}:3478?transport=tcp`], username: TURN.username, credential: TURN.credential }
+      // + ewentualnie: `turns:${TURN.host}:5349?transport=tcp` przy TLS
     ],
     iceTransportPolicy: "all",
     bundlePolicy: "max-bundle"
@@ -140,7 +138,7 @@
   async function getJSON(url){const r=await fetch(url); if(r.status===404) return null; if(!r.ok) throw new Error(await r.text()); return r.json();}
 
   function updateParticipantsBadge(){
-    const me = joined ? 1 : 1;
+    const me = 1;
     const withRemote = remoteConnected ? 2 : me;
     const count = otherOnline ? Math.max(2, withRemote) : withRemote;
     document.getElementById('participants-count').textContent = count;
@@ -183,20 +181,18 @@
 
   // ——— WEBRTC ———
   function attachRemoteAudio(){
-    // UWAGA: nie tworzymy tu streama — Safari/Android wolą ev.streams[0] w ontrack
-    const el=document.getElementById('remote-audio');
-    el.srcObject = null;
+    // Safari/Android lubią, gdy srcObject dostaje ev.streams[0] w ontrack
+    document.getElementById('remote-audio').srcObject = null;
     ensureAudio();
   }
 
   function setupPeerBase(){
     pc = new RTCPeerConnection(rtcConfig);
 
-    // KLUCZ: dokładnie JEDEN transceiver sendrecv
+    // JEDEN transceiver 'sendrecv'
     audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
 
     pc.ontrack = (ev) => {
-      // przypnij zdalny stream bezpośrednio
       const el=document.getElementById('remote-audio');
       if (ev.streams && ev.streams[0] && el.srcObject !== ev.streams[0]) {
         el.srcObject = ev.streams[0];
@@ -207,24 +203,26 @@
       remoteConnected = true;
       updateParticipantsBadge();
 
-      // VU meter: pokaż poziom z przychodzącego audio
+      // VU meter — pokazuje poziom z przychodzącego audio
       try{
         if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
         if(!analyser){ analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; }
         if (vuSrc) { try{ vuSrc.disconnect(); }catch(e){} vuSrc=null; }
-        vuSrc = audioCtx.createMediaStreamSource(ev.streams[0]);
-        vuSrc.connect(analyser);
-        const bar = document.querySelector('#vu > span');
-        if (vuTimer) cancelAnimationFrame(vuTimer);
-        const data = new Uint8Array(analyser.frequencyBinCount);
-        const tick = () => {
-          analyser.getByteTimeDomainData(data);
-          let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
-          const rms=Math.sqrt(sum/data.length); // 0..1
-          bar.style.width = Math.min(100, Math.round(rms*200)) + '%';
-          vuTimer = requestAnimationFrame(tick);
-        };
-        tick();
+        if (ev.streams && ev.streams[0]) {
+          vuSrc = audioCtx.createMediaStreamSource(ev.streams[0]);
+          vuSrc.connect(analyser);
+          const bar = document.querySelector('#vu > span');
+          if (vuTimer) cancelAnimationFrame(vuTimer);
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          const tick = () => {
+            analyser.getByteTimeDomainData(data);
+            let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
+            const rms=Math.sqrt(sum/data.length); // 0..1
+            bar.style.width = Math.min(100, Math.round(rms*200)) + '%';
+            vuTimer = requestAnimationFrame(tick);
+          };
+          tick();
+        }
       }catch(e){}
     };
 
@@ -308,22 +306,27 @@
 
   function stopPeer(){ teardown(); }
 
-  // Presence (Twoje endpointy)
-  function pingOnlineStatus(){
+  // ——— PRESENCE (FIX) ———
+  function pingOnlineStatus() {
     fetch("{% url 'ping_online_status' %}", {
-      method:"POST", headers:{ "X-CSRFToken":csrfToken, "Content-Type":"application/x-www-form-urlencoded" },
-      body:"rezerwacja_id="+encodeURIComponent(rezwacjaId)
-    }).catch(()=>{});
+      method: "POST",
+      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/x-www-form-urlencoded" },
+      body: "rezerwacja_id=" + encodeURIComponent(rezerwacjaId)
+    }).catch(() => {});
   }
-  function checkOtherUserStatus(){
-    fetch(`/check-online-status/${rezerwacjaId}/`).then(r=>r.json()).then(data=>{
-      otherOnline=!!data.online;
-      const dot=document.getElementById('presence-dot'), text=document.getElementById('presence-text');
-      dot.classList.toggle('status--on', otherOnline);
-      dot.classList.toggle('status--off', !otherOnline);
-      text.textContent = otherOnline ? "Dostępny" : "Niedostępny";
-      updateParticipantsBadge(); updateRoleButtons();
-    }).catch(()=>{});
+  function checkOtherUserStatus() {
+    fetch(`/check-online-status/${rezerwacjaId}/`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => {
+        otherOnline = !!(data && data.online);
+        const dot  = document.getElementById('presence-dot');
+        const text = document.getElementById('presence-text');
+        dot.classList.toggle('status--on',  otherOnline);
+        dot.classList.toggle('status--off', !otherOnline);
+        text.textContent = otherOnline ? "Dostępny" : "Niedostępny";
+        updateParticipantsBadge();
+      })
+      .catch(() => {});
   }
 
   // UI roli
@@ -364,11 +367,16 @@
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
-    initCountdown(); updateParticipantsBadge(); populateOutputs();
-    // Presence ping
-    // (odkomentuj jeśli masz endpointy)
-    // pingOnlineStatus(); checkOtherUserStatus();
-    // setInterval(pingOnlineStatus,10_000); setInterval(checkOtherUserStatus,10_000);
+    initCountdown();
+    updateParticipantsBadge();
+    populateOutputs();
+
+    // PRESENCE start + interwały (10s)
+    pingOnlineStatus();
+    checkOtherUserStatus();
+    setInterval(pingOnlineStatus,    10_000);
+    setInterval(checkOtherUserStatus,10_000);
+
     document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
   });
 </script>
