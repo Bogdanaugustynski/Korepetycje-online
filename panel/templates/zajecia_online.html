@@ -2,10 +2,10 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (dwukierunkowe + VU fix)</title>
+  <title>Zajęcia online — audio (mobile ontrack fix + UI)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#007bff; --ok:#28a745; --muted:#ccc; --warn:#ffb300; --danger:#dc3545; }
+    :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
     header { background: var(--primary); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
@@ -23,7 +23,7 @@
     #remote-audio { width:0; height:0; opacity:0; pointer-events:none; }
     #autoplay-banner { display:none; align-items:center; gap:10px; background:#fff3cd; border:1px solid #ffe08a; color:#663c00; padding:10px 12px; border-radius:8px; }
     #autoplay-banner button { border:0; border-radius:8px; padding:8px 10px; cursor:pointer; background:var(--warn); color:#000; font-weight:700; }
-    /* VU meter */
+    /* Wejście (VU) */
     #vu { width:120px;height:10px;background:#eee;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle }
     #vu > span { display:block;height:100%;width:0;background:#28a745;transition:width .08s linear }
     .btn-danger { background:#fff; border-color:#f1b6b6; color:#b30000; }
@@ -34,43 +34,34 @@
 <header>
   <div class="title">Zajęcia online — audio</div>
 
-  <!-- Presence -->
-  <div class="pill" id="presence-pill">
+  <div class="pill">
     <span id="presence-dot" class="status-dot status--off"></span>
     <span id="presence-text">Niedostępny</span>
   </div>
 
-  <!-- Licznik -->
   <div class="pill"><span>👥</span><span id="participants-count">1</span></div>
 
-  <!-- Mic (aktywny dopiero po gUM) -->
   <button class="pill disabled" id="mic-toggle" type="button" onclick="toggleMic()">
     <span id="mic-icon">🔇</span>
     <span id="mic-label">Wycisz mikrofon</span>
   </button>
 
-  <!-- Volume -->
   <div class="pill">
     <span>🔈</span>
     <input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
     <span id="vol-val">100%</span>
   </div>
 
-  <!-- Timer -->
   <div class="pill"><span>⏱</span><span id="countdown" class="countdown">Pozostało: --:--</span></div>
 
-  <!-- Wyjście (ukrywa się, jeśli brak setSinkId) -->
   <div class="pill" id="output-pill">
     🔊 Wyjście: <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
   </div>
 
-  <!-- VU meter: pokazuje, czy PRZYCHODZI audio -->
   <div class="pill">📶 Wejście: <div id="vu"><span></span></div></div>
 
-  <!-- Test -->
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
 
-  <!-- Role + Rozłącz -->
   {% if is_teacher %}
     <button class="pill" id="host-start" type="button" onclick="startHost()">🔑 Start (gospodarz)</button>
   {% else %}
@@ -94,9 +85,7 @@
 
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
-  <div class="hint">
-    📱 Na telefonie/tablecie wymagane jest <b>HTTPS</b> i zgoda na mikrofon. Jeśli brak zgody — połączysz się w trybie „tylko słucham”.
-  </div>
+  <div class="hint">📱 Mobile wymaga <b>HTTPS</b> do mikrofonu. Bez zgody łączymy w trybie „tylko słucham”.</div>
 </main>
 
 <audio id="remote-audio" autoplay playsinline></audio>
@@ -105,32 +94,30 @@
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // (opcjonalny) TURN — odkomentuj, gdy masz swój serwer
+  // TURN (opcjonalnie: odkomentuj i uzupełnij)
   const TURN = { host: "YOUR_TURN_HOST", username: "webrtc", credential: "webrtc123" };
 
   const rtcConfig = {
     iceServers: [
       { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
       // { urls: [`turn:${TURN.host}:3478?transport=udp`, `turn:${TURN.host}:3478?transport=tcp`], username: TURN.username, credential: TURN.credential },
-      // `turns:${TURN.host}:5349?transport=tcp` dla TLS
     ],
     iceTransportPolicy: "all",
     bundlePolicy: "max-bundle"
   };
 
-  let pc=null, localStream=null, audioTransceiver=null;
+  let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
   let joined=false, remoteConnected=false, otherOnline=false, isMuted=false;
 
-  // Audio unlock + VU
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
   let inboundVUtimer=null, inboundReceiver=null, lastBytes=0, lastTs=0;
 
-  const supportsSinkId = ('setSinkId' in HTMLMediaElement.prototype);
+  const supportsSinkId=('setSinkId' in HTMLMediaElement.prototype);
   const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
   async function postJSON(url,data){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
   async function getJSON(url){const r=await fetch(url);if(r.status===404)return null;if(!r.ok)throw new Error(await r.text());return r.json();}
 
-  // ========= UI =========
+  // ===== UI =====
   function refreshUI(){
     const micBtn=document.getElementById('mic-toggle');
     if(localStream) micBtn.classList.remove('disabled'); else micBtn.classList.add('disabled');
@@ -153,7 +140,6 @@
     }
     updateParticipantsBadge();
   }
-
   function updateParticipantsBadge(){
     const me=1;
     const withRemote=remoteConnected?2:me;
@@ -161,7 +147,7 @@
     document.getElementById('participants-count').textContent=count;
   }
 
-  // ========= Audio unlock =========
+  // ===== Audio unlock =====
   async function ensureAudio(){
     try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state!=='running') await audioCtx.resume(); }catch(e){}
     try{ const el=document.getElementById('remote-audio'); await el.play(); document.getElementById('autoplay-banner').style.display='none'; }
@@ -176,7 +162,7 @@
     document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
 
-  // ========= Wyjście =========
+  // ===== Wyjście =====
   async function populateOutputs(){
     const pill=document.getElementById('output-pill'); const sel=document.getElementById('audio-output');
     if(!supportsSinkId){ pill.style.display='none'; return; }
@@ -194,7 +180,7 @@
     setVolume(document.getElementById('vol').value);
   }
 
-  // ========= VU meters =========
+  // ===== VU =====
   function startAudioContextVU(stream){
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -216,65 +202,71 @@
     }catch(e){}
   }
   function startInboundStatsVU(){
-    // fallback: działa nawet bez AudioContext
     if(!pc) return;
     const bar=document.querySelector('#vu > span');
     const poll=async ()=>{
       try{
         const receivers=pc.getReceivers().filter(r=>r.track&&r.track.kind==='audio');
         if(!receivers.length){ bar.style.width='0%'; inboundReceiver=null; return schedule(); }
-        const rcv = inboundReceiver || receivers[0];
-        inboundReceiver = rcv;
+        const rcv=inboundReceiver||receivers[0];
+        inboundReceiver=rcv;
         const stats=await rcv.getStats();
         let level=null, bytes=null, ts=null;
         stats.forEach(s=>{
           if(s.type==='inbound-rtp' && s.kind==='audio'){
-            if(typeof s.audioLevel==='number') level=s.audioLevel; // 0..1
+            if(typeof s.audioLevel==='number') level=s.audioLevel;
             bytes=s.bytesReceived; ts=s.timestamp;
           }
         });
         if(level!=null){
-          bar.style.width=Math.min(100,Math.round(level*100*2))+'%'; // 0..200%
+          bar.style.width=Math.min(100,Math.round(level*200))+'%';
         }else if(bytes!=null){
           if(lastBytes && lastTs && ts>lastTs){
-            const bps = (bytes-lastBytes)*8/((ts-lastTs)/1000); // bitrate
-            const norm = Math.max(0, Math.min(1, bps/64000)); // skala do 64 kbps
+            const bps=(bytes-lastBytes)*8/((ts-lastTs)/1000);
+            const norm=Math.max(0,Math.min(1,bps/64000));
             bar.style.width=Math.round(norm*100)+'%';
           }
           lastBytes=bytes; lastTs=ts;
         }else{
           bar.style.width='0%';
         }
-      }catch(e){ /* ignore */ }
+      }catch(e){}
       schedule();
     };
-    const schedule=()=>{ inboundVUtimer=setTimeout(poll, 250); };
+    const schedule=()=>{ inboundVUtimer=setTimeout(poll,250); };
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
     schedule();
   }
 
-  // ========= WEBRTC =========
+  // ===== WebRTC =====
   function attachRemoteAudio(){
     document.getElementById('remote-audio').srcObject=null;
     ensureAudio();
   }
   function setupPeerBase(){
     pc=new RTCPeerConnection(rtcConfig);
-
-    // Jeden transceiver 'sendrecv'
-    audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
+    audioTransceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
 
     pc.ontrack=(ev)=>{
       const el=document.getElementById('remote-audio');
-      if(ev.streams && ev.streams[0] && el.srcObject!==ev.streams[0]){
-        el.srcObject=ev.streams[0];
-        startAudioContextVU(ev.streams[0]); // VU przez AudioContext
+
+      // --- Fallback: gdy ev.streams[0] brak, zbuduj własny MediaStream i dodaj ev.track
+      if(ev.streams && ev.streams[0]){
+        if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0];
+        startAudioContextVU(ev.streams[0]);
+      }else{
+        if(!remoteStream) remoteStream=new MediaStream();
+        remoteStream.addTrack(ev.track);
+        if(el.srcObject!==remoteStream) el.srcObject=remoteStream;
+        startAudioContextVU(remoteStream);
       }
-      ev.track.onunmute = ()=> ensureAudio();
+
+      ev.track.onunmute=()=>ensureAudio();
       ensureAudio();
+
       remoteConnected=true;
       refreshUI();
-      startInboundStatsVU();               // fallback VU przez stats
+      startInboundStatsVU();
     };
 
     pc.onconnectionstatechange=()=>{
@@ -285,23 +277,20 @@
   }
 
   async function getMicOrRecvOnly(){
-    // HTTPS check dla mobile
-    if (location.protocol!=='https:' && location.hostname!=='localhost'){
-      console.warn('HTTPS wymagany na mobile do mikrofonu.');
-    }
     try{
-      localStream = await navigator.mediaDevices.getUserMedia({
+      localStream=await navigator.mediaDevices.getUserMedia({
         audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 }
       });
       const track=localStream.getAudioTracks()[0];
       if(audioTransceiver && audioTransceiver.sender){
+        audioTransceiver.direction='sendrecv';
         await audioTransceiver.sender.replaceTrack(track);
       }
       document.getElementById('mic-toggle').classList.remove('disabled');
     }catch(e){
-      console.warn('Brak mikrofonu lub brak zgody — przechodzę w tryb tylko odbiór (recvonly).', e);
+      // brak zgody → nie wysyłamy, ale nadal odbieramy
+      if(audioTransceiver) audioTransceiver.direction='recvonly';
       document.getElementById('mic-toggle').classList.add('disabled');
-      // brak replaceTrack => z naszej strony nie wysyłamy, ale odbiór działa
     }
   }
 
@@ -318,11 +307,11 @@
     try{ pc&&pc.close(); }catch(e){} pc=null;
     audioTransceiver=null;
     try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){} localStream=null;
+    remoteStream=null;
     isMuted=false;
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
     remoteConnected=false; joined=false;
-    // stop VU timers
     if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
     refreshUI();
@@ -335,21 +324,24 @@
     if(joined) return;
     const btn=document.getElementById('host-start');
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
-    attachRemoteAudio(); setupPeerBase(); await getMicOrRecvOnly(); await ensureAudio();
+    try{
+      attachRemoteAudio(); setupPeerBase(); await getMicOrRecvOnly(); await ensureAudio();
+      const offer=await pc.createOffer();
+      await pc.setLocalDescription(offer); await waitIceComplete();
+      await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
 
-    const offer=await pc.createOffer();
-    await pc.setLocalDescription(offer); await waitIceComplete();
-    await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
+      // czekaj na ANSWER i ustaw remote SDP
+      for(let i=0;i<120 && pc;i++){
+        const ans=await getJSON(`/webrtc/answer/${rezerwacjaId}/`);
+        if(ans && ans.type==='answer' && ans.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(ans)); break; }
+        await sleep(1000);
+      }
 
-    // czekaj na ANSWER i ustaw remote SDP
-    for(let i=0;i<120 && pc;i++){
-      const ans=await getJSON(`/webrtc/answer/${rezerwacjaId}/`);
-      if(ans && ans.type==='answer' && ans.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(ans)); break; }
-      await sleep(1000);
+      joined=true; await populateOutputs();
+    } finally {
+      btn.textContent='🔑 Start (gospodarz)'; btn.classList.remove('disabled');
+      refreshUI();
     }
-
-    joined=true; btn.textContent='🔑 Start (gospodarz)'; btn.classList.remove('disabled');
-    refreshUI(); await populateOutputs();
   }
 
   // ===== Student =====
@@ -358,22 +350,27 @@
     const btn=document.getElementById('join-meeting');
     const waitEl=document.getElementById('waiting-host');
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
-    attachRemoteAudio(); setupPeerBase(); await ensureAudio();
+    try{
+      attachRemoteAudio(); setupPeerBase(); await ensureAudio();
 
-    waitEl.style.display='inline-flex';
-    let offer=null;
-    for(let i=0;i<120;i++){ offer=await getJSON(`/webrtc/offer/${rezerwacjaId}/`); if(offer && offer.type==='offer' && offer.sdp) break; await sleep(1000); }
-    waitEl.style.display='none';
-    if(!offer){ alert('Brak gospodarza (offer). Spróbuj za chwilę.'); btn.textContent='✅ Dołącz do spotkania'; btn.classList.remove('disabled'); return; }
+      waitEl.style.display='inline-flex';
+      let offer=null;
+      for(let i=0;i<120;i++){ offer=await getJSON(`/webrtc/offer/${rezerwacjaId}/`); if(offer && offer.type==='offer' && offer.sdp) break; await sleep(1000); }
+      waitEl.style.display='none';
+      if(!offer){ alert('Brak gospodarza (offer). Spróbuj za chwilę.'); return; }
 
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    await getMicOrRecvOnly(); // jeśli brak mic — i tak odpowiemy
-    const answer=await pc.createAnswer();
-    await pc.setLocalDescription(answer); await waitIceComplete();
-    await postJSON(`/webrtc/answer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      await getMicOrRecvOnly(); // jeśli brak mic — i tak odpowiemy
 
-    joined=true; btn.textContent='✅ Dołącz do spotkania'; btn.classList.remove('disabled');
-    refreshUI(); await populateOutputs();
+      const answer=await pc.createAnswer();
+      await pc.setLocalDescription(answer); await waitIceComplete();
+      await postJSON(`/webrtc/answer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
+
+      joined=true; await populateOutputs();
+    } finally {
+      btn.textContent='✅ Dołącz do spotkania'; btn.classList.remove('disabled');
+      refreshUI();
+    }
   }
 
   function stopPeer(){ teardown(); }
@@ -434,7 +431,6 @@
     refreshUI();
     populateOutputs();
 
-    // Presence co 10 s
     pingOnlineStatus(); checkOtherUserStatus();
     setInterval(pingOnlineStatus,10_000);
     setInterval(checkOtherUserStatus,10_000);
