@@ -55,45 +55,65 @@ def strona_glowna_view(request):
 def _key(kind, rez_id):
     return f"webrtc:{kind}:{rez_id}"
 
+# zajecia/views.py
+import json
+from django.http import JsonResponse, HttpResponseNotFound, HttpResponseBadRequest
+from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
+
+def _keys(rez_id):
+    return (f"webrtc:{rez_id}:offer", f"webrtc:{rez_id}:answer")
+
 @csrf_exempt
-def webrtc_offer(request, rez_id):
-    key = _key("offer", rez_id)
-    if request.method == "GET":
-        data = cache.get(key)
-        if not data:
-            return HttpResponseNotFound()
-        return JsonResponse(data)
+def webrtc_offer(request, rez_id: int):
+    """POST: zapisuje OFFER; GET: zwraca OFFER (lub 404)"""
+    offer_key, answer_key = _keys(rez_id)
+
     if request.method == "POST":
         try:
-            payload = json.loads(request.body.decode("utf-8"))
-            if payload.get("type") != "offer" or "sdp" not in payload:
-                return HttpResponseBadRequest("Invalid offer")
-            cache.set(key, payload, 60*10)  # 10 min
-            # wyczyszczamy starą odpowiedź
-            cache.delete(_key("answer", rez_id))
+            data = json.loads(request.body.decode("utf-8"))
+            if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
+                return HttpResponseBadRequest("Invalid SDP payload")
+            cache.set(offer_key, data, timeout=60*10)   # 10 minut
+            cache.delete(answer_key)                    # nowy offer unieważnia stare answer
             return JsonResponse({"ok": True})
         except Exception as e:
             return HttpResponseBadRequest(str(e))
+
+    if request.method == "GET":
+        data = cache.get(offer_key)
+        if not data:
+            return HttpResponseNotFound("No offer yet")
+        return JsonResponse(data)
+
     return HttpResponseBadRequest("Method not allowed")
 
 @csrf_exempt
-def webrtc_answer(request, rez_id):
-    key = _key("answer", rez_id)
-    if request.method == "GET":
-        data = cache.get(key)
-        if not data:
-            return HttpResponseNotFound()
-        return JsonResponse(data)
+def webrtc_answer(request, rez_id: int):
+    """POST: zapisuje ANSWER; GET: zwraca ANSWER (lub 404)"""
+    offer_key, answer_key = _keys(rez_id)
+
     if request.method == "POST":
         try:
-            payload = json.loads(request.body.decode("utf-8"))
-            if payload.get("type") != "answer" or "sdp" not in payload:
-                return HttpResponseBadRequest("Invalid answer")
-            cache.set(key, payload, 60*10)
+            data = json.loads(request.body.decode("utf-8"))
+            if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
+                return HttpResponseBadRequest("Invalid SDP payload")
+            if not cache.get(offer_key):
+                # bez offer nie zapisujemy answer (opcjonalne)
+                return HttpResponseNotFound("No offer to answer")
+            cache.set(answer_key, data, timeout=60*10)
             return JsonResponse({"ok": True})
         except Exception as e:
             return HttpResponseBadRequest(str(e))
+
+    if request.method == "GET":
+        data = cache.get(answer_key)
+        if not data:
+            return HttpResponseNotFound("No answer yet")
+        return JsonResponse(data)
+
     return HttpResponseBadRequest("Method not allowed")
+
 
 @login_required
 def pobierz_plik(request, id):
