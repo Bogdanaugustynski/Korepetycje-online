@@ -6,6 +6,8 @@ from .views import zajecia_online_view
 from .views import dodaj_material_po_zajeciach
 from django.contrib import admin
 from django.views.generic import TemplateView
+from zajecia import views as zaj_views
+
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="index.html"), name="strona_glowna"),
@@ -44,5 +46,3 @@ urlpatterns = [
 
 ]
 from . import views
-
-    
