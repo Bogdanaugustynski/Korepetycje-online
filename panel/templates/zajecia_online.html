@@ -99,6 +99,13 @@
   // ===== Kontekst (Django) =====
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
+  const rezerwacjaId = "{{ rezerwacja.id }}";
+  const csrfToken    = "{{ csrf_token }}";
+
+  // >>> DYNAMICZNE adresy z Django, bez zgadywania prefiksów:
+  const OFFER_URL  = "{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
+  const ANSWER_URL = "{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
+
 
   // ===== TURN (opcjonalnie) =====
   const TURN_HOST = "twoj.turn.host";     // np. turn.twojadomena.pl
