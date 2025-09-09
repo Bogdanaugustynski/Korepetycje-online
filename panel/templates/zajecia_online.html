@@ -100,10 +100,9 @@
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // >>> DYNAMICZNE adresy z Django, bez zgadywania prefiksów:
-  const OFFER_URL  = "{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
-  const ANSWER_URL = "{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
-
+  // >>> Absolutne URL-e do sygnalizacji (zawsze poprawne)
+  const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
+  const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
 
   // ===== TURN (opcjonalnie) =====
   const TURN_HOST = "twoj.turn.host";     // np. turn.twojadomena.pl
@@ -143,15 +142,21 @@
   const setIce = (m)=>{ const el=document.getElementById('ice-state'); if(el) el.textContent=m; };
   const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
 
-  async function postJSON(url,data){
-    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},body:JSON.stringify(data)});
-    if(!r.ok){ throw new Error(`POST ${url} -> ${r.status} ${await r.text()}`); }
+  async function postJSON(url,data,label="POST"){
+    const r=await fetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
+      body:JSON.stringify(data),
+      cache:"no-store",
+      credentials:"same-origin",
+    });
+    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
     return r.json();
   }
-  async function getJSON(url){
-    const r=await fetch(url);
+  async function getJSON(url,label="GET"){
+    const r=await fetch(url,{cache:"no-store",credentials:"same-origin"});
     if(r.status===404) return null;
-    if(!r.ok){ throw new Error(`GET ${url} -> ${r.status} ${await r.text()}`); }
+    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
     return r.json();
   }
 
@@ -234,8 +239,7 @@
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
       if(!analyser){ analyser=audioCtx.createAnalyser(); analyser.fftSize=256; }
-      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null;
-      }
+      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null; }
       vuSrc=audioCtx.createMediaStreamSource(stream); vuSrc.connect(analyser);
       const bar=document.querySelector('#vu > span');
       if(vuTimer) cancelAnimationFrame(vuTimer);
@@ -399,27 +403,27 @@
       attachRemoteAudio();
       setupPeerBase();
 
-      // 1) NATYCHMIAST twórz OFFER (bez czekania na mic)
+      // 1) Natychmiast twórz OFFER (bez czekania na mic)
       setSig('creating-offer');
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
       await waitIceComplete();
 
       setSig('posting-offer');
-      await postJSON(`/webrtc/offer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
+      await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer');
 
-      // 2) JUŻ UZNAJEMY, ŻE SESJA TRWA (pokaż Rozłącz)
+      // 2) Sesja trwa — pokaż Rozłącz
       joined=true;
       refreshUI();
       await populateOutputs();
 
-      // 3) Mic dołączamy w tle (nie blokuje)
+      // 3) Mic dołącz w tle (nie blokuje)
       attachMicIfAvailable();
 
-      // 4) Czekaj na ANSWER, ustaw remote
+      // 4) Czekaj na ANSWER i ustaw remote
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
-        const ans=await getJSON(`/webrtc/answer/${rezerwacjaId}/`);
+        const ans=await getJSON(ANSWER_URL, 'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
           await pc.setRemoteDescription(new RTCSessionDescription(ans));
           setSig('answer-set'); break;
@@ -448,14 +452,18 @@
       setupPeerBase();
       await ensureAudio();
 
-      // 1) Pobierz OFFER
+      // 1) Pobierz OFFER (retry)
       setSig('fetch-offer'); waitEl.style.display='inline-flex';
       let offer=null;
-      for(let i=0;i<120;i++){ offer=await getJSON(`/webrtc/offer/${rezerwacjaId}/`); if(offer && offer.type==='offer' && offer.sdp) break; await sleep(1000); }
+      for(let i=0;i<120;i++){
+        offer=await getJSON(OFFER_URL, 'offer-get');
+        if(offer && offer.type==='offer' && offer.sdp) break;
+        await sleep(1000);
+      }
       waitEl.style.display='none';
       if(!offer){ setSig('no-offer'); alert('Brak gospodarza (offer).'); return; }
 
-      // 2) Ustaw remote OFFER, od razu twórz ANSWER
+      // 2) Ustaw remote OFFER, twórz ANSWER
       setSig('set-remote-offer');
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -465,13 +473,14 @@
       await waitIceComplete();
 
       setSig('posting-answer');
-      await postJSON(`/webrtc/answer/${rezerwacjaId}/`, { type:pc.localDescription.type, sdp:pc.localDescription.sdp });
+      await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'answer-post');
+
       setSig('answer-posted');
 
-      // 3) Sesja aktywna — pokaż Rozłącz natychmiast
+      // 3) Sesja aktywna — pokaż Rozłącz
       joined=true; refreshUI(); await populateOutputs();
 
-      // 4) Mic dołącz w tle (jeśli dostępny)
+      // 4) Mic w tle (jeśli dostępny)
       attachMicIfAvailable();
 
     } catch(err){
@@ -533,6 +542,10 @@
     setInterval(checkOtherUserStatus,10_000);
 
     document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
+
+    // diagnostyka – podgląd faktycznych endpointów
+    console.log('OFFER_URL=', OFFER_URL);
+    console.log('ANSWER_URL=', ANSWER_URL);
   });
 
   // ===== Eksport dla onclick =====
