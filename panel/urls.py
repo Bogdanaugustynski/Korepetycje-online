@@ -43,7 +43,7 @@ urlpatterns = [
     path("public-test/", views.public_test, name="public_test"),
     path("webrtc/offer/<int:rez_id>/", views.webrtc_offer, name="webrtc_offer"),
     path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
-    path("", include("twoja_app.urls")),
+    path("", include("panel.urls")),
 
 ]
 from . import views
