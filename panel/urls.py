@@ -6,7 +6,7 @@ from .views import zajecia_online_view
 from .views import dodaj_material_po_zajeciach
 from django.contrib import admin
 from django.views.generic import TemplateView
-from zajecia import views as zaj_views
+from django.urls import path, include
 
 
 urlpatterns = [
@@ -43,6 +43,7 @@ urlpatterns = [
     path("public-test/", views.public_test, name="public_test"),
     path("webrtc/offer/<int:rez_id>/", views.webrtc_offer, name="webrtc_offer"),
     path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
+    path("", include("twoja_app.urls")),
 
 ]
 from . import views
