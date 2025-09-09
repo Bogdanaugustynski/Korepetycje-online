@@ -97,28 +97,31 @@ _db_url = (
 )
 
 try:
-    DATABASES = {
-        "default": dj_database_url.parse(_db_url, conn_max_age=600),
-    }
+    DATABASES = {"default": dj_database_url.parse(_db_url, conn_max_age=600)}
 except UnknownSchemeError:
-    DATABASES = {
-        "default": dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600),
-    }
+    DATABASES = {"default": dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600)}
 
 # === CHANNELS (Redis w prod, InMemory lokalnie) ===
-if os.getenv("REDIS_URL"):
+def _valid_redis_url(u: str | None) -> bool:
+    if not u:
+        return False
+    u = u.strip().lower()
+    return u.startswith(("redis://", "rediss://", "unix://"))
+
+REDIS_URL = os.getenv("REDIS_URL")
+
+if _valid_redis_url(REDIS_URL):
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [os.getenv("REDIS_URL")]},
+            "CONFIG": {"hosts": [REDIS_URL]},
         }
     }
 else:
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
-# === CACHE (WSPÓLNY dla WebRTC signaling) ===
-REDIS_URL = os.getenv("REDIS_URL")
-if REDIS_URL:
+# === CACHE (wspólny dla WebRTC signaling) ===
+if _valid_redis_url(REDIS_URL):
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
@@ -127,7 +130,6 @@ if REDIS_URL:
         }
     }
 else:
-    # wspólny cache plikowy (działa między workerami na tej samej instancji)
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
@@ -155,14 +157,13 @@ MEDIA_ROOT = BASE_DIR / "media"  # (na darmowym Render pliki efemeryczne)
 # === SECURITY ===
 LOGIN_URL = "/login/"
 AUTH_PASSWORD_VALIDATORS = []
-
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = not DEBUG
 X_FRAME_OPTIONS = "DENY"
 
-# === LOGI (pomocne do diagnozy WebRTC) ===
+# === LOGI (diagnostyka WebRTC) ===
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
