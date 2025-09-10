@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (offer-first + timeout mic)</title>
+  <title>Zajęcia online — audio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -100,28 +100,21 @@
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
 
-  // >>> Absolutne URL-e do sygnalizacji (zawsze poprawne)
+  // Absolutne URL-e (działają i lokalnie, i na produkcji)
   const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
   const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
 
   // ===== TURN (opcjonalnie) =====
-  const TURN_HOST = "twoj.turn.host";     // np. turn.twojadomena.pl
+  const TURN_HOST = "twoj.turn.host"; // np. turn.twojadomena.pl
   const TURN_USER = "webrtc";
   const TURN_PASS = "webrtc123";
-  const FORCE_RELAY = false;              // na test możesz dać true (wymusi TURN)
+  const FORCE_RELAY = false;
 
   // ===== RTC config =====
   const rtcConfig = {
     iceServers: [
       { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
-      // Odkomentuj, gdy masz TURN:
-      // { urls: [
-      //     `turn:${TURN_HOST}:3478?transport=udp`,
-      //     `turn:${TURN_HOST}:3478?transport=tcp`,
-      //     // `turns:${TURN_HOST}:5349?transport=tcp`,
-      //   ],
-      //   username: TURN_USER, credential: TURN_PASS
-      // }
+      // { urls:[`turn:${TURN_HOST}:3478?transport=udp`,`turn:${TURN_HOST}:3478?transport=tcp`], username: TURN_USER, credential: TURN_PASS }
     ],
     iceTransportPolicy: FORCE_RELAY ? "relay" : "all",
     bundlePolicy: "max-bundle"
@@ -138,11 +131,12 @@
   // Helpers
   const supportsSinkId=('setSinkId' in HTMLMediaElement.prototype);
   const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
-  const setSig = (m)=>{ const el=document.getElementById('sig-state'); if(el) el.textContent=m; };
+  const setSig = (m)=>{ console.log("[SIG]", m); const el=document.getElementById('sig-state'); if(el) el.textContent=m; };
   const setIce = (m)=>{ const el=document.getElementById('ice-state'); if(el) el.textContent=m; };
   const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
 
   async function postJSON(url,data,label="POST"){
+    console.log(label, url, data);
     const r=await fetch(url,{
       method:"POST",
       headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
@@ -150,14 +144,19 @@
       cache:"no-store",
       credentials:"same-origin",
     });
-    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
-    return r.json();
+    const txt = await r.clone().text().catch(()=>"?");
+    console.log(label,"status",r.status, txt.slice(0,120));
+    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${txt}`); }
+    return r.json().catch(()=>({ok:true}));
   }
   async function getJSON(url,label="GET"){
+    console.log(label, url);
     const r=await fetch(url,{cache:"no-store",credentials:"same-origin"});
+    const txt = await r.clone().text().catch(()=>"?");
+    console.log(label,"status",r.status, txt.slice(0,120));
     if(r.status===404) return null;
-    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
-    return r.json();
+    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${txt}`); }
+    try { return JSON.parse(txt); } catch { return null; }
   }
 
   // ===== UI =====
@@ -239,7 +238,8 @@
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
       if(!analyser){ analyser=audioCtx.createAnalyser(); analyser.fftSize=256; }
-      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null; }
+      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null;
+      }
       vuSrc=audioCtx.createMediaStreamSource(stream); vuSrc.connect(analyser);
       const bar=document.querySelector('#vu > span');
       if(vuTimer) cancelAnimationFrame(vuTimer);
@@ -346,7 +346,7 @@
     };
   }
 
-  // >>> gUM z timeoutem — nie blokuje negocjacji
+  // getUserMedia z timeoutem
   function getUserMediaWithTimeout(ms=1500){
     return new Promise((resolve)=> {
       let settled=false;
@@ -403,27 +403,37 @@
       attachRemoteAudio();
       setupPeerBase();
 
-      // 1) Natychmiast twórz OFFER (bez czekania na mic)
       setSig('creating-offer');
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
       await waitIceComplete();
 
       setSig('posting-offer');
-      await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer');
+      await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer-post');
 
-      // 2) Sesja trwa — pokaż Rozłącz
+      // >>> SYGNAŁ ZWROTNY: natychmiast sprawdź, czy OFFER jest czytelny (round-trip)
+      setSig('verifying-offer-read');
+      let readable=false;
+      for(let i=0;i<6;i++){ // ~6s
+        const echo=await getJSON(OFFER_URL,'offer-echo');
+        if(echo && echo.type==='offer'){ readable=true; break; }
+        await sleep(1000);
+      }
+      if(!readable){
+        setSig('offer-not-readable');
+        alert("Host: offer zapisany, ale GET nie widzi (cache nie jest współdzielony). Włącz REDIS_URL na serwerze.");
+      }else{
+        setSig('offer-ready');
+      }
+
       joined=true;
       refreshUI();
       await populateOutputs();
-
-      // 3) Mic dołącz w tle (nie blokuje)
       attachMicIfAvailable();
 
-      // 4) Czekaj na ANSWER i ustaw remote
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
-        const ans=await getJSON(ANSWER_URL, 'answer-get');
+        const ans=await getJSON(ANSWER_URL,'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
           await pc.setRemoteDescription(new RTCSessionDescription(ans));
           setSig('answer-set'); break;
@@ -452,18 +462,16 @@
       setupPeerBase();
       await ensureAudio();
 
-      // 1) Pobierz OFFER (retry)
       setSig('fetch-offer'); waitEl.style.display='inline-flex';
       let offer=null;
       for(let i=0;i<120;i++){
-        offer=await getJSON(OFFER_URL, 'offer-get');
-        if(offer && offer.type==='offer' && offer.sdp) break;
+        offer=await getJSON(OFFER_URL,'offer-get');
+        if(offer && offer.type==='offer' && offer.sdp){ setSig('got-offer'); break; }
         await sleep(1000);
       }
       waitEl.style.display='none';
       if(!offer){ setSig('no-offer'); alert('Brak gospodarza (offer).'); return; }
 
-      // 2) Ustaw remote OFFER, twórz ANSWER
       setSig('set-remote-offer');
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -477,10 +485,7 @@
 
       setSig('answer-posted');
 
-      // 3) Sesja aktywna — pokaż Rozłącz
       joined=true; refreshUI(); await populateOutputs();
-
-      // 4) Mic w tle (jeśli dostępny)
       attachMicIfAvailable();
 
     } catch(err){
@@ -543,7 +548,6 @@
 
     document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
 
-    // diagnostyka – podgląd faktycznych endpointów
     console.log('OFFER_URL=', OFFER_URL);
     console.log('ANSWER_URL=', ANSWER_URL);
   });
