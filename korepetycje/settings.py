@@ -106,6 +106,7 @@ def _valid_redis_url(u: str | None) -> bool:
     if not u:
         return False
     u = u.strip().lower()
+    # akceptuj tylko prawidłowe schematy Redis
     return u.startswith(("redis://", "rediss://", "unix://"))
 
 REDIS_URL = os.getenv("REDIS_URL")
@@ -130,6 +131,7 @@ if _valid_redis_url(REDIS_URL):
         }
     }
 else:
+    # Bezpieczny fallback: jeden proces => wspólny cache plikowy
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",

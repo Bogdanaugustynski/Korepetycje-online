@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto-connect by presence)</title>
+  <title>Zajęcia online — audio (auto-connect by presence + debug)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -62,6 +62,7 @@
 
   <div class="pill">🧊 ICE: <small id="ice-state">init</small> <small id="ice-path" style="opacity:.8"></small></div>
   <div class="pill">🔁 Signaling: <small id="sig-state">init</small></div>
+  <div class="pill">📦 Store: <small id="store-state">offer:–(0), answer:–(0)</small></div>
 
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
 
@@ -90,21 +91,22 @@
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="hint">
-    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> (poniżej w JS) i ewentualnie włącz tryb <i>relay</i> do testu.
+    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> (w JS) i ewentualnie włącz tryb <i>relay</i> do testu.
   </div>
 </main>
 
 <audio id="remote-audio" autoplay playsinline></audio>
 
 <script>
-  // ===== Kontekst =====
+  // ===== Kontekst (Django) =====
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
   const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
 
-  // Absolutne URL-e (żeby nie było problemów z prefiksami)
+  // Absolutne URL-e (bez problemów z prefiksami)
   const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
   const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
+  const DEBUG_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_debug' rez_id=rezerwacja.id %}";
 
   // ===== TURN (opcjonalnie) =====
   const TURN_HOST = "twoj.turn.host";
@@ -143,7 +145,7 @@
       method:"POST",
       headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
       body:JSON.stringify(data),
-      cache:"no-store", credentials:"same-origin"
+      cache:"no-store", credentials:"same-origin",
     });
     if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
     try { return await r.json(); } catch { return {ok:true}; }
@@ -234,7 +236,8 @@
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
       if(!analyser){ analyser=audioCtx.createAnalyser(); analyser.fftSize=256; }
-      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null; }
+      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null;
+      }
       vuSrc=audioCtx.createMediaStreamSource(stream); vuSrc.connect(analyser);
       const bar=document.querySelector('#vu > span');
       if(vuTimer) cancelAnimationFrame(vuTimer);
@@ -277,7 +280,7 @@
         }else{
           bar.style.width='0%';
         }
-      }catch(e){}
+      }catch(e){ }
       schedule();
     };
     const schedule=()=>{ inboundVUtimer=setTimeout(poll,250); };
@@ -319,20 +322,11 @@
 
     pc.onicegatheringstatechange = updateIceNow;
     pc.oniceconnectionstatechange = ()=>{ updateIceNow(); updateIcePathNow(); };
-    pc.onconnectionstatechange = ()=>{
-      if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); }
-    };
+    pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); } };
     pc.ontrack=(ev)=>{
       const el=document.getElementById('remote-audio');
-      if(ev.streams && ev.streams[0]){
-        if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0];
-        startAudioContextVU(ev.streams[0]);
-      }else{
-        if(!remoteStream) remoteStream=new MediaStream();
-        remoteStream.addTrack(ev.track);
-        if(el.srcObject!==remoteStream) el.srcObject=remoteStream;
-        startAudioContextVU(remoteStream);
-      }
+      if(ev.streams && ev.streams[0]){ if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0]; startAudioContextVU(ev.streams[0]); }
+      else{ if(!remoteStream) remoteStream=new MediaStream(); remoteStream.addTrack(ev.track); if(el.srcObject!==remoteStream) el.srcObject=remoteStream; startAudioContextVU(remoteStream); }
       ev.track.onunmute=()=>ensureAudio();
       ensureAudio();
       remoteConnected=true;
@@ -486,11 +480,12 @@
     fetch("{% url 'ping_online_status' %}", {
       method:"POST",
       headers:{ "X-CSRFToken": csrfToken, "Content-Type":"application/x-www-form-urlencoded" },
-      body:"rezerwacja_id="+encodeURIComponent(rezerwacjaId)
+      body:"rezerwacja_id="+encodeURIComponent(rezerwacjaId),
+      cache:"no-store", credentials:"same-origin",
     }).catch(()=>{});
   }
   function checkOtherUserStatus(){
-    fetch(`/check-online-status/${rezerwacjaId}/`)
+    fetch(`/check-online-status/${rezerwacjaId}/`, {cache:"no-store", credentials:"same-origin"})
       .then(r=>r.ok?r.json():Promise.reject(r.status))
       .then(data=>{
         otherOnline=!!(data&&data.online);
@@ -499,9 +494,20 @@
         dot.classList.toggle('status--off', !otherOnline);
         text.textContent=otherOnline?"Dostępny":"Niedostępny";
         refreshUI();
-        maybeAutoConnect(); // ⬅️ klucz: próbuj połączyć, gdy druga strona jest online
+        maybeAutoConnect();
       })
       .catch(()=>{});
+  }
+
+  // ===== Podgląd stanu magazynu sygnalizacji =====
+  async function pollStoreState(){
+    try{
+      const d = await getJSON(DEBUG_URL, 'debug-get');
+      if(d){
+        document.getElementById('store-state').textContent =
+          `offer:${d.offer?'✓':'–'}(${d.offer_len}), answer:${d.answer?'✓':'–'}(${d.answer_len})`;
+      }
+    }catch(e){}
   }
 
   // ===== Timer & Init =====
@@ -526,13 +532,16 @@
     setInterval(pingOnlineStatus,10_000);
     setInterval(checkOtherUserStatus,10_000);
 
-    document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
+    // stan magazynu sygnalizacji (co 1.5s)
+    pollStoreState();
+    setInterval(pollStoreState, 1500);
 
-    // klik w pigułkę „Dostępny/Niedostępny” też wyzwala próbę połączenia
+    document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
     document.getElementById('presence-pill')?.addEventListener('click', maybeAutoConnect);
 
     console.log('OFFER_URL=', OFFER_URL);
     console.log('ANSWER_URL=', ANSWER_URL);
+    console.log('DEBUG_URL=', DEBUG_URL);
   });
 
   // ===== Eksport dla onclick =====

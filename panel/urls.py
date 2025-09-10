@@ -62,4 +62,6 @@ urlpatterns = [
     # WebRTC signaling (ważne dla audio)
     path("webrtc/offer/<int:rez_id>/", views.webrtc_offer, name="webrtc_offer"),
     path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
+    path("webrtc/debug/<int:rez_id>/", views.webrtc_debug, name="webrtc_debug"),
+
 ]
