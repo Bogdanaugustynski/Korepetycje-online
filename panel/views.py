@@ -1,5 +1,6 @@
 import json
 import logging
+log = logging.getLogger("webrtc")
 from datetime import datetime, timedelta
 
 from django.contrib import messages
@@ -70,12 +71,11 @@ def _json_response(data, status=200):
     return resp
 
 
+def _keys(rez_id: int):
+    return (f"webrtc:{rez_id}:offer", f"webrtc:{rez_id}:answer")
+
 @csrf_exempt
 def webrtc_offer(request, rez_id: int):
-    """
-    POST: zapisuje OFFER (type, sdp) do wspólnego cache
-    GET:  zwraca OFFER (lub 404 jeśli brak)
-    """
     offer_key, answer_key = _keys(rez_id)
 
     if request.method == "POST":
@@ -83,30 +83,24 @@ def webrtc_offer(request, rez_id: int):
             data = json.loads(request.body.decode("utf-8"))
             if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
                 return HttpResponseBadRequest("Invalid SDP payload")
-            cache.set(offer_key, data, timeout=600)  # 10 minut
-            cache.delete(answer_key)  # nowy offer unieważnia stare answer
-            log.info("OFFER SET rez=%s from=%s", rez_id, request.META.get("REMOTE_ADDR"))
-            return _json_response({"ok": True})
+            cache.set(offer_key, data, timeout=60*10)   # 10 min
+            cache.delete(answer_key)                    # nowy offer kasuje stare answer
+            log.info("OFFER POST rez=%s len=%s", rez_id, len(data["sdp"]))
+            return JsonResponse({"ok": True})
         except Exception as e:
-            log.exception("OFFER ERROR rez=%s", rez_id)
+            log.exception("OFFER POST error rez=%s", rez_id)
             return HttpResponseBadRequest(str(e))
 
     if request.method == "GET":
         data = cache.get(offer_key)
-        log.info("OFFER GET rez=%s hit=%s", rez_id, bool(data))
         if not data:
             return HttpResponseNotFound("No offer yet")
-        return _json_response(data)
+        return JsonResponse(data)
 
     return HttpResponseBadRequest("Method not allowed")
 
-
 @csrf_exempt
 def webrtc_answer(request, rez_id: int):
-    """
-    POST: zapisuje ANSWER (type, sdp)
-    GET:  zwraca ANSWER (lub 404)
-    """
     offer_key, answer_key = _keys(rez_id)
 
     if request.method == "POST":
@@ -115,23 +109,53 @@ def webrtc_answer(request, rez_id: int):
             if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
                 return HttpResponseBadRequest("Invalid SDP payload")
             if not cache.get(offer_key):
-                log.warning("ANSWER POST without OFFER rez=%s", rez_id)
                 return HttpResponseNotFound("No offer to answer")
-            cache.set(answer_key, data, timeout=600)
-            log.info("ANSWER SET rez=%s from=%s", rez_id, request.META.get("REMOTE_ADDR"))
-            return _json_response({"ok": True})
+            cache.set(answer_key, data, timeout=60*10)
+            log.info("ANSWER POST rez=%s len=%s", rez_id, len(data["sdp"]))
+            return JsonResponse({"ok": True})
         except Exception as e:
-            log.exception("ANSWER ERROR rez=%s", rez_id)
+            log.exception("ANSWER POST error rez=%s", rez_id)
             return HttpResponseBadRequest(str(e))
 
     if request.method == "GET":
         data = cache.get(answer_key)
-        log.info("ANSWER GET rez=%s hit=%s", rez_id, bool(data))
         if not data:
             return HttpResponseNotFound("No answer yet")
-        return _json_response(data)
+        return JsonResponse(data)
 
     return HttpResponseBadRequest("Method not allowed")
+
+def _keys(rez_id):
+    # UŻYWAJ DOKŁADNIE TEGO SAMEGO KLUCZA co webrtc_offer/answer
+    return (f"webrtc:{rez_id}:offer", f"webrtc:{rez_id}:answer")
+
+@csrf_exempt
+def webrtc_debug(request, rez_id: int):
+    """
+    GET: szybki podgląd czy Offer/Answer są zapisane w cache (i jak długie mają SDP).
+    Niczego nie modyfikuje.
+    """
+    if request.method != "GET":
+        return HttpResponseBadRequest("Method not allowed")
+
+    offer_key, answer_key = _keys(rez_id)
+    offer = cache.get(offer_key)
+    answer = cache.get(answer_key)
+
+    def _sdp_len(x):
+        try:
+            return len((x or {}).get("sdp", "") or "")
+        except Exception:
+            return 0
+
+    data = {
+        "offer": bool(offer),
+        "answer": bool(answer),
+        "offer_len": _sdp_len(offer),
+        "answer_len": _sdp_len(answer),
+        "keys": {"offer": offer_key, "answer": answer_key},
+    }
+    return JsonResponse(data)
 
 
 # ==========================
