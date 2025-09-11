@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (stabilny handshake + renegocjacja)</title>
+  <title>Zajęcia online — audio (auto-connect + stable mic)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -91,20 +91,20 @@
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="hint">
-    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> (poniżej w JS) i ewentualnie włącz tryb <i>relay</i> do testu.
+    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> i ewentualnie włącz tryb <i>relay</i> do testu.
   </div>
 </main>
 
 <audio id="remote-audio" autoplay playsinline></audio>
 
 <script>
-  // ===== Kontekst =====
+  // ===== Kontekst (Django) =====
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
   const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
-  const WHO          = IS_TEACHER ? "teacher" : "student";
-  const POLITE       = IS_TEACHER; // gospodarz = polite
+  const WHO          = IS_TEACHER ? 'host' : 'student';
 
+  // Absolutne URL-e (bez zgadywania prefiksów)
   const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
   const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
 
@@ -130,11 +130,9 @@
   let connecting=false, autoHostTried=false, autoStudentTried=false;
   let gumInFlight=false;
 
-  // perfect negotiation
-  let negEnabled=false, renegInFlight=false, offerWatcherStarted=false;
-  let pendingReneg=false;
-  let lastRemoteOfferSDP=null, lastLocalOfferSDP=null;
-  let lastRemoteAnswerSDP=null, lastLocalAnswerSDP=null;
+  // Perfect negotiation
+  let negEnabled=false, renegInFlight=false;
+  let lastLocalOfferSDP="", lastLocalAnswerSDP="", lastSeenRemoteOfferSDP="";
 
   // VU / audio unlock
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
@@ -148,7 +146,12 @@
   const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
 
   async function postJSON(url,data,label="POST"){
-    const r=await fetch(url,{ method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken}, body:JSON.stringify(data), cache:"no-store", credentials:"same-origin" });
+    const r=await fetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
+      body:JSON.stringify(data),
+      cache:"no-store", credentials:"same-origin"
+    });
     if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
     try { return await r.json(); } catch { return {ok:true}; }
   }
@@ -195,7 +198,6 @@
     document.getElementById('mic-icon').textContent=isMuted?'🎙️':'🔇';
     document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
-
   function setVolume(v){
     document.getElementById('vol-val').textContent=v+'%';
     const el=document.getElementById('remote-audio');
@@ -244,7 +246,8 @@
       const bar=document.querySelector('#vu > span');
       if(vuTimer) cancelAnimationFrame(vuTimer);
       const data=new Uint8Array(analyser.frequencyBinCount);
-      const tick=()=>{ analyser.getByteTimeDomainData(data);
+      const tick=()=>{
+        analyser.getByteTimeDomainData(data);
         let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
         const rms=Math.sqrt(sum/data.length);
         bar.style.width=Math.min(100,Math.round(rms*200))+'%';
@@ -269,15 +272,18 @@
             bytes=s.bytesReceived; ts=s.timestamp;
           }
         });
-        if(level!=null){ bar.style.width=Math.min(100,Math.round(level*200))+'%'; }
-        else if(bytes!=null){
+        if(level!=null){
+          bar.style.width=Math.min(100,Math.round(level*200))+'%';
+        }else if(bytes!=null){
           if(lastBytes && lastTs && ts>lastTs){
             const bps=(bytes-lastBytes)*8/((ts-lastTs)/1000);
             const norm=Math.max(0,Math.min(1,bps/64000));
             bar.style.width=Math.round(norm*100)+'%';
           }
           lastBytes=bytes; lastTs=ts;
-        }else{ bar.style.width='0%'; }
+        }else{
+          bar.style.width='0%';
+        }
       }catch(e){}
       schedule();
     };
@@ -313,7 +319,6 @@
     document.getElementById('remote-audio').srcObject=null;
     ensureAudio();
   }
-
   function setupPeerBase(){
     pc=new RTCPeerConnection(rtcConfig);
     audioTransceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
@@ -322,76 +327,63 @@
     pc.onicegatheringstatechange = updateIceNow;
     pc.oniceconnectionstatechange = ()=>{ updateIceNow(); updateIcePathNow(); };
     pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); } };
+
+    // automatyczna renegocjacja, gdy jest potrzebna i połączenie jest stabilne
+    pc.onnegotiationneeded = async ()=>{
+      if(!negEnabled || renegInFlight || !pc || pc.signalingState!=='stable') return;
+      await forceRenegotiation('onnegotiationneeded');
+    };
+
     pc.ontrack=(ev)=>{
       const el=document.getElementById('remote-audio');
-      if(ev.streams && ev.streams[0]){ if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0]; startAudioContextVU(ev.streams[0]); }
-      else { if(!remoteStream) remoteStream=new MediaStream(); remoteStream.addTrack(ev.track); if(el.srcObject!==remoteStream) el.srcObject=remoteStream; startAudioContextVU(remoteStream); }
-      ev.track.onunmute=()=>ensureAudio(); ensureAudio(); remoteConnected=true; refreshUI(); startInboundStatsVU();
-    };
-
-    // perfect negotiation – lokalny trigger (po włączeniu negEnabled)
-    pc.onnegotiationneeded = async () => {
-      if(!negEnabled || renegInFlight) return;
-      if(pc.signalingState !== 'stable') return;
-      try{
-        renegInFlight = true;
-        setSig('re-negotiating…');
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await waitIceComplete();
-        await postJSON(OFFER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'reneg-offer');
-        lastLocalOfferSDP = pc.localDescription.sdp;
-        setSig('re-negotiation offer sent');
-      }catch(e){ console.warn('Renegotiation failed:', e); }
-      finally{ renegInFlight=false; }
+      if(ev.streams && ev.streams[0]){
+        if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0];
+        startAudioContextVU(ev.streams[0]);
+      }else{
+        if(!remoteStream) remoteStream=new MediaStream();
+        remoteStream.addTrack(ev.track);
+        if(el.srcObject!==remoteStream) el.srcObject=remoteStream;
+        startAudioContextVU(remoteStream);
+      }
+      ev.track.onunmute=()=>ensureAudio();
+      ensureAudio();
+      remoteConnected=true;
+      refreshUI();
+      startInboundStatsVU();
     };
   }
 
-  async function forceRenegotiation(reason='manual'){
-    if(!pc || !negEnabled || renegInFlight) return;
-    if(pc.signalingState !== 'stable') return;
-    try{
-      renegInFlight = true;
-      setSig('force-reneg ('+reason+')');
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await waitIceComplete();
-      await postJSON(OFFER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'force-offer');
-      lastLocalOfferSDP = pc.localDescription.sdp;
-    }catch(e){ console.warn('forceReneg error:', e); }
-    finally{ renegInFlight=false; }
-  }
-
-  // 🔈 mikrofon – prosimy po handshaku; fallback do addTrack
+  // 🔈 Poproś o mikrofon i podepnij (transceiver albo addTrack)
   function requestMicNow(){
-    if(gumInFlight || localStream) return;
+    if (gumInFlight || localStream) return Promise.resolve(!!localStream);
     gumInFlight = true;
-    navigator.mediaDevices.getUserMedia({
+
+    return navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 }
     }).then(async (stream)=>{
       gumInFlight=false;
       localStream = stream;
       const track = localStream.getAudioTracks()[0];
 
-      let attached = false;
+      let attached=false;
       try{
         if(audioTransceiver && audioTransceiver.sender){
           audioTransceiver.direction='sendrecv';
           await audioTransceiver.sender.replaceTrack(track);
-          attached = true;
+          attached=true;
         }
-      }catch(e){ attached = false; }
+      }catch(e){ attached=false; }
 
       if(!attached && pc){
-        try{ pc.addTrack(track, stream); attached = true; }catch(e){}
+        try{ pc.addTrack(track, stream); attached=true; }catch(e){}
       }
 
       document.getElementById('mic-toggle').classList.remove('disabled');
       refreshUI();
 
-      if(negEnabled) forceRenegotiation('mic-added');
-      else pendingReneg = true;
-    }).catch(()=>{ gumInFlight=false; });
+      if(negEnabled) { try{ await forceRenegotiation('mic-added'); }catch(e){} }
+      return true;
+    }).catch(()=>{ gumInFlight=false; return false; });
   }
 
   function waitIceComplete(){
@@ -402,7 +394,6 @@
       pc.addEventListener('icegatheringstatechange', f);
     });
   }
-
   function teardown(){
     try{ pc&&pc.close(); }catch(e){} pc=null;
     audioTransceiver=null;
@@ -411,58 +402,82 @@
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
     remoteConnected=false; joined=false; connecting=false;
-    negEnabled=false; offerWatcherStarted=false; pendingReneg=false; renegInFlight=false;
+    negEnabled=false; renegInFlight=false;
     if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
     setIce('init'); setIcePath(''); setSig('init');
     refreshUI();
   }
 
-  // ===== Watcher: oferty/odpowiedzi =====
-  async function handleRemoteOffer(off){
-    if(!off || off.type!=='offer' || !off.sdp) return;
-    if(off.from && off.from === WHO) return;
-    if(off.sdp === lastRemoteOfferSDP) return;
-    lastRemoteOfferSDP = off.sdp;
+  // ===== Perfect negotiation helpers =====
+  async function forceRenegotiation(reason='manual'){
+    if(!pc || renegInFlight) return;
+    if(pc.signalingState!=='stable') return; // unikamy glare
 
+    renegInFlight=true;
     try{
-      if(pc.signalingState !== 'stable'){
-        if(POLITE){ await pc.setLocalDescription({type:'rollback'}); }
-        else { return; }
-      }
-      setSig('remote-offer');
-      await pc.setRemoteDescription(new RTCSessionDescription(off));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+      setSig(`force-reneg (${reason})`);
+      const offer=await pc.createOffer();
+      await pc.setLocalDescription(offer);
       await waitIceComplete();
-      await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'reneg-answer');
-      lastLocalAnswerSDP = pc.localDescription.sdp;
-      setSig('renegotiation-answer-sent');
-    }catch(e){ console.warn('handleRemoteOffer error:', e); }
-  }
 
-  async function handleRemoteAnswer(ans){
-    if(!ans || ans.type!=='answer' || !ans.sdp) return;
-    if(ans.from && ans.from === WHO) return;
-    if(ans.sdp === lastRemoteAnswerSDP) return;
-    if(pc.signalingState !== 'have-local-offer') return;
-    await pc.setRemoteDescription(new RTCSessionDescription(ans));
-    lastRemoteAnswerSDP = ans.sdp;
-    setSig('answer-set');
-  }
-
-  async function watchSignalingLoop(){
-    while(true){
-      await sleep(1000);
-      if(!pc || !negEnabled) continue;
-      try{ await handleRemoteOffer(await getJSON(OFFER_URL,'offer-watch')); }catch(e){}
-      try{ await handleRemoteAnswer(await getJSON(ANSWER_URL,'answer-watch')); }catch(e){}
+      lastLocalOfferSDP = pc.localDescription.sdp;
+      await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'renegotiation-offer');
+      setSig('re-negotiation offer sent');
+    }finally{
+      renegInFlight=false;
     }
   }
+
+  async function handleRemoteOfferIfAny(){
+    const off = await getJSON(OFFER_URL,'offer-get');
+    if(!off || !off.sdp) return false;
+
+    // ignoruj własną ofertę
+    if(off.sdp === lastLocalOfferSDP) return false;
+
+    // jeśli widzieliśmy już dokładnie tę SDP – też pomiń
+    if(off.sdp === lastSeenRemoteOfferSDP) return false;
+    lastSeenRemoteOfferSDP = off.sdp;
+
+    if(!pc) return false;
+
+    // jeśli nie w stable, odczekaj aż będzie stable
+    if(pc.signalingState !== 'stable'){
+      setSig('remote-offer pending (not stable)');
+      let tries=0;
+      while(pc && pc.signalingState!=='stable' && tries<40){ await sleep(250); tries++; }
+      if(!pc || pc.signalingState!=='stable') return false;
+    }
+
+    try{
+      setSig('remote-offer');
+      await pc.setRemoteDescription(new RTCSessionDescription(off));
+
+      const answer=await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitIceComplete();
+
+      lastLocalAnswerSDP = pc.localDescription.sdp;
+      await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'renegotiation-answer');
+      setSig('renegotiation-answer-sent');
+      return true;
+    }catch(e){
+      console.warn('handleRemoteOfferIfAny error', e);
+      return false;
+    }
+  }
+
   function startOfferWatcher(){
-    if(offerWatcherStarted) return;
-    offerWatcherStarted=true;
-    watchSignalingLoop();
+    let stop=false;
+    const loop=async ()=>{
+      while(!stop && pc){
+        try{ await handleRemoteOfferIfAny(); }catch(e){}
+        await sleep(1000);
+      }
+    };
+    loop();
+    return ()=>{ stop=true; };
   }
 
   // ===== „Ogłoś: jestem gospodarzem” =====
@@ -477,6 +492,9 @@
     try{
       attachRemoteAudio(); setupPeerBase();
 
+      // ⬇️ KLUCZ: mikrofon przed pierwszą ofertą
+      await requestMicNow();
+
       setSig('creating-offer');
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -486,14 +504,13 @@
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'offer-post');
       lastLocalOfferSDP = pc.localDescription.sdp;
 
-      // czekaj na initial ANSWER
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
-          if(pc.signalingState === 'have-local-offer'){
+          if(pc.signalingState==='have-local-offer'){
             await pc.setRemoteDescription(new RTCSessionDescription(ans));
-            lastRemoteAnswerSDP = ans.sdp;
+            lastLocalAnswerSDP = ans.sdp;
             setSig('answer-set'); break;
           }
         }
@@ -502,12 +519,9 @@
 
       joined=true; refreshUI(); await populateOutputs();
 
-      // dopiero TERAZ włącz renegocjację i watcher
+      // uruchom perfect-negotiation po handshaku
       negEnabled = true;
       startOfferWatcher();
-
-      // i dopiero TERAZ prosimy o mikrofon (wyzwoli bezpieczną renegocjację)
-      requestMicNow();
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
@@ -528,6 +542,9 @@
 
     try{
       attachRemoteAudio(); setupPeerBase(); ensureAudio();
+
+      // ⬇️ KLUCZ: mikrofon zanim zrobimy answer
+      await requestMicNow();
 
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
@@ -552,13 +569,9 @@
 
       joined=true; refreshUI(); await populateOutputs();
 
-      // handshake zakończony → włącz reneg+watcher
+      // perfect-negotiation po handshaku
       negEnabled = true;
       startOfferWatcher();
-
-      // i teraz poproś o mikrofon (wyzwoli renegocjację)
-      requestMicNow();
-      if(pendingReneg){ pendingReneg=false; forceRenegotiation('pending-mic'); }
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
@@ -572,11 +585,14 @@
 
   function stopPeer(){ teardown(); }
 
-  // ===== AUTO-CONNECT =====
+  // ===== AUTO-CONNECT po „Dostępny” =====
   function maybeAutoConnect(){
     if(!otherOnline || joined || connecting) return;
-    if(IS_TEACHER){ if(!autoHostTried){ autoHostTried=true; startHost(); } }
-    else { if(!autoStudentTried){ autoStudentTried=true; joinMeeting(); } }
+    if(IS_TEACHER){
+      if(!autoHostTried){ autoHostTried=true; startHost(); }
+    }else{
+      if(!autoStudentTried){ autoStudentTried=true; joinMeeting(); }
+    }
   }
 
   // ===== Presence =====
@@ -602,7 +618,7 @@
       .catch(()=>{});
   }
 
-  // ===== Store badge =====
+  // ===== Store badge (diagnostyka) =====
   function updateStoreBadge(){
     const el=document.getElementById('store-badge');
     Promise.all([getJSON(OFFER_URL,'offer-get'), getJSON(ANSWER_URL,'answer-get')])
@@ -640,11 +656,12 @@
     document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
     document.getElementById('presence-pill')?.addEventListener('click', maybeAutoConnect);
 
+    console.log('WHO=', WHO);
     console.log('OFFER_URL=', OFFER_URL);
     console.log('ANSWER_URL=', ANSWER_URL);
   });
 
-  // ===== Eksport =====
+  // ===== Eksport dla onclick =====
   window.announceHost = announceHost;
   window.startHost    = startHost;
   window.joinMeeting  = joinMeeting;
