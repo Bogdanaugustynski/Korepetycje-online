@@ -2,31 +2,31 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto-connect + stable mic)</title>
+  <title>Zajęcia online — audio (auto-connect, fix TX student)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f4f4f4; }
-    header { background: var(--primary); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-    .title { font-weight:700; font-size:18px; flex:1 1 auto; }
-    .pill { background:#fff; color:#000; padding:8px 10px; border-radius:8px; border:1px solid #ddd; display:flex; align-items:center; gap:8px; font-weight:600; }
-    .pill.disabled { opacity:.5; pointer-events:none; }
-    .status-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; }
-    .status--on { background:#39d158; } .status--off { background:#b1b1b1; }
-    .countdown { font-weight:700; } .countdown.red { color:#ffeb3b; }
-    main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
-    .btn-tablica { padding:14px 24px; font-size:18px; background:var(--ok); color:#fff; border:none; border-radius:10px; text-decoration:none; display:inline-block; }
-    .hint { max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
-    input[type="range"] { width:200px; }
-    select { padding:6px 8px; border-radius:8px; border:1px solid #ddd; }
-    #remote-audio { width:0; height:0; opacity:0; pointer-events:none; }
-    #autoplay-banner { display:none; align-items:center; gap:10px; background:#fff3cd; border:1px solid #ffe08a; color:#663c00; padding:10px 12px; border-radius:8px; }
-    #autoplay-banner button { border:0; border-radius:8px; padding:8px 10px; cursor:pointer; background:var(--warn); color:#000; font-weight:700; }
-    #vu { width:120px;height:10px;background:#eee;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle }
-    #vu > span { display:block;height:100%;width:0;background:#28a745;transition:width .08s linear }
-    .btn-danger { background:#fff; border-color:#f1b6b6; color:#b30000; }
-    small { font-weight:600; }
+    :root { --primary:#0b74ff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Arial,sans-serif;background:#f4f6fb}
+    header{background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .title{font-weight:800;font-size:18px;margin-right:auto}
+    .pill{background:#fff;color:#111;padding:8px 10px;border-radius:10px;border:1px solid #dde3f0;display:inline-flex;align-items:center;gap:8px;font-weight:600}
+    .pill.disabled{opacity:.55;pointer-events:none}
+    .status-dot{width:14px;height:14px;border-radius:50%}
+    .status--on{background:#2dd66f}.status--off{background:#bdbdbd}
+    main{padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:18px}
+    .btn{padding:12px 18px;border-radius:10px;border:1px solid #d7e0f0;background:#fff;cursor:pointer}
+    .btn.primary{background:var(--ok);color:#fff;border:none}
+    .btn.danger{background:#fff;color:#b30000;border-color:#f3c3c3}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .slider{width:220px}
+    .badge{padding:6px 10px;border-radius:10px;background:#fff;border:1px dashed #cfd6e4;color:#2a2f3a}
+    #vu{width:120px;height:10px;background:#eef3fb;border-radius:6px;overflow:hidden}
+    #vu>span{display:block;height:100%;width:0;background:#28a745;transition:width .08s linear}
+    #autoplay{display:none;align-items:center;gap:10px;background:#fff3cd;border:1px solid #ffe08a;color:#663c00;padding:10px 12px;border-radius:10px}
+    #autoplay button{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--warn);color:#000;font-weight:800}
+    small{opacity:.9;font-weight:600}
+    audio{width:0;height:0;opacity:0;pointer-events:none}
   </style>
 </head>
 <body>
@@ -39,637 +39,391 @@
     <span id="presence-text">Niedostępny</span>
   </button>
 
-  <div class="pill"><span>👥</span><span id="participants-count">1</span></div>
+  <div class="pill">👥 <span id="participants">1</span></div>
 
-  <button class="pill disabled" id="mic-toggle" type="button" onclick="toggleMic()">
-    <span id="mic-icon">🔇</span>
-    <span id="mic-label">Wycisz mikrofon</span>
+  <button class="pill disabled" id="mic-btn" type="button" onclick="toggleMic()">
+    <span id="mic-ico">🔇</span><span id="mic-lbl">Wycisz mikrofon</span>
   </button>
 
   <div class="pill">
-    <span>🔈</span>
-    <input id="vol" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
+    🔈 <input id="vol" class="slider" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
     <span id="vol-val">100%</span>
   </div>
 
-  <div class="pill"><span>⏱</span><span id="countdown" class="countdown">Pozostało: --:--</span></div>
+  <div class="pill">⏱ <span id="timer">--:--</span></div>
 
-  <div class="pill" id="output-pill">
-    🔊 Wyjście: <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
+  <div class="pill" id="out-pill">🔊 Wyjście:
+    <select id="out" onchange="changeOutput(this.value)"><option>Ładowanie…</option></select>
   </div>
 
   <div class="pill">📶 Wejście: <div id="vu"><span></span></div></div>
 
-  <div class="pill">🧊 ICE: <small id="ice-state">init</small> <small id="ice-path" style="opacity:.8"></small></div>
-  <div class="pill">🔁 Signaling: <small id="sig-state">init</small></div>
-  <div class="pill">🗃️ Store: <small id="store-badge">offer: – , answer: –</small></div>
-
-  <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
+  <div class="pill">🧊 ICE: <small id="ice">init</small> <small id="ice-path" style="opacity:.8"></small></div>
+  <div class="pill">🔁 Signaling: <small id="sig">init</small></div>
+  <div class="pill">🗃️ Store: <small id="store">offer: –, answer: –</small></div>
 
   {% if is_teacher %}
-    <button class="pill" id="announce-host" type="button" onclick="announceHost()">📣 Ogłoś: jestem gospodarzem</button>
-    <button class="pill" id="host-connect" type="button" onclick="startHost()">🔗 Połącz (gospodarz)</button>
+    <button class="pill" id="announce" type="button" onclick="announceHost()">📣 Ogłoś: jestem gospodarzem</button>
+    <button class="pill" id="host" type="button" onclick="startHost()">🔗 Połącz (gospodarz)</button>
   {% else %}
-    <span class="pill" id="waiting-host" style="display:none;">⏳ Czekamy na gospodarza…</span>
-    <button class="pill" id="student-connect" type="button" onclick="joinMeeting()">🔗 Połącz (uczeń)</button>
+    <span class="pill" id="wait-host" style="display:none;">⏳ Czekamy na gospodarza…</span>
+    <button class="pill" id="student" type="button" onclick="joinMeeting()">🔗 Połącz (uczeń)</button>
   {% endif %}
-  <button class="pill btn-danger" id="disconnect-btn" type="button" onclick="stopPeer()" style="display:none;">🔌 Rozłącz</button>
+
+  <button class="pill btn danger" id="bye" type="button" onclick="hangup()" style="display:none;">🔌 Rozłącz</button>
 </header>
 
 <main>
-  <a class="btn-tablica" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
+  <a class="btn primary" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
 
   {% if is_teacher %}
-  <form method="POST" style="display:flex; gap:8px; flex-wrap:wrap;">
+  <form method="POST" style="display:flex;gap:8px;flex-wrap:wrap">
     {% csrf_token %}
     <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required
-           style="min-width:280px; width:420px; max-width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cfd6e4;">
+           style="min-width:280px;width:420px;max-width:100%;padding:10px 12px;border-radius:10px;border:1px solid #cfd6e4">
     <button type="submit" class="pill">💾 Zapisz link</button>
   </form>
   {% endif %}
 
-  <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
+  <div id="autoplay">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
-  <div class="hint">
-    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> i ewentualnie włącz tryb <i>relay</i> do testu.
-  </div>
+  <div class="badge">📱 Mobile wymaga <b>HTTPS</b>. Dla ciężkich NAT skonfiguruj <b>TURN</b> i ewentualnie tryb <i>relay</i>.</div>
 </main>
 
-<audio id="remote-audio" autoplay playsinline></audio>
+<audio id="remote" autoplay playsinline></audio>
 
 <script>
-  // ===== Kontekst (Django) =====
-  const rezerwacjaId = "{{ rezerwacja.id }}";
-  const csrfToken    = "{{ csrf_token }}";
-  const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
-  const WHO          = IS_TEACHER ? 'host' : 'student';
+/* ====== Kontekst szablonu ====== */
+const rezerwacjaId = "{{ rezerwacja.id }}";
+const csrfToken    = "{{ csrf_token }}";
+const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
 
-  // Absolutne URL-e (bez zgadywania prefiksów)
-  const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
-  const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
+const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
+const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
 
-  // ===== TURN (opcjonalnie) =====
-  const TURN_HOST = "twoj.turn.host";
-  const TURN_USER = "webrtc";
-  const TURN_PASS = "webrtc123";
-  const FORCE_RELAY = false;
+/* ====== TURN (opcjonalnie) ====== */
+const TURN = {
+  host: "",   // np. "turn.example.com"
+  user: "",   // np. "webrtc"
+  pass: "",   // np. "webrtc123"
+  forceRelay: false
+};
 
-  // ===== RTC config =====
-  const rtcConfig = {
-    iceServers: [
-      { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
-      // { urls:[`turn:${TURN_HOST}:3478?transport=udp`,`turn:${TURN_HOST}:3478?transport=tcp`], username: TURN_USER, credential: TURN_PASS }
-    ],
-    iceTransportPolicy: FORCE_RELAY ? "relay" : "all",
-    bundlePolicy: "max-bundle"
+/* ====== RTC config ====== */
+const rtcConfig = {
+  iceServers: [
+    { urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] },
+    ...(TURN.host ? [{ urls:[`turn:${TURN.host}:3478?transport=udp`,`turn:${TURN.host}:3478?transport=tcp`], username:TURN.user, credential:TURN.pass }] : [])
+  ],
+  iceTransportPolicy: TURN.forceRelay ? "relay" : "all",
+  bundlePolicy: "max-bundle"
+};
+
+/* ====== Stan ====== */
+let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
+let joined=false, connecting=false, negReady=false, otherOnline=false, isMuted=false;
+let offerWatch=null, vuLoop=null, inVuTimer=null;
+let gumBusy=false;
+
+/* ====== Helpers/UI ====== */
+const $ = sel => document.querySelector(sel);
+const supportsSink = ('setSinkId' in HTMLMediaElement.prototype);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+function setSig(m){ $('#sig').textContent=m; }
+function setIce(m){ $('#ice').textContent=m; }
+function setIcePath(m){ $('#ice-path').textContent=m; }
+
+function uiRefresh(){
+  $('#participants').textContent = (joined?2:1);
+  $('#mic-btn').classList.toggle('disabled', !localStream);
+  const bye = $('#bye');
+  if(joined){ bye.style.display='inline-flex'; } else { bye.style.display='none'; }
+
+  if(IS_TEACHER){
+    $('#announce').style.display = joined ? 'none' : 'inline-flex';
+    $('#host').style.display     = joined ? 'none' : 'inline-flex';
+  }else{
+    $('#student').style.display  = joined ? 'none' : 'inline-flex';
+  }
+}
+function setVolume(v){
+  $('#vol-val').textContent = v+'%';
+  const el = $('#remote'); el.volume = Math.max(0,Math.min(1,Number(v)/100));
+}
+async function populateOutputs(){
+  if(!supportsSink){ $('#out-pill').style.display='none'; return; }
+  try{
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const outs = devs.filter(d=>d.kind==='audiooutput');
+    const sel = $('#out'); sel.innerHTML='';
+    if(!outs.length){ sel.innerHTML='<option value="">Domyślne</option>'; return; }
+    outs.forEach(d=>{
+      const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||d.deviceId; sel.appendChild(o);
+    });
+  }catch(e){ $('#out-pill').style.display='none'; }
+}
+async function changeOutput(id){ if(supportsSink){ try{ await $('#remote').setSinkId(id||''); }catch(e){} } setVolume($('#vol').value); }
+
+/* ====== Audio unlock & VU ====== */
+let audioCtx=null, analyser=null, srcNode=null;
+async function ensureAudio(){
+  try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state!=='running') await audioCtx.resume(); }catch(e){}
+  try{ await $('#remote').play(); $('#autoplay').style.display='none'; }catch(e){ $('#autoplay').style.display='flex'; }
+}
+function startInputVU(stream){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(!analyser){ analyser=audioCtx.createAnalyser(); analyser.fftSize=256; }
+    if(srcNode){ try{srcNode.disconnect();}catch(e){} srcNode=null; }
+    srcNode = audioCtx.createMediaStreamSource(stream); srcNode.connect(analyser);
+    const bar = $('#vu>span');
+    if(vuLoop) cancelAnimationFrame(vuLoop);
+    const data=new Uint8Array(analyser.frequencyBinCount);
+    const tick=()=>{ analyser.getByteTimeDomainData(data); let sum=0; for(const x of data){ const v=(x-128)/128; sum+=v*v; }
+      const rms=Math.sqrt(sum/data.length); bar.style.width=Math.min(100,Math.round(rms*200))+'%'; vuLoop=requestAnimationFrame(tick); };
+    tick();
+  }catch(e){}
+}
+function startInboundStatsVU(){
+  if(inVuTimer) clearTimeout(inVuTimer);
+  const bar = $('#vu>span');
+  const loop = async ()=>{
+    try{
+      const rcv = pc?.getReceivers().find(r=>r.track && r.track.kind==='audio');
+      if(!rcv){ bar.style.width='0%'; inVuTimer=setTimeout(loop,300); return; }
+      const st = await rcv.getStats(); let level=null;
+      st.forEach(s=>{ if(s.type==='inbound-rtp' && s.kind==='audio' && typeof s.audioLevel==='number') level=s.audioLevel; });
+      bar.style.width = (level!=null) ? Math.min(100,Math.round(level*200))+'%' : '0%';
+    }catch(e){}
+    inVuTimer=setTimeout(loop,300);
+  };
+  loop();
+}
+
+/* ====== RTC core ====== */
+function attachRemoteAudio(){ $('#remote').srcObject=null; ensureAudio(); }
+
+function setupPeer(){
+  pc = new RTCPeerConnection(rtcConfig);
+  // utwórz transceiver od razu (po obu stronach)
+  audioTransceiver = pc.addTransceiver('audio', { direction:'sendrecv' });
+
+  setSig('pc:new'); setIce(pc.iceConnectionState||'new');
+
+  pc.onicegatheringstatechange = ()=>setIce(pc.iceConnectionState||pc.iceGatheringState);
+  pc.oniceconnectionstatechange = ()=>{
+    setIce(pc.iceConnectionState||''); updateIcePath();
+  };
+  pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ joined=false; uiRefresh(); } };
+
+  pc.ontrack = (e)=>{
+    const el = $('#remote');
+    if(e.streams && e.streams[0]){ el.srcObject = e.streams[0]; startInputVU(e.streams[0]); }
+    else{ if(!remoteStream) remoteStream=new MediaStream(); remoteStream.addTrack(e.track); el.srcObject=remoteStream; startInputVU(remoteStream); }
+    e.track.onunmute = ensureAudio;
+    ensureAudio(); startInboundStatsVU();
   };
 
-  // ===== Stan =====
-  let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
-  let joined=false, remoteConnected=false, otherOnline=false, isMuted=false, hostAnnounced=false;
-  let connecting=false, autoHostTried=false, autoStudentTried=false;
-  let gumInFlight=false;
+  // renegocjacja dopiero po pełnym handshaku
+  pc.onnegotiationneeded = async ()=>{
+    if(!negReady || pc.signalingState!=='stable') return;
+    try{
+      setSig('re-negotiation…');
+      const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce();
+      await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'re-offer');
+      setSig('re-negotiation offer sent');
+    }catch(e){ console.warn('onnegotiationneeded', e); }
+  };
+}
 
-  // Perfect negotiation
-  let negEnabled=false, renegInFlight=false;
-  let lastLocalOfferSDP="", lastLocalAnswerSDP="", lastSeenRemoteOfferSDP="";
-
-  // VU / audio unlock
-  let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
-  let inboundVUtimer=null, inboundReceiver=null, lastBytes=0, lastTs=0;
-
-  // Helpers
-  const supportsSinkId=('setSinkId' in HTMLMediaElement.prototype);
-  const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
-  const setSig = (m)=>{ console.log("[SIG]", m); const el=document.getElementById('sig-state'); if(el) el.textContent=m; };
-  const setIce = (m)=>{ const el=document.getElementById('ice-state'); if(el) el.textContent=m; };
-  const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
-
-  async function postJSON(url,data,label="POST"){
-    const r=await fetch(url,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
-      body:JSON.stringify(data),
-      cache:"no-store", credentials:"same-origin"
+async function requestMicNow(){
+  if(gumBusy || localStream) return;
+  gumBusy=true;
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1 }
     });
-    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
-    try { return await r.json(); } catch { return {ok:true}; }
-  }
-  async function getJSON(url,label="GET"){
-    const r=await fetch(url,{cache:"no-store",credentials:"same-origin"});
-    if(r.status===404) return null;
-    if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
-    try { return await r.json(); } catch { return null; }
-  }
+    localStream = stream;
+    const track = stream.getAudioTracks()[0];
 
-  // ===== UI =====
-  function refreshUI(){
-    const micBtn=document.getElementById('mic-toggle');
-    if(localStream) micBtn.classList.remove('disabled'); else micBtn.classList.add('disabled');
-
-    const announceBtn = document.getElementById('announce-host');
-    const hostBtn     = document.getElementById('host-connect');
-    const studentBtn  = document.getElementById('student-connect');
-    const waitHost    = document.getElementById('waiting-host');
-    const disconnect  = document.getElementById('disconnect-btn');
-
-    if(waitHost) waitHost.style.display = (hostAnnounced || otherOnline) ? 'none' : 'inline-flex';
-
-    if(joined){
-      announceBtn && (announceBtn.style.display='none');
-      hostBtn     && (hostBtn.style.display='none');
-      studentBtn  && (studentBtn.style.display='none');
-      disconnect  && (disconnect.style.display='inline-flex');
-    }else{
-      disconnect  && (disconnect.style.display='none');
-      announceBtn && (announceBtn.style.display= IS_TEACHER ? 'inline-flex' : 'none');
-      hostBtn     && (hostBtn.style.display    = IS_TEACHER ? 'inline-flex' : 'none');
-      studentBtn  && (studentBtn.style.display = !IS_TEACHER ? 'inline-flex' : 'none');
+    // 🔧 NAPRAWA: pewny transceiver + sendrecv + replaceTrack (z fallbackiem)
+    if(!audioTransceiver && pc){
+      audioTransceiver = pc.addTransceiver('audio',{direction:'sendrecv'});
+    }
+    if(audioTransceiver?.sender){
+      audioTransceiver.direction='sendrecv';
+      await audioTransceiver.sender.replaceTrack(track);
+    }else if(pc){
+      pc.addTrack(track, localStream);
     }
 
-    const me=1, withRemote=remoteConnected?2:me, count=otherOnline?Math.max(2,withRemote):withRemote;
-    const pcnt=document.getElementById('participants-count'); pcnt && (pcnt.textContent=count);
-  }
+    $('#mic-btn').classList.remove('disabled');
+    $('#mic-ico').textContent='🎙️'; $('#mic-lbl').textContent='Wycisz mikrofon';
+    uiRefresh();
+  }catch(e){ console.warn('[MIC] gUM error', e); }
+  finally{ gumBusy=false; }
+}
 
-  function toggleMic(){
-    if(!localStream){ requestMicNow(); return; }
-    const t=localStream.getAudioTracks()[0]; if(!t) return;
-    t.enabled=!t.enabled; isMuted=!t.enabled;
-    document.getElementById('mic-icon').textContent=isMuted?'🎙️':'🔇';
-    document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
-  }
-  function setVolume(v){
-    document.getElementById('vol-val').textContent=v+'%';
-    const el=document.getElementById('remote-audio');
-    el.volume=Math.max(0,Math.min(1,Number(v)/100));
-  }
-  async function populateOutputs(){
-    const pill=document.getElementById('output-pill'); const sel=document.getElementById('audio-output');
-    if(!supportsSinkId){ pill.style.display='none'; return; }
-    try{
-      const devs=await navigator.mediaDevices.enumerateDevices();
-      const outs=devs.filter(d=>d.kind==='audiooutput'); sel.innerHTML='';
-      if(!outs.length){ const opt=document.createElement('option'); opt.textContent='Domyślne'; opt.value=''; sel.appendChild(opt); return; }
-      outs.forEach(d=>{ const opt=document.createElement('option'); opt.value=d.deviceId; opt.textContent=d.label||d.deviceId; sel.appendChild(opt); });
-    }catch(e){ pill.style.display='none'; }
-  }
-  async function changeOutput(deviceId){
-    const el=document.getElementById('remote-audio');
-    if(!supportsSinkId) return;
-    try{ await el.setSinkId(deviceId||''); }catch(e){}
-    setVolume(document.getElementById('vol').value);
-  }
+function waitIce(){
+  if(!pc || pc.iceGatheringState==='complete') return Promise.resolve();
+  return new Promise(res=>{
+    const f=()=>{ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', f); res(); } };
+    pc.addEventListener('icegatheringstatechange', f);
+  });
+}
+function teardown(){
+  try{ pc?.close(); }catch(e){} pc=null; audioTransceiver=null;
+  try{ localStream?.getTracks().forEach(t=>t.stop()); }catch(e){}
+  localStream=null; remoteStream=null; joined=false; negReady=false;
+  if(vuLoop) cancelAnimationFrame(vuLoop); if(inVuTimer) clearTimeout(inVuTimer); if(offerWatch) clearTimeout(offerWatch);
+  setSig('init'); setIce('init'); setIcePath(''); uiRefresh();
+}
 
-  // ===== Audio unlock / test =====
-  async function ensureAudio(){
-    try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state!=='running') await audioCtx.resume(); }catch(e){}
-    try{ const el=document.getElementById('remote-audio'); await el.play(); document.getElementById('autoplay-banner').style.display='none'; }
-    catch(e){ document.getElementById('autoplay-banner').style.display='flex'; }
-  }
-  function playSpeakerTest(){
+/* ====== Re-offer watcher ====== */
+function startOfferWatcher(){
+  if(offerWatch) clearTimeout(offerWatch);
+  const loop = async ()=>{
     try{
-      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      g.gain.value=0.08; o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(audioCtx.destination);
-      o.start(); setTimeout(()=>{ try{o.stop();}catch(e){} }, 350);
-      document.getElementById('autoplay-banner').style.display='none';
+      if(!pc){ offerWatch=setTimeout(loop,1000); return; }
+      const off = await getJSON(OFFER_URL,'offer-watch');
+      if(off && off.type==='offer' && off.sdp){
+        if(pc.signalingState!=='stable'){ offerWatch=setTimeout(loop,1000); return; }
+        setSig('remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(off));
+        const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce();
+        await postJSON(ANSWER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'re-answer');
+        setSig('renegotiation-answer-sent');
+      }
     }catch(e){}
-  }
+    offerWatch=setTimeout(loop,1000);
+  };
+  loop();
+}
 
-  // ===== VU (wejście zdalne) =====
-  function startAudioContextVU(stream){
-    try{
-      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      if(!analyser){ analyser=audioCtx.createAnalyser(); analyser.fftSize=256; }
-      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null; }
-      vuSrc=audioCtx.createMediaStreamSource(stream); vuSrc.connect(analyser);
-      const bar=document.querySelector('#vu > span');
-      if(vuTimer) cancelAnimationFrame(vuTimer);
-      const data=new Uint8Array(analyser.frequencyBinCount);
-      const tick=()=>{
-        analyser.getByteTimeDomainData(data);
-        let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
-        const rms=Math.sqrt(sum/data.length);
-        bar.style.width=Math.min(100,Math.round(rms*200))+'%';
-        vuTimer=requestAnimationFrame(tick);
-      };
-      tick();
-    }catch(e){}
-  }
-  function startInboundStatsVU(){
-    if(!pc) return;
-    const bar=document.querySelector('#vu > span');
-    const poll=async ()=>{
-      try{
-        const receivers=pc.getReceivers().filter(r=>r.track&&r.track.kind==='audio');
-        if(!receivers.length){ bar.style.width='0%'; inboundReceiver=null; return schedule(); }
-        const rcv=inboundReceiver||receivers[0]; inboundReceiver=rcv;
-        const stats=await rcv.getStats();
-        let level=null, bytes=null, ts=null;
-        stats.forEach(s=>{
-          if(s.type==='inbound-rtp' && s.kind==='audio'){
-            if(typeof s.audioLevel==='number') level=s.audioLevel;
-            bytes=s.bytesReceived; ts=s.timestamp;
-          }
-        });
-        if(level!=null){
-          bar.style.width=Math.min(100,Math.round(level*200))+'%';
-        }else if(bytes!=null){
-          if(lastBytes && lastTs && ts>lastTs){
-            const bps=(bytes-lastBytes)*8/((ts-lastTs)/1000);
-            const norm=Math.max(0,Math.min(1,bps/64000));
-            bar.style.width=Math.round(norm*100)+'%';
-          }
-          lastBytes=bytes; lastTs=ts;
-        }else{
-          bar.style.width='0%';
-        }
-      }catch(e){}
-      schedule();
-    };
-    const schedule=()=>{ inboundVUtimer=setTimeout(poll,250); };
-    if(inboundVUtimer) clearTimeout(inboundVUtimer);
-    schedule();
-  }
+/* ====== Host ====== */
+async function startHost(){
+  if(joined||connecting) return; connecting=true;
+  const btn = $('#host'); btn.textContent='Łączenie…'; btn.classList.add('disabled');
+  try{
+    attachRemoteAudio(); setupPeer(); setSig('creating-offer');
+    const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce();
+    setSig('posting-offer'); await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'offer-post');
+    // host może pobrać mic już teraz (replaceTrack jest bezpieczne)
+    await requestMicNow();
 
-  // ===== ICE debug =====
-  function updateIceNow(){ setIce(pc ? (pc.iceConnectionState||'new') : 'init'); }
-  async function updateIcePathNow(){
-    if(!pc){ setIcePath(''); return; }
-    let localType='?', remoteType='?', proto='?';
+    setSig('waiting-answer'); let ok=false;
+    for(let i=0;i<120 && pc;i++){
+      const ans = await getJSON(ANSWER_URL,'answer-get');
+      if(ans && ans.type==='answer' && ans.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(ans)); ok=true; break; }
+      await sleep(1000);
+    }
+    if(!ok) throw new Error('Brak odpowiedzi ucznia');
+
+    joined=true; uiRefresh(); await populateOutputs();
+    negReady=true; startOfferWatcher();
+  }catch(e){ alert('Host error: '+e); teardown(); }
+  finally{ btn.textContent='🔗 Połącz (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
+}
+
+/* ====== Student ====== */
+async function joinMeeting(){
+  if(joined||connecting) return; connecting=true;
+  const btn = $('#student'); const waitE = $('#wait-host');
+  btn.textContent='Łączenie…'; btn.classList.add('disabled');
+  try{
+    attachRemoteAudio(); setupPeer(); ensureAudio();
+    setSig('fetch-offer'); waitE && (waitE.style.display='inline-flex');
+
+    let offer=null;
+    for(let i=0;i<120;i++){
+      offer = await getJSON(OFFER_URL,'offer-get');
+      if(offer && offer.type==='offer' && offer.sdp){ setSig('got-offer'); break; }
+      await sleep(1000);
+    }
+    waitE && (waitE.style.display='none');
+    if(!offer){ setSig('no-offer'); alert('Brak gospodarza (offer).'); return; }
+
+    setSig('set-remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+    // 🔑 KLUCZ: uczeń bierze mikrofon PRZED createAnswer
+    await requestMicNow();
+
+    setSig('creating-answer');
+    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce();
+    setSig('posting-answer'); await postJSON(ANSWER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'answer-post');
+
+    joined=true; uiRefresh(); await populateOutputs();
+    negReady=true; startOfferWatcher();
+  }catch(e){ alert('Join error: '+e); teardown(); }
+  finally{ btn.textContent='🔗 Połącz (uczeń)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
+}
+
+/* ====== Misc ====== */
+function toggleMic(){
+  if(!localStream){ requestMicNow(); return; }
+  const t = localStream.getAudioTracks()[0]; if(!t) return;
+  t.enabled = !t.enabled; isMuted = !t.enabled;
+  $('#mic-ico').textContent = isMuted ? '🔇' : '🎙️';
+  $('#mic-lbl').textContent = isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
+}
+function hangup(){ teardown(); }
+function updateIcePath(){ if(!pc){ setIcePath(''); return; }
+  (async()=>{
     try{
-      const stats=await pc.getStats();
-      stats.forEach(s=>{
+      const st = await pc.getStats(); let proto='?', l='?', r='?';
+      st.forEach(s=>{
         if(s.type==='transport' && s.selectedCandidatePairId){
-          const pair=stats.get(s.selectedCandidatePairId);
-          if(pair){
-            const l=stats.get(pair.localCandidateId);
-            const r=stats.get(pair.remoteCandidateId);
-            if(l){ localType=`${l.candidateType}`; proto=l.protocol; }
-            if(r){ remoteType=`${r.candidateType}`; }
-          }
+          const pair=st.get(s.selectedCandidatePairId);
+          const lc=st.get(pair.localCandidateId), rc=st.get(pair.remoteCandidateId);
+          if(lc){ l=lc.candidateType; proto=lc.protocol; }
+          if(rc){ r=rc.candidateType; }
         }
       });
-    }catch(e){}
-    setIcePath(`(${localType}→${remoteType}, ${proto})`);
-  }
+      setIcePath(`(${l}→${r}, ${proto})`);
+    }catch(e){ setIcePath(''); }
+  })();
+}
 
-  // ===== WebRTC core =====
-  function attachRemoteAudio(){
-    document.getElementById('remote-audio').srcObject=null;
-    ensureAudio();
-  }
-  function setupPeerBase(){
-    pc=new RTCPeerConnection(rtcConfig);
-    audioTransceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
-    setSig('pc:new'); updateIceNow();
+/* ====== Signaling helpers ====== */
+async function postJSON(url,data,label){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'}); if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`); try{return await r.json();}catch{return {ok:true}}}
+async function getJSON(url,label){ const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}); if(r.status===404) return null; if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`); try{return await r.json();}catch{return null}}
 
-    pc.onicegatheringstatechange = updateIceNow;
-    pc.oniceconnectionstatechange = ()=>{ updateIceNow(); updateIcePathNow(); };
-    pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); } };
+/* ====== Presence & store badge ====== */
+function pingPresence(){ fetch("{% url 'ping_online_status' %}",{method:'POST',headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},body:'rezerwacja_id='+encodeURIComponent(rezerwacjaId)}).catch(()=>{}); }
+function checkPresence(){
+  fetch(`/check-online-status/${rezerwacjaId}/`).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{
+    otherOnline = !!(d&&d.online);
+    $('#presence-dot').className = 'status-dot '+(otherOnline?'status--on':'status--off');
+    $('#presence-text').textContent = otherOnline?'Dostępny':'Niedostępny';
+    uiRefresh();
+    if(otherOnline && !joined && !connecting){ IS_TEACHER ? startHost() : joinMeeting(); }
+  }).catch(()=>{});
+}
+function updateStore(){
+  Promise.all([getJSON(OFFER_URL,'offer-get'), getJSON(ANSWER_URL,'answer-get')]).then(([o,a])=>{
+    $('#store').textContent = `offer: ${o&&o.sdp?`✓(${o.sdp.length})`:'–'}, answer: ${a&&a.sdp?`✓(${a.sdp.length})`:'–'}`;
+  }).catch(()=>{ $('#store').textContent='offer: ?, answer: ?'; });
+}
 
-    // automatyczna renegocjacja, gdy jest potrzebna i połączenie jest stabilne
-    pc.onnegotiationneeded = async ()=>{
-      if(!negEnabled || renegInFlight || !pc || pc.signalingState!=='stable') return;
-      await forceRenegotiation('onnegotiationneeded');
-    };
+/* ====== Timer ====== */
+function initTimer(){
+  const el=$('#timer'); const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
+  const end=start+55*60*1000;
+  const tick=()=>{ const d=end-Date.now(); if(d<=0){ el.textContent='Zakończone'; return; }
+    const m=Math.floor(d/60000), s=Math.floor((d%60000)/1000); el.textContent=`${m}:${String(s).padStart(2,'0')}`; };
+  tick(); setInterval(tick,1000);
+}
 
-    pc.ontrack=(ev)=>{
-      const el=document.getElementById('remote-audio');
-      if(ev.streams && ev.streams[0]){
-        if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0];
-        startAudioContextVU(ev.streams[0]);
-      }else{
-        if(!remoteStream) remoteStream=new MediaStream();
-        remoteStream.addTrack(ev.track);
-        if(el.srcObject!==remoteStream) el.srcObject=remoteStream;
-        startAudioContextVU(remoteStream);
-      }
-      ev.track.onunmute=()=>ensureAudio();
-      ensureAudio();
-      remoteConnected=true;
-      refreshUI();
-      startInboundStatsVU();
-    };
-  }
-
-  // 🔈 Poproś o mikrofon i podepnij (transceiver albo addTrack)
-  function requestMicNow(){
-    if (gumInFlight || localStream) return Promise.resolve(!!localStream);
-    gumInFlight = true;
-
-    return navigator.mediaDevices.getUserMedia({
-      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 }
-    }).then(async (stream)=>{
-      gumInFlight=false;
-      localStream = stream;
-      const track = localStream.getAudioTracks()[0];
-
-      let attached=false;
-      try{
-        if(audioTransceiver && audioTransceiver.sender){
-          audioTransceiver.direction='sendrecv';
-          await audioTransceiver.sender.replaceTrack(track);
-          attached=true;
-        }
-      }catch(e){ attached=false; }
-
-      if(!attached && pc){
-        try{ pc.addTrack(track, stream); attached=true; }catch(e){}
-      }
-
-      document.getElementById('mic-toggle').classList.remove('disabled');
-      refreshUI();
-
-      if(negEnabled) { try{ await forceRenegotiation('mic-added'); }catch(e){} }
-      return true;
-    }).catch(()=>{ gumInFlight=false; return false; });
-  }
-
-  function waitIceComplete(){
-    if(!pc) return Promise.resolve();
-    if(pc.iceGatheringState==='complete') return Promise.resolve();
-    return new Promise(res=>{
-      const f=()=>{ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', f); res(); } };
-      pc.addEventListener('icegatheringstatechange', f);
-    });
-  }
-  function teardown(){
-    try{ pc&&pc.close(); }catch(e){} pc=null;
-    audioTransceiver=null;
-    try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    localStream=null; remoteStream=null; isMuted=false; gumInFlight=false;
-    document.getElementById('mic-icon').textContent='🔇';
-    document.getElementById('mic-label').textContent='Wycisz mikrofon';
-    remoteConnected=false; joined=false; connecting=false;
-    negEnabled=false; renegInFlight=false;
-    if(vuTimer) cancelAnimationFrame(vuTimer);
-    if(inboundVUtimer) clearTimeout(inboundVUtimer);
-    setIce('init'); setIcePath(''); setSig('init');
-    refreshUI();
-  }
-
-  // ===== Perfect negotiation helpers =====
-  async function forceRenegotiation(reason='manual'){
-    if(!pc || renegInFlight) return;
-    if(pc.signalingState!=='stable') return; // unikamy glare
-
-    renegInFlight=true;
-    try{
-      setSig(`force-reneg (${reason})`);
-      const offer=await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await waitIceComplete();
-
-      lastLocalOfferSDP = pc.localDescription.sdp;
-      await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'renegotiation-offer');
-      setSig('re-negotiation offer sent');
-    }finally{
-      renegInFlight=false;
-    }
-  }
-
-  async function handleRemoteOfferIfAny(){
-    const off = await getJSON(OFFER_URL,'offer-get');
-    if(!off || !off.sdp) return false;
-
-    // ignoruj własną ofertę
-    if(off.sdp === lastLocalOfferSDP) return false;
-
-    // jeśli widzieliśmy już dokładnie tę SDP – też pomiń
-    if(off.sdp === lastSeenRemoteOfferSDP) return false;
-    lastSeenRemoteOfferSDP = off.sdp;
-
-    if(!pc) return false;
-
-    // jeśli nie w stable, odczekaj aż będzie stable
-    if(pc.signalingState !== 'stable'){
-      setSig('remote-offer pending (not stable)');
-      let tries=0;
-      while(pc && pc.signalingState!=='stable' && tries<40){ await sleep(250); tries++; }
-      if(!pc || pc.signalingState!=='stable') return false;
-    }
-
-    try{
-      setSig('remote-offer');
-      await pc.setRemoteDescription(new RTCSessionDescription(off));
-
-      const answer=await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await waitIceComplete();
-
-      lastLocalAnswerSDP = pc.localDescription.sdp;
-      await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'renegotiation-answer');
-      setSig('renegotiation-answer-sent');
-      return true;
-    }catch(e){
-      console.warn('handleRemoteOfferIfAny error', e);
-      return false;
-    }
-  }
-
-  function startOfferWatcher(){
-    let stop=false;
-    const loop=async ()=>{
-      while(!stop && pc){
-        try{ await handleRemoteOfferIfAny(); }catch(e){}
-        await sleep(1000);
-      }
-    };
-    loop();
-    return ()=>{ stop=true; };
-  }
-
-  // ===== „Ogłoś: jestem gospodarzem” =====
-  function announceHost(){ hostAnnounced = true; refreshUI(); }
-
-  // ===== Host: Połącz =====
-  async function startHost(){
-    if(joined || connecting) return; connecting=true;
-    const btn=document.getElementById('host-connect');
-    btn.textContent='Łączenie…'; btn.classList.add('disabled');
-
-    try{
-      attachRemoteAudio(); setupPeerBase();
-
-      // ⬇️ KLUCZ: mikrofon przed pierwszą ofertą
-      await requestMicNow();
-
-      setSig('creating-offer');
-      const offer=await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await waitIceComplete();
-
-      setSig('posting-offer');
-      await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'offer-post');
-      lastLocalOfferSDP = pc.localDescription.sdp;
-
-      setSig('waiting-answer');
-      for(let i=0;i<120 && pc;i++){
-        const ans=await getJSON(ANSWER_URL,'answer-get');
-        if(ans && ans.type==='answer' && ans.sdp){
-          if(pc.signalingState==='have-local-offer'){
-            await pc.setRemoteDescription(new RTCSessionDescription(ans));
-            lastLocalAnswerSDP = ans.sdp;
-            setSig('answer-set'); break;
-          }
-        }
-        await sleep(1000);
-      }
-
-      joined=true; refreshUI(); await populateOutputs();
-
-      // uruchom perfect-negotiation po handshaku
-      negEnabled = true;
-      startOfferWatcher();
-
-    } catch(err){
-      setSig('ERROR: '+String(err).slice(0,150));
-      alert('Host error: '+err);
-      teardown();
-    } finally {
-      btn.textContent='🔗 Połącz (gospodarz)'; btn.classList.remove('disabled');
-      connecting=false; updateIceNow(); updateIcePathNow();
-    }
-  }
-
-  // ===== Student: Połącz =====
-  async function joinMeeting(){
-    if(joined || connecting) return; connecting=true;
-    const btn=document.getElementById('student-connect');
-    const waitEl=document.getElementById('waiting-host');
-    btn.textContent='Łączenie…'; btn.classList.add('disabled');
-
-    try{
-      attachRemoteAudio(); setupPeerBase(); ensureAudio();
-
-      // ⬇️ KLUCZ: mikrofon zanim zrobimy answer
-      await requestMicNow();
-
-      setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
-      let offer=null;
-      for(let i=0;i<120;i++){
-        offer=await getJSON(OFFER_URL,'offer-get');
-        if(offer && offer.type==='offer' && offer.sdp){ setSig('got-offer'); break; }
-        await sleep(1000);
-      }
-      waitEl && (waitEl.style.display='none');
-      if(!offer){ setSig('no-offer'); alert('Brak gospodarza (offer).'); return; }
-
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
-      setSig('creating-answer');
-      const answer=await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await waitIceComplete();
-
-      setSig('posting-answer');
-      await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'answer-post');
-      lastLocalAnswerSDP = pc.localDescription.sdp;
-
-      joined=true; refreshUI(); await populateOutputs();
-
-      // perfect-negotiation po handshaku
-      negEnabled = true;
-      startOfferWatcher();
-
-    } catch(err){
-      setSig('ERROR: '+String(err).slice(0,150));
-      alert('Join error: '+err);
-      teardown();
-    } finally {
-      btn.textContent='🔗 Połącz (uczeń)'; btn.classList.remove('disabled');
-      connecting=false; updateIceNow(); updateIcePathNow();
-    }
-  }
-
-  function stopPeer(){ teardown(); }
-
-  // ===== AUTO-CONNECT po „Dostępny” =====
-  function maybeAutoConnect(){
-    if(!otherOnline || joined || connecting) return;
-    if(IS_TEACHER){
-      if(!autoHostTried){ autoHostTried=true; startHost(); }
-    }else{
-      if(!autoStudentTried){ autoStudentTried=true; joinMeeting(); }
-    }
-  }
-
-  // ===== Presence =====
-  function pingOnlineStatus(){
-    fetch("{% url 'ping_online_status' %}", {
-      method:"POST",
-      headers:{ "X-CSRFToken": csrfToken, "Content-Type":"application/x-www-form-urlencoded" },
-      body:"rezerwacja_id="+encodeURIComponent(rezerwacjaId)
-    }).catch(()=>{});
-  }
-  function checkOtherUserStatus(){
-    fetch(`/check-online-status/${rezerwacjaId}/`)
-      .then(r=>r.ok?r.json():Promise.reject(r.status))
-      .then(data=>{
-        otherOnline=!!(data&&data.online);
-        const dot=document.getElementById('presence-dot'), text=document.getElementById('presence-text');
-        dot.classList.toggle('status--on', otherOnline);
-        dot.classList.toggle('status--off', !otherOnline);
-        text.textContent=otherOnline?"Dostępny":"Niedostępny";
-        refreshUI();
-        maybeAutoConnect();
-      })
-      .catch(()=>{});
-  }
-
-  // ===== Store badge (diagnostyka) =====
-  function updateStoreBadge(){
-    const el=document.getElementById('store-badge');
-    Promise.all([getJSON(OFFER_URL,'offer-get'), getJSON(ANSWER_URL,'answer-get')])
-      .then(([off,ans])=>{
-        const o = off && off.sdp ? `✓(${off.sdp.length})` : '–(0)';
-        const a = ans && ans.sdp ? `✓(${ans.sdp.length})` : '–(0)';
-        el.textContent = `offer: ${o}, answer: ${a}`;
-      })
-      .catch(()=>{ el.textContent='offer: ?, answer: ?'; });
-  }
-
-  // ===== Timer & Init =====
-  function initCountdown(){
-    const el=document.getElementById('countdown');
-    const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
-    const end=start+55*60*1000;
-    function tick(){
-      const diff=end-Date.now();
-      if(diff<=0){ el.textContent="Zakończone"; el.classList.add('red'); return; }
-      const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000);
-      el.textContent=`Pozostało: ${m}:${String(s).padStart(2,'0')}`;
-      el.classList.toggle('red', m<5);
-    }
-    tick(); setInterval(tick, 1000);
-  }
-
-  document.addEventListener('DOMContentLoaded', ()=>{
-    initCountdown(); refreshUI(); populateOutputs();
-
-    pingOnlineStatus(); checkOtherUserStatus(); updateStoreBadge();
-    setInterval(pingOnlineStatus,10_000);
-    setInterval(checkOtherUserStatus,10_000);
-    setInterval(updateStoreBadge,2_000);
-
-    document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
-    document.getElementById('presence-pill')?.addEventListener('click', maybeAutoConnect);
-
-    console.log('WHO=', WHO);
-    console.log('OFFER_URL=', OFFER_URL);
-    console.log('ANSWER_URL=', ANSWER_URL);
-  });
-
-  // ===== Eksport dla onclick =====
-  window.announceHost = announceHost;
-  window.startHost    = startHost;
-  window.joinMeeting  = joinMeeting;
-  window.stopPeer     = stopPeer;
-  window.toggleMic    = toggleMic;
-  window.setVolume    = setVolume;
-  window.changeOutput = changeOutput;
-  window.playSpeakerTest = playSpeakerTest;
+/* ====== Init ====== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  initTimer(); uiRefresh(); populateOutputs();
+  $('#autoplay-btn')?.addEventListener('click', ensureAudio);
+  $('#presence-pill')?.addEventListener('click', ()=>{ if(otherOnline && !joined && !connecting){ IS_TEACHER ? startHost() : joinMeeting(); }});
+  setInterval(pingPresence, 10_000);
+  setInterval(checkPresence, 10_000);
+  setInterval(updateStore, 2_000);
+  setVolume($('#vol').value);
+});
 </script>
 </body>
 </html>
