@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (perfect negotiation + mic fallback)</title>
+  <title>Zajęcia online — audio (stabilny handshake + renegocjacja)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -103,7 +103,7 @@
   const csrfToken    = "{{ csrf_token }}";
   const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
   const WHO          = IS_TEACHER ? "teacher" : "student";
-  const POLITE       = IS_TEACHER;   // gospodarza robimy "polite"
+  const POLITE       = IS_TEACHER; // gospodarz = polite
 
   const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
   const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
@@ -130,12 +130,11 @@
   let connecting=false, autoHostTried=false, autoStudentTried=false;
   let gumInFlight=false;
 
-  // renegocjacja / perfect negotiation
-  let negEnabled=false;
-  let offerWatcherStarted=false;
+  // perfect negotiation
+  let negEnabled=false, renegInFlight=false, offerWatcherStarted=false;
+  let pendingReneg=false;
   let lastRemoteOfferSDP=null, lastLocalOfferSDP=null;
   let lastRemoteAnswerSDP=null, lastLocalAnswerSDP=null;
-  let pendingReneg=false;
 
   // VU / audio unlock
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
@@ -330,26 +329,29 @@
       ev.track.onunmute=()=>ensureAudio(); ensureAudio(); remoteConnected=true; refreshUI(); startInboundStatsVU();
     };
 
-    // PERFECT NEGOTIATION: lokalna renegocjacja
+    // perfect negotiation – lokalny trigger (po włączeniu negEnabled)
     pc.onnegotiationneeded = async () => {
-      if(!negEnabled) return;
+      if(!negEnabled || renegInFlight) return;
+      if(pc.signalingState !== 'stable') return;
       try{
-        if(pc.signalingState !== 'stable') return;
+        renegInFlight = true;
         setSig('re-negotiating…');
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         await waitIceComplete();
-        await postJSON(OFFER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'renegotiation-offer');
+        await postJSON(OFFER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'reneg-offer');
         lastLocalOfferSDP = pc.localDescription.sdp;
         setSig('re-negotiation offer sent');
       }catch(e){ console.warn('Renegotiation failed:', e); }
+      finally{ renegInFlight=false; }
     };
   }
 
   async function forceRenegotiation(reason='manual'){
-    if(!pc || !negEnabled) return;
+    if(!pc || !negEnabled || renegInFlight) return;
     if(pc.signalingState !== 'stable') return;
     try{
+      renegInFlight = true;
       setSig('force-reneg ('+reason+')');
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -357,9 +359,10 @@
       await postJSON(OFFER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'force-offer');
       lastLocalOfferSDP = pc.localDescription.sdp;
     }catch(e){ console.warn('forceReneg error:', e); }
+    finally{ renegInFlight=false; }
   }
 
-  // 🔈 mikrofon – z fallbackiem do addTrack
+  // 🔈 mikrofon – prosimy po handshaku; fallback do addTrack
   function requestMicNow(){
     if(gumInFlight || localStream) return;
     gumInFlight = true;
@@ -408,7 +411,7 @@
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
     remoteConnected=false; joined=false; connecting=false;
-    negEnabled=false; offerWatcherStarted=false; pendingReneg=false;
+    negEnabled=false; offerWatcherStarted=false; pendingReneg=false; renegInFlight=false;
     if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
     setIce('init'); setIcePath(''); setSig('init');
@@ -422,20 +425,17 @@
     if(off.sdp === lastRemoteOfferSDP) return;
     lastRemoteOfferSDP = off.sdp;
 
-    setSig('remote-offer');
     try{
       if(pc.signalingState !== 'stable'){
-        if(POLITE){
-          await pc.setLocalDescription({type:'rollback'});   // klucz na glare
-        }else{
-          return;
-        }
+        if(POLITE){ await pc.setLocalDescription({type:'rollback'}); }
+        else { return; }
       }
+      setSig('remote-offer');
       await pc.setRemoteDescription(new RTCSessionDescription(off));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await waitIceComplete();
-      await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'renegotiation-answer');
+      await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'reneg-answer');
       lastLocalAnswerSDP = pc.localDescription.sdp;
       setSig('renegotiation-answer-sent');
     }catch(e){ console.warn('handleRemoteOffer error:', e); }
@@ -486,7 +486,7 @@
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'offer-post');
       lastLocalOfferSDP = pc.localDescription.sdp;
 
-      // initial ANSWER
+      // czekaj na initial ANSWER
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
@@ -501,12 +501,13 @@
       }
 
       joined=true; refreshUI(); await populateOutputs();
-      requestMicNow(); // mic w tle
 
-      // handshake done -> włącz renegocjację i watcher
+      // dopiero TERAZ włącz renegocjację i watcher
       negEnabled = true;
       startOfferWatcher();
-      if(pendingReneg){ pendingReneg=false; forceRenegotiation('pending-mic'); }
+
+      // i dopiero TERAZ prosimy o mikrofon (wyzwoli bezpieczną renegocjację)
+      requestMicNow();
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
@@ -526,7 +527,7 @@
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
 
     try{
-      attachRemoteAudio(); setupPeerBase(); ensureAudio(); requestMicNow();
+      attachRemoteAudio(); setupPeerBase(); ensureAudio();
 
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
@@ -551,9 +552,12 @@
 
       joined=true; refreshUI(); await populateOutputs();
 
-      // handshake done -> włącz renegocjację i watcher
+      // handshake zakończony → włącz reneg+watcher
       negEnabled = true;
       startOfferWatcher();
+
+      // i teraz poproś o mikrofon (wyzwoli renegocjację)
+      requestMicNow();
       if(pendingReneg){ pendingReneg=false; forceRenegotiation('pending-mic'); }
 
     } catch(err){
