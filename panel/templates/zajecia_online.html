@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (mic select + bi-VU)</title>
+  <title>Zajęcia online — audio (stabilny join + mic select)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -114,7 +114,7 @@
   const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
 
   // ===== TURN (opcjonalnie) =====
-  const TURN_HOST = "twoj.turn.host";       // np. turn.twojadomena.pl
+  const TURN_HOST = "twoj.turn.host";
   const TURN_USER = "webrtc";
   const TURN_PASS = "webrtc123";
   const FORCE_RELAY = false;
@@ -136,7 +136,7 @@
 
   // Audio / VU
   let audioCtx=null, analyserIn=null, analyserRx=null, srcIn=null, srcRx=null, vuTimerIn=null, vuTimerRx=null;
-  let inboundVUtimer=null, inboundReceiver=null, outboundStatTimer=null, outboundSender=null;
+  let inboundVUtimer=null, inboundReceiver=null;
 
   // Helpers
   const supportsSinkId=('setSinkId' in HTMLMediaElement.prototype);
@@ -279,27 +279,6 @@
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
     schedule();
   }
-  function startOutboundStatsVU(){
-    if(!pc) return;
-    const bar=document.getElementById('vu-local');
-    const poll=async ()=>{
-      try{
-        const senders=pc.getSenders().filter(s=>s.track && s.track.kind==='audio');
-        const snd=senders[0]; outboundSender=snd;
-        if(!snd){ bar.style.width='0%'; return schedule(); }
-        const stats=await snd.getStats();
-        stats.forEach(s=>{
-          if(s.type==='outbound-rtp' && s.kind==='audio' && typeof s.audioLevel==='number'){
-            bar.style.width=Math.min(100,Math.round(s.audioLevel*200))+'%';
-          }
-        });
-      }catch(e){}
-      schedule();
-    };
-    const schedule=()=>{ outboundStatTimer=setTimeout(poll,250); };
-    if(outboundStatTimer) clearTimeout(outboundStatTimer);
-    schedule();
-  }
 
   // ===== WebRTC core =====
   function attachRemoteAudio(){
@@ -308,6 +287,7 @@
   }
   function setupPeerBase(){
     pc=new RTCPeerConnection(rtcConfig);
+    // m-line z góry, by móc później replaceTrack bez renegocjacji
     audioTransceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
     setSig('pc:new'); updateIceNow();
 
@@ -326,27 +306,30 @@
     };
   }
 
-  async function ensureLocalMic(deviceId){
-    // zawsze prosimy o mikrofon PRZED tworzeniem SDP (klik użytkownika)
-    const constraints = { audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 } };
-    if(deviceId) constraints.audio.deviceId = { exact: deviceId };
+  // gUM z timeoutem – jeśli user nie zgodzi się/nie ma mikrofonu, i tak łączymy
+  function getUserMediaWithTimeout(ms=1500, deviceId){
+    return new Promise((resolve)=>{
+      let settled=false;
+      const done=(val)=>{ if(!settled){ settled=true; resolve(val); } };
+      const constraints={ audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 } };
+      if(deviceId) constraints.audio.deviceId={ exact: deviceId };
+      navigator.mediaDevices.getUserMedia(constraints).then(stream=>done(stream)).catch(()=>done(null));
+      setTimeout(()=>done(null), ms);
+    });
+  }
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  async function attachMicIfAvailable(deviceId){
+    const stream = await getUserMediaWithTimeout(1500, deviceId);
+    if(!stream){ document.getElementById('mic-toggle').classList.add('disabled'); return; }
     if(localStream){ try{ localStream.getTracks().forEach(t=>t.stop()); }catch(e){} }
     localStream = stream;
-
-    // podmień w transceiverze
-    const track = localStream.getAudioTracks()[0];
+    const track=localStream.getAudioTracks()[0];
     if(audioTransceiver && audioTransceiver.sender){
-      await audioTransceiver.sender.replaceTrack(track);
       audioTransceiver.direction='sendrecv';
+      await audioTransceiver.sender.replaceTrack(track);
+      document.getElementById('mic-toggle').classList.remove('disabled');
     }
-
-    // włącz/odśwież VU lokalne
     startLocalVU(localStream);
-    document.getElementById('mic-toggle').classList.remove('disabled');
-
-    // odczytaj listę mikrofonów (etykiety pojawią się dopiero po zgodzie użytkownika)
     populateMicInputs(track.getSettings()?.deviceId);
   }
 
@@ -369,14 +352,7 @@
     }catch(e){}
   }
 
-  async function switchMic(deviceId){
-    try{
-      await ensureLocalMic(deviceId);
-      // jeśli jesteśmy połączeni — nic więcej nie trzeba, replaceTrack już wysłał nowy tor
-    }catch(err){
-      alert('Nie udało się przełączyć mikrofonu: '+err);
-    }
-  }
+  async function switchMic(deviceId){ await attachMicIfAvailable(deviceId||undefined); }
 
   function waitIceComplete(){
     if(!pc) return Promise.resolve();
@@ -399,7 +375,6 @@
     if(vuTimerIn) cancelAnimationFrame(vuTimerIn);
     if(vuTimerRx) cancelAnimationFrame(vuTimerRx);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
-    if(outboundStatTimer) clearTimeout(outboundStatTimer);
     setIce('init'); setIcePath(''); setSig('init');
     refreshUI();
   }
@@ -407,7 +382,7 @@
   // ===== „Ogłoś: jestem gospodarzem” =====
   function announceHost(){ hostAnnounced = true; refreshUI(); }
 
-  // ===== Host: Połącz =====
+  // ===== Host: Połącz (bez blokowania na mikrofonie) =====
   async function startHost(){
     if(joined || connecting) return; connecting=true;
     const btn=document.getElementById('host-connect');
@@ -416,10 +391,7 @@
     try{
       attachRemoteAudio(); setupPeerBase();
 
-      // 1) Mikrofon NAJPIERW
-      await ensureLocalMic();
-
-      // 2) Offer
+      // 1) Offer natychmiast
       setSig('creating-offer');
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -428,8 +400,11 @@
       setSig('posting-offer');
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer-post');
 
-      // 3) sesja aktywna
-      joined=true; refreshUI(); await populateOutputs(); startOutboundStatsVU();
+      // 2) sesja aktywna
+      joined=true; refreshUI(); await populateOutputs();
+
+      // 3) Mikrofon w tle (nie blokuje połączenia)
+      attachMicIfAvailable();
 
       // 4) czekaj na answer
       setSig('waiting-answer');
@@ -451,7 +426,7 @@
     }
   }
 
-  // ===== Student: Połącz =====
+  // ===== Student: Połącz (bez blokowania na mikrofonie) =====
   async function joinMeeting(){
     if(joined || connecting) return; connecting=true;
     const btn=document.getElementById('student-connect');
@@ -461,10 +436,7 @@
     try{
       attachRemoteAudio(); setupPeerBase(); await ensureAudio();
 
-      // 1) Mikrofon NAJPIERW
-      await ensureLocalMic();
-
-      // 2) Pobierz i ustaw OFFER
+      // 1) Pobierz i ustaw OFFER
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
       for(let i=0;i<120;i++){
@@ -477,7 +449,7 @@
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-      // 3) Odpowiedz
+      // 2) Answer natychmiast
       setSig('creating-answer');
       const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -487,8 +459,11 @@
       await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'answer-post');
       setSig('answer-posted');
 
-      // 4) sesja aktywna
-      joined=true; refreshUI(); await populateOutputs(); startOutboundStatsVU();
+      // 3) sesja aktywna
+      joined=true; refreshUI(); await populateOutputs();
+
+      // 4) Mikrofon w tle
+      attachMicIfAvailable();
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
@@ -572,7 +547,7 @@
   document.addEventListener('DOMContentLoaded', ()=>{
     initCountdown(); refreshUI(); populateOutputs();
 
-    // mik rozwinie się po pierwszym ensureLocalMic (po zgodzie); dodaj handler zmiany
+    // mic select – działa po pierwszym nadaniu uprawnień (attachMicIfAvailable)
     document.getElementById('mic-input').addEventListener('change', (e)=>switchMic(e.target.value));
 
     pingOnlineStatus(); checkOtherUserStatus();
