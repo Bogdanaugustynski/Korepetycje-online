@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto-connect + renegocjacja 2-way)</title>
+  <title>Zajęcia online — audio (stabilna renegocjacja)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -91,7 +91,7 @@
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="hint">
-    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> i/lub ustaw tryb <i>relay</i>.
+    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> i ewentualnie włącz tryb <i>relay</i>.
   </div>
 </main>
 
@@ -130,12 +130,11 @@
   let connecting=false, autoHostTried=false, autoStudentTried=false;
   let gumInFlight=false;
 
-  // Renegocjacja — pamięć ostatnich komunikatów
+  // Renegocjacja – kontrola momentu startu
+  let negEnabled=false;              // włączamy dopiero po pierwszym handshaku
   let offerWatcherStarted=false;
-  let lastRemoteOfferSDP=null;
-  let lastLocalOfferSDP=null;
-  let lastRemoteAnswerSDP=null;
-  let lastLocalAnswerSDP=null;
+  let lastRemoteOfferSDP=null, lastLocalOfferSDP=null;
+  let lastRemoteAnswerSDP=null, lastLocalAnswerSDP=null;
 
   // VU / audio unlock
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
@@ -149,12 +148,7 @@
   const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
 
   async function postJSON(url,data,label="POST"){
-    const r=await fetch(url,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
-      body:JSON.stringify(data),
-      cache:"no-store", credentials:"same-origin"
-    });
+    const r=await fetch(url,{ method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken}, body:JSON.stringify(data), cache:"no-store", credentials:"same-origin" });
     if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
     try { return await r.json(); } catch { return {ok:true}; }
   }
@@ -275,18 +269,15 @@
             bytes=s.bytesReceived; ts=s.timestamp;
           }
         });
-        if(level!=null){
-          bar.style.width=Math.min(100,Math.round(level*200))+'%';
-        }else if(bytes!=null){
+        if(level!=null){ bar.style.width=Math.min(100,Math.round(level*200))+'%'; }
+        else if(bytes!=null){
           if(lastBytes && lastTs && ts>lastTs){
             const bps=(bytes-lastBytes)*8/((ts-lastTs)/1000);
             const norm=Math.max(0,Math.min(1,bps/64000));
             bar.style.width=Math.round(norm*100)+'%';
           }
           lastBytes=bytes; lastTs=ts;
-        }else{
-          bar.style.width='0%';
-        }
+        }else{ bar.style.width='0%'; }
       }catch(e){}
       schedule();
     };
@@ -338,10 +329,10 @@
       ev.track.onunmute=()=>ensureAudio(); ensureAudio(); remoteConnected=true; refreshUI(); startInboundStatsVU();
     };
 
-    // >>> RENEGOCJACJA: gdy dodamy/zmienimy ścieżkę
+    // Renegocjacja – aktywna dopiero po initial handshake
     pc.onnegotiationneeded = async () => {
+      if(!negEnabled) return;
       try{
-        if(!joined) return;
         if(pc.signalingState !== 'stable') return;
         setSig('re-negotiating…');
         const offer = await pc.createOffer();
@@ -354,7 +345,7 @@
     };
   }
 
-  // 🔈 Poproś o mikrofon w tle; replaceTrack nie zrywa sesji
+  // 🔈 mikrofon – prosimy w tle; replaceTrack nie zrywa sesji
   function requestMicNow(){
     if(gumInFlight || localStream) return;
     gumInFlight = true;
@@ -389,28 +380,26 @@
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
     remoteConnected=false; joined=false; connecting=false;
+    negEnabled=false; offerWatcherStarted=false;
     if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
     setIce('init'); setIcePath(''); setSig('init');
     refreshUI();
   }
 
-  // ===== Watcher: oferty i odpowiedzi (po obu stronach!) =====
+  // ===== Watcher: oferty/odpowiedzi (uruchamiany po initial handshake) =====
   async function watchSignalingLoop(){
     while(true){
       await sleep(1000);
-      if(!pc) continue;
+      if(!pc || !negEnabled) continue;
 
-      // 1) Sprawdź OFERTĘ z drugiej strony
+      // 1) zdalny OFFER
       try{
         const off = await getJSON(OFFER_URL, 'offer-watch');
-        if(off && off.type==='offer' && off.sdp){
-          if(off.from && off.from === WHO){
-            // nasza własna oferta – ignorujemy
-          }else if(off.sdp !== lastRemoteOfferSDP){
+        if(off && off.type==='offer' && off.sdp && off.sdp !== lastRemoteOfferSDP){
+          if(!(off.from && off.from === WHO)){
             lastRemoteOfferSDP = off.sdp;
             setSig('remote-offer-received');
-            // Jeżeli jesteśmy gotowi – ustaw remote i odeślij answer
             if(pc.signalingState === 'stable' || pc.signalingState === 'have-remote-offer'){
               await pc.setRemoteDescription(new RTCSessionDescription(off));
               const answer = await pc.createAnswer();
@@ -422,17 +411,13 @@
             }
           }
         }
-      }catch(e){ /* no-op */ }
+      }catch(e){}
 
-      // 2) Sprawdź ODPOWIEDŹ z drugiej strony (gdy my byliśmy „offererem”)
+      // 2) zdalny ANSWER na nasz offer
       try{
         const ans = await getJSON(ANSWER_URL, 'answer-watch');
-        if(ans && ans.type==='answer' && ans.sdp){
-          // ignoruj naszą własną odpowiedź
-          if(ans.from && ans.from === WHO){
-            // own
-          }else if(ans.sdp !== lastRemoteAnswerSDP){
-            // ustaw tylko, jeśli mamy pending local offer
+        if(ans && ans.type==='answer' && ans.sdp && ans.sdp !== lastRemoteAnswerSDP){
+          if(!(ans.from && ans.from === WHO)){
             if(pc.signalingState === 'have-local-offer'){
               await pc.setRemoteDescription(new RTCSessionDescription(ans));
               setSig('answer-set');
@@ -440,7 +425,7 @@
             }
           }
         }
-      }catch(e){ /* no-op */ }
+      }catch(e){}
     }
   }
   function startOfferWatcher(){
@@ -471,18 +456,26 @@
       lastLocalOfferSDP = pc.localDescription.sdp;
 
       joined=true; refreshUI(); await populateOutputs();
-      requestMicNow();
-      startOfferWatcher(); // ⬅️ ważne: host też nasłuchuje renegocjacji
+      requestMicNow();      // może wywołać onnegotiationneeded, ale negEnabled=false -> ignorujemy
 
+      // czekamy na initial ANSWER; ustawiamy tylko gdy mamy have-local-offer
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
-          await pc.setRemoteDescription(new RTCSessionDescription(ans));
-          setSig('answer-set'); lastRemoteAnswerSDP = ans.sdp; break;
+          if(pc.signalingState === 'have-local-offer'){
+            await pc.setRemoteDescription(new RTCSessionDescription(ans));
+            setSig('answer-set'); lastRemoteAnswerSDP = ans.sdp;
+            break;
+          }
         }
         await sleep(1000);
       }
+
+      // initial handshake zakończony – od teraz wolno renegocjować
+      negEnabled = true;
+      startOfferWatcher();
+
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
       alert('Host error: '+err);
@@ -525,7 +518,10 @@
       lastLocalAnswerSDP = pc.localDescription.sdp;
 
       joined=true; refreshUI(); await populateOutputs();
-      startOfferWatcher(); // ⬅️ uczeń też nasłuchuje zmian
+
+      // initial handshake za nami – można renegocjować
+      negEnabled = true;
+      startOfferWatcher();
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
