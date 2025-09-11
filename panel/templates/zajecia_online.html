@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (fix: mic + renegocjacja)</title>
+  <title>Zajęcia online — audio (perfect negotiation)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -91,7 +91,7 @@
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="hint">
-    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> i ewentualnie włącz tryb <i>relay</i>.
+    📱 Mobile wymaga <b>HTTPS</b>. Jeśli są trudne sieci/NAT — uzupełnij <b>TURN</b> (poniżej w JS) i ewentualnie włącz tryb <i>relay</i> do testu.
   </div>
 </main>
 
@@ -103,6 +103,7 @@
   const csrfToken    = "{{ csrf_token }}";
   const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
   const WHO          = IS_TEACHER ? "teacher" : "student";
+  const POLITE       = IS_TEACHER;   // gospodarza robimy "polite"
 
   const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
   const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
@@ -129,12 +130,12 @@
   let connecting=false, autoHostTried=false, autoStudentTried=false;
   let gumInFlight=false;
 
-  // renegocjacja
+  // renegocjacja / perfect negotiation
   let negEnabled=false;
   let offerWatcherStarted=false;
   let lastRemoteOfferSDP=null, lastLocalOfferSDP=null;
   let lastRemoteAnswerSDP=null, lastLocalAnswerSDP=null;
-  let pendingReneg=false; // mic dołączony przed włączeniem renegocjacji
+  let pendingReneg=false;
 
   // VU / audio unlock
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
@@ -329,6 +330,7 @@
       ev.track.onunmute=()=>ensureAudio(); ensureAudio(); remoteConnected=true; refreshUI(); startInboundStatsVU();
     };
 
+    // PERFECT NEGOTIATION: lokalna renegocjacja
     pc.onnegotiationneeded = async () => {
       if(!negEnabled) return;
       try{
@@ -344,7 +346,6 @@
     };
   }
 
-  // wymuszona renegocjacja (gdy przegapimy onnegotiationneeded)
   async function forceRenegotiation(reason='manual'){
     if(!pc || !negEnabled) return;
     if(pc.signalingState !== 'stable') return;
@@ -372,11 +373,9 @@
         audioTransceiver.direction='sendrecv';
         await audioTransceiver.sender.replaceTrack(track);
       }
-      // UI aktywne
-      document.getElementById('mic-toggle').classList.remove('disabled');
+      document.getElementById('mic-toggle').classList.remove('disabled'); // UI aktywne
       refreshUI();
 
-      // jeśli renegocjacja jeszcze wyłączona – zapamiętaj i zrobimy ją po handshaku
       if(negEnabled) forceRenegotiation('mic-added');
       else pendingReneg = true;
     }).catch(()=>{ gumInFlight=false; });
@@ -406,45 +405,49 @@
     refreshUI();
   }
 
-  // ===== Watcher: oferty/odpowiedzi =====
+  // ===== Watcher: oferty/odpowiedzi (perfect negotiation) =====
+  async function handleRemoteOffer(off){
+    if(!off || off.type!=='offer' || !off.sdp) return;
+    if(off.from && off.from === WHO) return; // zignoruj swoje echo
+    if(off.sdp === lastRemoteOfferSDP) return;
+    lastRemoteOfferSDP = off.sdp;
+
+    setSig('remote-offer');
+    try{
+      if(pc.signalingState !== 'stable'){
+        if(POLITE){
+          await pc.setLocalDescription({type:'rollback'});   // klucz!
+        }else{
+          // impolite – ignorujemy glare
+          return;
+        }
+      }
+      await pc.setRemoteDescription(new RTCSessionDescription(off));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitIceComplete();
+      await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'renegotiation-answer');
+      lastLocalAnswerSDP = pc.localDescription.sdp;
+      setSig('renegotiation-answer-sent');
+    }catch(e){ console.warn('handleRemoteOffer error:', e); }
+  }
+
+  async function handleRemoteAnswer(ans){
+    if(!ans || ans.type!=='answer' || !ans.sdp) return;
+    if(ans.from && ans.from === WHO) return;
+    if(ans.sdp === lastRemoteAnswerSDP) return;
+    if(pc.signalingState !== 'have-local-offer') return;
+    await pc.setRemoteDescription(new RTCSessionDescription(ans));
+    lastRemoteAnswerSDP = ans.sdp;
+    setSig('answer-set');
+  }
+
   async function watchSignalingLoop(){
     while(true){
       await sleep(1000);
       if(!pc || !negEnabled) continue;
-
-      // remote OFFER
-      try{
-        const off = await getJSON(OFFER_URL, 'offer-watch');
-        if(off && off.type==='offer' && off.sdp && off.sdp !== lastRemoteOfferSDP){
-          if(!(off.from && off.from === WHO)){
-            lastRemoteOfferSDP = off.sdp;
-            setSig('remote-offer');
-            if(pc.signalingState === 'stable' || pc.signalingState === 'have-remote-offer'){
-              await pc.setRemoteDescription(new RTCSessionDescription(off));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              await waitIceComplete();
-              await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'renegotiation-answer');
-              lastLocalAnswerSDP = pc.localDescription.sdp;
-              setSig('renegotiation-answer-sent');
-            }
-          }
-        }
-      }catch(e){}
-
-      // remote ANSWER
-      try{
-        const ans = await getJSON(ANSWER_URL, 'answer-watch');
-        if(ans && ans.type==='answer' && ans.sdp && ans.sdp !== lastRemoteAnswerSDP){
-          if(!(ans.from && ans.from === WHO)){
-            if(pc.signalingState === 'have-local-offer'){
-              await pc.setRemoteDescription(new RTCSessionDescription(ans));
-              setSig('answer-set');
-              lastRemoteAnswerSDP = ans.sdp;
-            }
-          }
-        }
-      }catch(e){}
+      try{ await handleRemoteOffer(await getJSON(OFFER_URL,'offer-watch')); }catch(e){}
+      try{ await handleRemoteAnswer(await getJSON(ANSWER_URL,'answer-watch')); }catch(e){}
     }
   }
   function startOfferWatcher(){
@@ -475,17 +478,17 @@
       lastLocalOfferSDP = pc.localDescription.sdp;
 
       joined=true; refreshUI(); await populateOutputs();
-      requestMicNow(); // mic może przyjść wcześniej – obsługujemy pendingReneg
+      requestMicNow(); // mic w tle
 
-      // czekamy na initial ANSWER
+      // initial ANSWER
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
           if(pc.signalingState === 'have-local-offer'){
             await pc.setRemoteDescription(new RTCSessionDescription(ans));
-            setSig('answer-set'); lastRemoteAnswerSDP = ans.sdp;
-            break;
+            lastRemoteAnswerSDP = ans.sdp;
+            setSig('answer-set'); break;
           }
         }
         await sleep(1000);
@@ -539,7 +542,6 @@
 
       joined=true; refreshUI(); await populateOutputs();
 
-      // handshake done
       negEnabled = true;
       startOfferWatcher();
       if(pendingReneg){ pendingReneg=false; forceRenegotiation('pending-mic'); }
