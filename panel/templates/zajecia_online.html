@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (stabilny join + mic select)</title>
+  <title>Zajęcia online — audio (auto-connect + robust mic)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -23,8 +23,8 @@
     #remote-audio { width:0; height:0; opacity:0; pointer-events:none; }
     #autoplay-banner { display:none; align-items:center; gap:10px; background:#fff3cd; border:1px solid #ffe08a; color:#663c00; padding:10px 12px; border-radius:8px; }
     #autoplay-banner button { border:0; border-radius:8px; padding:8px 10px; cursor:pointer; background:var(--warn); color:#000; font-weight:700; }
-    .vu { width:120px;height:10px;background:#eee;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle }
-    .vu > span { display:block;height:100%;width:0;background:#28a745;transition:width .08s linear }
+    #vu { width:120px;height:10px;background:#eee;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle }
+    #vu > span { display:block;height:100%;width:0;background:#28a745;transition:width .08s linear }
     .btn-danger { background:#fff; border-color:#f1b6b6; color:#b30000; }
     small { font-weight:600; }
   </style>
@@ -55,20 +55,14 @@
   <div class="pill"><span>⏱</span><span id="countdown" class="countdown">Pozostało: --:--</span></div>
 
   <div class="pill" id="output-pill">
-    🔊 Wyjście:
-    <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
+    🔊 Wyjście: <select id="audio-output" onchange="changeOutput(this.value)"><option>Ładowanie...</option></select>
   </div>
 
-  <div class="pill">
-    🎤 Mój mikrofon:
-    <select id="mic-input"><option>Wczytywanie…</option></select>
-    <div class="vu" title="Poziom mojego mikrofonu"><span id="vu-local"></span></div>
-  </div>
-
-  <div class="pill">📶 Wejście (od rozmówcy): <div class="vu"><span id="vu-remote"></span></div></div>
+  <div class="pill">📶 Wejście: <div id="vu"><span></span></div></div>
 
   <div class="pill">🧊 ICE: <small id="ice-state">init</small> <small id="ice-path" style="opacity:.8"></small></div>
   <div class="pill">🔁 Signaling: <small id="sig-state">init</small></div>
+  <div class="pill">🗃️ Store: <small id="store-badge">offer: – , answer: –</small></div>
 
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
 
@@ -104,7 +98,7 @@
 <audio id="remote-audio" autoplay playsinline></audio>
 
 <script>
-  // ===== Kontekst =====
+  // ===== Kontekst (Django) =====
   const rezerwacjaId = "{{ rezerwacja.id }}";
   const csrfToken    = "{{ csrf_token }}";
   const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
@@ -133,10 +127,21 @@
   let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
   let joined=false, remoteConnected=false, otherOnline=false, isMuted=false, hostAnnounced=false;
   let connecting=false, autoHostTried=false, autoStudentTried=false;
+  let gumInFlight=false; // czy trwa proszenie o mikrofon
 
-  // Audio / VU
-  let audioCtx=null, analyserIn=null, analyserRx=null, srcIn=null, srcRx=null, vuTimerIn=null, vuTimerRx=null;
-  let inboundVUtimer=null, inboundReceiver=null;
+  // Perfect Negotiation (prosta wersja)
+  const POLITE = !IS_TEACHER; // uczeń "polite", nauczyciel "impolite"
+  let makingOffer = false;
+  let ignoreOffer = false;
+
+  // Pętla sygnalizacji po połączeniu
+  let signalingLoopTimer = null;
+  let lastSeenOfferSdp = null;
+  let lastSeenAnswerSdp = null;
+
+  // VU / audio unlock
+  let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
+  let inboundVUtimer=null, inboundReceiver=null, lastBytes=0, lastTs=0;
 
   // Helpers
   const supportsSinkId=('setSinkId' in HTMLMediaElement.prototype);
@@ -146,7 +151,12 @@
   const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
 
   async function postJSON(url,data,label="POST"){
-    const r=await fetch(url,{ method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken}, body:JSON.stringify(data), cache:"no-store", credentials:"same-origin" });
+    const r=await fetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-CSRFToken":csrfToken},
+      body:JSON.stringify(data),
+      cache:"no-store", credentials:"same-origin"
+    });
     if(!r.ok){ throw new Error(`${label} ${url} -> ${r.status} ${await r.text()}`); }
     try { return await r.json(); } catch { return {ok:true}; }
   }
@@ -187,12 +197,16 @@
   }
 
   function toggleMic(){
-    if(!localStream) return;
+    if(!localStream){
+      requestMicNow();
+      return;
+    }
     const t=localStream.getAudioTracks()[0]; if(!t) return;
     t.enabled=!t.enabled; isMuted=!t.enabled;
     document.getElementById('mic-icon').textContent=isMuted?'🎙️':'🔇';
     document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
+
   function setVolume(v){
     document.getElementById('vol-val').textContent=v+'%';
     const el=document.getElementById('remote-audio');
@@ -207,6 +221,12 @@
       if(!outs.length){ const opt=document.createElement('option'); opt.textContent='Domyślne'; opt.value=''; sel.appendChild(opt); return; }
       outs.forEach(d=>{ const opt=document.createElement('option'); opt.value=d.deviceId; opt.textContent=d.label||d.deviceId; sel.appendChild(opt); });
     }catch(e){ pill.style.display='none'; }
+  }
+  async function changeOutput(deviceId){
+    const el=document.getElementById('remote-audio');
+    if(!supportsSinkId) return;
+    try{ await el.setSinkId(deviceId||''); }catch(e){}
+    setVolume(document.getElementById('vol').value);
   }
 
   // ===== Audio unlock / test =====
@@ -225,53 +245,54 @@
     }catch(e){}
   }
 
-  // ===== VU helpers =====
-  function startLocalVU(stream){
+  // ===== VU (wejście zdalne) =====
+  function startAudioContextVU(stream){
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      if(!analyserIn){ analyserIn=audioCtx.createAnalyser(); analyserIn.fftSize=256; }
-      if(srcIn){ try{srcIn.disconnect();}catch(e){} srcIn=null; }
-      srcIn=audioCtx.createMediaStreamSource(stream); srcIn.connect(analyserIn);
-      const bar=document.getElementById('vu-local');
-      if(vuTimerIn) cancelAnimationFrame(vuTimerIn);
-      const data=new Uint8Array(analyserIn.frequencyBinCount);
-      const tick=()=>{ analyserIn.getByteTimeDomainData(data);
+      if(!analyser){ analyser=audioCtx.createAnalyser(); analyser.fftSize=256; }
+      if(vuSrc){ try{vuSrc.disconnect();}catch(e){} vuSrc=null; }
+      vuSrc=audioCtx.createMediaStreamSource(stream); vuSrc.connect(analyser);
+      const bar=document.querySelector('#vu > span');
+      if(vuTimer) cancelAnimationFrame(vuTimer);
+      const data=new Uint8Array(analyser.frequencyBinCount);
+      const tick=()=>{
+        analyser.getByteTimeDomainData(data);
         let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
-        const rms=Math.sqrt(sum/data.length); bar.style.width=Math.min(100,Math.round(rms*200))+'%';
-        vuTimerIn=requestAnimationFrame(tick);
-      }; tick();
-    }catch(e){}
-  }
-  function startRemoteVU(stream){
-    try{
-      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      if(!analyserRx){ analyserRx=audioCtx.createAnalyser(); analyserRx.fftSize=256; }
-      if(srcRx){ try{srcRx.disconnect();}catch(e){} srcRx=null; }
-      srcRx=audioCtx.createMediaStreamSource(stream); srcRx.connect(analyserRx);
-      const bar=document.getElementById('vu-remote');
-      if(vuTimerRx) cancelAnimationFrame(vuTimerRx);
-      const data=new Uint8Array(analyserRx.frequencyBinCount);
-      const tick=()=>{ analyserRx.getByteTimeDomainData(data);
-        let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
-        const rms=Math.sqrt(sum/data.length); bar.style.width=Math.min(100,Math.round(rms*200))+'%';
-        vuTimerRx=requestAnimationFrame(tick);
-      }; tick();
+        const rms=Math.sqrt(sum/data.length);
+        bar.style.width=Math.min(100,Math.round(rms*200))+'%';
+        vuTimer=requestAnimationFrame(tick);
+      };
+      tick();
     }catch(e){}
   }
   function startInboundStatsVU(){
     if(!pc) return;
-    const bar=document.getElementById('vu-remote');
+    const bar=document.querySelector('#vu > span');
     const poll=async ()=>{
       try{
         const receivers=pc.getReceivers().filter(r=>r.track&&r.track.kind==='audio');
         if(!receivers.length){ bar.style.width='0%'; inboundReceiver=null; return schedule(); }
         const rcv=inboundReceiver||receivers[0]; inboundReceiver=rcv;
         const stats=await rcv.getStats();
+        let level=null, bytes=null, ts=null;
         stats.forEach(s=>{
-          if(s.type==='inbound-rtp' && s.kind==='audio' && typeof s.audioLevel==='number'){
-            bar.style.width=Math.min(100,Math.round(s.audioLevel*200))+'%';
+          if(s.type==='inbound-rtp' && s.kind==='audio'){
+            if(typeof s.audioLevel==='number') level=s.audioLevel;
+            bytes=s.bytesReceived; ts=s.timestamp;
           }
         });
+        if(level!=null){
+          bar.style.width=Math.min(100,Math.round(level*200))+'%';
+        }else if(bytes!=null){
+          if(lastBytes && lastTs && ts>lastTs){
+            const bps=(bytes-lastBytes)*8/((ts-lastTs)/1000);
+            const norm=Math.max(0,Math.min(1,bps/64000));
+            bar.style.width=Math.round(norm*100)+'%';
+          }
+          lastBytes=bytes; lastTs=ts;
+        }else{
+          bar.style.width='0%';
+        }
       }catch(e){}
       schedule();
     };
@@ -280,79 +301,113 @@
     schedule();
   }
 
+  // ===== ICE debug =====
+  function updateIceNow(){ setIce(pc ? (pc.iceConnectionState||'new') : 'init'); }
+  async function updateIcePathNow(){
+    if(!pc){ setIcePath(''); return; }
+    let localType='?', remoteType='?', proto='?';
+    try{
+      const stats=await pc.getStats();
+      stats.forEach(s=>{
+        if(s.type==='transport' && s.selectedCandidatePairId){
+          const pair=stats.get(s.selectedCandidatePairId);
+          if(pair){
+            const l=stats.get(pair.localCandidateId);
+            const r=stats.get(pair.remoteCandidateId);
+            if(l){ localType=`${l.candidateType}`; proto=l.protocol; }
+            if(r){ remoteType=`${r.candidateType}`; }
+          }
+        }
+      });
+    }catch(e){}
+    setIcePath(`(${localType}→${remoteType}, ${proto})`);
+  }
+
   // ===== WebRTC core =====
   function attachRemoteAudio(){
     document.getElementById('remote-audio').srcObject=null;
     ensureAudio();
   }
+
   function setupPeerBase(){
     pc=new RTCPeerConnection(rtcConfig);
-    // m-line z góry, by móc później replaceTrack bez renegocjacji
     audioTransceiver=pc.addTransceiver('audio',{direction:'sendrecv'});
     setSig('pc:new'); updateIceNow();
 
     pc.onicegatheringstatechange = updateIceNow;
     pc.oniceconnectionstatechange = ()=>{ updateIceNow(); updateIcePathNow(); };
-    pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); } };
+    pc.onconnectionstatechange = ()=>{
+      if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); }
+    };
     pc.ontrack=(ev)=>{
       const el=document.getElementById('remote-audio');
-      const stream = ev.streams && ev.streams[0] ? ev.streams[0] : (remoteStream ||= new MediaStream(), remoteStream.addTrack(ev.track), remoteStream);
-      if(el.srcObject!==stream) el.srcObject=stream;
-      startRemoteVU(stream);
+      if(ev.streams && ev.streams[0]){
+        if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0];
+        startAudioContextVU(ev.streams[0]);
+      }else{
+        if(!remoteStream) remoteStream=new MediaStream();
+        remoteStream.addTrack(ev.track);
+        if(el.srcObject!==remoteStream) el.srcObject=remoteStream;
+        startAudioContextVU(remoteStream);
+      }
       ev.track.onunmute=()=>ensureAudio();
       ensureAudio();
-      remoteConnected=true; refreshUI();
+      remoteConnected=true;
+      refreshUI();
       startInboundStatsVU();
+    };
+
+    // === Renegocjacja (Perfect Negotiation-lite) ===
+    pc.onnegotiationneeded = async () => {
+      try {
+        if (!pc) return;
+        if (pc.signalingState !== 'stable') return;
+        makingOffer = true;
+        setSig('renegotiation: creating-offer');
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await waitIceComplete();
+        await postJSON(OFFER_URL, {
+          type: pc.localDescription.type,
+          sdp: pc.localDescription.sdp,
+          ts: Date.now()
+        }, 'renegotiation-offer');
+        setSig('renegotiation: offer-posted');
+        lastSeenOfferSdp = pc.localDescription.sdp;
+      } catch (e) {
+        console.warn('Renegotiation failed:', e);
+        setSig('renegotiation: ERROR');
+      } finally {
+        makingOffer = false;
+      }
     };
   }
 
-  // gUM z timeoutem – jeśli user nie zgodzi się/nie ma mikrofonu, i tak łączymy
-  function getUserMediaWithTimeout(ms=1500, deviceId){
-    return new Promise((resolve)=>{
-      let settled=false;
-      const done=(val)=>{ if(!settled){ settled=true; resolve(val); } };
-      const constraints={ audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 } };
-      if(deviceId) constraints.audio.deviceId={ exact: deviceId };
-      navigator.mediaDevices.getUserMedia(constraints).then(stream=>done(stream)).catch(()=>done(null));
-      setTimeout(()=>done(null), ms);
+  // 🔈 PROŚ O MIKROFON „W TLE” i PODPINAJ JAK TYLKO SIĘ UDA
+  function requestMicNow(){
+    if(gumInFlight || localStream) return;
+    gumInFlight = true;
+    console.log("[MIC] requesting...");
+    navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 }
+    }).then(async (stream)=>{
+      console.log("[MIC] granted");
+      gumInFlight=false;
+      localStream = stream;
+      const track = localStream.getAudioTracks()[0];
+      if(audioTransceiver && audioTransceiver.sender){
+        if (audioTransceiver.direction !== 'sendrecv') {
+          audioTransceiver.direction='sendrecv';
+        }
+        await audioTransceiver.sender.replaceTrack(track);
+        document.getElementById('mic-toggle').classList.remove('disabled');
+        // renegocjacja, jeśli będzie potrzebna, uruchomi się z onnegotiationneeded
+      }
+    }).catch((e)=>{
+      gumInFlight=false;
+      console.warn("[MIC] denied or error:", e);
     });
   }
-
-  async function attachMicIfAvailable(deviceId){
-    const stream = await getUserMediaWithTimeout(1500, deviceId);
-    if(!stream){ document.getElementById('mic-toggle').classList.add('disabled'); return; }
-    if(localStream){ try{ localStream.getTracks().forEach(t=>t.stop()); }catch(e){} }
-    localStream = stream;
-    const track=localStream.getAudioTracks()[0];
-    if(audioTransceiver && audioTransceiver.sender){
-      audioTransceiver.direction='sendrecv';
-      await audioTransceiver.sender.replaceTrack(track);
-      document.getElementById('mic-toggle').classList.remove('disabled');
-    }
-    startLocalVU(localStream);
-    populateMicInputs(track.getSettings()?.deviceId);
-  }
-
-  async function populateMicInputs(selectedId){
-    try{
-      const sel = document.getElementById('mic-input');
-      const devs = await navigator.mediaDevices.enumerateDevices();
-      const ins = devs.filter(d=>d.kind==='audioinput');
-      sel.innerHTML='';
-      if(!ins.length){
-        const opt = document.createElement('option'); opt.textContent='Brak mikrofonu'; opt.value=''; sel.appendChild(opt);
-      }else{
-        ins.forEach(d=>{
-          const opt=document.createElement('option');
-          opt.value=d.deviceId; opt.textContent=d.label || d.deviceId;
-          if(selectedId && d.deviceId===selectedId) opt.selected=true;
-          sel.appendChild(opt);
-        });
-      }
-    }catch(e){}
-  }
-
-  async function switchMic(deviceId){ await attachMicIfAvailable(deviceId||undefined); }
 
   function waitIceComplete(){
     if(!pc) return Promise.resolve();
@@ -366,15 +421,14 @@
     try{ pc&&pc.close(); }catch(e){} pc=null;
     audioTransceiver=null;
     try{ localStream&&localStream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    localStream=null; remoteStream=null; isMuted=false;
+    localStream=null; remoteStream=null; isMuted=false; gumInFlight=false;
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
-    document.getElementById('vu-local').style.width='0%';
-    document.getElementById('vu-remote').style.width='0%';
     remoteConnected=false; joined=false; connecting=false;
-    if(vuTimerIn) cancelAnimationFrame(vuTimerIn);
-    if(vuTimerRx) cancelAnimationFrame(vuTimerRx);
+    if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
+    if(signalingLoopTimer) clearInterval(signalingLoopTimer);
+    signalingLoopTimer=null;
     setIce('init'); setIcePath(''); setSig('init');
     refreshUI();
   }
@@ -382,7 +436,7 @@
   // ===== „Ogłoś: jestem gospodarzem” =====
   function announceHost(){ hostAnnounced = true; refreshUI(); }
 
-  // ===== Host: Połącz (bez blokowania na mikrofonie) =====
+  // ===== Host: Połącz =====
   async function startHost(){
     if(joined || connecting) return; connecting=true;
     const btn=document.getElementById('host-connect');
@@ -391,7 +445,6 @@
     try{
       attachRemoteAudio(); setupPeerBase();
 
-      // 1) Offer natychmiast
       setSig('creating-offer');
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -400,13 +453,10 @@
       setSig('posting-offer');
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer-post');
 
-      // 2) sesja aktywna
       joined=true; refreshUI(); await populateOutputs();
+      startSignalingLoop();   // <— nowość
+      requestMicNow();        // 🔈 mikrofon w tle
 
-      // 3) Mikrofon w tle (nie blokuje połączenia)
-      attachMicIfAvailable();
-
-      // 4) czekaj na answer
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
@@ -426,7 +476,7 @@
     }
   }
 
-  // ===== Student: Połącz (bez blokowania na mikrofonie) =====
+  // ===== Student: Połącz (bez czekania na unlock audio) =====
   async function joinMeeting(){
     if(joined || connecting) return; connecting=true;
     const btn=document.getElementById('student-connect');
@@ -434,9 +484,11 @@
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
 
     try{
-      attachRemoteAudio(); setupPeerBase(); await ensureAudio();
+      attachRemoteAudio();
+      setupPeerBase();
+      ensureAudio();   // nie czekamy
+      requestMicNow(); // 🔈 mikrofon w tle (po kliknięciu – mamy gest użytkownika)
 
-      // 1) Pobierz i ustaw OFFER
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
       for(let i=0;i<120;i++){
@@ -447,9 +499,9 @@
       waitEl && (waitEl.style.display='none');
       if(!offer){ setSig('no-offer'); alert('Brak gospodarza (offer).'); return; }
 
+      setSig('set-remote-offer');
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-      // 2) Answer natychmiast
       setSig('creating-answer');
       const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -459,11 +511,8 @@
       await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'answer-post');
       setSig('answer-posted');
 
-      // 3) sesja aktywna
       joined=true; refreshUI(); await populateOutputs();
-
-      // 4) Mikrofon w tle
-      attachMicIfAvailable();
+      startSignalingLoop();   // <— nowość
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
@@ -480,8 +529,11 @@
   // ===== AUTO-CONNECT po „Dostępny” =====
   function maybeAutoConnect(){
     if(!otherOnline || joined || connecting) return;
-    if(IS_TEACHER){ if(!autoHostTried){ autoHostTried=true; startHost(); } }
-    else { if(!autoStudentTried){ autoStudentTried=true; joinMeeting(); } }
+    if(IS_TEACHER){
+      if(!autoHostTried){ autoHostTried=true; startHost(); }
+    }else{
+      if(!autoStudentTried){ autoStudentTried=true; joinMeeting(); }
+    }
   }
 
   // ===== Presence =====
@@ -507,26 +559,69 @@
       .catch(()=>{});
   }
 
-  // ===== ICE debug =====
-  function updateIceNow(){ setIce(pc ? (pc.iceConnectionState||'new') : 'init'); }
-  async function updateIcePathNow(){
-    if(!pc){ setIcePath(''); return; }
-    let localType='?', remoteType='?', proto='?';
-    try{
-      const stats=await pc.getStats();
-      stats.forEach(s=>{
-        if(s.type==='transport' && s.selectedCandidatePairId){
-          const pair=stats.get(s.selectedCandidatePairId);
-          if(pair){
-            const l=stats.get(pair.localCandidateId);
-            const r=stats.get(pair.remoteCandidateId);
-            if(l){ localType=`${l.candidateType}`; proto=l.protocol; }
-            if(r){ remoteType=`${r.candidateType}`; }
+  // ===== Store badge (diagnostyka) =====
+  function updateStoreBadge(){
+    const el=document.getElementById('store-badge');
+    Promise.all([getJSON(OFFER_URL,'offer-get'), getJSON(ANSWER_URL,'answer-get')])
+      .then(([off,ans])=>{
+        const o = off && off.sdp ? `✓(${off.sdp.length})` : '–(0)';
+        const a = ans && ans.sdp ? `✓(${ans.sdp.length})` : '–(0)';
+        el.textContent = `offer: ${o}, answer: ${a}`;
+      })
+      .catch(()=>{ el.textContent='offer: ?, answer: ?'; });
+  }
+
+  // ===== Pętla sygnalizacji po dołączeniu =====
+  async function startSignalingLoop() {
+    if (signalingLoopTimer) clearInterval(signalingLoopTimer);
+    signalingLoopTimer = setInterval(async () => {
+      try {
+        if (!pc) return;
+
+        // Szukaj odpowiedzi na naszą lokalną ofertę
+        if (pc.localDescription && pc.localDescription.type === 'offer' &&
+            pc.signalingState === 'have-local-offer') {
+          const ans = await getJSON(ANSWER_URL, 'answer-get');
+          if (ans && ans.type === 'answer' && ans.sdp && ans.sdp !== lastSeenAnswerSdp) {
+            await pc.setRemoteDescription(new RTCSessionDescription(ans));
+            lastSeenAnswerSdp = ans.sdp;
+            setSig('answer-set (loop)');
+            await updateIcePathNow();
           }
         }
-      });
-    }catch(e){}
-    setIcePath(`(${localType}→${remoteType}, ${proto})`);
+
+        // Reaguj na zdalne oferty (renegocjacje drugiej strony)
+        const off = await getJSON(OFFER_URL, 'offer-get');
+        if (off && off.type === 'offer' && off.sdp && off.sdp !== lastSeenOfferSdp) {
+          const offerCollision = makingOffer || pc.signalingState !== 'stable';
+          ignoreOffer = !POLITE && offerCollision; // impolite ignoruje glare
+
+          if (ignoreOffer) {
+            console.warn('Ignoring glare offer (impolite).');
+            return;
+          }
+
+          setSig('remote-offer: set');
+          await pc.setRemoteDescription(new RTCSessionDescription(off));
+          lastSeenOfferSdp = off.sdp;
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await waitIceComplete();
+
+          await postJSON(ANSWER_URL, {
+            type: pc.localDescription.type,
+            sdp: pc.localDescription.sdp,
+            ts: Date.now()
+          }, 'answer-post (loop)');
+
+          setSig('answer-posted (loop)');
+          await updateIcePathNow();
+        }
+      } catch (e) {
+        console.warn('signaling loop error:', e);
+      }
+    }, 1000);
   }
 
   // ===== Timer & Init =====
@@ -547,12 +642,10 @@
   document.addEventListener('DOMContentLoaded', ()=>{
     initCountdown(); refreshUI(); populateOutputs();
 
-    // mic select – działa po pierwszym nadaniu uprawnień (attachMicIfAvailable)
-    document.getElementById('mic-input').addEventListener('change', (e)=>switchMic(e.target.value));
-
-    pingOnlineStatus(); checkOtherUserStatus();
+    pingOnlineStatus(); checkOtherUserStatus(); updateStoreBadge();
     setInterval(pingOnlineStatus,10_000);
     setInterval(checkOtherUserStatus,10_000);
+    setInterval(updateStoreBadge,2_000);
 
     document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
     document.getElementById('presence-pill')?.addEventListener('click', maybeAutoConnect);
@@ -561,19 +654,14 @@
     console.log('ANSWER_URL=', ANSWER_URL);
   });
 
-  // ===== Eksport =====
+  // ===== Eksport dla onclick =====
   window.announceHost = announceHost;
   window.startHost    = startHost;
   window.joinMeeting  = joinMeeting;
   window.stopPeer     = stopPeer;
   window.toggleMic    = toggleMic;
   window.setVolume    = setVolume;
-  window.changeOutput = async function(deviceId){
-    const el=document.getElementById('remote-audio');
-    if(!supportsSinkId) return;
-    try{ await el.setSinkId(deviceId||''); }catch(e){}
-    setVolume(document.getElementById('vol').value);
-  };
+  window.changeOutput = changeOutput;
   window.playSpeakerTest = playSpeakerTest;
 </script>
 </body>
