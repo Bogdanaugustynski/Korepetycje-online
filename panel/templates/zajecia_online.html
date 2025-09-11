@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (perfect negotiation)</title>
+  <title>Zajęcia online — audio (perfect negotiation + mic fallback)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -359,7 +359,7 @@
     }catch(e){ console.warn('forceReneg error:', e); }
   }
 
-  // 🔈 mikrofon
+  // 🔈 mikrofon – z fallbackiem do addTrack
   function requestMicNow(){
     if(gumInFlight || localStream) return;
     gumInFlight = true;
@@ -369,11 +369,21 @@
       gumInFlight=false;
       localStream = stream;
       const track = localStream.getAudioTracks()[0];
-      if(audioTransceiver && audioTransceiver.sender){
-        audioTransceiver.direction='sendrecv';
-        await audioTransceiver.sender.replaceTrack(track);
+
+      let attached = false;
+      try{
+        if(audioTransceiver && audioTransceiver.sender){
+          audioTransceiver.direction='sendrecv';
+          await audioTransceiver.sender.replaceTrack(track);
+          attached = true;
+        }
+      }catch(e){ attached = false; }
+
+      if(!attached && pc){
+        try{ pc.addTrack(track, stream); attached = true; }catch(e){}
       }
-      document.getElementById('mic-toggle').classList.remove('disabled'); // UI aktywne
+
+      document.getElementById('mic-toggle').classList.remove('disabled');
       refreshUI();
 
       if(negEnabled) forceRenegotiation('mic-added');
@@ -405,10 +415,10 @@
     refreshUI();
   }
 
-  // ===== Watcher: oferty/odpowiedzi (perfect negotiation) =====
+  // ===== Watcher: oferty/odpowiedzi =====
   async function handleRemoteOffer(off){
     if(!off || off.type!=='offer' || !off.sdp) return;
-    if(off.from && off.from === WHO) return; // zignoruj swoje echo
+    if(off.from && off.from === WHO) return;
     if(off.sdp === lastRemoteOfferSDP) return;
     lastRemoteOfferSDP = off.sdp;
 
@@ -416,9 +426,8 @@
     try{
       if(pc.signalingState !== 'stable'){
         if(POLITE){
-          await pc.setLocalDescription({type:'rollback'});   // klucz!
+          await pc.setLocalDescription({type:'rollback'});   // klucz na glare
         }else{
-          // impolite – ignorujemy glare
           return;
         }
       }
@@ -477,9 +486,6 @@
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'offer-post');
       lastLocalOfferSDP = pc.localDescription.sdp;
 
-      joined=true; refreshUI(); await populateOutputs();
-      requestMicNow(); // mic w tle
-
       // initial ANSWER
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
@@ -494,7 +500,10 @@
         await sleep(1000);
       }
 
-      // handshake done
+      joined=true; refreshUI(); await populateOutputs();
+      requestMicNow(); // mic w tle
+
+      // handshake done -> włącz renegocjację i watcher
       negEnabled = true;
       startOfferWatcher();
       if(pendingReneg){ pendingReneg=false; forceRenegotiation('pending-mic'); }
@@ -542,6 +551,7 @@
 
       joined=true; refreshUI(); await populateOutputs();
 
+      // handshake done -> włącz renegocjację i watcher
       negEnabled = true;
       startOfferWatcher();
       if(pendingReneg){ pendingReneg=false; forceRenegotiation('pending-mic'); }
