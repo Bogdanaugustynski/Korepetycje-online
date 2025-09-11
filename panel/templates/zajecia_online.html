@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto-connect + renegocjacja)</title>
+  <title>Zajęcia online — audio (auto-connect + renegocjacja 2-way)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -130,10 +130,11 @@
   let connecting=false, autoHostTried=false, autoStudentTried=false;
   let gumInFlight=false;
 
-  // Renegocjacja — śledzenie
+  // Renegocjacja — pamięć ostatnich komunikatów
   let offerWatcherStarted=false;
-  let lastLocalOfferSDP=null;
   let lastRemoteOfferSDP=null;
+  let lastLocalOfferSDP=null;
+  let lastRemoteAnswerSDP=null;
   let lastLocalAnswerSDP=null;
 
   // VU / audio unlock
@@ -349,9 +350,7 @@
         await postJSON(OFFER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'renegotiation-offer');
         lastLocalOfferSDP = pc.localDescription.sdp;
         setSig('re-negotiation offer sent');
-      }catch(e){
-        console.warn('Renegotiation failed:', e);
-      }
+      }catch(e){ console.warn('Renegotiation failed:', e); }
     };
   }
 
@@ -396,28 +395,50 @@
     refreshUI();
   }
 
-  // ===== Watcher: reaguj na nowe oferty (także renegocjacyjne) z drugiej strony =====
-  async function watchRemoteOffersLoop(){
+  // ===== Watcher: oferty i odpowiedzi (po obu stronach!) =====
+  async function watchSignalingLoop(){
     while(true){
       await sleep(1000);
       if(!pc) continue;
+
+      // 1) Sprawdź OFERTĘ z drugiej strony
       try{
         const off = await getJSON(OFFER_URL, 'offer-watch');
-        if(!off || off.type!=='offer' || !off.sdp) continue;
+        if(off && off.type==='offer' && off.sdp){
+          if(off.from && off.from === WHO){
+            // nasza własna oferta – ignorujemy
+          }else if(off.sdp !== lastRemoteOfferSDP){
+            lastRemoteOfferSDP = off.sdp;
+            setSig('remote-offer-received');
+            // Jeżeli jesteśmy gotowi – ustaw remote i odeślij answer
+            if(pc.signalingState === 'stable' || pc.signalingState === 'have-remote-offer'){
+              await pc.setRemoteDescription(new RTCSessionDescription(off));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              await waitIceComplete();
+              await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, from: WHO }, 'renegotiation-answer');
+              lastLocalAnswerSDP = pc.localDescription.sdp;
+              setSig('renegotiation-answer-sent');
+            }
+          }
+        }
+      }catch(e){ /* no-op */ }
 
-        // Pomijamy naszą własną świeżo wysłaną ofertę
-        if(off.from && off.from === WHO) continue;
-
-        if(!lastRemoteOfferSDP || off.sdp !== lastRemoteOfferSDP){
-          lastRemoteOfferSDP = off.sdp;
-          setSig('remote-offer-received');
-          await pc.setRemoteDescription(new RTCSessionDescription(off));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          await waitIceComplete();
-          await postJSON(ANSWER_URL, { type: pc.localDescription.type, sdp: pc.localDescription.sdp, to: off.from||null }, 'renegotiation-answer');
-          lastLocalAnswerSDP = pc.localDescription.sdp;
-          setSig('renegotiation-answer-sent');
+      // 2) Sprawdź ODPOWIEDŹ z drugiej strony (gdy my byliśmy „offererem”)
+      try{
+        const ans = await getJSON(ANSWER_URL, 'answer-watch');
+        if(ans && ans.type==='answer' && ans.sdp){
+          // ignoruj naszą własną odpowiedź
+          if(ans.from && ans.from === WHO){
+            // own
+          }else if(ans.sdp !== lastRemoteAnswerSDP){
+            // ustaw tylko, jeśli mamy pending local offer
+            if(pc.signalingState === 'have-local-offer'){
+              await pc.setRemoteDescription(new RTCSessionDescription(ans));
+              setSig('answer-set');
+              lastRemoteAnswerSDP = ans.sdp;
+            }
+          }
         }
       }catch(e){ /* no-op */ }
     }
@@ -425,7 +446,7 @@
   function startOfferWatcher(){
     if(offerWatcherStarted) return;
     offerWatcherStarted=true;
-    watchRemoteOffersLoop();
+    watchSignalingLoop();
   }
 
   // ===== „Ogłoś: jestem gospodarzem” =====
@@ -451,14 +472,14 @@
 
       joined=true; refreshUI(); await populateOutputs();
       requestMicNow();
-      startOfferWatcher();
+      startOfferWatcher(); // ⬅️ ważne: host też nasłuchuje renegocjacji
 
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
           await pc.setRemoteDescription(new RTCSessionDescription(ans));
-          setSig('answer-set'); break;
+          setSig('answer-set'); lastRemoteAnswerSDP = ans.sdp; break;
         }
         await sleep(1000);
       }
@@ -500,10 +521,11 @@
       await waitIceComplete();
 
       setSig('posting-answer');
-      await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'answer-post');
+      await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp, from: WHO }, 'answer-post');
+      lastLocalAnswerSDP = pc.localDescription.sdp;
 
       joined=true; refreshUI(); await populateOutputs();
-      startOfferWatcher();
+      startOfferWatcher(); // ⬅️ uczeń też nasłuchuje zmian
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
