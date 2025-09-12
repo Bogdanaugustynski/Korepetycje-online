@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto-connect + robust mic)</title>
+  <title>Zajęcia online — audio (robust student mic + diag)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -17,7 +17,7 @@
     .countdown { font-weight:700; } .countdown.red { color:#ffeb3b; }
     main { padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:18px; }
     .btn-tablica { padding:14px 24px; font-size:18px; background:var(--ok); color:#fff; border:none; border-radius:10px; text-decoration:none; display:inline-block; }
-    .hint { max-width:900px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
+    .hint { max-width:960px; background:#fff; border:1px dashed #cfd6e4; padding:12px 14px; border-radius:8px; color:#2a2f3a; }
     input[type="range"] { width:200px; }
     select { padding:6px 8px; border-radius:8px; border:1px solid #ddd; }
     #remote-audio { width:0; height:0; opacity:0; pointer-events:none; }
@@ -27,6 +27,15 @@
     #vu > span { display:block;height:100%;width:0;background:#28a745;transition:width .08s linear }
     .btn-danger { background:#fff; border-color:#f1b6b6; color:#b30000; }
     small { font-weight:600; }
+
+    /* overlay diag */
+    #mic-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); align-items:center; justify-content:center; z-index:9999; }
+    #mic-modal { background:#fff; max-width:680px; width:92%; padding:18px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.2); }
+    #mic-modal h3 { margin:0 0 8px 0; }
+    #mic-modal pre { background:#f7f7f7; padding:10px; border-radius:8px; max-height:200px; overflow:auto; }
+    .btn-primary { background:var(--ok); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:800; }
+    .btn-secondary { background:#fff; color:#111; border:1px solid #ddd; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; }
+    .badge-mic { padding:6px 10px; border-radius:10px; background:#fff; border:1px solid #ddd; }
   </style>
 </head>
 <body>
@@ -46,11 +55,10 @@
     <span id="mic-label">Wycisz mikrofon</span>
   </button>
 
-  <!-- ⬇️ NOWE: widoczne TYLKO u ucznia do czasu udzielenia zgody na mikrofon -->
+  <!-- widoczne TYLKO u ucznia: miękkie i twarde proszenie o mic -->
   {% if not is_teacher %}
-    <button class="pill" id="student-mic-request" type="button" onclick="studentRequestMic()">
-      🎙️ Zezwól na mikrofon (uczeń)
-    </button>
+    <button class="pill" id="student-mic-soft" type="button" onclick="studentSoftMic()">🎙️ Zezwól na mikrofon (uczeń — SOFT)</button>
+    <button class="pill" id="student-mic-hard" type="button" onclick="studentHardMic()">🎙️ Włącz mikrofon (uczeń — HARD)</button>
   {% endif %}
 
   <div class="pill">
@@ -70,6 +78,8 @@
   <div class="pill">🧊 ICE: <small id="ice-state">init</small> <small id="ice-path" style="opacity:.8"></small></div>
   <div class="pill">🔁 Signaling: <small id="sig-state">init</small></div>
   <div class="pill">🗃️ Store: <small id="store-badge">offer: – , answer: –</small></div>
+
+  <div class="pill badge-mic">🎤 Mic: <span id="mic-state">brak</span></div>
 
   <button class="pill" type="button" onclick="playSpeakerTest()">🔉 Test głośnika</button>
 
@@ -98,10 +108,29 @@
   <div id="autoplay-banner">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="hint">
-    📱 Mobile wymaga <b>HTTPS</b>. Jeśli to w <code>&lt;iframe&gt;</code>, dodaj atrybut <code>allow="microphone; autoplay; clipboard-write"</code>.
-    Przy trudnych NAT – skonfiguruj <b>TURN</b> i ewentualnie wymuś <i>relay</i>.
+    📱 Mobile wymaga <b>HTTPS</b>. Jeżeli to w <code>&lt;iframe&gt;</code>, <b>koniecznie</b> dodaj <code>allow="microphone; autoplay; clipboard-write"</code>.
+    Serwer nie może blokować polityką: nagłówek <code>Permissions-Policy: microphone=(self)</code>.
   </div>
 </main>
+
+<!-- Overlay diagnostyczny -->
+<div id="mic-overlay">
+  <div id="mic-modal">
+    <h3>Diagnoza mikrofonu (uczeń)</h3>
+    <div id="mic-warnings" style="color:#b30000;font-weight:700;display:none;margin-bottom:8px;"></div>
+    <div><button class="btn-primary" onclick="diagEnumerate()">🔍 Odśwież listę urządzeń</button>
+         <button class="btn-secondary" onclick="diagPermission()">🛡️ Sprawdź stan uprawnienia</button></div>
+    <p style="margin:10px 0 6px 0"><b>Urządzenia:</b></p>
+    <pre id="diag-devices">—</pre>
+    <p style="margin:10px 0 6px 0"><b>Stan uprawnienia:</b></p>
+    <pre id="diag-perm">—</pre>
+    <p style="margin:10px 0 6px 0"><b>Ostatni błąd getUserMedia:</b></p>
+    <pre id="diag-error">—</pre>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="btn-secondary" onclick="closeMicOverlay()">Zamknij</button>
+    </div>
+  </div>
+</div>
 
 <audio id="remote-audio" autoplay playsinline></audio>
 
@@ -134,8 +163,7 @@
   // ===== Stan =====
   let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
   let joined=false, remoteConnected=false, otherOnline=false, isMuted=false, hostAnnounced=false;
-  let connecting=false, autoHostTried=false, autoStudentTried=false;
-  let gumInFlight=false; // czy trwa proszenie o mikrofon
+  let connecting=false, autoHostTried=false, autoStudentTried=false, gumInFlight=false;
 
   // VU / audio unlock
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
@@ -147,6 +175,7 @@
   const setSig = (m)=>{ console.log("[SIG]", m); const el=document.getElementById('sig-state'); if(el) el.textContent=m; };
   const setIce = (m)=>{ const el=document.getElementById('ice-state'); if(el) el.textContent=m; };
   const setIcePath=(m)=>{ const el=document.getElementById('ice-path'); if(el) el.textContent=m; };
+  const setMicState=(t)=>{ const el=document.getElementById('mic-state'); if(el) el.textContent=t; };
 
   async function postJSON(url,data,label="POST"){
     const r=await fetch(url,{
@@ -170,12 +199,11 @@
     const micBtn=document.getElementById('mic-toggle');
     if(localStream) micBtn.classList.remove('disabled'); else micBtn.classList.add('disabled');
 
-    // ⬇️ nowy przycisk dla ucznia
-    const stuMicBtn=document.getElementById('student-mic-request');
-    if(stuMicBtn){
-      // widoczny, jeśli uczeń i jeszcze nie ma streamu oraz nie trwa proszenie
-      stuMicBtn.style.display = (!IS_TEACHER && !localStream && !gumInFlight) ? 'inline-flex' : 'none';
-    }
+    // przyciski ucznia
+    const soft=document.getElementById('student-mic-soft');
+    const hard=document.getElementById('student-mic-hard');
+    if(soft){ soft.style.display = (!IS_TEACHER && !localStream && !gumInFlight) ? 'inline-flex' : 'none'; }
+    if(hard){ hard.style.display = (!IS_TEACHER && !localStream && !gumInFlight) ? 'inline-flex' : 'none'; }
 
     const announceBtn = document.getElementById('announce-host');
     const hostBtn     = document.getElementById('host-connect');
@@ -202,13 +230,9 @@
   }
 
   function toggleMic(){
-    if(!localStream){
-      requestMicNow(); // jeśli nie mamy dostępu, poproś teraz
-      return;
-    }
+    if(!localStream){ requestMicHard(true); return; }
     const t=localStream.getAudioTracks()[0]; if(!t) return;
     t.enabled=!t.enabled; isMuted=!t.enabled;
-    // 🔧 poprawka ikon/opisu: 🔇 = wyciszony, 🎙️ = włączony
     document.getElementById('mic-icon').textContent=isMuted?'🔇':'🎙️';
     document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
@@ -348,46 +372,92 @@
     };
   }
 
-  // ===== MIC =====
-  function insecureGuard(){
-    if(!window.isSecureContext){
-      alert('Aby użyć mikrofonu, strona musi działać przez HTTPS (lub na localhost).');
-      return true;
-    }
-    return false;
+  // ===== MIC: SOFT i HARD =====
+  function insecureHints(){
+    let warn=[];
+    if(!window.isSecureContext) warn.push("• Strona musi działać przez HTTPS (lub na localhost).");
+    if(window.top !== window.self) warn.push('• To jest w <iframe>. Dodaj na iframie: allow="microphone; autoplay; clipboard-write".');
+    warn.push("• Jeśli wcześniej kliknięto „Zablokuj”, wyczyść ustawienia strony (ikona kłódki → Mikr.: Zezwalaj).");
+    warn.push('• Serwer nie może blokować: nagłówek Permissions-Policy powinien zawierać co najmniej: microphone=(self).');
+    return warn.join("\n");
   }
 
-  // ⬇️ wywołuj TYLKO po geście użytkownika (klik)
-  function requestMicNow(){
+  function openMicOverlay(msg){
+    const ov=document.getElementById('mic-overlay');
+    const warn=document.getElementById('mic-warnings');
+    if(msg){ warn.style.display='block'; warn.textContent=msg; } else { warn.style.display='none'; warn.textContent=''; }
+    ov.style.display='flex';
+  }
+  function closeMicOverlay(){ document.getElementById('mic-overlay').style.display='none'; }
+
+  async function diagEnumerate(){
+    const out=document.getElementById('diag-devices');
+    try{
+      const list=await navigator.mediaDevices.enumerateDevices();
+      out.textContent = list.map(d=>`${d.kind}  id=${d.deviceId||'?'}  label=${d.label||'(puste — brak uprawnień?)'}`).join("\n") || '— brak urządzeń —';
+    }catch(e){ out.textContent=String(e); }
+  }
+  async function diagPermission(){
+    const out=document.getElementById('diag-perm');
+    try{
+      if(navigator.permissions?.query){
+        const st=await navigator.permissions.query({name:'microphone'});
+        out.textContent = `state=${st.state}`;
+      }else{
+        out.textContent = 'API Permissions niedostępne w tej przeglądarce.';
+      }
+    }catch(e){ out.textContent=String(e); }
+  }
+  function diagError(e){
+    const out=document.getElementById('diag-error');
+    out.textContent = e ? `${e.name}: ${e.message}` : '—';
+  }
+
+  // miękkie proszenie — bez await, tylko żeby wywołać prompt
+  function studentSoftMic(){
+    requestMicHard(false); // bez overlayu
+  }
+  // twarde proszenie — z overlayem i diagnostyką
+  function studentHardMic(){
+    openMicOverlay(insecureHints());
+    requestMicHard(true);
+    diagEnumerate(); diagPermission();
+  }
+
+  // kluczowa funkcja: wywoływać po geście użytkownika!
+  async function requestMicHard(showOverlayOnError){
     if(gumInFlight || localStream) return;
-    gumInFlight = true; refreshUI();
-    navigator.mediaDevices.getUserMedia({
-      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 }
-    }).then(async (stream)=>{
-      gumInFlight=false;
+    gumInFlight=true; refreshUI();
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio:{
+          echoCancellation:true,
+          noiseSuppression:true,
+          autoGainControl:true,
+          channelCount:1,
+          sampleRate:48000
+        }
+      });
       localStream = stream;
-      const track = localStream.getAudioTracks()[0];
-      if(audioTransceiver && audioTransceiver.sender){
+      const track = stream.getAudioTracks()[0];
+      setMicState('gotowy');
+      if(audioTransceiver?.sender){
         audioTransceiver.direction='sendrecv';
         await audioTransceiver.sender.replaceTrack(track);
-        document.getElementById('mic-toggle').classList.remove('disabled');
-        // włączamy ikonę 🎙️ (nie wyciszony)
-        isMuted=false;
-        document.getElementById('mic-icon').textContent='🎙️';
-        document.getElementById('mic-label').textContent='Wycisz mikrofon';
       }
-      refreshUI();
-    }).catch((e)=>{
+      document.getElementById('mic-toggle').classList.remove('disabled');
+      isMuted=false;
+      document.getElementById('mic-icon').textContent='🎙️';
+      document.getElementById('mic-label').textContent='Wycisz mikrofon';
+      closeMicOverlay();
+    }catch(e){
+      setMicState('zablokowany');
+      diagError(e);
+      if(showOverlayOnError) openMicOverlay(insecureHints() + `\n\nBłąd: ${e.name}`);
+      console.warn('[MIC] getUserMedia error:', e);
+    }finally{
       gumInFlight=false; refreshUI();
-      console.warn("[MIC] denied or error:", e);
-    });
-  }
-
-  // ⬇️ specjalny handler dla przycisku ucznia
-  function studentRequestMic(){
-    if(insecureGuard()) return;
-    attachRemoteAudio(); // na wszelki wypadek odblokuj audioContext
-    requestMicNow();
+    }
   }
 
   function waitIceComplete(){
@@ -405,6 +475,7 @@
     localStream=null; remoteStream=null; isMuted=false; gumInFlight=false;
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
+    setMicState('brak');
     remoteConnected=false; joined=false; connecting=false;
     if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
@@ -418,14 +489,12 @@
   // ===== Host: Połącz =====
   async function startHost(){
     if(joined || connecting) return; connecting=true;
-    if(insecureGuard()){ connecting=false; return; }
     const btn=document.getElementById('host-connect');
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
 
     try{
       attachRemoteAudio(); setupPeerBase();
 
-      // (host może też kliknąć mic-toggle lub oddzielny przycisk – ale nie wymagamy)
       setSig('creating-offer');
       const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -435,8 +504,9 @@
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer-post');
 
       joined=true; refreshUI(); await populateOutputs();
-      // delikatnie poproś o mic w tle (po kliknięciu "Połącz")
-      requestMicNow();
+
+      // host może poprosić o mic po kliknięciu
+      requestMicHard(false);
 
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
@@ -457,10 +527,9 @@
     }
   }
 
-  // ===== Student: Połącz =====
+  // ===== Student: Połącz (wymuś mic PRZED SDP) =====
   async function joinMeeting(){
     if(joined || connecting) return; connecting=true;
-    if(insecureGuard()){ connecting=false; return; }
     const btn=document.getElementById('student-connect');
     const waitEl=document.getElementById('waiting-host');
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
@@ -468,8 +537,9 @@
     try{
       attachRemoteAudio(); setupPeerBase(); ensureAudio();
 
-      // 🔑 POPROŚ O MIKROFON ZARAZ PO KLIKU (pewny prompt)
-      requestMicNow();
+      // 🔑 HARD mic: wymusza prompt i dodaje track PRZED SDP
+      // jeśli użytkownik kliknął „HARD” wcześniej – to i tak przejdzie natychmiast
+      await requestMicHard(false);
 
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
@@ -570,6 +640,12 @@
   document.addEventListener('DOMContentLoaded', ()=>{
     initCountdown(); refreshUI(); populateOutputs();
 
+    // alarmy środowiskowe
+    if(!window.isSecureContext || window.top !== window.self){
+      openMicOverlay(insecureHints());
+      diagEnumerate(); diagPermission();
+    }
+
     pingOnlineStatus(); checkOtherUserStatus(); updateStoreBadge();
     setInterval(pingOnlineStatus,10_000);
     setInterval(checkOtherUserStatus,10_000);
@@ -577,9 +653,6 @@
 
     document.getElementById('autoplay-btn')?.addEventListener('click', ensureAudio);
     document.getElementById('presence-pill')?.addEventListener('click', maybeAutoConnect);
-
-    console.log('OFFER_URL=', OFFER_URL);
-    console.log('ANSWER_URL=', ANSWER_URL);
   });
 
   // ===== Eksport dla onclick =====
@@ -591,7 +664,13 @@
   window.setVolume    = setVolume;
   window.changeOutput = changeOutput;
   window.playSpeakerTest = playSpeakerTest;
-  window.studentRequestMic = studentRequestMic;
+
+  // overlay & diag
+  window.studentSoftMic = studentSoftMic;
+  window.studentHardMic = studentHardMic;
+  window.closeMicOverlay = closeMicOverlay;
+  window.diagEnumerate = diagEnumerate;
+  window.diagPermission = diagPermission;
 </script>
 </body>
 </html>
