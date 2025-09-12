@@ -27,8 +27,6 @@
     #autoplay button{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--warn);color:#000;font-weight:800}
     small{opacity:.9;font-weight:600}
     audio{width:0;height:0;opacity:0;pointer-events:none}
-    details{max-width:980px}
-    details summary{cursor:pointer;font-weight:800}
   </style>
 </head>
 <body>
@@ -46,11 +44,6 @@
   <button class="pill disabled" id="mic-btn" type="button" onclick="toggleMic()">
     <span id="mic-ico">🔇</span><span id="mic-lbl">Wycisz mikrofon</span>
   </button>
-
-  <!-- NOWE: ręczne sterowanie mikrofonem -->
-  <button class="pill" id="force-mic" type="button" onclick="forceMic()">🎙️ Pobierz mikrofon</button>
-  <button class="pill disabled" id="restart-mic" type="button" onclick="restartMic()">♻️ Restart mikrofonu</button>
-  <button class="pill disabled" id="force-replace" type="button" onclick="forceReplace()">🔧 Wymuś replaceTrack</button>
 
   <div class="pill">
     🔈 <input id="vol" class="slider" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
@@ -74,7 +67,7 @@
     <button class="pill" id="host" type="button" onclick="startHost()">🔗 Połącz (gospodarz)</button>
   {% else %}
     <span class="pill" id="wait-host" style="display:none;">⏳ Czekamy na gospodarza…</span>
-    <button class="pill" id="student" type="button" onclick="joinMeeting()">🔗 Połącz (uczeń)</button>
+    <button class="pill" id="student" type="button" onclick="joinMeeting()">🔗 Kliknij, aby połączyć audio</button>
   {% endif %}
 
   <button class="pill btn danger" id="bye" type="button" onclick="hangup()" style="display:none;">🔌 Rozłącz</button>
@@ -95,27 +88,6 @@
   <div id="autoplay">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="badge">📱 Mobile wymaga <b>HTTPS</b>. Dla ciężkich NAT skonfiguruj <b>TURN</b> i ewentualnie tryb <i>relay</i>.</div>
-
-  <!-- TWOJA NOTATKA — wstawiona 1:1 jako referencja -->
-  <details>
-    <summary>📝 Notatka techniczna (dlaczego ta wersja jest lepsza)</summary>
-    <div style="background:#fff;padding:12px 14px;border:1px solid #e6ecf7;border-radius:10px;margin-top:8px;line-height:1.5">
-      <p><b>Nie, ten kod nie jest identyczny z poprzednim. Poprawiłeś go, wprowadzając dwie kluczowe zmiany, które znacznie poprawiają jego niezawodność:</b></p>
-      <p><b>1. Unified-Plan Transceiver</b><br>
-      W poprzedniej wersji używałeś <code>pc.addTransceiver('audio', { direction:'sendrecv' })</code> w funkcji <code>setupPeer()</code>, ale później w <code>requestMicNow()</code> miałeś logikę, która mogła ten transceiver tworzyć ponownie lub dodawać track w mniej optymalny sposób. W obecnym kodzie, w <code>requestMicNow()</code>, najpierw sprawdzasz, czy transceiver istnieje, a jeśli nie, to go tworzysz, a następnie używasz <code>replaceTrack()</code>. To podejście jest bardziej spójne.</p>
-      <p><b>2. Spójna logika połączeń</b><br>
-      W funkcji <code>startHost()</code> dodałeś <code>await requestMicNow();</code> po wysłaniu oferty, ale przed oczekiwaniem na odpowiedź. To była główna przyczyna wcześniejszych problemów. W nowym kodzie zachowałeś tę samą logikę. Ale, co ważne, ta sama logiczna kolejność jest teraz zastosowana także w funkcji <code>joinMeeting()</code>, co sprawia, że obie strony mają już strumień audio, gdy tworzą swoje finalne SDP (Session Description Protocol).</p>
-      <p><b>Obie wersje kodu mają tę samą podstawową logikę:</b></p>
-      <ul>
-        <li>Tworzenie PeerConnection i transceivers.</li>
-        <li>Pobranie mikrofonu po rozpoczęciu procesu SDP.</li>
-        <li>Czekanie na odpowiedzi i renegocjacje.</li>
-      </ul>
-      <p><b>Co jest kluczową różnicą?</b><br>
-      W najnowszym kodzie, który przysłałeś, logika <code>requestMicNow()</code> jest bardziej defensywna i spójna w obu funkcjach, co jest dobre. Natomiast, jeśli problem z mikrofonem nauczyciela nadal występował, mogło to wynikać z kolejności operacji. W twojej najnowszej wersji kodu nadal zachowujesz tę potencjalnie problematyczną kolejność, gdzie <code>requestMicNow()</code> jest wywoływane w środku procesu SDP, a nie na jego początku. To jest sedno problemu.</p>
-      <p><b>Aby uniknąć tego błędu</b>, najlepszą praktyką jest zawsze pobieranie mikrofonu na początku, a dopiero potem rozpoczynanie całego procesu SDP. To zapewnia, że początkowa oferta i odpowiedź zawierają już wszystkie informacje o mediach, co eliminuje potrzebę renegocjacji.</p>
-    </div>
-  </details>
 </main>
 
 <audio id="remote" autoplay playsinline></audio>
@@ -165,12 +137,6 @@ function setIcePath(m){ $('#ice-path').textContent=m; }
 function uiRefresh(){
   $('#participants').textContent = (joined?2:1);
   $('#mic-btn').classList.toggle('disabled', !localStream);
-
-  // nowe przyciski mic
-  $('#force-mic').classList.toggle('disabled', !!gumBusy);
-  $('#restart-mic').classList.toggle('disabled', !localStream || !!gumBusy);
-  $('#force-replace').classList.toggle('disabled', !localStream || !audioTransceiver || !!gumBusy);
-
   const bye = $('#bye');
   if(joined){ bye.style.display='inline-flex'; } else { bye.style.display='none'; }
 
@@ -272,8 +238,8 @@ function setupPeer(){
 }
 
 async function requestMicNow(){
-  if(gumBusy || localStream) { uiRefresh(); return; }
-  gumBusy=true; uiRefresh();
+  if(gumBusy || localStream) return;
+  gumBusy=true;
   try{
     const stream = await navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1 }
@@ -281,7 +247,7 @@ async function requestMicNow(){
     localStream = stream;
     const track = stream.getAudioTracks()[0];
 
-    // pewny transceiver + sendrecv + replaceTrack (z fallbackiem)
+    // 🔧 NAPRAWA: pewny transceiver + sendrecv + replaceTrack (z fallbackiem)
     if(!audioTransceiver && pc){
       audioTransceiver = pc.addTransceiver('audio',{direction:'sendrecv'});
     }
@@ -296,23 +262,7 @@ async function requestMicNow(){
     $('#mic-ico').textContent='🎙️'; $('#mic-lbl').textContent='Wycisz mikrofon';
     uiRefresh();
   }catch(e){ console.warn('[MIC] gUM error', e); }
-  finally{ gumBusy=false; uiRefresh(); }
-}
-
-// NOWE: wymuszenia ręczne
-function forceMic(){ requestMicNow(); }
-function restartMic(){
-  try{ localStream?.getTracks().forEach(t=>t.stop()); }catch(e){}
-  localStream=null;
-  requestMicNow();
-}
-function forceReplace(){
-  const t = localStream?.getAudioTracks?.()[0];
-  if(t && audioTransceiver?.sender){
-    audioTransceiver.direction='sendrecv';
-    audioTransceiver.sender.replaceTrack(t).catch(()=>{});
-  }
-  uiRefresh();
+  finally{ gumBusy=false; }
 }
 
 function waitIce(){
@@ -377,35 +327,70 @@ async function startHost(){
 
 /* ====== Student ====== */
 async function joinMeeting(){
-  if(joined||connecting) return; connecting=true;
-  const btn = $('#student'); const waitE = $('#wait-host');
-  btn.textContent='Łączenie…'; btn.classList.add('disabled');
+  if(joined||connecting) return;
+  connecting=true;
+  const btn = $('#student');
+  const waitE = $('#wait-host');
+
+  btn.textContent='Łączenie…'; 
+  btn.classList.add('disabled');
   try{
-    attachRemoteAudio(); setupPeer(); ensureAudio();
-    setSig('fetch-offer'); waitE && (waitE.style.display='inline-flex');
+    attachRemoteAudio();
+    setupPeer();
+    ensureAudio();
+
+    setSig('fetch-offer'); 
+    waitE && (waitE.style.display='inline-flex');
 
     let offer=null;
     for(let i=0;i<120;i++){
       offer = await getJSON(OFFER_URL,'offer-get');
-      if(offer && offer.type==='offer' && offer.sdp){ setSig('got-offer'); break; }
+      if(offer && offer.type==='offer' && offer.sdp){ 
+        setSig('got-offer'); 
+        break; 
+      }
       await sleep(1000);
     }
+
     waitE && (waitE.style.display='none');
-    if(!offer){ setSig('no-offer'); alert('Brak gospodarza (offer).'); return; }
+    if(!offer){ 
+      setSig('no-offer'); 
+      alert('Brak gospodarza (offer).'); 
+      return; 
+    }
 
-    setSig('set-remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    setSig('set-remote-offer'); 
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-    // KLUCZ: uczeń bierze mikrofon PRZED createAnswer
-    await requestMicNow();
+    // 🔑 KLUCZ: pobieramy mikrofon TYLKO po kliknięciu przycisku
+    $('#mic-btn').classList.remove('disabled');
+    $('#mic-btn').onclick = async function(){
+      await requestMicNow();
+      $('#mic-btn').onclick = toggleMic; // przycisk teraz służy do mute/unmute
+    };
 
     setSig('creating-answer');
-    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce();
-    setSig('posting-answer'); await postJSON(ANSWER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'answer-post');
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await waitIce();
+    setSig('posting-answer');
+    await postJSON(ANSWER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'answer-post');
 
-    joined=true; uiRefresh(); await populateOutputs();
-    negReady=true; startOfferWatcher();
-  }catch(e){ alert('Join error: '+e); teardown(); }
-  finally{ btn.textContent='🔗 Połącz (uczeń)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
+    joined=true;
+    uiRefresh();
+    await populateOutputs();
+    negReady=true;
+    startOfferWatcher();
+
+  }catch(e){
+    alert('Join error: '+e);
+    teardown();
+  }finally{
+    btn.textContent='🔗 Połącz (uczeń)'; 
+    btn.classList.remove('disabled'); 
+    connecting=false; 
+    updateIcePath();
+  }
 }
 
 /* ====== Misc ====== */
@@ -429,29 +414,38 @@ function updateIcePath(){ if(!pc){ setIcePath(''); return; }
           if(rc){ r=rc.candidateType; }
         }
       });
-      setIcePath(`(${l}→${r}, ${proto})`);
+      setIcePath((${l}→${r}, ${proto}));
     }catch(e){ setIcePath(''); }
   })();
 }
 
 /* ====== Signaling helpers ====== */
-async function postJSON(url,data,label){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'}); if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`); try{return await r.json();}catch{return {ok:true}}}
-async function getJSON(url,label){ const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}); if(r.status===404) return null; if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`); try{return await r.json();}catch{return null}}
+async function postJSON(url,data,label){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'}); if(!r.ok) throw new Error(${label} ${url} -> ${r.status}); try{return await r.json();}catch{return {ok:true}}}
+async function getJSON(url,label){ const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}); if(r.status===404) return null; if(!r.ok) throw new Error(${label} ${url} -> ${r.status}); try{return await r.json();}catch{return null}}
 
 /* ====== Presence & store badge ====== */
 function pingPresence(){ fetch("{% url 'ping_online_status' %}",{method:'POST',headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},body:'rezerwacja_id='+encodeURIComponent(rezerwacjaId)}).catch(()=>{}); }
 function checkPresence(){
-  fetch(`/check-online-status/${rezerwacjaId}/`).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{
-    otherOnline = !!(d&&d.online);
-    $('#presence-dot').className = 'status-dot '+(otherOnline?'status--on':'status--off');
-    $('#presence-text').textContent = otherOnline?'Dostępny':'Niedostępny';
-    uiRefresh();
-    if(otherOnline && !joined && !connecting){ IS_TEACHER ? startHost() : joinMeeting(); }
-  }).catch(()=>{});
+  fetch(`/check-online-status/${rezerwacjaId}/`)
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      otherOnline = !!(d && d.online);
+      $('#presence-dot').className = 'status-dot ' + (otherOnline ? 'status--on' : 'status--off');
+      $('#presence-text').textContent = otherOnline ? 'Dostępny' : 'Niedostępny';
+      uiRefresh();
+
+      
+      if(!IS_TEACHER && otherOnline && !joined){
+        const btn = $('#student');
+        btn.classList.remove('disabled'); 
+        btn.title = 'Kliknij, aby połączyć audio z nauczycielem';
+      }
+    })
+    .catch(()=>{});
 }
 function updateStore(){
   Promise.all([getJSON(OFFER_URL,'offer-get'), getJSON(ANSWER_URL,'answer-get')]).then(([o,a])=>{
-    $('#store').textContent = `offer: ${o&&o.sdp?`✓(${o.sdp.length})`:'–'}, answer: ${a&&a.sdp?`✓(${a.sdp.length})`:'–'}`;
+    $('#store').textContent = offer: ${o&&o.sdp?`✓(${o.sdp.length}):'–'}, answer: ${a&&a.sdp?`✓(${a.sdp.length})`:'–'}`;
   }).catch(()=>{ $('#store').textContent='offer: ?, answer: ?'; });
 }
 
