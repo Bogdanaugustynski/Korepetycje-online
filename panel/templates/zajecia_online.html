@@ -187,15 +187,14 @@
   }
 
   function toggleMic(){
-    // Jeśli nie mamy jeszcze mikrofonu – poproś o dostęp teraz i od razu go dołącz
     if(!localStream){
-      requestMicNow();
+      requestMicNow(); // poproś teraz
       return;
     }
     const t=localStream.getAudioTracks()[0]; if(!t) return;
     t.enabled=!t.enabled; isMuted=!t.enabled;
-    document.getElementById('mic-icon').textContent=isMuted?'🎙️':'🔇';
-    document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
+    document.getElementById('mic-icon').textContent = isMuted ? '🔇' : '🎙️';
+    document.getElementById('mic-label').textContent= isMuted ? 'Włącz mikrofon' : 'Wycisz mikrofon';
   }
 
   function setVolume(v){
@@ -236,7 +235,7 @@
     }catch(e){}
   }
 
-  // ===== VU (wejście zdalne) =====
+  // ===== VU (może pokazywać lokalny lub zdalny) =====
   function startAudioContextVU(stream){
     try{
       if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -332,7 +331,7 @@
       const el=document.getElementById('remote-audio');
       if(ev.streams && ev.streams[0]){
         if(el.srcObject!==ev.streams[0]) el.srcObject=ev.streams[0];
-        startAudioContextVU(ev.streams[0]);
+        startAudioContextVU(ev.streams[0]); // zdalne VU
       }else{
         if(!remoteStream) remoteStream=new MediaStream();
         remoteStream.addTrack(ev.track);
@@ -347,7 +346,7 @@
     };
   }
 
-  // 🔈 MIC: teraz jako async (zwraca true/false) — można awaitować
+  // ===== MIC: async & awaited =====
   async function requestMicNow(){
     if(gumInFlight || localStream) return !!localStream;
     gumInFlight = true;
@@ -361,6 +360,12 @@
         audioTransceiver.direction='sendrecv';
         await audioTransceiver.sender.replaceTrack(track);
         document.getElementById('mic-toggle').classList.remove('disabled');
+        // lokalny VU (wejście ucznia)
+        startAudioContextVU(localStream);
+        // stan przycisku: mikrofon jest WŁĄCZONY
+        isMuted=false;
+        document.getElementById('mic-icon').textContent='🎙️';
+        document.getElementById('mic-label').textContent='Wycisz mikrofon';
       }
       return true;
     }catch(e){
@@ -414,7 +419,7 @@
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer-post');
 
       joined=true; refreshUI(); await populateOutputs();
-      requestMicNow(); // może być w tle u gospodarza
+      requestMicNow(); // host może w tle
 
       setSig('waiting-answer');
       for(let i=0;i<120 && pc;i++){
@@ -435,7 +440,7 @@
     }
   }
 
-  // ===== Student: Połącz — czekamy aż mikr. będzie gotowy PRZED SDP =====
+  // ===== Student: Połącz — MIKROFON PRZED SDP =====
   async function joinMeeting(){
     if(joined || connecting) return; connecting=true;
     const btn=document.getElementById('student-connect');
@@ -447,8 +452,8 @@
       setupPeerBase();
       ensureAudio();
 
-      // 🔑 najpierw mikrofon – i to naprawdę „await”
-      await requestMicNow(); // nawet jeśli wróci false, transceiver już jest sendrecv
+      // 🔑 WAŻNE: poproś o mikrofon i POCZEKAJ
+      await requestMicNow();
 
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
