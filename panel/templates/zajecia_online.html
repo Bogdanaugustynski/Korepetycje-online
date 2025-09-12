@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Zajęcia online — audio (auto-connect + fix student TX)</title>
+  <title>Zajęcia online — audio (auto-connect + robust mic)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --primary:#007bff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; }
@@ -127,9 +127,7 @@
   let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
   let joined=false, remoteConnected=false, otherOnline=false, isMuted=false, hostAnnounced=false;
   let connecting=false, autoHostTried=false, autoStudentTried=false;
-  let gumInFlight=false;
-  let negEnabled=false;      // <- renegocjacja dopiero po pełnym handshaku
-  let offerWatchTimer=null;  // pętla nasłuchiwania re-offerów
+  let gumInFlight=false; // czy trwa proszenie o mikrofon
 
   // VU / audio unlock
   let audioCtx=null, analyser=null, vuSrc=null, vuTimer=null;
@@ -189,12 +187,17 @@
   }
 
   function toggleMic(){
-    if(!localStream){ requestMicNow(); return; }
+    // Jeśli nie mamy jeszcze mikrofonu – poproś o dostęp teraz i od razu go dołącz
+    if(!localStream){
+      requestMicNow();
+      return;
+    }
     const t=localStream.getAudioTracks()[0]; if(!t) return;
     t.enabled=!t.enabled; isMuted=!t.enabled;
     document.getElementById('mic-icon').textContent=isMuted?'🎙️':'🔇';
     document.getElementById('mic-label').textContent=isMuted?'Włącz mikrofon':'Wycisz mikrofon';
   }
+
   function setVolume(v){
     document.getElementById('vol-val').textContent=v+'%';
     const el=document.getElementById('remote-audio');
@@ -243,8 +246,7 @@
       const bar=document.querySelector('#vu > span');
       if(vuTimer) cancelAnimationFrame(vuTimer);
       const data=new Uint8Array(analyser.frequencyBinCount);
-      const tick=()=>{
-        analyser.getByteTimeDomainData(data);
+      const tick=()=>{ analyser.getByteTimeDomainData(data);
         let sum=0; for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
         const rms=Math.sqrt(sum/data.length);
         bar.style.width=Math.min(100,Math.round(rms*200))+'%';
@@ -323,7 +325,9 @@
 
     pc.onicegatheringstatechange = updateIceNow;
     pc.oniceconnectionstatechange = ()=>{ updateIceNow(); updateIcePathNow(); };
-    pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); } };
+    pc.onconnectionstatechange = ()=>{
+      if(['disconnected','failed','closed'].includes(pc.connectionState)){ remoteConnected=false; refreshUI(); }
+    };
     pc.ontrack=(ev)=>{
       const el=document.getElementById('remote-audio');
       if(ev.streams && ev.streams[0]){
@@ -341,40 +345,27 @@
       refreshUI();
       startInboundStatsVU();
     };
-
-    // Bezpieczna renegocjacja (po handshake)
-    pc.onnegotiationneeded = async () => {
-      if(!negEnabled) return;
-      if(pc.signalingState!=='stable') return;
-      try{
-        setSig('re-negotiation…');
-        const offer=await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await waitIceComplete();
-        await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 're-offer');
-        setSig('re-negotiation offer sent');
-      }catch(e){ console.warn('onnegotiationneeded failed', e); }
-    };
   }
 
+  // 🔈 MIC: teraz jako async (zwraca true/false) — można awaitować
   async function requestMicNow(){
-    if(gumInFlight || localStream) return;
+    if(gumInFlight || localStream) return !!localStream;
     gumInFlight = true;
     try{
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1 }
+        audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1, sampleRate:48000 }
       });
       localStream = stream;
-      const track = stream.getAudioTracks()[0];
-      // zawsze tylko replaceTrack na istniejącym transceiverze
+      const track = localStream.getAudioTracks()[0];
       if(audioTransceiver && audioTransceiver.sender){
         audioTransceiver.direction='sendrecv';
         await audioTransceiver.sender.replaceTrack(track);
+        document.getElementById('mic-toggle').classList.remove('disabled');
       }
-      document.getElementById('mic-toggle').classList.remove('disabled');
-      refreshUI();
+      return true;
     }catch(e){
-      console.warn('[MIC] gUM error:', e);
+      console.warn("[MIC] denied or error:", e);
+      return false;
     }finally{
       gumInFlight=false;
     }
@@ -395,36 +386,11 @@
     localStream=null; remoteStream=null; isMuted=false; gumInFlight=false;
     document.getElementById('mic-icon').textContent='🔇';
     document.getElementById('mic-label').textContent='Wycisz mikrofon';
-    remoteConnected=false; joined=false; connecting=false; negEnabled=false;
+    remoteConnected=false; joined=false; connecting=false;
     if(vuTimer) cancelAnimationFrame(vuTimer);
     if(inboundVUtimer) clearTimeout(inboundVUtimer);
-    if(offerWatchTimer) clearTimeout(offerWatchTimer);
     setIce('init'); setIcePath(''); setSig('init');
     refreshUI();
-  }
-
-  // ===== Re-offer watcher (odbiór renegocjacji z drugiej strony) =====
-  function startOfferWatcher(){
-    if(offerWatchTimer) clearTimeout(offerWatchTimer);
-    const loop = async () => {
-      try{
-        if(!pc){ offerWatchTimer=setTimeout(loop,1000); return; }
-        const off = await getJSON(OFFER_URL,'offer-watch');
-        if(off && off.type==='offer' && off.sdp){
-          // jeśli to nasz własny najnowszy offer, serwer może go nadpisywać – tolerujemy
-          if(pc.signalingState!=='stable'){ offerWatchTimer=setTimeout(loop,1000); return; }
-          setSig('remote-offer');
-          await pc.setRemoteDescription(new RTCSessionDescription(off));
-          const ans = await pc.createAnswer();
-          await pc.setLocalDescription(ans);
-          await waitIceComplete();
-          await postJSON(ANSWER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 're-answer');
-          setSig('renegotiation-answer-sent');
-        }
-      }catch(e){ /* cicho */ }
-      offerWatchTimer=setTimeout(loop,1000);
-    };
-    loop();
   }
 
   // ===== „Ogłoś: jestem gospodarzem” =====
@@ -447,25 +413,18 @@
       setSig('posting-offer');
       await postJSON(OFFER_URL, { type:pc.localDescription.type, sdp:pc.localDescription.sdp }, 'offer-post');
 
-      // NIE włączamy renegocjacji dopóki nie dostaniemy answer
-      requestMicNow(); // mic hosta można brać już teraz (replaceTrack nie popsuje stanu)
+      joined=true; refreshUI(); await populateOutputs();
+      requestMicNow(); // może być w tle u gospodarza
 
       setSig('waiting-answer');
-      let ok=false;
       for(let i=0;i<120 && pc;i++){
         const ans=await getJSON(ANSWER_URL,'answer-get');
         if(ans && ans.type==='answer' && ans.sdp){
           await pc.setRemoteDescription(new RTCSessionDescription(ans));
-          setSig('answer-set'); ok=true; break;
+          setSig('answer-set'); break;
         }
         await sleep(1000);
       }
-      if(!ok) throw new Error('Brak odpowiedzi ucznia');
-
-      joined=true; refreshUI(); await populateOutputs();
-      negEnabled = true;         // od teraz możemy renegocjować
-      startOfferWatcher();
-
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
       alert('Host error: '+err);
@@ -476,7 +435,7 @@
     }
   }
 
-  // ===== Student: Połącz (mic przed createAnswer) =====
+  // ===== Student: Połącz — czekamy aż mikr. będzie gotowy PRZED SDP =====
   async function joinMeeting(){
     if(joined || connecting) return; connecting=true;
     const btn=document.getElementById('student-connect');
@@ -484,7 +443,12 @@
     btn.textContent='Łączenie…'; btn.classList.add('disabled');
 
     try{
-      attachRemoteAudio(); setupPeerBase(); ensureAudio();
+      attachRemoteAudio();
+      setupPeerBase();
+      ensureAudio();
+
+      // 🔑 najpierw mikrofon – i to naprawdę „await”
+      await requestMicNow(); // nawet jeśli wróci false, transceiver już jest sendrecv
 
       setSig('fetch-offer'); waitEl && (waitEl.style.display='inline-flex');
       let offer=null;
@@ -499,9 +463,6 @@
       setSig('set-remote-offer');
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-      // KLUCZ: weź mikrofon TERAZ, zanim utworzysz answer
-      await requestMicNow();
-
       setSig('creating-answer');
       const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -512,8 +473,6 @@
       setSig('answer-posted');
 
       joined=true; refreshUI(); await populateOutputs();
-      negEnabled = true;
-      startOfferWatcher();
 
     } catch(err){
       setSig('ERROR: '+String(err).slice(0,150));
