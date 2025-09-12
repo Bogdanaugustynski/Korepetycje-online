@@ -27,6 +27,8 @@
     #autoplay button{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--warn);color:#000;font-weight:800}
     small{opacity:.9;font-weight:600}
     audio{width:0;height:0;opacity:0;pointer-events:none}
+    details{max-width:980px}
+    details summary{cursor:pointer;font-weight:800}
   </style>
 </head>
 <body>
@@ -44,6 +46,11 @@
   <button class="pill disabled" id="mic-btn" type="button" onclick="toggleMic()">
     <span id="mic-ico">🔇</span><span id="mic-lbl">Wycisz mikrofon</span>
   </button>
+
+  <!-- NOWE: ręczne sterowanie mikrofonem -->
+  <button class="pill" id="force-mic" type="button" onclick="forceMic()">🎙️ Pobierz mikrofon</button>
+  <button class="pill disabled" id="restart-mic" type="button" onclick="restartMic()">♻️ Restart mikrofonu</button>
+  <button class="pill disabled" id="force-replace" type="button" onclick="forceReplace()">🔧 Wymuś replaceTrack</button>
 
   <div class="pill">
     🔈 <input id="vol" class="slider" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
@@ -88,6 +95,27 @@
   <div id="autoplay">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
   <div class="badge">📱 Mobile wymaga <b>HTTPS</b>. Dla ciężkich NAT skonfiguruj <b>TURN</b> i ewentualnie tryb <i>relay</i>.</div>
+
+  <!-- TWOJA NOTATKA — wstawiona 1:1 jako referencja -->
+  <details>
+    <summary>📝 Notatka techniczna (dlaczego ta wersja jest lepsza)</summary>
+    <div style="background:#fff;padding:12px 14px;border:1px solid #e6ecf7;border-radius:10px;margin-top:8px;line-height:1.5">
+      <p><b>Nie, ten kod nie jest identyczny z poprzednim. Poprawiłeś go, wprowadzając dwie kluczowe zmiany, które znacznie poprawiają jego niezawodność:</b></p>
+      <p><b>1. Unified-Plan Transceiver</b><br>
+      W poprzedniej wersji używałeś <code>pc.addTransceiver('audio', { direction:'sendrecv' })</code> w funkcji <code>setupPeer()</code>, ale później w <code>requestMicNow()</code> miałeś logikę, która mogła ten transceiver tworzyć ponownie lub dodawać track w mniej optymalny sposób. W obecnym kodzie, w <code>requestMicNow()</code>, najpierw sprawdzasz, czy transceiver istnieje, a jeśli nie, to go tworzysz, a następnie używasz <code>replaceTrack()</code>. To podejście jest bardziej spójne.</p>
+      <p><b>2. Spójna logika połączeń</b><br>
+      W funkcji <code>startHost()</code> dodałeś <code>await requestMicNow();</code> po wysłaniu oferty, ale przed oczekiwaniem na odpowiedź. To była główna przyczyna wcześniejszych problemów. W nowym kodzie zachowałeś tę samą logikę. Ale, co ważne, ta sama logiczna kolejność jest teraz zastosowana także w funkcji <code>joinMeeting()</code>, co sprawia, że obie strony mają już strumień audio, gdy tworzą swoje finalne SDP (Session Description Protocol).</p>
+      <p><b>Obie wersje kodu mają tę samą podstawową logikę:</b></p>
+      <ul>
+        <li>Tworzenie PeerConnection i transceivers.</li>
+        <li>Pobranie mikrofonu po rozpoczęciu procesu SDP.</li>
+        <li>Czekanie na odpowiedzi i renegocjacje.</li>
+      </ul>
+      <p><b>Co jest kluczową różnicą?</b><br>
+      W najnowszym kodzie, który przysłałeś, logika <code>requestMicNow()</code> jest bardziej defensywna i spójna w obu funkcjach, co jest dobre. Natomiast, jeśli problem z mikrofonem nauczyciela nadal występował, mogło to wynikać z kolejności operacji. W twojej najnowszej wersji kodu nadal zachowujesz tę potencjalnie problematyczną kolejność, gdzie <code>requestMicNow()</code> jest wywoływane w środku procesu SDP, a nie na jego początku. To jest sedno problemu.</p>
+      <p><b>Aby uniknąć tego błędu</b>, najlepszą praktyką jest zawsze pobieranie mikrofonu na początku, a dopiero potem rozpoczynanie całego procesu SDP. To zapewnia, że początkowa oferta i odpowiedź zawierają już wszystkie informacje o mediach, co eliminuje potrzebę renegocjacji.</p>
+    </div>
+  </details>
 </main>
 
 <audio id="remote" autoplay playsinline></audio>
@@ -137,6 +165,12 @@ function setIcePath(m){ $('#ice-path').textContent=m; }
 function uiRefresh(){
   $('#participants').textContent = (joined?2:1);
   $('#mic-btn').classList.toggle('disabled', !localStream);
+
+  // nowe przyciski mic
+  $('#force-mic').classList.toggle('disabled', !!gumBusy);
+  $('#restart-mic').classList.toggle('disabled', !localStream || !!gumBusy);
+  $('#force-replace').classList.toggle('disabled', !localStream || !audioTransceiver || !!gumBusy);
+
   const bye = $('#bye');
   if(joined){ bye.style.display='inline-flex'; } else { bye.style.display='none'; }
 
@@ -238,8 +272,8 @@ function setupPeer(){
 }
 
 async function requestMicNow(){
-  if(gumBusy || localStream) return;
-  gumBusy=true;
+  if(gumBusy || localStream) { uiRefresh(); return; }
+  gumBusy=true; uiRefresh();
   try{
     const stream = await navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1 }
@@ -247,7 +281,7 @@ async function requestMicNow(){
     localStream = stream;
     const track = stream.getAudioTracks()[0];
 
-    // 🔧 NAPRAWA: pewny transceiver + sendrecv + replaceTrack (z fallbackiem)
+    // pewny transceiver + sendrecv + replaceTrack (z fallbackiem)
     if(!audioTransceiver && pc){
       audioTransceiver = pc.addTransceiver('audio',{direction:'sendrecv'});
     }
@@ -262,7 +296,23 @@ async function requestMicNow(){
     $('#mic-ico').textContent='🎙️'; $('#mic-lbl').textContent='Wycisz mikrofon';
     uiRefresh();
   }catch(e){ console.warn('[MIC] gUM error', e); }
-  finally{ gumBusy=false; }
+  finally{ gumBusy=false; uiRefresh(); }
+}
+
+// NOWE: wymuszenia ręczne
+function forceMic(){ requestMicNow(); }
+function restartMic(){
+  try{ localStream?.getTracks().forEach(t=>t.stop()); }catch(e){}
+  localStream=null;
+  requestMicNow();
+}
+function forceReplace(){
+  const t = localStream?.getAudioTracks?.()[0];
+  if(t && audioTransceiver?.sender){
+    audioTransceiver.direction='sendrecv';
+    audioTransceiver.sender.replaceTrack(t).catch(()=>{});
+  }
+  uiRefresh();
 }
 
 function waitIce(){
@@ -345,7 +395,7 @@ async function joinMeeting(){
 
     setSig('set-remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-    // 🔑 KLUCZ: uczeń bierze mikrofon PRZED createAnswer
+    // KLUCZ: uczeń bierze mikrofon PRZED createAnswer
     await requestMicNow();
 
     setSig('creating-answer');
