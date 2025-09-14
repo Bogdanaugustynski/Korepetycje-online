@@ -140,16 +140,10 @@
 
   {% if is_teacher %}
     <button class="pill" id="announce" type="button" onclick="announceHost()">📣 Ogłoś: jestem gospodarzem</button>
-    <button class="pill" id="host" type="button" onclick="startHost()">📞 Zadzwoń (gospodarz)</button>
+    <button class="pill" id="host" type="button" onclick="startHost()">🔗 Połącz (gospodarz)</button>
   {% else %}
     <span class="pill" id="wait-host" style="display:none;">⏳ Czekamy na gospodarza…</span>
-    <div id="incoming">
-      📞 Połączenie przychodzące od nauczyciela…
-      <div style="margin-left:auto;display:flex;gap:8px">
-        <button type="button" id="accept" class="pill">✅ Odbierz</button>
-        <button type="button" id="decline" class="pill">❌ Odrzuć</button>
-      </div>
-    </div>
+    <button class="pill" id="student" type="button" onclick="/* uczeń używa przycisku w banerze */void(0)">🔗 Połącz (uczeń)</button>
   {% endif %}
 
   <button class="pill btn danger" id="bye" type="button" onclick="hangup()" style="display:none;">🔌 Rozłącz</button>
@@ -168,6 +162,15 @@
   {% endif %}
 
   <div id="autoplay">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
+
+  <!-- Baner połączenia przychodzącego (Ali) -->
+  <div id="incoming">
+    📞 Połączenie przychodzące od nauczyciela…
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button type="button" id="accept" class="pill">✅ Odbierz</button>
+      <button type="button" id="decline" class="pill">❌ Odrzuć</button>
+    </div>
+  </div>
 
   <div class="badge">📱 Mobile wymaga <b>HTTPS</b>. Dla ciężkich NAT skonfiguruj <b>TURN</b> i ewentualnie tryb <i>relay</i>.</div>
 </main>
@@ -321,31 +324,71 @@ function setupPeer(){
   };
 }
 
-/* ====== Signaling helpers ====== */
-async function postJSON(url,data,label){
-  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'});
-  if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`);
-  try{return await r.json();}catch{return {ok:true}}
-}
-async function getJSON(url,label){
-  const r=await fetch(url,{credentials:'same-origin',cache:'no-store'});
-  if(r.status===404) return null; if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`);
-  try{return await r.json();}catch{return null}
+async function requestMicNow(){
+  if(gumBusy || localStream) return;
+  gumBusy=true;
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1 }
+    });
+    localStream = stream;
+    const track = stream.getAudioTracks()[0];
+
+    // pewny transceiver + sendrecv + replaceTrack (fallback: addTrack)
+    if(!audioTransceiver && pc){
+      audioTransceiver = pc.addTransceiver('audio',{direction:'sendrecv'});
+    }
+    if(audioTransceiver?.sender){
+      audioTransceiver.direction='sendrecv';
+      await audioTransceiver.sender.replaceTrack(track);
+    }else if(pc){
+      pc.addTrack(track, localStream);
+    }
+
+    $('#mic-btn').classList.remove('disabled');
+    $('#mic-ico').textContent='🎙️'; $('#mic-lbl').textContent='Wycisz mikrofon';
+    uiRefresh();
+  }catch(e){ console.warn('[MIC] gUM error', e); }
+  finally{ gumBusy=false; }
 }
 
-/* Potwierdzenie zapisu oferty po stronie serwera (redukcja wyścigu) */
-async function postAndConfirmOffer(offerObj){
-  await postJSON(OFFER_URL, offerObj, 'offer-post');
-  const want = offerObj.sdp.length;
-  for(let i=0;i<15;i++){ // do 3s
-    const got = await getJSON(OFFER_URL,'offer-confirm');
-    if(got && got.sdp && got.sdp.length === want) return true;
-    await sleep(200);
-  }
-  return false;
+function waitIce(){
+  if(!pc || pc.iceGatheringState==='complete') return Promise.resolve();
+  return new Promise(res=>{
+    const f=()=>{ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', f); res(); } };
+    pc.addEventListener('icegatheringstatechange', f);
+  });
+}
+function teardown(){
+  try{ pc?.close(); }catch(e){} pc=null; audioTransceiver=null;
+  try{ localStream?.getTracks().forEach(t=>t.stop()); }catch(e){}
+  localStream=null; remoteStream=null; joined=false; negReady=false;
+  if(vuLoop) cancelAnimationFrame(vuLoop); if(inVuTimer) clearTimeout(inVuTimer); if(offerWatch) clearTimeout(offerWatch);
+  setSig('init'); setIce('init'); setIcePath(''); uiRefresh();
+  const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none'; incomingOffer=false;
 }
 
-/* ====== Host (nauczyciel) ====== */
+/* ====== Re-offer watcher (dla renegocjacji po połączeniu) ====== */
+function startOfferWatcher(){
+  if(offerWatch) clearTimeout(offerWatch);
+  const loop = async ()=>{
+    try{
+      if(!pc){ offerWatch=setTimeout(loop,1000); return; }
+      const off = await getJSON(OFFER_URL,'offer-watch');
+      if(off && off.type==='offer' && off.sdp){
+        if(pc.signalingState!=='stable'){ offerWatch=setTimeout(loop,1000); return; }
+        setSig('remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(off));
+        const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce();
+        await postJSON(ANSWER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'re-answer');
+        setSig('renegotiation-answer-sent');
+      }
+    }catch(e){}
+    offerWatch=setTimeout(loop,1000);
+  };
+  loop();
+}
+
+/* ====== Host (nauczyciel) — MIC & sendrecv PRZED SDP ====== */
 async function startHost(){
   if(!IS_TEACHER) return;
   if(joined||connecting) return; connecting=true;
@@ -353,7 +396,8 @@ async function startHost(){
   try{
     attachRemoteAudio(); setupPeer(); setSig('preparing');
 
-    // ✨ MIC przed SDP
+    // 🔑 USTAW KIERUNEK I WEŹ MIC ZANIM POWSTANIE SDP
+    if(audioTransceiver) audioTransceiver.direction = 'sendrecv';
     await requestMicNow();
 
     setSig('creating-offer');
@@ -362,8 +406,7 @@ async function startHost(){
     await waitIce();
 
     setSig('posting-offer');
-    const okWrite = await postAndConfirmOffer({type:pc.localDescription.type, sdp:pc.localDescription.sdp});
-    if(!okWrite) console.warn('Offer write not confirmed (proceeding)');
+    await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'offer-post');
 
     // czekamy aż uczeń kliknie "Odbierz" i wyśle odpowiedź
     setSig('waiting-answer'); let ok=false;
@@ -380,17 +423,18 @@ async function startHost(){
     joined=true; uiRefresh(); await populateOutputs();
     negReady=true; startOfferWatcher();
   }catch(e){ alert('Host error: '+e); teardown(); }
-  finally{ btn.textContent='📞 Zadzwoń (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
+  finally{ btn.textContent='🔗 Połącz (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
 }
 
-/* ====== Student (uczeń) – łączy TYLKO po kliknięciu "Odbierz" ====== */
+/* ====== Student (uczeń) — MIC & sendrecv PRZED SDP ====== */
 async function joinMeeting(){
   if(IS_TEACHER) return;
   if(joined||connecting) return; connecting=true;
   try{
     attachRemoteAudio(); setupPeer(); ensureAudio();
 
-    // ✨ MIC przed SDP (klik "Odbierz" to gest użytkownika)
+    // 🔑 USTAW KIERUNEK I WEŹ MIC ZANIM POWSTANIE ANSWER
+    if(audioTransceiver) audioTransceiver.direction = 'sendrecv';
     await requestMicNow();
 
     // poczekaj na ofertę od nauczyciela (do 10s)
@@ -420,54 +464,7 @@ async function joinMeeting(){
   finally{ connecting=false; updateIcePath(); }
 }
 
-/* ====== Re-offer watcher (dla renegocjacji po połączeniu) ====== */
-function startOfferWatcher(){
-  if(offerWatch) clearTimeout(offerWatch);
-  const loop = async ()=>{
-    try{
-      if(!pc){ offerWatch=setTimeout(loop,1000); return; }
-      const off = await getJSON(OFFER_URL,'offer-watch');
-      if(off && off.type==='offer' && off.sdp){
-        if(pc.signalingState!=='stable'){ offerWatch=setTimeout(loop,1000); return; }
-        setSig('remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(off));
-        const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce();
-        await postJSON(ANSWER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'re-answer');
-        setSig('renegotiation-answer-sent');
-      }
-    }catch(e){}
-    offerWatch=setTimeout(loop,1000);
-  };
-  loop();
-}
-
 /* ====== Misc ====== */
-async function requestMicNow(){
-  if(gumBusy || localStream) return;
-  gumBusy=true;
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1 }
-    });
-    localStream = stream;
-    const track = stream.getAudioTracks()[0];
-
-    // pewny transceiver + sendrecv + replaceTrack (fallback: addTrack)
-    if(!audioTransceiver && pc){
-      audioTransceiver = pc.addTransceiver('audio',{direction:'sendrecv'});
-    }
-    if(audioTransceiver?.sender){
-      audioTransceiver.direction='sendrecv';
-      await audioTransceiver.sender.replaceTrack(track);
-    }else if(pc){
-      pc.addTrack(track, localStream);
-    }
-
-    $('#mic-btn').classList.remove('disabled');
-    $('#mic-ico').textContent='🎙️'; $('#mic-lbl').textContent='Wycisz mikrofon';
-    uiRefresh();
-  }catch(e){ console.warn('[MIC] gUM error', e); }
-  finally{ gumBusy=false; }
-}
 function toggleMic(){
   if(!localStream){ requestMicNow(); return; }
   const t = localStream.getAudioTracks()[0]; if(!t) return;
@@ -493,19 +490,9 @@ function updateIcePath(){ if(!pc){ setIcePath(''); return; }
   })();
 }
 
-/* ====== ICE helper (PRZYWRÓCONY) ====== */
-function waitIce(){
-  if(!pc || pc.iceGatheringState === 'complete') return Promise.resolve();
-  return new Promise(res=>{
-    const f=()=>{
-      if(pc.iceGatheringState === 'complete'){
-        pc.removeEventListener('icegatheringstatechange', f);
-        res();
-      }
-    };
-    pc.addEventListener('icegatheringstatechange', f);
-  });
-}
+/* ====== Signaling helpers ====== */
+async function postJSON(url,data,label){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'}); if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`); try{return await r.json();}catch{return {ok:true}}}
+async function getJSON(url,label){ const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}); if(r.status===404) return null; if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`); try{return await r.json();}catch{return null}}
 
 /* ====== Presence (bez auto-łączenia) & store badge ====== */
 function pingPresence(){ fetch("{% url 'ping_online_status' %}",{method:'POST',headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},body:'rezerwacja_id='+encodeURIComponent(rezerwacjaId)}).catch(()=>{}); }
@@ -558,21 +545,13 @@ async function announceHost(){
   }catch(e){}
 }
 
-/* ====== Teardown & reset ====== */
-function teardown(){
-  try{ pc?.close(); }catch(e){} pc=null; audioTransceiver=null;
-  try{ localStream?.getTracks().forEach(t=>t.stop()); }catch(e){}
-  localStream=null; remoteStream=null; joined=false; negReady=false;
-  if(vuLoop) cancelAnimationFrame(vuLoop); if(inVuTimer) clearTimeout(inVuTimer); if(offerWatch) clearTimeout(offerWatch);
-  setSig('init'); setIce('init'); setIcePath(''); uiRefresh();
-  const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none'; incomingOffer=false;
-}
-
 /* ====== Init ====== */
 document.addEventListener('DOMContentLoaded', ()=>{
   initTimer(); uiRefresh(); populateOutputs();
   $('#autoplay-btn')?.addEventListener('click', ensureAudio);
-  $('#presence-pill')?.addEventListener('click', ()=>{ /* no-op: podgląd statusu */ });
+
+  // Bez auto-łączenia po kliknięciu presence — tylko podgląd statusu
+  $('#presence-pill')?.addEventListener('click', ()=>{ /* no-op */ });
 
   setInterval(pingPresence, 10_000);
   setInterval(checkPresence, 10_000);
