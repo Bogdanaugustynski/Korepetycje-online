@@ -359,15 +359,15 @@ function startOfferWatcher(){
 async function startHost(){
   if(!IS_TEACHER) return;
   if(joined||connecting) return; connecting=true;
-  const btn=$('#host'); btn.textContent='Dzwonienie…'; btn.classList.add('disabled');
-  try{
-    attachRemoteAudio(); setupPeer(); setSig('preparing');
-    if(audioTransceiver) audioTransceiver.direction='sendrecv';
-    await requestMicNow();                         // MIC PRZED createOffer
-    try{ localStream?.getAudioTracks()[0].enabled = true; }catch{}
-
-    setSig('creating-offer');
-    const offer=await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce();
+  const btn = $('#host'); btn.textContent='Dzwonienie…'; btn.classList.add('disabled');
+  try{
+    attachRemoteAudio();
+    setupPeer();
+    await requestMicNow();  // 👈 PO ZMIANIE: tutaj włączamy mikrofon
+    setSig('creating-offer');
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIce();
     setSig('posting-offer'); await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'offer-post');
 
     setSig('waiting-answer'); let ok=false;
@@ -387,17 +387,14 @@ async function startHost(){
 }
 
 /* ====== Student — MIC & sendrecv PRZED SDP ====== */
-async function joinMeeting(){
-  if(IS_TEACHER) return;
-  if(joined||connecting) return; connecting=true;
-  try{
-    attachRemoteAudio(); setupPeer(); ensureAudio();
-    if(audioTransceiver) audioTransceiver.direction='sendrecv';
-    await requestMicNow();                         // MIC PRZED setRemote/answer
-    try{ localStream?.getAudioTracks()[0].enabled = true; }catch{}
-
-    let offer=null;
-    for(let i=0;i<20;i++){ offer = await getJSON(OFFER_URL,'offer-get'); if(offer && offer.type==='offer' && offer.sdp) break; await sleep(300); }
+try{
+    attachRemoteAudio();
+    setupPeer();
+    await requestMicNow();  // 👈 PO ZMIANIE: tutaj włączamy mikrofon
+    ensureAudio();
+    // Sprawdzamy, czy faktycznie jest oferta od nauczyciela
+    let offer=null;
+    for(let i=0;i<3;i++){ offer = await getJSON(OFFER_URL,'offer-get'); if(offer && offer.type==='offer' && offer.sdp) break; await sleep(300); }
     if(!offer){ alert('Brak połączenia przychodzącego.'); connecting=false; return; }
 
     setSig('set-remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(offer));
