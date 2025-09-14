@@ -140,10 +140,16 @@
 
   {% if is_teacher %}
     <button class="pill" id="announce" type="button" onclick="announceHost()">📣 Ogłoś: jestem gospodarzem</button>
-    <button class="pill" id="host" type="button" onclick="startHost()">🔗 Połącz (gospodarz)</button>
+    <button class="pill" id="host" type="button" onclick="startHost()">📞 Zadzwoń (gospodarz)</button>
   {% else %}
     <span class="pill" id="wait-host" style="display:none;">⏳ Czekamy na gospodarza…</span>
-    <button class="pill" id="student" type="button" onclick="/* uczeń używa przycisku w banerze */void(0)">🔗 Połącz (uczeń)</button>
+    <div id="incoming">
+      📞 Połączenie przychodzące od nauczyciela…
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button type="button" id="accept" class="pill">✅ Odbierz</button>
+        <button type="button" id="decline" class="pill">❌ Odrzuć</button>
+      </div>
+    </div>
   {% endif %}
 
   <button class="pill btn danger" id="bye" type="button" onclick="hangup()" style="display:none;">🔌 Rozłącz</button>
@@ -162,15 +168,6 @@
   {% endif %}
 
   <div id="autoplay">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
-
-  <!-- Baner połączenia przychodzącego (Ali) -->
-  <div id="incoming">
-    📞 Połączenie przychodzące od nauczyciela…
-    <div style="margin-left:auto;display:flex;gap:8px">
-      <button type="button" id="accept" class="pill">✅ Odbierz</button>
-      <button type="button" id="decline" class="pill">❌ Odrzuć</button>
-    </div>
-  </div>
 
   <div class="badge">📱 Mobile wymaga <b>HTTPS</b>. Dla ciężkich NAT skonfiguruj <b>TURN</b> i ewentualnie tryb <i>relay</i>.</div>
 </main>
@@ -383,7 +380,7 @@ async function startHost(){
     joined=true; uiRefresh(); await populateOutputs();
     negReady=true; startOfferWatcher();
   }catch(e){ alert('Host error: '+e); teardown(); }
-  finally{ btn.textContent='🔗 Połącz (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
+  finally{ btn.textContent='📞 Zadzwoń (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
 }
 
 /* ====== Student (uczeń) – łączy TYLKO po kliknięciu "Odbierz" ====== */
@@ -496,6 +493,20 @@ function updateIcePath(){ if(!pc){ setIcePath(''); return; }
   })();
 }
 
+/* ====== ICE helper (PRZYWRÓCONY) ====== */
+function waitIce(){
+  if(!pc || pc.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise(res=>{
+    const f=()=>{
+      if(pc.iceGatheringState === 'complete'){
+        pc.removeEventListener('icegatheringstatechange', f);
+        res();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', f);
+  });
+}
+
 /* ====== Presence (bez auto-łączenia) & store badge ====== */
 function pingPresence(){ fetch("{% url 'ping_online_status' %}",{method:'POST',headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},body:'rezerwacja_id='+encodeURIComponent(rezerwacjaId)}).catch(()=>{}); }
 function checkPresence(){
@@ -547,13 +558,21 @@ async function announceHost(){
   }catch(e){}
 }
 
+/* ====== Teardown & reset ====== */
+function teardown(){
+  try{ pc?.close(); }catch(e){} pc=null; audioTransceiver=null;
+  try{ localStream?.getTracks().forEach(t=>t.stop()); }catch(e){}
+  localStream=null; remoteStream=null; joined=false; negReady=false;
+  if(vuLoop) cancelAnimationFrame(vuLoop); if(inVuTimer) clearTimeout(inVuTimer); if(offerWatch) clearTimeout(offerWatch);
+  setSig('init'); setIce('init'); setIcePath(''); uiRefresh();
+  const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none'; incomingOffer=false;
+}
+
 /* ====== Init ====== */
 document.addEventListener('DOMContentLoaded', ()=>{
   initTimer(); uiRefresh(); populateOutputs();
   $('#autoplay-btn')?.addEventListener('click', ensureAudio);
-
-  // Bez auto-łączenia po kliknięciu presence — tylko podgląd statusu
-  $('#presence-pill')?.addEventListener('click', ()=>{ /* no-op */ });
+  $('#presence-pill')?.addEventListener('click', ()=>{ /* no-op: podgląd statusu */ });
 
   setInterval(pingPresence, 10_000);
   setInterval(checkPresence, 10_000);
