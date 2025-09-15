@@ -99,7 +99,6 @@ def webrtc_offer(request, rez_id: int):
 
     return HttpResponseBadRequest("Method not allowed")
 
-log = logging.getLogger("webrtc")
 
 @csrf_exempt
 @never_cache
