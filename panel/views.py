@@ -99,31 +99,52 @@ def webrtc_offer(request, rez_id: int):
 
     return HttpResponseBadRequest("Method not allowed")
 
+log = logging.getLogger("webrtc")
+
 @csrf_exempt
+@never_cache
 def webrtc_answer(request, rez_id: int):
     offer_key, answer_key = _keys(rez_id)
 
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
-            if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
+            t = data.get("type")
+            sdp = data.get("sdp")
+
+            # prosta walidacja, ale NIE modyfikujemy SDP
+            if t != "answer" or not isinstance(sdp, str) or not sdp.startswith("v="):
                 return HttpResponseBadRequest("Invalid SDP payload")
+
             if not cache.get(offer_key):
                 return HttpResponseNotFound("No offer to answer")
-            cache.set(answer_key, data, timeout=60*10)
-            log.info("ANSWER POST rez=%s len=%s", rez_id, len(data["sdp"]))
-            return JsonResponse({"ok": True})
+
+            # zapisz answer...
+            cache.set(answer_key, {"type": t, "sdp": sdp}, timeout=60 * 10)
+
+            # ✅ kluczowa linia: po przyjęciu odpowiedzi kasujemy offer,
+            #    żeby watchery nie widziały w kółko "nowej" oferty
+            cache.delete(offer_key)
+
+            log.info("ANSWER POST rez=%s len=%s", rez_id, len(sdp))
+            resp = JsonResponse({"ok": True})
+            resp["Cache-Control"] = "no-store"
+            return resp
+
         except Exception as e:
             log.exception("ANSWER POST error rez=%s", rez_id)
             return HttpResponseBadRequest(str(e))
 
-    if request.method == "GET":
+    elif request.method == "GET":
         data = cache.get(answer_key)
         if not data:
             return HttpResponseNotFound("No answer yet")
-        return JsonResponse(data)
+        resp = JsonResponse(data)
+        resp["Cache-Control"] = "no-store"
+        return resp
 
-    return HttpResponseBadRequest("Method not allowed")
+    else:
+        return HttpResponseBadRequest("Method not allowed")
 
 def _keys(rez_id):
     # UŻYWAJ DOKŁADNIE TEGO SAMEGO KLUCZA co webrtc_offer/answer
