@@ -229,24 +229,18 @@ class CallTones{
     for(const n of this.nodes){ try{this._envOff(n,0.03); n.o.stop(this.ctx.currentTime+0.06);}catch{} }
     this.nodes.clear();
   }
-  /* Ringtone (uczeń): 400Hz + 450Hz w paczkach 1s ON / 3s OFF (PL vibe) */
+  /* Ringtone (uczeń) */
   async playRingtone(){
     await resumeAudioCtx(); this.stopAll();
     const a=this._osc(400), b=this._osc(450);
     const loop=()=>{
-      const now=this.ctx.currentTime;
-      // ON 1.0s
-      a.o.frequency.setValueAtTime(400,now);
-      b.o.frequency.setValueAtTime(450,now);
       this._envOn(a,0.01); this._envOn(b,0.01);
-      // wycisz po 1s
       setTimeout(()=>{ this._envOff(a); this._envOff(b); }, 1000);
-      // cykl co 3s przerwy => 4s
       this._ringTimer=setTimeout(loop, 4000);
     };
     loop();
   }
-  /* Ringback (nauczyciel): 425Hz 0.2s ON / 0.2s OFF / 0.2s ON / 1.2s OFF (ITU styl) */
+  /* Ringback (nauczyciel) */
   async playRingback(){
     await resumeAudioCtx(); this.stopAll();
     const t=this._osc(425);
@@ -255,15 +249,13 @@ class CallTones{
       const off=()=>this._envOff(t,0.03);
       on(); setTimeout(()=>{ off();
         setTimeout(()=>{ on();
-          setTimeout(()=>{ off();
-            this._rbTimer=setTimeout(seq,1200); // przerwa 1.2s po dwóch krótkich
-          },200);
+          setTimeout(()=>{ off(); this._rbTimer=setTimeout(seq,1200); },200);
         },200);
       },200);
     };
     seq();
   }
-  /* Krótki „połączono” – 1000Hz, 120 ms */
+  /* „Połączono” */
   async playConnected(){
     await resumeAudioCtx();
     const n=this._osc(1000);
@@ -278,7 +270,7 @@ let pc=null, localStream=null, remoteStream=null, audioTransceiver=null;
 let joined=false, connecting=false, negReady=false, otherOnline=false, isMuted=false;
 let offerWatch=null, vuLoop=null, inVuTimer=null;
 let gumBusy=false;
-let incomingOffer=false, ringWatch=null; // dzwonek
+let incomingOffer=false, ringWatch=null;
 
 /* ====== Helpers/UI ====== */
 const $ = sel => document.querySelector(sel);
@@ -290,7 +282,7 @@ function setIce(m){ $('#ice').textContent=m; }
 function setIcePath(m){ $('#ice-path').textContent=m; }
 
 function uiRefresh(){
-  const two = joined ? 2 : 1; // licznik tylko po realnym dołączeniu
+  const two = joined ? 2 : 1;
   $('#participants').textContent = two;
   $('#mic-btn').classList.toggle('disabled', !localStream);
   $('#bye').style.display = joined ? 'inline-flex' : 'none';
@@ -359,8 +351,40 @@ function startInboundStatsVU(){
   loop();
 }
 
+/* ====== 🎛️ Statystyki przepływu (kb/s) ====== */
+let statsTimer=null, lastBytes = { tx:0, rx:0 }, lastTs=0;
+function startMediaStats(){
+  if(statsTimer) clearInterval(statsTimer);
+  lastBytes = { tx:0, rx:0 }; lastTs = 0;
+  statsTimer = setInterval(async ()=>{
+    if(!pc) return;
+    try{
+      const st = await pc.getStats();
+      let txBytes=0, rxBytes=0, ts=0, txPkts=0, rxPkts=0;
+
+      st.forEach(s=>{
+        if(s.type==='outbound-rtp' && s.kind==='audio'){ txBytes += s.bytesSent||0; txPkts += s.packetsSent||0; ts = s.timestamp||ts; }
+        if(s.type==='inbound-rtp'  && s.kind==='audio'){ rxBytes += s.bytesReceived||0; rxPkts += s.packetsReceived||0; ts = s.timestamp||ts; }
+      });
+
+      if(lastTs && ts>lastTs){
+        const dt = (ts - lastTs)/1000;
+        const txKbps = Math.round(((txBytes - lastBytes.tx) * 8) / 1000 / dt);
+        const rxKbps = Math.round(((rxBytes - lastBytes.rx) * 8) / 1000 / dt);
+        $('#sig').textContent = `ok • TX: ${txKbps} kb/s (${txPkts}p), RX: ${rxKbps} kb/s (${rxPkts}p)`;
+      }
+      lastBytes = { tx:txBytes, rx:rxBytes }; lastTs = ts;
+    }catch(e){}
+  }, 1000);
+}
+
 /* ====== RTC core ====== */
-function attachRemoteAudio(){ $('#remote').srcObject=null; ensureAudio(); }
+function attachRemoteAudio(){
+  const el = $('#remote');
+  el.muted = false;             // ważne: dźwięk ma lecieć!
+  el.srcObject=null;
+  ensureAudio();
+}
 
 function setupPeer(){
   pc = new RTCPeerConnection(rtcConfig);
@@ -368,7 +392,7 @@ function setupPeer(){
 
   setSig('pc:new'); setIce(pc.iceConnectionState||'new');
 
-  pc.onicegatheringstatechange = ()=>{/* opcjonalny log 'gathering' */};
+  pc.onicegatheringstatechange = ()=>{};
   pc.oniceconnectionstatechange = ()=>{ setIce(pc.iceConnectionState || ''); updateIcePath(); };
   pc.onconnectionstatechange = ()=>{ if(['disconnected','failed','closed'].includes(pc.connectionState)){ joined=false; uiRefresh(); tones.stopAll(); } };
 
@@ -432,7 +456,7 @@ function teardown(){
   if(vuLoop) cancelAnimationFrame(vuLoop); if(inVuTimer) clearTimeout(inVuTimer); if(offerWatch) clearTimeout(offerWatch);
   setSig('init'); setIce('init'); setIcePath(''); uiRefresh();
   const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none'; incomingOffer=false;
-  tones.stopAll(); // 🔔 zatrzymaj wszystkie dźwięki
+  tones.stopAll();
 }
 
 /* ====== Re-offer watcher ====== */
@@ -461,17 +485,22 @@ async function startHost(){
   if(joined||connecting) return; connecting=true;
   const btn = $('#host'); btn.textContent='Dzwonienie…'; btn.classList.add('disabled');
   try{
-    attachRemoteAudio(); setupPeer(); setSig('creating-offer');
-    const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce();
-    setSig('posting-offer'); await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'offer-post');
+    attachRemoteAudio(); setupPeer(); setSig('preparing-offer');
 
-    // nauczyciel może już wziąć mikrofon
+    // 🔊 KLUCZ: nauczyciel bierze mikrofon ZANIM powstanie oferta
     await requestMicNow();
+
+    setSig('creating-offer');
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIce();
+
+    setSig('posting-offer');
+    await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'offer-post');
 
     // 🔔 ringback dla nauczyciela w trakcie oczekiwania
     tones.playRingback();
 
-    // czekamy aż uczeń kliknie "Odbierz" i wyśle odpowiedź
     setSig('waiting-answer'); let ok=false;
     for(let i=0;i<180 && pc;i++){
       const ans = await getJSON(ANSWER_URL,'answer-get');
@@ -480,13 +509,14 @@ async function startHost(){
       }
       await sleep(1000);
     }
-    // stop ringback niezależnie od wyniku
+
     tones.stopAll();
 
     if(!ok) throw new Error('Brak odpowiedzi ucznia');
 
     joined=true; uiRefresh(); await populateOutputs();
     negReady=true; startOfferWatcher();
+    startMediaStats(); // ▶ pokaż przepływ pakietów
 
     // 🔔 krótkie „połączono”
     tones.playConnected();
@@ -524,6 +554,7 @@ async function joinMeeting(){
 
     joined=true; uiRefresh(); await populateOutputs();
     negReady=true; startOfferWatcher();
+    startMediaStats(); // ▶ także po stronie ucznia
 
     const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none'; incomingOffer=false;
   }catch(e){ alert('Join error: '+e); teardown(); }
@@ -584,7 +615,7 @@ function startRingWatcherForStudent(){
     try{
       if(joined){
         const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none';
-        if(incomingOffer){ incomingOffer=false; tones.stopAll(); } // 🔔 stop, już połączeni
+        if(incomingOffer){ incomingOffer=false; tones.stopAll(); }
         ringWatch=setTimeout(loop,1500); return;
       }
       const off = await getJSON(OFFER_URL,'ring-watch');
@@ -592,17 +623,14 @@ function startRingWatcherForStudent(){
       const inc = $('#incoming');
 
       if(has){
-        // pokaż i włącz dzwonienie
         if(!incomingOffer){
-          // pierwsze przejście na „jest oferta”
-          await resumeAudioCtx(); // może wymagać kliknięcia w „Włącz audio” – wtedy baner z przyciskiem też pomoże
+          await resumeAudioCtx();
           tones.playRingtone();   // 🔔 start dzwonienia u ucznia
         }
         inc.classList.add('show'); inc.style.display='flex';
       }else{
-        // nie ma oferty – schowaj i wycisz
         inc.classList.remove('show'); inc.style.display='none';
-        tones.stopAll(); // 🔔
+        tones.stopAll();
       }
       incomingOffer = has;
     }catch(e){}
@@ -629,7 +657,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initTimer(); uiRefresh(); populateOutputs();
   $('#autoplay-btn')?.addEventListener('click', async ()=>{ await ensureAudio(); await resumeAudioCtx(); });
 
-  // Lekki „unmute” kontekstu audio przy pierwszej interakcji z dokumentem
   ['click','touchstart','keydown','mousemove'].forEach(evt=>{
     window.addEventListener(evt, ()=>{ resumeAudioCtx(); }, { once:true, passive:true });
   });
@@ -641,10 +668,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setInterval(updateStore, 2_000);
   setVolume($('#vol').value);
 
-  // Watcher „dzwonka” u ucznia
   startRingWatcherForStudent();
 
-  // Odbierz / Odrzuć
   $('#accept')?.addEventListener('click', ()=>{ if(incomingOffer && !joined && !connecting){ tones.stopAll(); joinMeeting(); } });
   $('#decline')?.addEventListener('click', ()=>{
     const inc = $('#incoming'); inc.classList.remove('show'); inc.style.display='none'; incomingOffer=false; tones.stopAll();
