@@ -100,7 +100,6 @@ def webrtc_offer(request, rez_id: int):
 
     return HttpResponseBadRequest("Method not allowed")
 
-
 @csrf_exempt
 @never_cache
 def webrtc_answer(request, rez_id: int):
@@ -145,10 +144,6 @@ def webrtc_answer(request, rez_id: int):
 
     else:
         return HttpResponseBadRequest("Method not allowed")
-
-def _keys(rez_id):
-    # UŻYWAJ DOKŁADNIE TEGO SAMEGO KLUCZA co webrtc_offer/answer
-    return (f"webrtc:{rez_id}:offer", f"webrtc:{rez_id}:answer")
 
 @csrf_exempt
 def webrtc_debug(request, rez_id: int):
