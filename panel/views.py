@@ -54,8 +54,65 @@ def test_publiczny(request):
     return HttpResponse("PUBLIC OK")
 
 
+# --- STRONA GŁÓWNA (lista tylko nauczycieli: profil.is_teacher=True) ---
+from django.contrib.auth.models import User
+from django.shortcuts import render
+
 def strona_glowna_view(request):
-    return render(request, "index.html")
+    # Pobierz aktywnych użytkowników z ustawionym profilem nauczyciela
+    qs = (
+        User.objects
+        .filter(is_active=True, profil__is_teacher=True)
+        .select_related("profil")
+        .order_by("last_name", "first_name")
+    )
+
+    nauczyciele = []
+    for u in qs:
+        profil = getattr(u, "profil", None)
+
+        # Bezpieczne pobranie zdjęcia (obsługa różnych nazw pól i FileField/URL/str)
+        photo_url = ""
+        if profil:
+            for field_name in ("zdjecie", "photo", "avatar", "photo_url"):
+                val = getattr(profil, field_name, "")
+                if val:
+                    try:
+                        photo_url = val.url  # jeśli to FileField/ImageField
+                    except Exception:
+                        photo_url = str(val)  # jeśli to zwykły string/URL
+                    if photo_url:
+                        break
+
+        # Tagowanie (np. przedmioty / poziomy / tytuły) – złączone i odfiltrowane duplikaty
+        raw_tags = []
+        if profil:
+            for src in ("przedmioty", "poziom_nauczania", "tytul_naukowy"):
+                s = getattr(profil, src, "") or ""
+                if s:
+                    raw_tags.extend([t.strip() for t in s.split(",") if t.strip()])
+        # unikalne z zachowaniem kolejności, max 6
+        seen = set()
+        tag_list = []
+        for t in raw_tags:
+            if t not in seen:
+                seen.add(t)
+                tag_list.append(t)
+            if len(tag_list) >= 6:
+                break
+
+        nauczyciele.append({
+            "full_name": (f"{u.first_name} {u.last_name}".strip() or u.username).strip(),
+            "bio": getattr(profil, "opis", "") if profil else "",
+            "photo_url": photo_url,
+            "tag_list": tag_list,
+            "default_avatar": "https://placehold.co/72x72",
+        })
+
+    return render(request, "index.html", {
+        "nauczyciele": nauczyciele
+    })
+
 
 
 # ==========================
