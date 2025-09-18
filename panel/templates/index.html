@@ -6,50 +6,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PolubiszTo.pl — Korepetycje online</title>
   <style>
+    /* --- Mobile‑first, bez twardych szerokości --- */
     :root{
       --primary:#0b74ff; --ink:#0b3d91; --bg:#f6f8ff; --card:#fff; --muted:#6b7280;
-      --ok:#22c55e; --danger:#ef4444; --ring:#cfe0ff; --shadow:0 10px 30px rgba(11,116,255,.12);
+      --ok:#22c55e; --danger:#ef4444; --ring:#cfe0ff; --shadow:0 10px 30px rgba(11,116,255,.12)
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;background:var(--bg)}
     a{color:var(--primary);text-decoration:none}
+    img{max-width:100%;height:auto;display:block}
+    .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
     .hidden{display:none!important}
-    /* --- Layout --- */
+
+    /* HEADER */
     header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;z-index:50}
-    .wrap{max-width:1200px;margin:0 auto;padding:0 16px}
-    .bar{display:flex;align-items:center;gap:14px;padding:12px 0}
-    .logo{display:flex;align-items:center;font-weight:800;letter-spacing:.3px}
-    .logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#0b74ff,#7aaaff);display:inline-block;margin-right:10px}
-    nav{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    .bar{display:flex;align-items:center;gap:10px;padding:12px 0}
+    .logo{display:flex;align-items:center;font-weight:800;letter-spacing:.2px}
+    .logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#0b74ff,#7aaaff);display:inline-block;margin-right:8px}
+    nav{margin-left:auto;display:flex;gap:8px}
     .btn{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;font-weight:600}
     .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:var(--shadow)}
-    .hero{background:radial-gradient(1200px 600px at 70% -50%, #cfe0ff 0%, transparent 60%);}
-    .hero-in{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center;padding:48px 0}
-    .h1{font-size:clamp(28px,4vw,44px);line-height:1.08;margin:0 0 8px 0}
-    .lead{color:var(--muted);font-size:clamp(14px,1.6vw,18px);margin:0 0 18px}
-    .search{display:flex;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:10px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
-    .search input{flex:1;border:0;outline:0;font-size:16px}
+
+    /* HERO */
+    .hero{background:radial-gradient(900px 500px at 70% -60%, #cfe0ff 0%, transparent 60%)}
+    .hero-in{display:grid;grid-template-columns:1fr;gap:18px;align-items:center;padding:28px 0}
+    .h1{font-size:clamp(24px,5vw,42px);line-height:1.08;margin:0}
+    .lead{color:var(--muted);font-size:clamp(14px,3.3vw,18px);margin:8px 0 16px}
+    .search{display:flex;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+    .search input{flex:1;border:0;outline:0;font-size:16px;min-width:0}
     .search .btn{white-space:nowrap}
-    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-    .chip{border:1px dashed #d1d5db;padding:6px 10px;border-radius:999px;font-size:13px;color:#374151;background:#fff}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-    .teachers{padding:26px 0}
-    .card{grid-column:span 12;background:var(--card);border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 2px 12px rgba(0,0,0,.04);overflow:hidden;display:flex;gap:16px;padding:14px}
-    @media(min-width:640px){.card{grid-column:span 6}}
-    @media(min-width:960px){.card{grid-column:span 4}}
-    .avatar{width:84px;height:84px;border-radius:16px;background:#eef3ff;flex:0 0 84px;object-fit:cover;border:1px solid #e5e7eb}
-    .meta{flex:1}
-    .name{font-weight:800;font-size:18px;margin:0 0 6px}
+
+    /* SEKCJE */
+    .section{padding:24px 0}
+    .section h2{margin:0 0 12px;font-size:clamp(18px,3.8vw,22px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+    .card,.feature-box{background:var(--card);border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);padding:14px}
+    .teacher{display:flex;gap:12px;align-items:flex-start}
+    .avatar{width:72px;height:72px;border-radius:14px;background:#eef3ff;object-fit:cover;border:1px solid #e5e7eb;flex:0 0 72px}
+    .name{font-weight:800;font-size:16px;margin:0 0 6px}
     .desc{color:#374151;font-size:14px;margin:0 0 10px}
     .tags{display:flex;flex-wrap:wrap;gap:6px}
     .tag{font-size:12px;color:#334155;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px}
-    .cta{margin-left:auto;display:flex;align-items:center;gap:8px}
-    .foot{border-top:1px solid #e5e7eb;color:#6b7280;padding:18px 0;margin-top:22px}
-    .section{padding:28px 0}
-    .features{display:flex;justify-content:space-around;gap:16px;flex-wrap:wrap}
-    .feature-box{width:30%;min-width:260px;background:#eef3ff;padding:18px;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-    .quote{font-style:italic;color:#555}
-    .top-cta{display:flex;gap:10px;margin-top:12px}
+
+    /* CTA przy kartach — na mobile pełna szerokość */
+    .cta{display:flex;gap:8px;flex-wrap:wrap}
+    .cta .btn{flex:1 1 140px;text-align:center}
+
+    /* Cytaty / opinie */
+    .quote{font-style:italic;color:#555;margin:8px 0}
+
+    /* FOOTER */
+    .foot{border-top:1px solid #e5e7eb;color:#6b7280;padding:18px 0;margin-top:22px;text-align:center}
+
+    /* Breakpoint większy: układ dwóch kolumn w HERO */
+    @media (min-width: 900px){
+      .hero-in{grid-template-columns:1.1fr .9fr;padding:44px 0}
+    }
+
+    /* Preferencje ruchu */
+    @media (prefers-reduced-motion: reduce){
+      *{scroll-behavior:auto}
+    }
   </style>
 </head>
 <body>
@@ -58,7 +75,6 @@
     <div class="wrap bar">
       <a class="logo" href="/"><i></i>PolubiszTo.pl</a>
       <nav>
-        <!-- Kontrola widoczności przycisków zgodnie z Twoją listą (#108) -->
         <a class="btn" href="/o-nas" id="btn-onas">O nas</a>
         <a class="btn" href="/kontakt" id="btn-kontakt">Kontakt</a>
         <a class="btn" href="{% url 'login' %}" id="btn-login">Zaloguj</a>
@@ -78,18 +94,6 @@
             <input type="text" name="q" placeholder="Matematyka, angielski, fizyka…" />
             <button class="btn primary" type="submit">Szukaj</button>
           </form>
-          <div class="chips hidden" id="filters">
-            <span class="chip">Matematyka</span>
-            <span class="chip">Język angielski</span>
-            <span class="chip">Fizyka</span>
-            <span class="chip">Chemia</span>
-            <span class="chip">Szkoła podstawowa</span>
-            <span class="chip">Matura rozszerzona</span>
-          </div>
-          <div class="top-cta hidden" id="top-cta">
-            <a class="btn" href="/jak-to-dziala">Jak to działa?</a>
-            <a class="btn" href="/dla-nauczycieli">Dla nauczycieli</a>
-          </div>
         </div>
         <div>
           <div style="aspect-ratio:4/3;background:#eaf1ff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;color:#4767a8;font-weight:700">
@@ -101,8 +105,8 @@
 
     <!-- JAK TO DZIAŁA -->
     <section class="wrap section">
-      <h2 style="margin:0 0 12px;font-size:22px">Jak to działa?</h2>
-      <div class="features">
+      <h2>Jak to działa?</h2>
+      <div class="grid">
         <div class="feature-box">
           <h4>1. Wybierz nauczyciela</h4>
           <p>Przeglądaj nauczycieli i ich stawki, zobacz opinie i wolne terminy.</p>
@@ -118,74 +122,61 @@
       </div>
     </section>
 
-    <!-- LISTA NAUCZYCIELI (demo + Django loop zakomentowany) -->
-    <section class="wrap teachers">
-      <h2 style="margin:0 0 12px;font-size:22px">Polecani nauczyciele</h2>
+    <!-- LISTA NAUCZYCIELI -->
+    <section class="wrap section">
+      <h2>Polecani nauczyciele</h2>
       <div class="grid" id="teachersGrid">
-        {#
-        {% for n in nauczyciele %}
-          <article class="card">
-            <img class="avatar" src="{{ n.photo_url }}" alt="{{ n.full_name }}" onerror="this.src='https://placehold.co/84x84'"/>
-            <div class="meta">
-              <h3 class="name">{{ n.full_name }}</h3>
-              <p class="desc">{{ n.bio|default:'Doświadczony nauczyciel. Ustal temat i działajmy!' }}</p>
-              <div class="tags">
-                {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
-              </div>
-            </div>
-            <div class="cta">
-              <a class="btn" href="/profil/{{ n.id }}">Profil</a>
-              <a class="btn primary" href="/zarezerwuj/{{ n.id }}">Rezerwuj</a>
-            </div>
-          </article>
-        {% empty %}
-          <p>Wkrótce pojawią się nauczyciele.</p>
-        {% endfor %}
-        #}
+        {# --- Django loop (odkomentuj przy podpięciu bazy) --- #}
+        {# --- Django loop (odkomentuj przy podpięciu bazy) --- #}
+{#
+{% for n in nauczyciele %}
+  <article class="card teacher">
+    <img class="avatar" src="{{ n.photo_url|default:n.default_avatar }}" alt="{{ n.full_name }}" onerror="this.src='https://placehold.co/72x72'"/>
+    <div style="flex:1">
+      <h3 class="name">{{ n.full_name }}</h3>
+      <p class="desc">{{ n.bio|default:'Doświadczony nauczyciel. Ustal temat i działajmy!' }}</p>
+      <div class="tags">
+        {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
+      </div>
+    </div>
+  </article>
+{% empty %}
+  <p>Wkrótce pojawią się nauczyciele.</p>
+{% endfor %}
+#}
+
         <!-- Demo karty -->
-        <article class="card">
-          <img class="avatar" src="https://placehold.co/84x84" alt="Anna Kowalska"/>
-          <div class="meta">
+        <article class="card teacher">
+          <img class="avatar" src="https://placehold.co/72x72" alt="Anna Kowalska"/>
+          <div style="flex:1">
             <h3 class="name">Anna Kowalska</h3>
             <p class="desc">Matematyka — szkoła podstawowa i matura. Spokojnie wytłumaczę każde zadanie.</p>
             <div class="tags"><span class="tag">Matematyka</span><span class="tag">Matura</span></div>
-          </div>
-          <div class="cta">
-            <a class="btn" href="#">Profil</a>
-            <a class="btn primary" href="#">Rezerwuj</a>
-          </div>
-        </article>
-        <article class="card">
-          <img class="avatar" src="https://placehold.co/84x84" alt="Michał Nowak"/>
-          <div class="meta">
+            </div>
+          </article>
+        <article class="card teacher">
+          <img class="avatar" src="https://placehold.co/72x72" alt="Michał Nowak"/>
+          <div style="flex:1">
             <h3 class="name">Michał Nowak</h3>
             <p class="desc">Język angielski — konwersacje i przygotowanie do egzaminów.</p>
             <div class="tags"><span class="tag">Angielski</span><span class="tag">Konwersacje</span></div>
-          </div>
-          <div class="cta">
-            <a class="btn" href="#">Profil</a>
-            <a class="btn primary" href="#">Rezerwuj</a>
-          </div>
-        </article>
-        <article class="card">
-          <img class="avatar" src="https://placehold.co/84x84" alt="Ewa Zielińska"/>
-          <div class="meta">
+            </div>
+          </article>
+        <article class="card teacher">
+          <img class="avatar" src="https://placehold.co/72x72" alt="Ewa Zielińska"/>
+          <div style="flex:1">
             <h3 class="name">Ewa Zielińska</h3>
             <p class="desc">Fizyka — od podstaw do matury rozszerzonej. Zadania krok po kroku.</p>
             <div class="tags"><span class="tag">Fizyka</span><span class="tag">Rozszerzenie</span></div>
-          </div>
-          <div class="cta">
-            <a class="btn" href="#">Profil</a>
-            <a class="btn primary" href="#">Rezerwuj</a>
-          </div>
-        </article>
+            </div>
+          </article>
       </div>
     </section>
 
     <!-- DLACZEGO MY -->
     <section class="wrap section">
-      <h2 style="margin:0 0 12px;font-size:22px">Dlaczego warto nas wybrać?</h2>
-      <div class="features">
+      <h2>Dlaczego warto nas wybrać?</h2>
+      <div class="grid">
         <div class="feature-box">
           <h4>✔ Doświadczeni nauczyciele</h4>
           <p>Najlepsi specjaliści z różnych dziedzin.</p>
@@ -203,7 +194,7 @@
 
     <!-- OPINIE -->
     <section class="wrap section">
-      <h2 style="margin:0 0 12px;font-size:22px">Opinie naszych uczniów</h2>
+      <h2>Opinie naszych uczniów</h2>
       <p class="quote">“Dzięki tej platformie poprawiłem swoje wyniki z matematyki o 30%!” – Adam, 16 lat</p>
       <p class="quote">“Nauka online jest teraz prosta i wygodna. Polecam!” – Julia, 18 lat</p>
       <p class="quote">“Dzięki elastycznym godzinom mogę uczyć się, kiedy chcę!” – Karol, 15 lat</p>
@@ -225,7 +216,6 @@
 
   <script>
     document.getElementById('y').textContent = new Date().getFullYear();
-    // TODO: Ukrywaj/odkrywaj sekcje/przyciski dodając/odejmując klasę .hidden (#108)
   </script>
 </body>
 </html>
