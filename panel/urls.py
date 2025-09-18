@@ -1,6 +1,7 @@
 from django.urls import path
 from django.views.generic import TemplateView
 from . import views
+from panel.views import strona_glowna_view 
 from .views import (
     podwyzki_nauczyciele_view,
     virtual_room,
@@ -62,6 +63,7 @@ urlpatterns = [
     # WebRTC signaling (ważne dla audio)
     path("webrtc/offer/<int:rez_id>/", views.webrtc_offer, name="webrtc_offer"),
     path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
+    path("webrtc/hangup/<int:rez_id>/", views.webrtc_hangup, name="webrtc_hangup"),
     path("webrtc/debug/<int:rez_id>/", views.webrtc_debug, name="webrtc_debug"),
 
 ]
