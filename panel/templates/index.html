@@ -128,22 +128,22 @@
       <div class="grid" id="teachersGrid">
         {# --- Django loop (odkomentuj przy podpięciu bazy) --- #}
         {# --- Django loop (odkomentuj przy podpięciu bazy) --- #}
-{#
 {% for n in nauczyciele %}
   <article class="card teacher">
     <img class="avatar" src="{{ n.photo_url|default:n.default_avatar }}" alt="{{ n.full_name }}" onerror="this.src='https://placehold.co/72x72'"/>
     <div style="flex:1">
       <h3 class="name">{{ n.full_name }}</h3>
-      <p class="desc">{{ n.bio|default:'Doświadczony nauczyciel. Ustal temat i działajmy!' }}</p>
+      <p class="desc">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
       <div class="tags">
-        {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
+        {% for t in n.tag_list %}
+          <span class="tag">{{ t }}</span>
+        {% endfor %}
       </div>
     </div>
   </article>
 {% empty %}
   <p>Wkrótce pojawią się nauczyciele.</p>
 {% endfor %}
-#}
 
         <!-- Demo karty -->
         <article class="card teacher">
