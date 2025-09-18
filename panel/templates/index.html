@@ -6,79 +6,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PolubiszTo.pl — Korepetycje online</title>
   <style>
-    /* --- Mobile‑first, bez twardych szerokości --- */
     :root{
-      --primary:#0b74ff; --ink:#0b3d91; --bg:#f6f8ff; --card:#fff; --muted:#6b7280;
-      --ok:#22c55e; --danger:#ef4444; --ring:#cfe0ff; --shadow:0 10px 30px rgba(11,116,255,.12)
+      --primary:#0b74ff; --ink:#0f172a; --bg:#f7f9ff; --card:#ffffff; --muted:#6b7280;
+      --shadow:0 10px 30px rgba(11,116,255,.12);
+      --radius:16px; --gap:16px; --edge:16px; --max:1140px;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;height:100%;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;background:var(--bg)}
-    a{color:var(--primary);text-decoration:none}
+    html{scroll-behavior:smooth}
+    body{margin:0;min-height:100%;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
     img{max-width:100%;height:auto;display:block}
-    .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
-    .hidden{display:none!important}
+    a{color:var(--primary);text-decoration:none}
 
-    /* HEADER */
-    header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;z-index:50}
+    .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--edge)}
+    /* header: sticky + blur + lekki cień po scrollu */
+    header{position:sticky;top:0;z-index:50;border-bottom:1px solid #e5e7eb;
+      backdrop-filter:saturate(140%) blur(8px); background:rgba(255,255,255,.78)}
+    @supports not (backdrop-filter: blur(8px)){ header{background:#ffffff} }
+    header.scrolled{box-shadow:0 6px 24px rgba(15, 23, 42, .06)}
     .bar{display:flex;align-items:center;gap:10px;padding:12px 0}
     .logo{display:flex;align-items:center;font-weight:800;letter-spacing:.2px}
-    .logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#0b74ff,#7aaaff);display:inline-block;margin-right:8px}
-    nav{margin-left:auto;display:flex;gap:8px}
-    .btn{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;font-weight:600}
+    .logo i{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#0b74ff,#7aaaff);display:inline-block;margin-right:10px}
+
+    /* menu bez animacji */
+    .hamb{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px;display:flex;align-items:center;gap:8px;cursor:pointer}
+    .hamb i{width:18px;height:2px;background:#0f172a;box-shadow:0 6px 0 #0f172a, 0 -6px 0 #0f172a;display:inline-block}
+    .nav{display:none;flex-wrap:wrap;gap:8px;margin-left:auto}
+    .nav.open{display:flex}
+    @media (min-width: 860px){ .hamb{display:none} .nav{display:flex !important} }
+
+    .btn{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;font-weight:600;line-height:1}
     .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:var(--shadow)}
 
-    /* HERO */
-    .hero{background:radial-gradient(900px 500px at 70% -60%, #cfe0ff 0%, transparent 60%)}
+    .hero{background:radial-gradient(900px 520px at 75% -60%, #dbe7ff 0%, transparent 60%)}
     .hero-in{display:grid;grid-template-columns:1fr;gap:18px;align-items:center;padding:28px 0}
-    .h1{font-size:clamp(24px,5vw,42px);line-height:1.08;margin:0}
-    .lead{color:var(--muted);font-size:clamp(14px,3.3vw,18px);margin:8px 0 16px}
-    .search{display:flex;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+    .h1{font-size:clamp(24px,4.8vw,42px);line-height:1.08;margin:0}
+    .lead{color:var(--muted);font-size:clamp(14px,3.2vw,18px);margin:8px 0 16px}
+    .search{display:flex;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:10px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
     .search input{flex:1;border:0;outline:0;font-size:16px;min-width:0}
     .search .btn{white-space:nowrap}
 
-    /* SEKCJE */
-    .section{padding:24px 0}
-    .section h2{margin:0 0 12px;font-size:clamp(18px,3.8vw,22px)}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-    .card,.feature-box{background:var(--card);border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);padding:14px}
+    .section{padding:28px 0}
+    .section h2{margin:0 0 12px;font-size:clamp(18px,3.6vw,22px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--gap)}
+    .card{background:var(--card);border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 2px 10px rgba(0,0,0,.04);padding:14px;transition:transform .18s ease, box-shadow .18s ease}
+    .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.08)}
+
+    /* Jak to działa */
+    .i{width:36px;height:36px;border-radius:10px;background:#eef3ff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:800;color:#3b5fcc}
+    .step{display:flex;gap:12px;align-items:flex-start}
+
+    /* Karty nauczycieli */
     .teacher{display:flex;gap:12px;align-items:flex-start}
     .avatar{width:72px;height:72px;border-radius:14px;background:#eef3ff;object-fit:cover;border:1px solid #e5e7eb;flex:0 0 72px}
     .name{font-weight:800;font-size:16px;margin:0 0 6px}
     .desc{color:#374151;font-size:14px;margin:0 0 10px}
     .tags{display:flex;flex-wrap:wrap;gap:6px}
     .tag{font-size:12px;color:#334155;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px}
+    /* ucięcie bio (2 linie mobile, 3 linie desktop) */
+    .clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    @media (min-width: 900px){ .clamp-2{-webkit-line-clamp:3} }
 
-    /* CTA przy kartach — na mobile pełna szerokość */
-    .cta{display:flex;gap:8px;flex-wrap:wrap}
-    .cta .btn{flex:1 1 140px;text-align:center}
+    /* Karuzela opinii (Matematyka) */
+    .t-card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 6px 22px rgba(0,0,0,.06);padding:22px;min-height:180px;display:flex;flex-direction:column;justify-content:space-between}
+    .t-quote{font-size:clamp(16px,3.6vw,20px);line-height:1.5;margin:0 0 14px}
+    .t-quote:before{content:"“";font-size:1.8em;line-height:0;vertical-align:-0.2em;color:#9ab8ff;margin-right:6px}
+    .t-quote:after{content:"”";font-size:1.8em;line-height:0;vertical-align:-0.2em;color:#9ab8ff;margin-left:6px}
+    .t-meta{display:flex;align-items:center;gap:10px;color:#475569}
+    .t-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #e5e7eb}
+    .t-name{font-weight:700}
+    .t-grade{font-size:12px;color:#64748b}
+    .slider{position:relative;overflow:hidden;border-radius:20px}
+    .slides{display:flex;transition:transform .5s ease;will-change:transform}
+    .slide{min-width:100%;padding:4px}
+    .dots{display:flex;gap:8px;justify-content:center;margin-top:12px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#cbd5e1;border:0;cursor:pointer}
+    .dot[aria-current="true"]{background:#0b74ff}
+    .arrow{position:absolute;top:50%;transform:translateY(-50%);background:#ffffffcc;border:1px solid #e5e7eb;border-radius:12px;padding:8px;cursor:pointer}
+    .prev{left:8px} .next{right:8px}
+    .arrow:focus{outline:2px solid #93c5fd}
 
-    /* Cytaty / opinie */
-    .quote{font-style:italic;color:#555;margin:8px 0}
-
-    /* FOOTER */
     .foot{border-top:1px solid #e5e7eb;color:#6b7280;padding:18px 0;margin-top:22px;text-align:center}
 
-    /* Breakpoint większy: układ dwóch kolumn w HERO */
-    @media (min-width: 900px){
-      .hero-in{grid-template-columns:1.1fr .9fr;padding:44px 0}
-    }
-
-    /* Preferencje ruchu */
-    @media (prefers-reduced-motion: reduce){
-      *{scroll-behavior:auto}
-    }
+    @media (min-width: 920px){ .hero-in{grid-template-columns:1.1fr .9fr;padding:44px 0} }
   </style>
 </head>
 <body>
-  <!-- HEADER -->
   <header>
     <div class="wrap bar">
       <a class="logo" href="/"><i></i>PolubiszTo.pl</a>
-      <nav>
-        <a class="btn" href="/o-nas" id="btn-onas">O nas</a>
-        <a class="btn" href="/kontakt" id="btn-kontakt">Kontakt</a>
-        <a class="btn" href="{% url 'login' %}" id="btn-login">Zaloguj</a>
-        <a class="btn primary" href="{% url 'register' %}" id="btn-register">Dołącz jako uczeń</a>
+
+      <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="site-nav" aria-expanded="false"><i></i></button>
+      <nav class="nav" id="site-nav">
+        <a class="btn" href="/o-nas">O nas</a>
+        <a class="btn" href="/kontakt">Kontakt</a>
+        <a class="btn" href="{% url 'login' %}">Zaloguj</a>
+        <a class="btn primary" href="{% url 'register' %}">Dołącz jako uczeń</a>
       </nav>
     </div>
   </header>
@@ -89,9 +111,9 @@
       <div class="wrap hero-in">
         <div>
           <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
-          <p class="lead">Znajdź nauczyciela, zarezerwuj termin i dołącz do wirtualnego pokoju (tablica + głos) — wszystko w jednym miejscu.</p>
+          <p class="lead">Znajdź nauczyciela, zarezerwuj termin i dołącz do wirtualnego pokoju — wszystko w jednym miejscu.</p>
           <form class="search" action="/szukaj" method="get" autocomplete="off">
-            <input type="text" name="q" placeholder="Matematyka, angielski, fizyka…" />
+            <input type="text" name="q" placeholder="Matematyka (wkrótce także inne przedmioty)" />
             <button class="btn primary" type="submit">Szukaj</button>
           </form>
         </div>
@@ -104,118 +126,180 @@
     </section>
 
     <!-- JAK TO DZIAŁA -->
-    <section class="wrap section">
+    <section class="wrap section" id="jak-to-dziala">
       <h2>Jak to działa?</h2>
       <div class="grid">
-        <div class="feature-box">
-          <h4>1. Wybierz nauczyciela</h4>
-          <p>Przeglądaj nauczycieli i ich stawki, zobacz opinie i wolne terminy.</p>
+        <div class="card step">
+          <div class="i">1</div>
+          <div><h4>Wybierz nauczyciela</h4><p>Przeglądaj profile, bio i zakres poziomów z matematyki.</p></div>
         </div>
-        <div class="feature-box">
-          <h4>2. Zarezerwuj lekcję</h4>
-          <p>Wybierz termin, podaj temat zajęć i dodaj pliki.</p>
+        <div class="card step">
+          <div class="i">2</div>
+          <div><h4>Zarezerwuj termin</h4><p>Podaj temat lekcji, dołącz pliki i potwierdź rezerwację.</p></div>
         </div>
-        <div class="feature-box">
-          <h4>3. Ucz się i rozwijaj</h4>
-          <p>Dołącz do pokoju z tablicą i rozmową głosową — bez instalacji.</p>
+        <div class="card step">
+          <div class="i">3</div>
+          <div><h4>Ucz się online</h4><p>Dołącz do pokoju z tablicą i rozmową głosową — bez instalacji.</p></div>
         </div>
-      </div>
-    </section>
-
-    <!-- LISTA NAUCZYCIELI -->
-    <section class="wrap section">
-      <h2>Polecani nauczyciele</h2>
-      <div class="grid" id="teachersGrid">
-        {# --- Django loop (odkomentuj przy podpięciu bazy) --- #}
-        {# --- Django loop (odkomentuj przy podpięciu bazy) --- #}
-{% for n in nauczyciele %}
-  <article class="card teacher">
-    <img class="avatar" src="{{ n.photo_url|default:n.default_avatar }}" alt="{{ n.full_name }}" onerror="this.src='https://placehold.co/72x72'"/>
-    <div style="flex:1">
-      <h3 class="name">{{ n.full_name }}</h3>
-      <p class="desc">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
-      <div class="tags">
-        {% for t in n.tag_list %}
-          <span class="tag">{{ t }}</span>
-        {% endfor %}
-      </div>
-    </div>
-  </article>
-{% empty %}
-  <p>Wkrótce pojawią się nauczyciele.</p>
-{% endfor %}
-
-        <!-- Demo karty -->
-        <article class="card teacher">
-          <img class="avatar" src="https://placehold.co/72x72" alt="Anna Kowalska"/>
-          <div style="flex:1">
-            <h3 class="name">Anna Kowalska</h3>
-            <p class="desc">Matematyka — szkoła podstawowa i matura. Spokojnie wytłumaczę każde zadanie.</p>
-            <div class="tags"><span class="tag">Matematyka</span><span class="tag">Matura</span></div>
-            </div>
-          </article>
-        <article class="card teacher">
-          <img class="avatar" src="https://placehold.co/72x72" alt="Michał Nowak"/>
-          <div style="flex:1">
-            <h3 class="name">Michał Nowak</h3>
-            <p class="desc">Język angielski — konwersacje i przygotowanie do egzaminów.</p>
-            <div class="tags"><span class="tag">Angielski</span><span class="tag">Konwersacje</span></div>
-            </div>
-          </article>
-        <article class="card teacher">
-          <img class="avatar" src="https://placehold.co/72x72" alt="Ewa Zielińska"/>
-          <div style="flex:1">
-            <h3 class="name">Ewa Zielińska</h3>
-            <p class="desc">Fizyka — od podstaw do matury rozszerzonej. Zadania krok po kroku.</p>
-            <div class="tags"><span class="tag">Fizyka</span><span class="tag">Rozszerzenie</span></div>
-            </div>
-          </article>
       </div>
     </section>
 
     <!-- DLACZEGO MY -->
-    <section class="wrap section">
+    <section class="wrap section" id="dlaczego-my">
       <h2>Dlaczego warto nas wybrać?</h2>
       <div class="grid">
-        <div class="feature-box">
-          <h4>✔ Doświadczeni nauczyciele</h4>
-          <p>Najlepsi specjaliści z różnych dziedzin.</p>
-        </div>
-        <div class="feature-box">
-          <h4>✔ Dogodne godziny</h4>
-          <p>Wybierasz termin, który Ci pasuje.</p>
-        </div>
-        <div class="feature-box">
-          <h4>✔ Interaktywne materiały</h4>
-          <p>Dodawaj pliki PDF i JPG, aby ułatwić naukę.</p>
-        </div>
+        <div class="card"><h4>✔ Doświadczeni nauczyciele</h4><p>Zweryfikowane profile z jasno opisanym doświadczeniem.</p></div>
+        <div class="card"><h4>✔ Dogodne godziny</h4><p>Elastyczny grafik dopasowany do Twojego planu dnia.</p></div>
+        <div class="card"><h4>✔ Materiały do lekcji</h4><p>Dodawanie plików oraz notatki po zajęciach.</p></div>
       </div>
     </section>
 
-    <!-- OPINIE -->
-    <section class="wrap section">
+    <!-- LISTA NAUCZYCIELI (Django: profil.is_teacher=True) -->
+    <section class="wrap section" id="nauczyciele">
+      <h2>Polecani nauczyciele</h2>
+      <div class="grid" id="teachersGrid">
+        {% for n in nauczyciele %}
+          <article class="card teacher">
+            <img class="avatar" src="{{ n.photo_url|default:n.default_avatar }}" alt="{{ n.full_name }}" onerror="this.src='https://placehold.co/72x72'"/>
+            <div style="flex:1">
+              <h3 class="name">{{ n.full_name }}</h3>
+              <p class="desc clamp-2">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
+              {% if n.tag_list %}
+                <div class="tags">
+                  {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </article>
+        {% empty %}
+          <p>Wkrótce pojawią się nauczyciele.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- OPINIE — karuzela (wszyscy: Matematyka) -->
+    <section class="wrap section" id="opinie">
       <h2>Opinie naszych uczniów</h2>
-      <p class="quote">“Dzięki tej platformie poprawiłem swoje wyniki z matematyki o 30%!” – Adam, 16 lat</p>
-      <p class="quote">“Nauka online jest teraz prosta i wygodna. Polecam!” – Julia, 18 lat</p>
-      <p class="quote">“Dzięki elastycznym godzinom mogę uczyć się, kiedy chcę!” – Karol, 15 lat</p>
+      <div class="slider" role="region" aria-label="Opinie uczniów">
+        <div class="slides" id="slides">
+          <div class="slide">
+            <article class="t-card">
+              <p class="t-quote">Dzięki tej platformie poprawiłem swoje wyniki z matematyki o 30%!</p>
+              <div class="t-meta">
+                <img class="t-avatar" src="https://placehold.co/88x88" alt="Avatar Adama">
+                <div><div class="t-name">Adam</div><div class="t-grade">16 lat • Matematyka</div></div>
+              </div>
+            </article>
+          </div>
+          <div class="slide">
+            <article class="t-card">
+              <p class="t-quote">Nauka matematyki stała się dla mnie prosta i wygodna.</p>
+              <div class="t-meta">
+                <img class="t-avatar" src="https://placehold.co/88x88" alt="Avatar Julii">
+                <div><div class="t-name">Julia</div><div class="t-grade">18 lat • Matematyka</div></div>
+              </div>
+            </article>
+          </div>
+          <div class="slide">
+            <article class="t-card">
+              <p class="t-quote">Świetne tłumaczenie zadań z matematyki i elastyczne godziny.</p>
+              <div class="t-meta">
+                <img class="t-avatar" src="https://placehold.co/88x88" alt="Avatar Karola">
+                <div><div class="t-name">Karol</div><div class="t-grade">15 lat • Matematyka</div></div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <button class="arrow prev" aria-label="Poprzednia opinia" id="prev">&#10094;</button>
+        <button class="arrow next" aria-label="Następna opinia" id="next">&#10095;</button>
+        <div class="dots" id="dots" role="tablist" aria-label="Nawigacja opinii"></div>
+      </div>
     </section>
 
     <!-- CTA KOŃCOWE -->
-    <section class="wrap section" style="text-align:center">
+    <section class="wrap section" id="cta" style="text-align:center">
       <h2>🚀 Zacznij już dziś!</h2>
-      <p>Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami.</p>
+      <p>Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
       <a class="btn primary" href="{% url 'register' %}">Zarejestruj się teraz</a>
     </section>
   </main>
 
   <footer>
     <div class="wrap foot">
-      © <span id="y"></span> PolubiszTo.pl — korepetycje online • <a href="/polityka-prywatnosci">Polityka prywatności</a>
+      © <span id="y"></span> PolubiszTo.pl — korepetycje online
     </div>
   </footer>
 
   <script>
+    // rok w stopce
     document.getElementById('y').textContent = new Date().getFullYear();
+
+    // hamburger (bez animacji)
+    (function(){
+      var btn=document.getElementById('hamb'), nav=document.getElementById('site-nav');
+      if(btn&&nav){ btn.addEventListener('click', function(){
+        var open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });}
+    })();
+
+    // cień nagłówka po scrollu
+    (function(){
+      var hdr = document.querySelector('header');
+      if (!hdr) return;
+      function onScroll(){
+        var y = window.scrollY || document.documentElement.scrollTop;
+        if (y > 4) hdr.classList.add('scrolled'); else hdr.classList.remove('scrolled');
+      }
+      onScroll();
+      window.addEventListener('scroll', onScroll, {passive:true});
+    })();
+
+    // Karuzela opinii
+    (function(){
+      var slides = document.getElementById('slides');
+      var slideEls = Array.prototype.slice.call(slides.children);
+      var dots = document.getElementById('dots');
+      var prev = document.getElementById('prev');
+      var next = document.getElementById('next');
+      var index = 0, timer = null, N = slideEls.length;
+
+      function update(){
+        slides.style.transform = 'translateX(-' + (index*100) + '%)';
+        var ds = dots.children;
+        for (var i=0;i<ds.length;i++){ ds[i].setAttribute('aria-current', i===index ? 'true' : 'false'); }
+      }
+      function go(i){ index = (i+N) % N; update(); restart(); }
+      function restart(){ if (timer) clearInterval(timer); timer = setInterval(function(){ go(index+1); }, 6000); }
+
+      for (var i=0;i<N;i++){
+        (function(i){
+          var b = document.createElement('button');
+          b.className='dot'; b.type='button'; b.setAttribute('aria-label','Przejdź do opinii ' + (i+1));
+          b.addEventListener('click', function(){ go(i); });
+          dots.appendChild(b);
+        })(i);
+      }
+
+      prev.addEventListener('click', function(){ go(index-1); });
+      next.addEventListener('click', function(){ go(index+1); });
+
+      slides.setAttribute('tabindex','0');
+      slides.addEventListener('keydown', function(e){
+        if (e.key === 'ArrowLeft') go(index-1);
+        if (e.key === 'ArrowRight') go(index+1);
+      });
+
+      // dotyk
+      var startX = 0;
+      slides.addEventListener('touchstart', function(e){ startX = e.touches[0].clientX; }, {passive:true});
+      slides.addEventListener('touchend', function(e){
+        var dx = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dx) > 50) go(index + (dx<0?1:-1));
+      });
+
+      update(); restart();
+    })();
   </script>
 </body>
 </html>
