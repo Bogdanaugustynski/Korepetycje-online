@@ -10,7 +10,8 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User, Group
 from django.core.cache import cache
 from django.views.decorators.cache import never_cache
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import 
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.core.files.storage import FileSystemStorage
 from django.http import (
     Http404,
