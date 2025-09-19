@@ -89,11 +89,11 @@
 
         <div class="row">
           <label class="chk"><input type="checkbox" name="remember" {% if request.POST.remember %}checked{% endif %}/> Zapamiętaj mnie</label>
-          <a href="{% url 'password_reset' %}">Nie pamiętasz hasła?</a>
+          <a href="/password-reset/">Nie pamiętasz hasła?</a>
         </div>
 
         <button class="btn" type="submit">Zaloguj się</button>
-        <p class="note">Nie masz konta? <a href="{% url 'register' %}">Zarejestruj się</a></p>
+        <a href="/register/">Zarejestruj się</a>
         <footer>© 2025 PolubiszTo.pl</footer>
       </form>
     </main>
