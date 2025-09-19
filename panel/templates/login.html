@@ -1,58 +1,111 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Logowanie</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f8ff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .login-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            width: 320px;
-        }
-        input {
-            width: 90%;
-            padding: 10px;
-            margin: 8px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .btn {
-            width: 95%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Logowanie — PolubiszTo.pl</title>
+<style>
+  :root{
+    --brand:#0b74ff;
+    --brand-700:#095cd1;
+    --ink:#0b1320;
+    --muted:#5b6777;
+    --line:#e6edff;
+    --bg:#f5f9ff;
+    --card:#ffffff;
+    --shadow:0 20px 60px rgba(11,116,255,.15);
+    --radius:16px;
+    --maxw:460px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif; color:var(--ink); background:linear-gradient(180deg,#f3f8ff,#eef4ff)}
+  .wrap{min-height:100%; display:grid; place-items:center; padding:20px}
+  .card{width:min(var(--maxw),92vw); background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:10px; justify-content:center}
+  .brand .dot{width:12px;height:12px;border-radius:50%; background:var(--brand)}
+  h1{margin:0 0 8px 0; text-align:center; font-size:22px}
+  p.sub{margin:0 0 18px 0; text-align:center; color:var(--muted); font-size:14px}
+
+  .group{margin-bottom:12px}
+  label{display:block; font-weight:800; font-size:13px; margin:0 0 6px 6px; color:#2b3c55}
+  .field{position:relative}
+  input[type="email"], input[type="password"]{
+    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:#fbfdff;
+    font-size:16px; outline:none;
+  }
+  input:focus{border-color:#cfe0ff; box-shadow:0 0 0 3px rgba(11,116,255,.15)}
+  .toggle{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px 8px; cursor:pointer;
+    font-size:12px; color:#274564;
+  }
+
+  .row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px}
+  .row a{color:var(--brand); text-decoration:none; font-weight:700; font-size:14px}
+  .row a:hover{text-decoration:underline}
+
+  .btn{width:100%; margin-top:12px; background:var(--brand); color:#fff; border:none; border-radius:12px; padding:12px 16px; font-weight:900; cursor:pointer}
+  .btn:hover{background:var(--brand-700)}
+  .note{margin-top:12px; text-align:center; font-size:14px; color:var(--muted)}
+  .note a{color:var(--brand); font-weight:800; text-decoration:none}
+  .note a:hover{text-decoration:underline}
+
+  .alert{margin-bottom:12px; padding:10px 12px; border:1px solid #ffd7d7; background:#fff5f5; color:#8a1f1f; border-radius:10px; font-size:14px; display:none}
+  .alert.show{display:block}
+
+  .chk{display:inline-flex; align-items:center; gap:8px; font-size:14px; color:#2b3c55}
+  .chk input{width:16px; height:16px}
+
+  footer{margin-top:14px; text-align:center; color:#6a7a93; font-size:12px}
+</style>
 </head>
 <body>
+  <div class="wrap">
+    <main class="card" role="dialog" aria-labelledby="t">
+      <div class="brand"><span class="dot"></span><strong>PolubiszTo.pl</strong></div>
+      <h1 id="t">Logowanie</h1>
+      <p class="sub">Miło Cię znowu widzieć 👋</p>
 
-<div class="login-box">
-    <h2>Logowanie</h2>
-    <form method="POST" action="{% url 'login' %}">
+      <div class="alert {% if error %}show{% endif %}" id="alert">
+        {{ error|default:"Nieprawidłowy e-mail lub hasło." }}
+      </div>
+
+      <form method="POST" action="{% url 'login' %}">
         {% csrf_token %}
-        <input type="email" name="email" placeholder="E-mail" required>
-        <input type="password" name="password" placeholder="Hasło" required>
-        {% if error %}
-            <p style="color:red;">{{ error }}</p>
-        {% endif %}
-        <button class="btn" type="submit">Zaloguj</button>
-    </form>
-</div>
+        <div class="group">
+          <label for="email">E-mail</label>
+          <div class="field">
+            <input id="email" name="email" type="email" autocomplete="email" required value="{{ request.POST.email|default:'' }}" />
+          </div>
+        </div>
 
+        <div class="group">
+          <label for="password">Hasło</label>
+          <div class="field">
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <button type="button" class="toggle" aria-label="Pokaż/ukryj hasło" onclick="togglePass(event)">Pokaż</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="chk"><input type="checkbox" name="remember" {% if request.POST.remember %}checked{% endif %}/> Zapamiętaj mnie</label>
+          <a href="{% url 'password_reset' %}">Nie pamiętasz hasła?</a>
+        </div>
+
+        <button class="btn" type="submit">Zaloguj się</button>
+        <p class="note">Nie masz konta? <a href="{% url 'register' %}">Zarejestruj się</a></p>
+        <footer>© 2025 PolubiszTo.pl</footer>
+      </form>
+    </main>
+  </div>
+
+<script>
+  function togglePass(ev){
+    const i = document.getElementById('password');
+    const b = ev.currentTarget;
+    if(i.type === 'password'){ i.type='text'; b.textContent='Ukryj'; }
+    else { i.type='password'; b.textContent='Pokaż'; }
+  }
+</script>
 </body>
 </html>

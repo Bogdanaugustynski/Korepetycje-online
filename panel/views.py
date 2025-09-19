@@ -301,28 +301,48 @@ def logout_view(request):
     return redirect("login")
 
 
+User = get_user_model()
+
 def login_view(request):
     if request.method == "POST":
-        email = request.POST.get("email")
-        password = request.POST.get("password")
+        email = (request.POST.get("email") or "").strip()
+        password = request.POST.get("password") or ""
+        remember = request.POST.get("remember")
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        # Szukaj po e-mailu case-insensitive (uniknij DoesNotExist/MultipleObjects)
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
             return render(request, "login.html", {"error": "Niepoprawny e-mail lub hasło."})
+
+        if not user.is_active:
+            return render(request, "login.html", {"error": "Konto jest nieaktywne. Skontaktuj się z administratorem."})
 
         user_auth = authenticate(request, username=user.username, password=password)
-        if user_auth is not None:
-            login(request, user_auth)
-            if user_auth.groups.filter(name="Księgowość").exists():
-                return redirect("panel_ksiegowosc")
-            elif hasattr(user_auth, "profil") and user_auth.profil.is_teacher:
-                return redirect("panel_nauczyciela")
-            else:
-                return redirect("panel_ucznia")
-        else:
+        if user_auth is None:
             return render(request, "login.html", {"error": "Niepoprawny e-mail lub hasło."})
 
+        # Logowanie OK
+        login(request, user_auth)
+
+        # „Zapamiętaj mnie”: jeśli zaznaczone, sesja wg SESSION_COOKIE_AGE; jeśli nie, do zamknięcia przeglądarki
+        if remember:
+            request.session.set_expiry(None)   # domyślnie np. 1209600 s (14 dni) — ustaw w settings.SESSION_COOKIE_AGE
+        else:
+            request.session.set_expiry(0)
+
+        # Priorytet dla ?next=..., inaczej Twoje role jak dotąd
+        next_url = request.GET.get("next")
+        if next_url:
+            return redirect(next_url)
+
+        if user_auth.groups.filter(name="Księgowość").exists():
+            return redirect("panel_ksiegowosc")
+        elif hasattr(user_auth, "profil") and getattr(user_auth.profil, "is_teacher", False):
+            return redirect("panel_nauczyciela")
+        else:
+            return redirect("panel_ucznia")
+
+    # GET
     return render(request, "login.html")
 
 
