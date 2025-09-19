@@ -1,7 +1,9 @@
 from django.urls import path
 from django.views.generic import TemplateView
 from . import views
-from panel.views import strona_glowna_view 
+from panel.views import strona_glowna_view
+from .views import login_view
+from django.contrib.auth.views import LogoutView
 from .views import (
     podwyzki_nauczyciele_view,
     virtual_room,
