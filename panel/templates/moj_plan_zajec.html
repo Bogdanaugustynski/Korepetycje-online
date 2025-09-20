@@ -183,8 +183,13 @@ const rezerwacjaId = "{{ rezerwacja.id }}";
 const csrfToken    = "{{ csrf_token }}";
 const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
 
-const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
-const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
+{% if rezerwacja.id %}
+  const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
+  const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
+{% else %}
+  const OFFER_URL  = "";
+  const ANSWER_URL = "";
+{% endif %}
 
 /* ====== TURN (opcjonalnie) ====== */
 const TURN = {
