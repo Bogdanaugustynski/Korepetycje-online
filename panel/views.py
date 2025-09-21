@@ -749,6 +749,7 @@ def moj_plan_zajec_view(request):
     })
 
 
+
 def wybierz_godziny_view(request):
     if request.method == "POST":
         data = json.loads(request.body)
