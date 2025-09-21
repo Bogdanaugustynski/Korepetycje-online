@@ -720,10 +720,33 @@ def stawki_nauczyciela_view(request):
 
 @login_required
 def moj_plan_zajec_view(request):
-    rezerwacje = (
-        Rezerwacja.objects.filter(nauczyciel=request.user, termin__gte=datetime.now()).select_related("uczen")
+    # Wszystkie przyszłe i bieżące zajęcia danego nauczyciela (plus możesz dodać przeszłe, jeśli chcesz)
+    now = timezone.localtime()
+    qs = (
+        Rezerwacja.objects
+        .filter(nauczyciel=request.user)   # jeśli chcesz tylko przyszłe: .filter(termin__gte=now - timedelta(minutes=55))
+        .select_related("uczen")
+        .order_by("termin")
     )
-    return render(request, "moj_plan_zajec.html", {"rezerwacje": rezerwacje})
+
+    # Wzbogacamy obiekty o pomocnicze pola do UI
+    enriched = []
+    for r in qs:
+        start = timezone.localtime(r.termin)
+        end = start + timedelta(minutes=55)
+        is_now = start <= now <= end
+        is_past = now > end
+        enriched.append({
+            "obj": r,
+            "start": start,
+            "end": end,
+            "is_now": is_now,
+            "is_past": is_past,
+        })
+
+    return render(request, "moj_plan_zajec.html", {
+        "rezerwacje_ex": enriched,
+    })
 
 
 def wybierz_godziny_view(request):

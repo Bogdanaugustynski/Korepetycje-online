@@ -1,0 +1,10 @@
+[1mdiff --git a/panel/templates/moj_plan_zajec.html b/panel/templates/moj_plan_zajec.html[m
+[1mindex 4c8b5e2..5c69e4b 100644[m
+[1m--- a/panel/templates/moj_plan_zajec.html[m
+[1m+++ b/panel/templates/moj_plan_zajec.html[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-<!DOCTYPE html>[m
+[32m+[m[32m<!-- restored @ 2025-09-20 08:18:59 --><!DOCTYPE html>[m
+ <html lang="pl">[m
+ <head>[m
+   <meta charset="UTF-8" />[m
