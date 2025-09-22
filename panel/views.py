@@ -728,38 +728,24 @@ def _to_local(dt):
 
 @login_required
 def moj_plan_zajec_view(request):
-    # Wszystkie przyszłe i bieżące zajęcia danego nauczyciela (przeszłe też pokażemy jako 'Zakończone')
-    now = _to_local(timezone.now())
+    now = timezone.localtime()
 
-    qs = (
-        Rezerwacja.objects
-        .filter(nauczyciel=request.user)
-        .select_related("uczen")
-        .order_by("termin")
-    )
+    qs = (Rezerwacja.objects
+          .filter(nauczyciel=request.user)
+          .select_related("uczen")
+          .order_by("termin"))
 
-    # Wzbogacamy obiekty o pola do UI (zgodnie z Twoim działającym widokiem + can_enter_teacher)
     enriched = []
     for r in qs:
-        start = _to_local(r.termin)
+        start = timezone.localtime(r.termin)
         end = start + timedelta(minutes=55)
-
-        is_now = start <= now <= end
-        is_past = now > end
-        can_enter_teacher = now < end        # nauczyciel ma wejście od razu po rezerwacji aż do końca
-
         enriched.append({
             "obj": r,
             "start": start,
-            "end": end,
-            "is_now": is_now,
-            "is_past": is_past,
-            "can_enter_teacher": can_enter_teacher,
+            "is_past": now > end,
         })
 
-    return render(request, "moj_plan_zajec.html", {
-        "rezerwacje_ex": enriched,
-    })
+    return render(request, "moj_plan_zajec.html", {"rezerwacje_ex": enriched})
 
 
 def wybierz_godziny_view(request):
