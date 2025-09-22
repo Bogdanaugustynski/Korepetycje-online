@@ -721,6 +721,8 @@ def stawki_nauczyciela_view(request):
 @login_required
 def moj_plan_zajec_view(request):
     now = timezone.localtime()
+
+    # Bierzemy wszystkie zajęcia nauczyciela (przyszłe i przeszłe – UI sam rozróżni)
     qs = (
         Rezerwacja.objects
         .filter(nauczyciel=request.user)
@@ -734,9 +736,7 @@ def moj_plan_zajec_view(request):
         end = start + timedelta(minutes=55)
         is_now = start <= now <= end
         is_past = now > end
-
-        # NOWOŚĆ: nauczyciel może wejść **od razu po rezerwacji** (aż do końca lekcji)
-        can_enter_teacher = not is_past  # True przed startem i w trakcie; False po zakończeniu
+        can_enter_teacher = not is_past  # nauczyciel może wejść przed i w trakcie
 
         enriched.append({
             "obj": r,
@@ -747,7 +747,11 @@ def moj_plan_zajec_view(request):
             "can_enter_teacher": can_enter_teacher,
         })
 
-    return render(request, "moja_apka/moj_plan_zajec.html", {"rezerwacje_ex": enriched})
+    # Zwróć oba klucze, żeby template miał pełny fallback
+    return render(request, "panel/moj_plan_zajec.html", {
+        "rezerwacje_ex": enriched,
+        "rezerwacje": qs,
+    })
 
 
 def wybierz_godziny_view(request):
