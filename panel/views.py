@@ -728,33 +728,40 @@ def moj_plan_zajec_view(request):
           .select_related("uczen")
           .order_by("termin"))
 
-    # Filtry zakresów czasu (chronologia)
+    # Zakresy
     if scope == "day":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(days=1)
-        qs = qs.filter(termin__gte=start, termin__lt=end)
+        start_d = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_d = start_d + timedelta(days=1)
+        qs = qs.filter(termin__gte=start_d, termin__lt=end_d)
     elif scope == "week":
-        # poniedziałek–niedziela bieżącego tygodnia (lokalnie)
         weekday = now.weekday()  # 0=Mon
         week_start = (now - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
         week_end = week_start + timedelta(days=7)
         qs = qs.filter(termin__gte=week_start, termin__lt=week_end)
-    else:
-        # "all": nic nie ucinamy; nauczyciel widzi wszystko
-        pass
 
-    enriched = []
+    # Wzbogacenie + podział na listy
+    upcoming, finished = [], []
     for r in qs:
         start = timezone.localtime(r.termin)
         end = start + timedelta(minutes=55)
-        enriched.append({
+        is_past = now > end
+        status = "Zakończone" if is_past else ("Trwa" if start <= now <= end else "Nadchodzące")
+        item = {
             "obj": r,
             "start": start,
-            "is_past": now > end,  # po zakończeniu – przycisk nieaktywny
-        })
+            "end": end,
+            "is_past": is_past,
+            "status": status,
+        }
+        (finished if is_past else upcoming).append(item)
+
+    # sortowanie: nadchodzące rosnąco, zakończone malejąco
+    upcoming.sort(key=lambda x: x["start"])
+    finished.sort(key=lambda x: x["start"], reverse=True)
 
     ctx = {
-        "rezerwacje_ex": enriched,
+        "upcoming": upcoming,
+        "finished": finished,
         "now": now,
         "scope": scope,
     }
