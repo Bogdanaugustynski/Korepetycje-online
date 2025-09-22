@@ -718,55 +718,47 @@ def stawki_nauczyciela_view(request):
     return render(request, "stawki_nauczyciela.html", {"cennik": cennik})
 
 
-def _local(dt):
-    tz = timezone.get_current_timezone()
-    if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, tz)
-    return timezone.localtime(dt, tz)
-
 @login_required
 def moj_plan_zajec_view(request):
-    now = _local(timezone.now())
+    now = timezone.localtime()
+    scope = request.GET.get("scope", "all")  # "day" | "week" | "all"
 
-    qs = (
-        Rezerwacja.objects
-        .filter(nauczyciel=request.user)
-        .select_related("uczen")
-        .order_by("termin")
-    )
+    qs = (Rezerwacja.objects
+          .filter(nauczyciel=request.user)
+          .select_related("uczen")
+          .order_by("termin"))
+
+    # Filtry zakresów czasu (chronologia)
+    if scope == "day":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        qs = qs.filter(termin__gte=start, termin__lt=end)
+    elif scope == "week":
+        # poniedziałek–niedziela bieżącego tygodnia (lokalnie)
+        weekday = now.weekday()  # 0=Mon
+        week_start = (now - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        week_end = week_start + timedelta(days=7)
+        qs = qs.filter(termin__gte=week_start, termin__lt=week_end)
+    else:
+        # "all": nic nie ucinamy; nauczyciel widzi wszystko
+        pass
 
     enriched = []
     for r in qs:
-        start = _local(r.termin)
+        start = timezone.localtime(r.termin)
         end = start + timedelta(minutes=55)
-
-        if now > end:
-            status = "Zakończone"
-            is_past = True
-            is_now = False
-        elif start <= now <= end:
-            status = "Dostępne"
-            is_past = False
-            is_now = True
-        else:
-            status = "Oczekuje"
-            is_past = False
-            is_now = False
-
-        # nauczyciel może wejść od razu po rezerwacji (gdy nie jest po zajęciach)
-        can_enter = not is_past
-
         enriched.append({
             "obj": r,
             "start": start,
-            "end": end,
-            "status": status,            # Oczekuje / Dostępne / Zakończone
-            "is_now": is_now,
-            "is_past": is_past,
-            "can_enter": can_enter,      # dla przycisku
+            "is_past": now > end,  # po zakończeniu – przycisk nieaktywny
         })
 
-    return render(request, "moj_plan_zajec.html", {"rezerwacje_ex": enriched})
+    ctx = {
+        "rezerwacje_ex": enriched,
+        "now": now,
+        "scope": scope,
+    }
+    return render(request, "moj_plan_zajec.html", ctx)
 
 
 @login_required
