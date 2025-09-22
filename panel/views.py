@@ -28,7 +28,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-
+from django.shortcuts import render
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -718,53 +718,55 @@ def stawki_nauczyciela_view(request):
     return render(request, "stawki_nauczyciela.html", {"cennik": cennik})
 
 
-def _to_local(dt):
-    """Zwraca datę w strefie projektu; jeśli dt jest naiwne – uświadamia je."""
+def _local(dt):
     tz = timezone.get_current_timezone()
     if timezone.is_naive(dt):
         dt = timezone.make_aware(dt, tz)
     return timezone.localtime(dt, tz)
 
-
 @login_required
 def moj_plan_zajec_view(request):
-    now = timezone.localtime()
+    now = _local(timezone.now())
 
-    qs = (Rezerwacja.objects
-          .filter(nauczyciel=request.user)
-          .select_related("uczen")
-          .order_by("termin"))
+    qs = (
+        Rezerwacja.objects
+        .filter(nauczyciel=request.user)
+        .select_related("uczen")
+        .order_by("termin")
+    )
 
     enriched = []
     for r in qs:
-        start = timezone.localtime(r.termin)
+        start = _local(r.termin)
         end = start + timedelta(minutes=55)
+
+        if now > end:
+            status = "Zakończone"
+            is_past = True
+            is_now = False
+        elif start <= now <= end:
+            status = "Dostępne"
+            is_past = False
+            is_now = True
+        else:
+            status = "Oczekuje"
+            is_past = False
+            is_now = False
+
+        # nauczyciel może wejść od razu po rezerwacji (gdy nie jest po zajęciach)
+        can_enter = not is_past
+
         enriched.append({
             "obj": r,
             "start": start,
-            "is_past": now > end,
+            "end": end,
+            "status": status,            # Oczekuje / Dostępne / Zakończone
+            "is_now": is_now,
+            "is_past": is_past,
+            "can_enter": can_enter,      # dla przycisku
         })
 
     return render(request, "moj_plan_zajec.html", {"rezerwacje_ex": enriched})
-
-
-def wybierz_godziny_view(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        wybrane_daty = data.get("terminy", [])
-
-        for wpis in wybrane_daty:
-            data_str = wpis.get("data")
-            godziny = wpis.get("godziny", [])
-            for godzina_str in godziny:
-                WolnyTermin.objects.create(
-                    nauczyciel=request.user,
-                    data=parse_date(data_str),
-                    godzina=parse_time(godzina_str),
-                )
-        return JsonResponse({"status": "success"})
-
-    return render(request, "wybierz_dzien_i_godzine_w_ktorej_poprowadzisz_korepetycje.html")
 
 
 @login_required

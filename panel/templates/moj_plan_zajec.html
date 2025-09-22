@@ -13,8 +13,10 @@
     .wrap{max-width:var(--maxw); margin:0 auto; padding:16px}
     .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px}
     .hint{color:var(--muted); margin:0 0 10px 0}
+
     header, footer{background:#fff;border-bottom:1px solid var(--line);text-align:center;padding:12px}
     footer{border-top:1px solid var(--line);border-bottom:none;margin-top:22px;font-size:14px;color:var(--muted)}
+
     .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
     .tbl thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;text-align:left;padding:10px 12px}
     .tbl tbody tr{background:#fff;border:1px solid var(--line)}
@@ -24,13 +26,19 @@
     .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
     .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
     .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
-    .badge{display:inline-grid;place-items:center;min-width:96px;padding:8px 10px;border-radius:10px;font-weight:800;font-size:12px;background:#eef4ff;color:#17304e;border:1px solid var(--line);text-align:center}
+
+    .badge{display:inline-grid;place-items:center;min-width:110px;padding:8px 10px;border-radius:10px;font-weight:800;font-size:12px;border:1px solid var(--line);text-align:center}
+    .badge.now{background:#e8fff0;border-color:#c5f1d2;color:#0b5d2b}
+    .badge.warn{background:#fffbeb;border-color:#fde68a;color:#7a4e00}
     .badge.lock{background:#f3f4f6;color:#8a96a8}
+
     .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;text-decoration:none}
     .btn.small{padding:8px 12px;border-radius:10px;font-size:14px}
-    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .disabled{opacity:.6;cursor:not-allowed;pointer-events:none}
+
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .file-link{display:inline-block;margin:4px 0}
+
     @media (max-width:860px){
       .table-wrap{display:none}
       .cards{display:grid;gap:10px}
@@ -53,7 +61,7 @@
 
 <div class="wrap">
   <h1>Mój plan zajęć</h1>
-  <p class="hint">Nauczyciel może wejść do pokoju od razu po rezerwacji. Przycisk jest nieaktywny tylko po zakończeniu zajęć.</p>
+  <p class="hint">Status: <em>Oczekuje</em> (przyszłe), <em>Dostępne</em> (teraz), <em>Zakończone</em> (po). Nauczyciel wejdzie do pokoju od razu, dopóki lekcja się nie skończy.</p>
 
   <!-- DESKTOP -->
   <div class="table-wrap card">
@@ -65,7 +73,7 @@
       </thead>
       <tbody>
         {% for row in rezerwacje_ex %}
-          {% with r=row.obj start=row.start is_past=row.is_past %}
+          {% with r=row.obj start=row.start status=row.status can_enter=row.can_enter %}
           <tr>
             <td>{{ start|date:"Y-m-d" }}</td>
             <td>{{ start|date:"l" }}</td>
@@ -78,9 +86,14 @@
               {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
             </td>
             <td>
-              {% url 'zajecia_online' r.id as url_room %}
-              <a class="btn small{% if is_past or not url_room %} disabled{% endif %}"
-                 href="{{ url_room|default:'#' }}">Wejdź do pokoju</a>
+              <span class="badge {% if status == 'Dostępne' %}now{% elif status == 'Oczekuje' %}warn{% else %}lock{% endif %}">
+                {{ status }}{% if status == 'Oczekuje' %}<br>{{ start|date:"H:i" }}{% endif %}
+              </span>
+              <div class="actions" style="margin-top:8px">
+                {% url 'zajecia_online' r.id as url_room %}
+                <a class="btn small{% if not can_enter or not url_room %} disabled{% endif %}"
+                   href="{{ url_room|default:'#' }}">Wejdź do pokoju</a>
+              </div>
             </td>
             <td>
               {% if r.material_po_zajeciach %}
@@ -107,13 +120,16 @@
   <!-- MOBILE -->
   <div class="cards">
     {% for row in rezerwacje_ex %}
-      {% with r=row.obj start=row.start is_past=row.is_past %}
+      {% with r=row.obj start=row.start status=row.status can_enter=row.can_enter %}
       <article class="r-card">
         <div class="r-top">
           <div>
             <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
             <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
           </div>
+          <span class="badge {% if status == 'Dostępne' %}now{% elif status == 'Oczekuje' %}warn{% else %}lock{% endif %}">
+            {{ status }}{% if status == 'Oczekuje' %}<br>{{ start|date:"H:i" }}{% endif %}
+          </span>
         </div>
         <div class="meta">
           <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank">Pobierz</a>{% else %}Brak{% endif %}</div>
@@ -121,7 +137,7 @@
         </div>
         <div class="r-actions">
           {% url 'zajecia_online' r.id as url_room %}
-          <a class="btn small{% if is_past or not url_room %} disabled{% endif %}" href="{{ url_room|default:'#' }}">Wejdź do pokoju</a>
+          <a class="btn small{% if not can_enter or not url_room %} disabled{% endif %}" href="{{ url_room|default:'#' }}">Wejdź do pokoju</a>
           {% url 'dodaj_material' r.id as url_material %}
           <form action="{{ url_material|default:'#' }}" method="post" enctype="multipart/form-data" style="margin-left:8px">
             {% csrf_token %}
