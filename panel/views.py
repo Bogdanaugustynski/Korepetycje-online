@@ -761,7 +761,6 @@ def moj_plan_zajec_view(request):
     return render(request, "moj_plan_zajec.html", ctx)
 
 
-
 def wybierz_godziny_view(request):
     if request.method == "POST":
         data = json.loads(request.body)

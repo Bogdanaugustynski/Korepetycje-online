@@ -2,183 +2,186 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mój plan zajęć — PolubiszTo.pl</title>
-<style>
-  :root{
-    --brand:#0b74ff;
-    --ink:#0b1320;
-    --muted:#5b6777;
-    --line:#e6edff;
-    --card:#ffffff;
-    --bg:#f7f9fe;
-    --shadow:0 8px 32px rgba(11,116,255,.12);
-    --radius:14px;
-    --maxw:1100px;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
-  h1{font-size:clamp(20px,4vw,28px); margin:12px 0}
-  .wrap{max-width:var(--maxw); margin:0 auto; padding:16px}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px}
-  .hint{color:var(--muted); margin:0 0 10px 0}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mój plan zajęć — PolubiszTo.pl</title>
+  <style>
+    :root{--brand:#0b74ff;--brand-700:#095cd1;--ink:#0b1320;--muted:#5b6777;--line:#e6edff;--card:#fff;--bg:#f7f9fe;--shadow:0 8px 32px rgba(11,116,255,.12);--radius:14px;--maxw:1100px}
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
+    h1{font-size:clamp(20px,4vw,28px); margin:12px 0}
+    .wrap{max-width:var(--maxw); margin:0 auto; padding:16px}
+    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px}
+    .hint{color:var(--muted); margin:0 0 10px 0}
+    header{background:linear-gradient(180deg,#0b74ff,#0a63d9);border-bottom:1px solid var(--line);text-align:center;padding:14px}
+    header .brand{display:inline-flex;align-items:center;gap:10px;color:#fff}
+    header img{height:40px;filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));}
+    header .sub{display:block;font-size:13px;color:#e9f1ff;margin-top:2px}
 
-  /* TABELA (desktop) */
-  .tbl{width:100%; border-collapse:separate; border-spacing:0 8px}
-  .tbl thead th{font-size:12px; text-transform:uppercase; letter-spacing:.02em; color:#48607d; text-align:left; padding:10px 12px}
-  .tbl tbody tr{background:#fff; border:1px solid var(--line)}
-  .tbl tbody tr td{padding:12px; vertical-align:top}
-  .tbl tbody tr td + td{border-left:1px solid var(--line)}
-  .tbl tbody tr:first-child td:first-child{border-top-left-radius:12px}
-  .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
-  .tbl tbody tr td:first-child{border-left:1px solid var(--line)}
-  .tbl tbody tr td:last-child{border-right:1px solid var(--line)}
-  .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
-  .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+    .tab{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid #dfe6f5;background:#fff;color:#213047;text-decoration:none;font-weight:800}
+    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .tab:hover{background:#f7fbff}
 
-  .badge{display:inline-grid; place-items:center; min-width:96px; padding:8px 10px; border-radius:10px;
-    font-weight:800; font-size:12px; background:#eef4ff; color:#17304e; border:1px solid var(--line); text-align:center}
-  .badge.now{background:#e8fff0; border-color:#c5f1d2; color:#0b5d2b}
-  .badge.lock{background:#f3f4f6; color:#8a96a8}
+    .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .tbl thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;text-align:left;padding:10px 12px}
+    .tbl tbody tr{background:#fff;border:1px solid var(--line)}
+    .tbl tbody tr td{padding:12px;vertical-align:top}
+    .tbl tbody tr td+td{border-left:1px solid var(--line)}
+    .tbl tbody tr:first-child td:first-child{border-top-left-radius:12px}
+    .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
+    .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
+    .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
 
-  .btn{display:inline-flex; align-items:center; gap:8px; background:var(--brand); color:#fff; border:none;
-    padding:10px 14px; font-weight:800; border-radius:12px; cursor:pointer; text-decoration:none}
-  .btn.secondary{background:#eef4ff; color:#17304e}
-  .btn.small{padding:8px 12px; border-radius:10px; font-size:14px}
-  .actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+    .btn.small{padding:8px 12px;border-radius:10px;font-size:14px}
+    .btn.ghost{background:#eef4ff;color:#17304e}
+    .btn.disabled{opacity:.55;pointer-events:none}
+    .file-link{display:inline-block;margin:4px 0}
 
-  input[type="file"]{font-size:14px}
-  .file-link{display:inline-block; margin:4px 0}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .empty{color:var(--muted);text-align:center;padding:14px}
 
-  /* KARTY (mobile) */
-  @media (max-width:860px){
-    .table-wrap{display:none}
-    .cards{display:grid; gap:10px}
-    .r-card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow:var(--shadow)}
-    .r-top{display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
-    .r-title{font-weight:900}
-    .meta{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:8px}
-    .meta div{background:#f8fbff; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:14px}
-    .r-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
-  }
-  @media (min-width:861px){
-    .cards{display:none}
-    .table-wrap{display:block}
-  }
-</style>
+    @media (max-width:860px){
+      .table-wrap{display:none}
+      .cards{display:grid;gap:10px}
+      .r-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+      .r-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+      .r-title{font-weight:900}
+      .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+      .meta div{background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+      .r-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    }
+    @media (min-width:861px){.cards{display:none}.table-wrap{display:block}}
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Mój plan zajęć</h1>
-    <p class="hint">Wejdź do pokoju tylko, gdy status to <strong>„Dostępne”</strong> (okno 55 min od startu). Po zajęciach dodaj materiały dla ucznia.</p>
+<header>
+  <span class="brand">
+    <img src="{% static 'img/logo.png' %}" alt="Logo">
+    <span>
+      <strong style="font-size:20px">PolubiszTo.pl</strong>
+      <span class="sub">korepetycje online</span>
+    </span>
+  </span>
+</header>
 
-    <!-- DESKTOP -->
-    <div class="table-wrap card">
-      <table class="tbl" aria-label="Mój plan zajęć">
-        <thead>
+<div class="wrap">
+  <h1>Mój plan zajęć</h1>
+  <p class="hint">Nauczyciel ma dostęp do pokoju od razu po rezerwacji. Przycisk jest nieaktywny tylko po zakończeniu zajęć.</p>
+
+  <!-- TABS: Dzień / Tydzień / Wszystkie -->
+  <nav class="tabs">
+    <a class="tab {% if scope == 'day' %}active{% endif %}" href="?scope=day">Dziś</a>
+    <a class="tab {% if scope == 'week' %}active{% endif %}" href="?scope=week">Tydzień</a>
+    <a class="tab {% if scope == 'all' %}active{% endif %}" href="?scope=all">Wszystkie</a>
+  </nav>
+
+  <!-- DESKTOP -->
+  <div class="table-wrap card">
+    <table class="tbl" aria-label="Mój plan zajęć">
+      <thead>
+        <tr>
+          <th>Data</th><th>Dzień</th><th>Godzina</th><th>Uczeń</th><th>Temat</th><th>Pliki</th><th>Zajęcia online</th><th>Materiały po zajęciach</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rezerwacje_ex %}
+          {% with r=row.obj start=row.start is_past=row.is_past %}
           <tr>
-            <th>Data</th>
-            <th>Dzień</th>
-            <th>Godzina</th>
-            <th>Uczeń</th>
-            <th>Temat</th>
-            <th>Pliki</th>
-            <th>Zajęcia online</th>
-            <th>Materiały po zajęciach</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rezerwacje_ex %}
-            {% with r=row.obj start=row.start is_now=row.is_now is_past=row.is_past %}
-            <tr>
-              <td>{{ start|date:"Y-m-d" }}</td>
-              <td>{{ start|date:"l" }}</td>
-              <td>{{ start|date:"H:i" }}</td>
-              <td>{{ r.uczen.first_name }} {{ r.uczen.last_name }}</td>
-              <td>{{ r.temat|default:"—" }}</td>
-              <td>
-                {% if r.plik %}
-                  <a class="file-link" href="{{ r.plik.url }}" target="_blank">Pobierz</a>
+            <td>{{ start|date:"Y-m-d" }}</td>
+            <td>{{ start|date:"l" }}</td>
+            <td>{{ start|date:"H:i" }}</td>
+            <td>{{ r.uczen.first_name }} {{ r.uczen.last_name }}</td>
+            <td>{{ r.temat|default:"—" }}</td>
+            <td>
+              {% if r.plik %}
+                <a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>
+              {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
+            </td>
+            <td>
+              <div class="actions">
+                {% if r.id %}
+                  <a class="btn small {% if is_past %}disabled{% endif %}" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
                 {% else %}
-                  <span style="color:var(--muted)">Brak</span>
+                  <!-- Fallback: pokój testowy #1 -->
+                  <a class="btn small ghost" href="{% url 'zajecia_online' 1 %}">Pokój testowy</a>
                 {% endif %}
-              </td>
-              <td>
-                <span class="badge {% if is_now %}now{% elif is_past %}lock{% endif %}">
-                  {% if is_now %}Dostępne{% elif is_past %}Zakończone{% else %}Dostęp od<br>{{ start|date:"H:i" }}{% endif %}
-                </span>
-                <div class="actions" style="margin-top:8px">
-                  <a class="btn small{% if not is_now %} disabled{% endif %}"
-                     {% if not is_now %}style="opacity:.6;cursor:not-allowed;pointer-events:none"{% endif %}
-                     href="{% url 'zajecia_online' r.id %}">
-                    Wejdź
-                  </a>
-                </div>
-              </td>
-              <td>
+                {% if r.excalidraw_link %}
+                  <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              {% if r.id %}
                 {% if r.material_po_zajeciach %}
                   <div style="margin-bottom:6px">
-                    <a href="{{ r.material_po_zajeciach.url }}" target="_blank" class="btn small secondary">Zobacz</a>
+                    <a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener" class="btn small ghost">Zobacz</a>
                   </div>
                 {% endif %}
                 <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
-                  <button type="submit" class="btn small secondary">Dodaj plik</button>
+                  <button type="submit" class="btn small ghost">Dodaj plik</button>
                 </form>
-              </td>
-            </tr>
-            {% endwith %}
-          {% empty %}
-            <tr><td colspan="8" style="color:var(--muted)">Brak zaplanowanych zajęć.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+              {% else %}
+                <span class="hint">Brak ID rezerwacji</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="8" class="empty">Brak zaplanowanych zajęć.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-    <!-- MOBILE (karty) -->
-    <div class="cards">
-      {% for row in rezerwacje_ex %}
-        {% with r=row.obj start=row.start is_now=row.is_now is_past=row.is_past %}
-        <article class="r-card">
-          <div class="r-top">
-            <div>
-              <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
-              <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
-            </div>
-            <span class="badge {% if is_now %}now{% elif is_past %}lock{% endif %}">
-              {% if is_now %}Dostępne{% elif is_past %}Zakończone{% else %}Dostęp od<br>{{ start|date:"H:i" }}{% endif %}
-            </span>
+  <!-- MOBILE -->
+  <div class="cards">
+    {% for row in rezerwacje_ex %}
+      {% with r=row.obj start=row.start is_past=row.is_past %}
+      <article class="r-card">
+        <div class="r-top">
+          <div>
+            <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
+            <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
           </div>
-          <div class="meta">
-            <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank">Pobierz</a>{% else %}Brak{% endif %}</div>
-            <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank">Zobacz</a>{% else %}—{% endif %}</div>
-          </div>
-          <div class="r-actions">
-            <a class="btn small{% if not is_now %} disabled{% endif %}"
-               {% if not is_now %}style="opacity:.6;cursor:not-allowed;pointer-events:none"{% endif %}
-               href="{% url 'zajecia_online' r.id %}">
-              Wejdź
-            </a>
-            <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
+        </div>
+        <div class="meta">
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
+        </div>
+        <div class="r-actions">
+          {% if r.id %}
+            <a class="btn small {% if is_past %}disabled{% endif %}" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
+          {% else %}
+            <a class="btn small ghost" href="{% url 'zajecia_online' 1 %}">Pokój testowy</a>
+          {% endif %}
+          {% if r.excalidraw_link %}
+            <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
+          {% endif %}
+          {% if r.id %}
+            <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data" style="margin-left:8px">
               {% csrf_token %}
               <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
-              <button type="submit" class="btn small secondary">Dodaj plik</button>
+              <button type="submit" class="btn small ghost">Dodaj plik</button>
             </form>
-          </div>
-        </article>
-        {% endwith %}
-      {% empty %}
-        <article class="r-card"><div>Brak zaplanowanych zajęć.</div></article>
-      {% endfor %}
-    </div>
-
-    <!-- Twój przycisk testowego pokoju -->
-    <div style="margin-top:14px">
-      <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
-    </div>
+          {% endif %}
+        </div>
+      </article>
+      {% endwith %}
+    {% empty %}
+      <article class="r-card"><div class="empty">Brak zaplanowanych zajęć.</div></article>
+    {% endfor %}
   </div>
+
+  <!-- Pokój testowy (ID=1) -->
+  <div style="margin-top:14px">
+    <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
+  </div>
+</div>
+
+<footer style="text-align:center;color:#6b7a93;font-size:13px;padding:12px">PolubiszTo.pl — korepetycje online</footer>
 </body>
 </html>
