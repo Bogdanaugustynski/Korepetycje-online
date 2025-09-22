@@ -28,7 +28,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from django.shortcuts import render
+
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -720,33 +720,65 @@ def stawki_nauczyciela_view(request):
 
 @login_required
 def moj_plan_zajec_view(request):
-    # Wszystkie przyszłe i bieżące zajęcia danego nauczyciela (plus możesz dodać przeszłe, jeśli chcesz)
     now = timezone.localtime()
-    qs = (
-        Rezerwacja.objects
-        .filter(nauczyciel=request.user)   # jeśli chcesz tylko przyszłe: .filter(termin__gte=now - timedelta(minutes=55))
-        .select_related("uczen")
-        .order_by("termin")
-    )
+    scope = request.GET.get("scope", "all")  # "day" | "week" | "all"
 
-    # Wzbogacamy obiekty o pomocnicze pola do UI
+    qs = (Rezerwacja.objects
+          .filter(nauczyciel=request.user)
+          .select_related("uczen")
+          .order_by("termin"))
+
+    # Filtry zakresów czasu (chronologia)
+    if scope == "day":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        qs = qs.filter(termin__gte=start, termin__lt=end)
+    elif scope == "week":
+        # poniedziałek–niedziela bieżącego tygodnia (lokalnie)
+        weekday = now.weekday()  # 0=Mon
+        week_start = (now - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        week_end = week_start + timedelta(days=7)
+        qs = qs.filter(termin__gte=week_start, termin__lt=week_end)
+    else:
+        # "all": nic nie ucinamy; nauczyciel widzi wszystko
+        pass
+
     enriched = []
     for r in qs:
         start = timezone.localtime(r.termin)
         end = start + timedelta(minutes=55)
-        is_now = start <= now <= end
-        is_past = now > end
         enriched.append({
             "obj": r,
             "start": start,
-            "end": end,
-            "is_now": is_now,
-            "is_past": is_past,
+            "is_past": now > end,  # po zakończeniu – przycisk nieaktywny
         })
 
-    return render(request, "moj_plan_zajec.html", {
+    ctx = {
         "rezerwacje_ex": enriched,
-    })
+        "now": now,
+        "scope": scope,
+    }
+    return render(request, "moj_plan_zajec.html", ctx)
+
+
+
+def wybierz_godziny_view(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        wybrane_daty = data.get("terminy", [])
+
+        for wpis in wybrane_daty:
+            data_str = wpis.get("data")
+            godziny = wpis.get("godziny", [])
+            for godzina_str in godziny:
+                WolnyTermin.objects.create(
+                    nauczyciel=request.user,
+                    data=parse_date(data_str),
+                    godzina=parse_time(godzina_str),
+                )
+        return JsonResponse({"status": "success"})
+
+    return render(request, "wybierz_dzien_i_godzine_w_ktorej_poprowadzisz_korepetycje.html")
 
 
 @login_required
