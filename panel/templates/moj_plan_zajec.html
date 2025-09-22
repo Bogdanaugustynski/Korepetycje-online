@@ -162,8 +162,20 @@
           </span>
         </div>
         <div class="meta">
-          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank">Pobierz</a>{% else %}Brak{% endif %}</div>
-          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank">Zobacz{% else %}—{% endif %}</a></div>
+          <div><strong>Plik:</strong>
+            {% if r.plik %}
+              <a href="{{ r.plik.url }}" target="_blank">Pobierz</a>
+            {% else %}
+              Brak
+            {% endif %}
+          </div>
+          <div><strong>Materiały:</strong>
+            {% if r.material_po_zajeciach %}
+              <a href="{{ r.material_po_zajeciach.url }}" target="_blank">Zobacz</a>
+            {% else %}
+              —
+            {% endif %}
+          </div>
         </div>
         <div class="r-actions">
           <a class="btn small"
@@ -172,7 +184,7 @@
           <a class="btn small{% if not is_now %} disabled{% endif %}"
              {% if not is_now %}style="opacity:.6;cursor:not-allowed;pointer-events:none"{% endif %}
              href="{% url 'zajecia_online' r.id %}">Wejdź (start)</a>
-          <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
+          <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data" style="margin-left:8px">
             {% csrf_token %}
             <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
             <button type="submit" class="btn small secondary">Dodaj plik</button>
