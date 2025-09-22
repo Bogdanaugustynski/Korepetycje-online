@@ -6,23 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mój plan zajęć — PolubiszTo.pl</title>
   <style>
-    :root{--brand:#0b74ff;--brand-700:#095cd1;--ink:#0b1320;--muted:#5b6777;--line:#e6edff;--card:#fff;--bg:#f7f9fe;--shadow:0 8px 32px rgba(11,116,255,.12);--radius:14px;--maxw:1100px}
+    :root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--line:#e6edff;--card:#fff;--bg:#f7f9fe;--shadow:0 8px 32px rgba(11,116,255,.12);--radius:14px;--maxw:1100px}
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
     h1{font-size:clamp(20px,4vw,28px); margin:12px 0}
     .wrap{max-width:var(--maxw); margin:0 auto; padding:16px}
     .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px}
     .hint{color:var(--muted); margin:0 0 10px 0}
-    header{background:linear-gradient(180deg,#0b74ff,#0a63d9);border-bottom:1px solid var(--line);text-align:center;padding:14px}
-    header .brand{display:inline-flex;align-items:center;gap:10px;color:#fff}
-    header img{height:40px;filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));}
-    header .sub{display:block;font-size:13px;color:#e9f1ff;margin-top:2px}
-
-    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
-    .tab{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid #dfe6f5;background:#fff;color:#213047;text-decoration:none;font-weight:800}
-    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
-    .tab:hover{background:#f7fbff}
-
+    header, footer{background:#fff;border-bottom:1px solid var(--line);text-align:center;padding:12px}
+    footer{border-top:1px solid var(--line);border-bottom:none;margin-top:22px;font-size:14px;color:var(--muted)}
     .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
     .tbl thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;text-align:left;padding:10px 12px}
     .tbl tbody tr{background:#fff;border:1px solid var(--line)}
@@ -32,16 +24,13 @@
     .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
     .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
     .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
-
-    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+    .badge{display:inline-grid;place-items:center;min-width:96px;padding:8px 10px;border-radius:10px;font-weight:800;font-size:12px;background:#eef4ff;color:#17304e;border:1px solid var(--line);text-align:center}
+    .badge.lock{background:#f3f4f6;color:#8a96a8}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;text-decoration:none}
     .btn.small{padding:8px 12px;border-radius:10px;font-size:14px}
-    .btn.ghost{background:#eef4ff;color:#17304e}
-    .btn.disabled{opacity:.55;pointer-events:none}
-    .file-link{display:inline-block;margin:4px 0}
-
     .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .empty{color:var(--muted);text-align:center;padding:14px}
-
+    .disabled{opacity:.6;cursor:not-allowed;pointer-events:none}
+    .file-link{display:inline-block;margin:4px 0}
     @media (max-width:860px){
       .table-wrap{display:none}
       .cards{display:grid;gap:10px}
@@ -57,25 +46,14 @@
 </head>
 <body>
 <header>
-  <span class="brand">
-    <img src="{% static 'img/logo.png' %}" alt="Logo">
-    <span>
-      <strong style="font-size:20px">PolubiszTo.pl</strong>
-      <span class="sub">korepetycje online</span>
-    </span>
-  </span>
+  <img src="{% static 'img/logo.png' %}" alt="Logo" style="height:40px;vertical-align:middle;margin-right:8px">
+  <strong style="font-size:20px;color:#000">PolubiszTo.pl</strong><br>
+  <span style="font-size:14px;color:gray">korepetycje online</span>
 </header>
 
 <div class="wrap">
   <h1>Mój plan zajęć</h1>
-  <p class="hint">Nauczyciel ma dostęp do pokoju od razu po rezerwacji. Przycisk jest nieaktywny tylko po zakończeniu zajęć.</p>
-
-  <!-- TABS: Dzień / Tydzień / Wszystkie -->
-  <nav class="tabs">
-    <a class="tab {% if scope == 'day' %}active{% endif %}" href="?scope=day">Dziś</a>
-    <a class="tab {% if scope == 'week' %}active{% endif %}" href="?scope=week">Tydzień</a>
-    <a class="tab {% if scope == 'all' %}active{% endif %}" href="?scope=all">Wszystkie</a>
-  </nav>
+  <p class="hint">Nauczyciel może wejść do pokoju od razu po rezerwacji. Przycisk jest nieaktywny tylko po zakończeniu zajęć.</p>
 
   <!-- DESKTOP -->
   <div class="table-wrap card">
@@ -96,42 +74,31 @@
             <td>{{ r.temat|default:"—" }}</td>
             <td>
               {% if r.plik %}
-                <a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>
+                <a class="file-link" href="{{ r.plik.url }}" target="_blank">Pobierz</a>
               {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
             </td>
             <td>
-              <div class="actions">
-                {% if r.id %}
-                  <a class="btn small {% if is_past %}disabled{% endif %}" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
-                {% else %}
-                  <!-- Fallback: pokój testowy #1 -->
-                  <a class="btn small ghost" href="{% url 'zajecia_online' 1 %}">Pokój testowy</a>
-                {% endif %}
-                {% if r.excalidraw_link %}
-                  <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
-                {% endif %}
-              </div>
+              {% url 'zajecia_online' r.id as url_room %}
+              <a class="btn small{% if is_past or not url_room %} disabled{% endif %}"
+                 href="{{ url_room|default:'#' }}">Wejdź do pokoju</a>
             </td>
             <td>
-              {% if r.id %}
-                {% if r.material_po_zajeciach %}
-                  <div style="margin-bottom:6px">
-                    <a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener" class="btn small ghost">Zobacz</a>
-                  </div>
-                {% endif %}
-                <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
-                  {% csrf_token %}
-                  <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
-                  <button type="submit" class="btn small ghost">Dodaj plik</button>
-                </form>
-              {% else %}
-                <span class="hint">Brak ID rezerwacji</span>
+              {% if r.material_po_zajeciach %}
+                <div style="margin-bottom:6px">
+                  <a href="{{ r.material_po_zajeciach.url }}" target="_blank" class="btn small" style="background:#eef4ff;color:#17304e">Zobacz</a>
+                </div>
               {% endif %}
+              {% url 'dodaj_material' r.id as url_material %}
+              <form action="{{ url_material|default:'#' }}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+                <button type="submit" class="btn small" style="background:#eef4ff;color:#17304e" {% if not url_material %}disabled{% endif %}>Dodaj plik</button>
+              </form>
             </td>
           </tr>
           {% endwith %}
         {% empty %}
-          <tr><td colspan="8" class="empty">Brak zaplanowanych zajęć.</td></tr>
+          <tr><td colspan="8" style="color:var(--muted)">Brak zaplanowanych zajęć.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -149,39 +116,33 @@
           </div>
         </div>
         <div class="meta">
-          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
-          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
         <div class="r-actions">
-          {% if r.id %}
-            <a class="btn small {% if is_past %}disabled{% endif %}" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
-          {% else %}
-            <a class="btn small ghost" href="{% url 'zajecia_online' 1 %}">Pokój testowy</a>
-          {% endif %}
-          {% if r.excalidraw_link %}
-            <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
-          {% endif %}
-          {% if r.id %}
-            <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data" style="margin-left:8px">
-              {% csrf_token %}
-              <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
-              <button type="submit" class="btn small ghost">Dodaj plik</button>
-            </form>
-          {% endif %}
+          {% url 'zajecia_online' r.id as url_room %}
+          <a class="btn small{% if is_past or not url_room %} disabled{% endif %}" href="{{ url_room|default:'#' }}">Wejdź do pokoju</a>
+          {% url 'dodaj_material' r.id as url_material %}
+          <form action="{{ url_material|default:'#' }}" method="post" enctype="multipart/form-data" style="margin-left:8px">
+            {% csrf_token %}
+            <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+            <button type="submit" class="btn small" style="background:#eef4ff;color:#17304e" {% if not url_material %}disabled{% endif %}>Dodaj plik</button>
+          </form>
         </div>
       </article>
       {% endwith %}
     {% empty %}
-      <article class="r-card"><div class="empty">Brak zaplanowanych zajęć.</div></article>
+      <article class="r-card"><div>Brak zaplanowanych zajęć.</div></article>
     {% endfor %}
   </div>
 
-  <!-- Pokój testowy (ID=1) -->
+  <!-- Pokój testowy -->
   <div style="margin-top:14px">
-    <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
+    {% url 'zajecia_online' 1 as test_room %}
+    <a class="btn" href="{{ test_room|default:'#' }}">🔧 Testowy pokój (ID 1)</a>
   </div>
 </div>
 
-<footer style="text-align:center;color:#6b7a93;font-size:13px;padding:12px">PolubiszTo.pl — korepetycje online</footer>
+<footer>PolubiszTo.pl — korepetycje online</footer>
 </body>
 </html>

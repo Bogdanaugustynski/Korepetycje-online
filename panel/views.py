@@ -721,27 +721,11 @@ def stawki_nauczyciela_view(request):
 @login_required
 def moj_plan_zajec_view(request):
     now = timezone.localtime()
-    scope = request.GET.get("scope", "all")  # "day" | "week" | "all"
 
     qs = (Rezerwacja.objects
           .filter(nauczyciel=request.user)
           .select_related("uczen")
           .order_by("termin"))
-
-    # Filtry zakresów czasu (chronologia)
-    if scope == "day":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(days=1)
-        qs = qs.filter(termin__gte=start, termin__lt=end)
-    elif scope == "week":
-        # poniedziałek–niedziela bieżącego tygodnia (lokalnie)
-        weekday = now.weekday()  # 0=Mon
-        week_start = (now - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
-        week_end = week_start + timedelta(days=7)
-        qs = qs.filter(termin__gte=week_start, termin__lt=week_end)
-    else:
-        # "all": nic nie ucinamy; nauczyciel widzi wszystko
-        pass
 
     enriched = []
     for r in qs:
@@ -750,15 +734,10 @@ def moj_plan_zajec_view(request):
         enriched.append({
             "obj": r,
             "start": start,
-            "is_past": now > end,  # po zakończeniu – przycisk nieaktywny
+            "is_past": now > end,
         })
 
-    ctx = {
-        "rezerwacje_ex": enriched,
-        "now": now,
-        "scope": scope,
-    }
-    return render(request, "moj_plan_zajec.html", ctx)
+    return render(request, "moj_plan_zajec.html", {"rezerwacje_ex": enriched})
 
 
 @login_required
