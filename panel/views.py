@@ -718,30 +718,43 @@ def stawki_nauczyciela_view(request):
     return render(request, "stawki_nauczyciela.html", {"cennik": cennik})
 
 
+def _to_local(dt):
+    """Zwraca datę w strefie projektu; jeśli dt jest naiwne – uświadamia je."""
+    tz = timezone.get_current_timezone()
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, tz)
+    return timezone.localtime(dt, tz)
+
+
 @login_required
 def moj_plan_zajec_view(request):
-    # Wszystkie przyszłe i bieżące zajęcia danego nauczyciela (plus możesz dodać przeszłe, jeśli chcesz)
-    now = timezone.localtime()
+    # Wszystkie przyszłe i bieżące zajęcia danego nauczyciela (przeszłe też pokażemy jako 'Zakończone')
+    now = _to_local(timezone.now())
+
     qs = (
         Rezerwacja.objects
-        .filter(nauczyciel=request.user)   # jeśli chcesz tylko przyszłe: .filter(termin__gte=now - timedelta(minutes=55))
+        .filter(nauczyciel=request.user)
         .select_related("uczen")
         .order_by("termin")
     )
 
-    # Wzbogacamy obiekty o pomocnicze pola do UI
+    # Wzbogacamy obiekty o pola do UI (zgodnie z Twoim działającym widokiem + can_enter_teacher)
     enriched = []
     for r in qs:
-        start = timezone.localtime(r.termin)
+        start = _to_local(r.termin)
         end = start + timedelta(minutes=55)
+
         is_now = start <= now <= end
         is_past = now > end
+        can_enter_teacher = now < end        # nauczyciel ma wejście od razu po rezerwacji aż do końca
+
         enriched.append({
             "obj": r,
             "start": start,
             "end": end,
             "is_now": is_now,
             "is_past": is_past,
+            "can_enter_teacher": can_enter_teacher,
         })
 
     return render(request, "moj_plan_zajec.html", {
