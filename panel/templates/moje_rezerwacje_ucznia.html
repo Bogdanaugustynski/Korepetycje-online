@@ -21,6 +21,15 @@
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
       box-shadow:var(--shadow);padding:14px}
     .hint{color:var(--muted);margin:0 0 12px}
+    .section-title{margin:18px 0 10px;font-size:18px}
+
+    /* Zakładki */
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+    .tab{display:inline-flex;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid #dfe6f5;background:#fff;color:#213047;text-decoration:none;font-weight:800}
+    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .tab:hover{background:#f7fbff}
+
+    /* Tabela (desktop) */
     .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
     .tbl thead th{
       font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;
@@ -33,7 +42,17 @@
     .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
     .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
     .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
+    .table-wrap{display:block}
 
+    /* Karty (mobile) */
+    .cards{display:none}
+    .r-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+    .r-title{font-weight:900}
+    .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+    .meta div{background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+    .r-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+    /* Przyciski */
     .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;
       border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;
       text-decoration:none;white-space:nowrap}
@@ -43,9 +62,13 @@
 
     .file-link{display:inline-block}
     .empty{color:var(--muted);text-align:center;padding:14px}
-
-    .table-scroll{overflow:auto}
     .foot{text-align:center;color:#6b7a93;font-size:13px;padding:12px}
+
+    /* RWD — jak w panelu: tabela znika, wchodzą karty */
+    @media (max-width:860px){
+      .table-wrap{display:none}
+      .cards{display:grid;gap:10px}
+    }
   </style>
 </head>
 <body>
@@ -58,7 +81,16 @@
   <h1>Moje rezerwacje</h1>
   <p class="hint">Dostęp do pokoju aktywuje się na 5 minut przed startem i wygasa po 55 minutach od rozpoczęcia.</p>
 
-  <div class="table-scroll card" aria-label="Tabela moich rezerwacji">
+  <!-- Zakładki czasowe -->
+  <nav class="tabs">
+    <a class="tab {% if scope == 'day' %}active{% endif %}" href="?scope=day">Dziś</a>
+    <a class="tab {% if scope == 'week' %}active{% endif %}" href="?scope=week">Tydzień</a>
+    <a class="tab {% if scope == 'month' %}active{% endif %}" href="?scope=month">Miesiąc</a>
+    <a class="tab {% if scope == 'all' or not scope %}active{% endif %}" href="?scope=all">Wszystkie</a>
+  </nav>
+
+  <!-- DESKTOP: tabela -->
+  <div class="table-wrap card" aria-label="Tabela moich rezerwacji">
     <table class="tbl">
       <thead>
         <tr>
@@ -77,7 +109,7 @@
           <td>{{ r.termin|date:"Y-m-d" }}</td>
           <td>{{ r.termin|date:"H:i" }}</td>
           <td>{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }}</td>
-          <td>{{ r.temat }}</td>
+          <td>{{ r.temat|default:"—" }}</td>
           <td>
             {% if r.plik %}
               <a class="file-link" href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>
@@ -92,18 +124,16 @@
                 const now = new Date().getTime();
                 const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
                 const diff = start - now;
-                const activeFrom = -5 * 60 * 1000;
-                const activeTo   = 55 * 60 * 1000;
+                const activeFrom = -5 * 60 * 1000;   // -5 min
+                const activeTo   = 55 * 60 * 1000;   // +55 min
                 const el = document.getElementById("btn-{{ r.id }}");
 
                 if (diff >= activeFrom && diff <= activeTo) {
-                  el.innerHTML =
-                    `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+                  el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
                 } else {
                   const date = new Date(start);
                   const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                  el.innerHTML =
-                    `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
+                  el.innerHTML = `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
                 }
               })();
             </script>
@@ -123,6 +153,43 @@
     </table>
   </div>
 
+  <!-- MOBILE: karty -->
+  <div class="cards">
+    {% for r in rezerwacje %}
+      <article class="r-card">
+        <div class="r-title">{{ r.termin|date:"Y-m-d" }} • {{ r.termin|date:"H:i" }}</div>
+        <div style="color:var(--muted)">{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }} — {{ r.temat|default:"—" }}</div>
+        <div class="meta">
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{% url 'pobierz_material' r.id %}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
+        </div>
+        <div class="r-actions">
+          <span id="btn-m-{{ r.id }}"></span>
+          <script>
+            (function() {
+              const now = new Date().getTime();
+              const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+              const diff = start - now;
+              const activeFrom = -5 * 60 * 1000;
+              const activeTo   = 55 * 60 * 1000;
+              const el = document.getElementById("btn-m-{{ r.id }}");
+              if (diff >= activeFrom && diff <= activeTo) {
+                el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+              } else {
+                const date = new Date(start);
+                const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                el.innerHTML = `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
+              }
+            })();
+          </script>
+        </div>
+      </article>
+    {% empty %}
+      <article class="r-card"><div class="empty">Brak zarezerwowanych lekcji.</div></article>
+    {% endfor %}
+  </div>
+
+  <!-- Pokój testowy -->
   <div style="margin-top:14px">
     <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
   </div>
