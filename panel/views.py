@@ -633,10 +633,50 @@ def edytuj_cene_view(request):
     return render(request, "ksiegowosc/edytuj_cene.html", {"ustawienia": ustawienia})
 
 
+def _range_for_scope(now, scope: str):
+    """Zwraca (start, end) – end jest EXCLUSIVE. None,None dla 'all'."""
+    if scope == "day":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        return start, end
+
+    if scope == "week":
+        # tydzień pon–niedz
+        start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=7)
+        return start, end
+
+    if scope == "month":
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        tmp = (start.replace(day=28) + timedelta(days=4))  # na pewno w nast. miesiącu
+        end = tmp.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return start, end
+
+    return None, None  # 'all'
+
 @login_required
 def moje_rezerwacje_ucznia_view(request):
-    rezerwacje = Rezerwacja.objects.filter(uczen=request.user).select_related("nauczyciel")
-    return render(request, "moje_rezerwacje_ucznia.html", {"rezerwacje": rezerwacje})
+    scope = request.GET.get("scope", "all")
+    if scope not in {"day", "week", "month", "all"}:
+        scope = "all"
+
+    now = timezone.localtime()
+
+    qs = (
+        Rezerwacja.objects
+        .filter(uczen=request.user)
+        .select_related("nauczyciel")
+        .order_by("termin")
+    )
+
+    start, end = _range_for_scope(now, scope)
+    if start is not None and end is not None:
+        qs = qs.filter(termin__gte=start, termin__lt=end)
+
+    return render(request, "moje_rezerwacje_ucznia.html", {
+        "rezerwacje": qs,
+        "scope": scope,  # do podświetlenia aktywnej zakładki w szablonie
+    })
 
 
 @login_required
