@@ -139,11 +139,32 @@
             </script>
           </td>
           <td>
-            {% if r.material_po_zajeciach %}
-              <a class="btn small ghost" href="{% url 'pobierz_material' r.id %}" target="_blank" rel="noopener">Zobacz</a>
-            {% else %}
-              <span style="color:var(--muted)">Brak</span>
-            {% endif %}
+            <div id="mat-{{ r.id }}"></div>
+            <script>
+              (function() {
+                const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+                const now = new Date().getTime();
+                const endWindow = start + 55 * 60 * 1000; // po 55 minutach od startu
+                const el = document.getElementById("mat-{{ r.id }}");
+
+                const hasBoard = {{ "true" if r.excalidraw_link else "false" }};
+                const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+                const hasFile = {{ "true" if r.material_po_zajeciach else "false" }};
+                const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
+
+                let html = "";
+                if (now >= endWindow && hasBoard && boardUrl) {
+                  html += `<div style="margin-bottom:6px"><a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica (po zajęciach)</a></div>`;
+                }
+                if (hasFile && fileUrl) {
+                  html += `<div><a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a></div>`;
+                }
+                if (!html) {
+                  html = `<span style="color:var(--muted)">Brak</span>`;
+                }
+                el.innerHTML = html;
+              })();
+            </script>
           </td>
         </tr>
         {% empty %}
@@ -161,7 +182,9 @@
         <div style="color:var(--muted)">{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }} — {{ r.temat|default:"—" }}</div>
         <div class="meta">
           <div><strong>Plik:</strong> {% if r.plik %}<a href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
-          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{% url 'pobierz_material' r.id %}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
+          <div><strong>Materiały:</strong> 
+            <span id="mat-m-{{ r.id }}">—</span>
+          </div>
         </div>
         <div class="r-actions">
           <span id="btn-m-{{ r.id }}"></span>
@@ -180,6 +203,30 @@
                 const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 el.innerHTML = `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
               }
+            })();
+          </script>
+          <script>
+            (function() {
+              const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+              const now = new Date().getTime();
+              const endWindow = start + 55 * 60 * 1000;
+              const el = document.getElementById("mat-m-{{ r.id }}");
+
+              const hasBoard = {{ "true" if r.excalidraw_link else "false" }};
+              const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+              const hasFile = {{ "true" if r.material_po_zajeciach else "false" }};
+              const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
+
+              let html = "";
+              if (now >= endWindow && hasBoard && boardUrl) {
+                html += `<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
+              }
+              if (hasFile && fileUrl) {
+                html += html ? ` ` : ``;
+                html += `<a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a>`;
+              }
+              if (!html) { html = "Brak"; }
+              el.innerHTML = html;
             })();
           </script>
         </div>
