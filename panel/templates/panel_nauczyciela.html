@@ -1,63 +1,162 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Panel Nauczyciela</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .teacher-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 500px;
-            text-align: center;
-        }
-        .btn {
-            width: 90%;
-            padding: 12px;
-            margin: 10px 0;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 18px;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Nauczyciela — PolubiszTo.pl</title>
+
+  <style>
+  :root{
+    --brand:#0b74ff;
+    --ink:#0b1320;
+    --muted:#5b6777;
+    --bg:#f7f9fe;
+    --line:#e6edff;
+    --maxw:1100px;
+    --radius:18px;
+    --shadow:0 12px 36px rgba(11,116,255,.14);
+    --chip:linear-gradient(135deg,#0b74ff,#095cd1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;line-height:1.45}
+
+  /* HERO */
+  .hero{max-width:var(--maxw);margin:18px auto 12px;padding:0 18px}
+  .hero .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
+  .hero h1{margin:0 0 6px;font-size:22px}
+  .hero p{margin:0;color:var(--muted)}
+
+  /* GRID TILES */
+  .grid{max-width:var(--maxw);margin:0 auto;padding:12px 18px 28px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+  .tile{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);
+    padding:18px;display:flex;align-items:flex-start;gap:14px;text-decoration:none;color:inherit;
+    transition:transform .15s ease, box-shadow .15s ease}
+  .tile:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(11,116,255,.18)}
+  .ico{flex:0 0 auto;width:44px;height:44px;border-radius:14px;background:var(--chip);display:grid;place-items:center;color:#fff}
+  .ico svg{width:22px;height:22px;display:block}
+  .tile h3{margin:0 0 2px;font-size:16px;font-weight:800;color:var(--ink)}
+  .tile p{margin:0;font-size:13px;color:var(--muted)}
+  .tile.logout .ico{background:linear-gradient(135deg,#f43f5e,#e11d48)}
+
+  /* FOOTER */
+  .footer{text-align:center;padding:16px 18px;font-size:13px;color:var(--muted)}
+  </style>
 </head>
 <body>
 
-<div class="teacher-box">
-    <h2>Witaj, {{ request.user.first_name }}!</h2>
+  {# Stały nagłówek z logo/nazwą — jak ustaliliśmy #}
+  {% include "partials/brand.html" %}
 
-    <h3>Zarządzaj swoim harmonogramem</h3>
+  <section class="hero">
+    <div class="card">
+      <h1>Panel nauczyciela</h1>
+      <p>Zarządzaj terminami, prowadź zajęcia i przeglądaj historię rezerwacji.</p>
+    </div>
+  </section>
 
-    <a class="btn" href="{% url 'wybierz_godziny' %}">Wybierz twój wolny dzień i godzinę korepetycji</a>
+  <section class="grid" aria-label="Akcje">
+    <a href="{% url 'wybierz_godziny' %}" class="tile" title="Udostępnij wolne terminy">
+      <span class="ico">
+        <!-- calendar-plus -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+          <line x1="12" y1="14" x2="12" y2="20"></line>
+          <line x1="9" y1="17" x2="15" y2="17"></line>
+        </svg>
+      </span>
+      <div>
+        <h3>Wybierz dostępne godziny</h3>
+        <p>Udostępnij wolne terminy dla uczniów</p>
+      </div>
+    </a>
 
-    <a class="btn" href="{% url 'moj_plan_zajec' %}">Mój plan zajęć</a>
+    <a href="{% url 'moj_plan_zajec' %}" class="tile" title="Sprawdź rezerwacje">
+      <span class="ico">
+        <!-- list -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path>
+          <path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path>
+        </svg>
+      </span>
+      <div>
+        <h3>Mój plan zajęć</h3>
+        <p>Lista nadchodzących rezerwacji</p>
+      </div>
+    </a>
 
-    <a href="{% url 'virtual_room' %}">Wirtualny Pokój</a>
+    <a href="{% url 'virtual_room' %}" class="tile" title="Wejdź do pokoju zajęć">
+      <span class="ico">
+        <!-- presentation -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h20"></path>
+          <path d="M2 7h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7z"></path>
+          <path d="M12 7v14"></path>
+        </svg>
+      </span>
+      <div>
+        <h3>Wirtualny Pokój</h3>
+        <p>Tablica + audio, start o godzinie zajęć</p>
+      </div>
+    </a>
 
-    <a class="btn" href="/archiwum_rezerwacji/">Archiwum rezerwacji</a>
+    <a href="/archiwum_rezerwacji/" class="tile" title="Historia rezerwacji">
+      <span class="ico">
+        <!-- archive -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="4"></rect>
+          <path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"></path>
+          <path d="M10 12h4"></path>
+        </svg>
+      </span>
+      <div>
+        <h3>Archiwum rezerwacji</h3>
+        <p>Historia uczniów i lekcji</p>
+      </div>
+    </a>
 
-    <a class="btn" href="{% url 'moje_konto' %}">Moje konto</a>
+    <a href="{% url 'moje_konto' %}" class="tile" title="Edytuj konto">
+      <span class="ico">
+        <!-- user -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21a8 8 0 1 0-16 0"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </span>
+      <div>
+        <h3>Moje konto</h3>
+        <p>Dane, przedmioty, stawki</p>
+      </div>
+    </a>
 
-    <a href="{% url 'logout' %}" class="btn">Wyloguj</a>
-</div>
+    <a href="{% url 'logout' %}" class="tile logout" title="Wyloguj">
+      <span class="ico">
+        <!-- power -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v10"></path>
+          <path d="M5.5 5.5a8 8 0 1 0 13 0"></path>
+        </svg>
+      </span>
+      <div>
+        <h3>Wyloguj</h3>
+        <p>Zakończ pracę w panelu</p>
+      </div>
+    </a>
+  </section>
+
+  <footer class="footer">
+    © PolubiszTo.pl — korepetycje online
+  </footer>
 
 </body>
 </html>
