@@ -1,87 +1,133 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Moje Rezerwacje</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }
-        table { border-collapse: collapse; width: 100%; background-color: #fff; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        a { text-decoration: none; color: #007bff; }
-        .btn-disabled { background-color: #ccc; color: #666; border: none; padding: 6px 12px; cursor: not-allowed; }
-        .btn-active { background-color: #28a745; color: white; border: none; padding: 6px 12px; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Moje rezerwacje — PolubiszTo.pl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--line:#e6edff;
+      --card:#fff;--bg:#f7f9fe;--shadow:0 8px 32px rgba(11,116,255,.12);
+      --radius:14px;--maxw:1100px
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    h1{font-size:clamp(20px,4vw,28px);margin:12px 0}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px}
+    .site-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 16px}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:14px}
+    .hint{color:var(--muted);margin:0 0 12px}
+    .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .tbl thead th{
+      font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;
+      text-align:left;padding:10px 12px
+    }
+    .tbl tbody tr{background:#fff;border:1px solid var(--line)}
+    .tbl td{padding:12px;vertical-align:top}
+    .tbl td+td{border-left:1px solid var(--line)}
+    .tbl tbody tr:first-child td:first-child{border-top-left-radius:12px}
+    .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
+    .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
+    .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
+
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;
+      border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;
+      text-decoration:none;white-space:nowrap}
+    .btn.small{padding:8px 12px;border-radius:10px;font-size:14px}
+    .btn.ghost{background:#eef4ff;color:#17304e}
+    .btn.disabled{background:#ecf0f8;color:#8aa1bf;cursor:not-allowed}
+
+    .file-link{display:inline-block}
+    .empty{color:var(--muted);text-align:center;padding:14px}
+
+    .table-scroll{overflow:auto}
+    .foot{text-align:center;color:#6b7a93;font-size:13px;padding:12px}
+  </style>
 </head>
 <body>
-    <h2>Moje Rezerwacje</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Godzina</th>
-                <th>Nauczyciel</th>
-                <th>Temat</th>
-                <th>Plik</th>
-                <th>Zajęcia online</th>
-                <th>Materiały</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in rezerwacje %}
-            <tr>
-                <td>{{ r.termin|date:"Y-m-d" }}</td>
-                <td>{{ r.termin|date:"H:i" }}</td>
-                <td>{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }}</td>
-                <td>{{ r.temat }}</td>
-                <td>
-                    {% if r.plik %}
-                        <a href="{% url 'pobierz_plik' r.id %}" target="_blank">Pobierz</a>
-                    {% else %}
-                        Brak
-                    {% endif %}
-                </td>
-                <td>
-                    <span id="btn-{{ r.id }}"></span>
-                    <script>
-                        (function() {
-                            const now = new Date().getTime();
-                            const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
-                            const diff = start - now;
-                            const activeFrom = -5 * 60 * 1000;
-                            const activeTo = 55 * 60 * 1000;
-                            const container = document.getElementById("btn-{{ r.id }}");
 
-                            if (diff >= activeFrom && diff <= activeTo) {
-                                container.innerHTML = `<a href="/zajecia_online/{{ r.id }}/"><button class='btn-active'>Otwórz pokój nr {{ r.id }}</button></a>`;
-                            } else {
-                                const date = new Date(start);
-                                const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                                container.innerHTML = `<button class='btn-disabled'>Dostęp od ${godzina}</button>`;
-                            }
-                        })();
-                    </script>
-                </td>
-                <td>
-                    {% if r.material_po_zajeciach %}
-                        <a href="{% url 'pobierz_material' r.id %}" target="_blank">Zobacz</a>
-                    {% else %}
-                        Brak
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7">Brak zarezerwowanych lekcji.</td></tr>
-            {% endfor %}
-        </tbody>
+<header class="site-header">
+  {% include "partials/brand.html" %}
+</header>
+
+<div class="wrap">
+  <h1>Moje rezerwacje</h1>
+  <p class="hint">Dostęp do pokoju aktywuje się na 5 minut przed startem i wygasa po 55 minutach od rozpoczęcia.</p>
+
+  <div class="table-scroll card" aria-label="Tabela moich rezerwacji">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Godzina</th>
+          <th>Nauczyciel</th>
+          <th>Temat</th>
+          <th>Plik</th>
+          <th>Zajęcia online</th>
+          <th>Materiały</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rezerwacje %}
+        <tr>
+          <td>{{ r.termin|date:"Y-m-d" }}</td>
+          <td>{{ r.termin|date:"H:i" }}</td>
+          <td>{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }}</td>
+          <td>{{ r.temat }}</td>
+          <td>
+            {% if r.plik %}
+              <a class="file-link" href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>
+            {% else %}
+              <span style="color:var(--muted)">Brak</span>
+            {% endif %}
+          </td>
+          <td>
+            <span id="btn-{{ r.id }}"></span>
+            <script>
+              (function() {
+                const now = new Date().getTime();
+                const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+                const diff = start - now;
+                const activeFrom = -5 * 60 * 1000;
+                const activeTo   = 55 * 60 * 1000;
+                const el = document.getElementById("btn-{{ r.id }}");
+
+                if (diff >= activeFrom && diff <= activeTo) {
+                  el.innerHTML =
+                    `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+                } else {
+                  const date = new Date(start);
+                  const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                  el.innerHTML =
+                    `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
+                }
+              })();
+            </script>
+          </td>
+          <td>
+            {% if r.material_po_zajeciach %}
+              <a class="btn small ghost" href="{% url 'pobierz_material' r.id %}" target="_blank" rel="noopener">Zobacz</a>
+            {% else %}
+              <span style="color:var(--muted)">Brak</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="empty">Brak zarezerwowanych lekcji.</td></tr>
+        {% endfor %}
+      </tbody>
     </table>
+  </div>
 
-    <div style="margin-bottom: 20px;">
-        <a href="{% url 'zajecia_online' 1 %}">
-            <button class="btn-active">🧪 Wejdź do testowego pokoju (ID 1)</button>
-        </a>
-    </div>
+  <div style="margin-top:14px">
+    <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
+  </div>
+</div>
+
+<footer class="foot">PolubiszTo.pl — korepetycje online</footer>
 </body>
 </html>
