@@ -70,6 +70,9 @@
       .cards{display:grid;gap:10px}
     }
   </style>
+
+  <!-- (opcjonalnie) favicon żeby 404 z logów zniknęło -->
+  <link rel="icon" href="{% static 'img/favicon.ico' %}">
 </head>
 <body>
 
@@ -147,9 +150,9 @@
                 const endWindow = start + 55 * 60 * 1000; // po 55 minutach od startu
                 const el = document.getElementById("mat-{{ r.id }}");
 
-                const hasBoard = {{ "true" if r.excalidraw_link else "false" }};
+                const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
                 const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
-                const hasFile = {{ "true" if r.material_po_zajeciach else "false" }};
+                const hasFile = {% if r.material_po_zajeciach %}true{% else %}false{% endif %};
                 const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
 
                 let html = "";
@@ -212,9 +215,9 @@
               const endWindow = start + 55 * 60 * 1000;
               const el = document.getElementById("mat-m-{{ r.id }}");
 
-              const hasBoard = {{ "true" if r.excalidraw_link else "false" }};
+              const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
               const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
-              const hasFile = {{ "true" if r.material_po_zajeciach else "false" }};
+              const hasFile = {% if r.material_po_zajeciach %}true{% else %}false{% endif %};
               const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
 
               let html = "";
