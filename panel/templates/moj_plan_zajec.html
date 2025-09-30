@@ -12,9 +12,18 @@
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
     .hint{color:var(--muted);margin:0 0 12px} .section-title{margin:18px 0 10px;font-size:18px}
     .site-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 16px}
-    .brand{display:inline-flex;gap:12px;align-items:center;text-decoration:none}
-    .brand-logo{height:40px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))}
-    .brand-texts{line-height:1.1}.brand-title{font-size:20px;color:#000}.brand-sub{font-size:13px;color:#8a97a9}
+
+    /* BRAND (z Twojego snippetu) */
+    .brand-wrap{display:flex;align-items:center;gap:10px}
+    .brand-svg{width:32px;height:32px;flex:0 0 32px}
+    .brand-title{line-height:1.1}
+    .brand-title .name{font-weight:800;font-size:18px;color:#0b1320}
+    .brand-title .tag{font-size:13px;color:#5b6777}
+    @media(min-width:480px){
+      .brand-svg{width:40px;height:40px}
+      .brand-title .name{font-size:20px}
+    }
+
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
     .tab{display:inline-flex;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid #dfe6f5;background:#fff;color:#213047;text-decoration:none;font-weight:800}
     .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)} .tab:hover{background:#f7fbff}
@@ -41,14 +50,29 @@
   </style>
 </head>
 <body>
+
 <header class="site-header">
-  <a href="/" class="brand">
-    <img src="{% static 'img/logo.png' %}" alt="PolubiszTo.pl" class="brand-logo"/>
-    <span class="brand-texts">
-      <strong class="brand-title">PolubiszTo.pl</strong>
-      <span class="brand-sub">korepetycje online</span>
-    </span>
-  </a>
+  <div class="brand-wrap" aria-label="PolubiszTo.pl — korepetycje online">
+    <!-- Ikona: czapka + książka (inline SVG, bez plików statycznych) -->
+    <svg class="brand-svg" viewBox="0 0 48 48" role="img" aria-hidden="true">
+      <defs>
+        <linearGradient id="b" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#0b74ff"/><stop offset="1" stop-color="#095cd1"/>
+        </linearGradient>
+      </defs>
+      <!-- czapka -->
+      <path d="M4 16 24 7l20 9-20 9-20-9z" fill="url(#b)"/>
+      <path d="M10 21c0 6 6 10 14 10s14-4 14-10" fill="#0b74ff" opacity=".22"/>
+      <!-- książka -->
+      <rect x="9" y="23" width="30" height="14" rx="3" fill="#dfeaff"/>
+      <path d="M24 23v14" stroke="#9bb8ff" stroke-width="2"/>
+    </svg>
+
+    <div class="brand-title">
+      <div class="name">PolubiszTo.pl</div>
+      <div class="tag">korepetycje online</div>
+    </div>
+  </div>
 </header>
 
 <div class="wrap">
