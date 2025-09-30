@@ -64,14 +64,12 @@
     .empty{color:var(--muted);text-align:center;padding:14px}
     .foot{text-align:center;color:#6b7a93;font-size:13px;padding:12px}
 
-    /* RWD — jak w panelu: tabela znika, wchodzą karty */
+    /* RWD — jak w panelu: wąsko -> karty */
     @media (max-width:860px){
       .table-wrap{display:none}
       .cards{display:grid;gap:10px}
     }
   </style>
-
-  <!-- (opcjonalnie) favicon żeby 404 z logów zniknęło -->
   <link rel="icon" href="{% static 'img/favicon.ico' %}">
 </head>
 <body>
@@ -92,22 +90,17 @@
     <a class="tab {% if scope == 'all' or not scope %}active{% endif %}" href="?scope=all">Wszystkie</a>
   </nav>
 
-  <!-- DESKTOP: tabela -->
-  <div class="table-wrap card" aria-label="Tabela moich rezerwacji">
+  <!-- === NADCHODZĄCE === -->
+  <h2 class="section-title">Nadchodzące ({{ upcoming|length }})</h2>
+
+  <!-- DESKTOP -->
+  <div class="table-wrap card" aria-label="Nadchodzące rezerwacje">
     <table class="tbl">
       <thead>
-        <tr>
-          <th>Data</th>
-          <th>Godzina</th>
-          <th>Nauczyciel</th>
-          <th>Temat</th>
-          <th>Plik</th>
-          <th>Zajęcia online</th>
-          <th>Materiały</th>
-        </tr>
+        <tr><th>Data</th><th>Godzina</th><th>Nauczyciel</th><th>Temat</th><th>Plik</th><th>Zajęcia online</th><th>Materiały</th></tr>
       </thead>
       <tbody>
-        {% for r in rezerwacje %}
+      {% for r in upcoming %}
         <tr>
           <td>{{ r.termin|date:"Y-m-d" }}</td>
           <td>{{ r.termin|date:"H:i" }}</td>
@@ -116,39 +109,34 @@
           <td>
             {% if r.plik %}
               <a class="file-link" href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>
-            {% else %}
-              <span style="color:var(--muted)">Brak</span>
-            {% endif %}
+            {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
           </td>
           <td>
-            <span id="btn-{{ r.id }}"></span>
+            <span id="btn-u-{{ r.id }}"></span>
             <script>
-              (function() {
-                const now = new Date().getTime();
+              (function(){
+                const now = Date.now();
                 const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
                 const diff = start - now;
-                const activeFrom = -5 * 60 * 1000;   // -5 min
-                const activeTo   = 55 * 60 * 1000;   // +55 min
-                const el = document.getElementById("btn-{{ r.id }}");
-
+                const activeFrom = -5*60*1000, activeTo = 55*60*1000;
+                const el = document.getElementById("btn-u-{{ r.id }}");
                 if (diff >= activeFrom && diff <= activeTo) {
                   el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
                 } else {
-                  const date = new Date(start);
-                  const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                  const godzina = new Date(start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
                   el.innerHTML = `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
                 }
               })();
             </script>
           </td>
           <td>
-            <div id="mat-{{ r.id }}"></div>
+            <div id="mat-u-{{ r.id }}"></div>
             <script>
-              (function() {
+              (function(){
                 const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
-                const now = new Date().getTime();
-                const endWindow = start + 55 * 60 * 1000; // po 55 minutach od startu
-                const el = document.getElementById("mat-{{ r.id }}");
+                const now = Date.now();
+                const endWindow = start + 55*60*1000;
+                const el = document.getElementById("mat-u-{{ r.id }}");
 
                 const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
                 const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
@@ -162,80 +150,152 @@
                 if (hasFile && fileUrl) {
                   html += `<div><a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a></div>`;
                 }
-                if (!html) {
-                  html = `<span style="color:var(--muted)">Brak</span>`;
-                }
-                el.innerHTML = html;
+                el.innerHTML = html || `<span style="color:var(--muted)">Brak</span>`;
               })();
             </script>
           </td>
         </tr>
-        {% empty %}
-        <tr><td colspan="7" class="empty">Brak zarezerwowanych lekcji.</td></tr>
-        {% endfor %}
+      {% empty %}
+        <tr><td colspan="7" class="empty">Brak nadchodzących zajęć.</td></tr>
+      {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <!-- MOBILE: karty -->
+  <!-- MOBILE -->
   <div class="cards">
-    {% for r in rezerwacje %}
+    {% for r in upcoming %}
       <article class="r-card">
         <div class="r-title">{{ r.termin|date:"Y-m-d" }} • {{ r.termin|date:"H:i" }}</div>
         <div style="color:var(--muted)">{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }} — {{ r.temat|default:"—" }}</div>
         <div class="meta">
           <div><strong>Plik:</strong> {% if r.plik %}<a href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
-          <div><strong>Materiały:</strong> 
-            <span id="mat-m-{{ r.id }}">—</span>
-          </div>
+          <div><strong>Materiały:</strong> <span id="mat-um-{{ r.id }}">—</span></div>
         </div>
         <div class="r-actions">
-          <span id="btn-m-{{ r.id }}"></span>
+          <span id="btn-um-{{ r.id }}"></span>
           <script>
-            (function() {
-              const now = new Date().getTime();
-              const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
-              const diff = start - now;
-              const activeFrom = -5 * 60 * 1000;
-              const activeTo   = 55 * 60 * 1000;
-              const el = document.getElementById("btn-m-{{ r.id }}");
-              if (diff >= activeFrom && diff <= activeTo) {
-                el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
-              } else {
-                const date = new Date(start);
-                const godzina = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                el.innerHTML = `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
+            (function(){
+              const now=Date.now(), start=new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+              const diff=start-now, activeFrom=-5*60*1000, activeTo=55*60*1000;
+              const el=document.getElementById("btn-um-{{ r.id }}");
+              if (diff>=activeFrom && diff<=activeTo) el.innerHTML=`<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+              else {
+                const godzina=new Date(start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                el.innerHTML=`<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
               }
             })();
           </script>
           <script>
-            (function() {
-              const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
-              const now = new Date().getTime();
-              const endWindow = start + 55 * 60 * 1000;
-              const el = document.getElementById("mat-m-{{ r.id }}");
+            (function(){
+              const start=new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+              const now=Date.now(), endWindow=start+55*60*1000;
+              const el=document.getElementById("mat-um-{{ r.id }}");
+              const hasBoard={% if r.excalidraw_link %}true{% else %}false{% endif %};
+              const boardUrl={% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+              const hasFile={% if r.material_po_zajeciach %}true{% else %}false{% endif %};
+              const fileUrl={% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
 
-              const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
-              const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
-              const hasFile = {% if r.material_po_zajeciach %}true{% else %}false{% endif %};
-              const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
-
-              let html = "";
-              if (now >= endWindow && hasBoard && boardUrl) {
-                html += `<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
-              }
-              if (hasFile && fileUrl) {
-                html += html ? ` ` : ``;
-                html += `<a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a>`;
-              }
-              if (!html) { html = "Brak"; }
-              el.innerHTML = html;
+              let html="";
+              if (now>=endWindow && hasBoard && boardUrl) html+=`<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
+              if (hasFile && fileUrl) html+= (html? " " : "") + `<a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a>`;
+              el.innerHTML = html || "Brak";
             })();
           </script>
         </div>
       </article>
     {% empty %}
-      <article class="r-card"><div class="empty">Brak zarezerwowanych lekcji.</div></article>
+      <article class="r-card"><div class="empty">Brak nadchodzących zajęć.</div></article>
+    {% endfor %}
+  </div>
+
+  <!-- === ZAKOŃCZONE === -->
+  <h2 class="section-title">Zakończone ({{ finished|length }})</h2>
+
+  <!-- DESKTOP -->
+  <div class="table-wrap card" aria-label="Zakończone rezerwacje">
+    <table class="tbl">
+      <thead>
+        <tr><th>Data</th><th>Godzina</th><th>Nauczyciel</th><th>Temat</th><th>Plik</th><th>Zajęcia online</th><th>Materiały</th></tr>
+      </thead>
+      <tbody>
+      {% for r in finished %}
+        <tr>
+          <td>{{ r.termin|date:"Y-m-d" }}</td>
+          <td>{{ r.termin|date:"H:i" }}</td>
+          <td>{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }}</td>
+          <td>{{ r.temat|default:"—" }}</td>
+          <td>
+            {% if r.plik %}
+              <a class="file-link" href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>
+            {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
+          </td>
+          <td>
+            <a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>
+          </td>
+          <td>
+            <div id="mat-f-{{ r.id }}"></div>
+            <script>
+              (function(){
+                const start = new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+                const now = Date.now();
+                const endWindow = start + 55*60*1000;
+                const el = document.getElementById("mat-f-{{ r.id }}");
+                const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
+                const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+                const hasFile = {% if r.material_po_zajeciach %}true{% else %}false{% endif %};
+                const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
+
+                let html = "";
+                if (now >= endWindow && hasBoard && boardUrl) {
+                  html += `<div style="margin-bottom:6px"><a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica (po zajęciach)</a></div>`;
+                }
+                if (hasFile && fileUrl) {
+                  html += `<div><a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a></div>`;
+                }
+                el.innerHTML = html || `<span style="color:var(--muted)">Brak</span>`;
+              })();
+            </script>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="empty">Brak zakończonych zajęć.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MOBILE -->
+  <div class="cards">
+    {% for r in finished %}
+      <article class="r-card" style="opacity:.96">
+        <div class="r-title">{{ r.termin|date:"Y-m-d" }} • {{ r.termin|date:"H:i" }}</div>
+        <div style="color:var(--muted)">{{ r.nauczyciel.first_name }} {{ r.nauczyciel.last_name }} — {{ r.temat|default:"—" }}</div>
+        <div class="meta">
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{% url 'pobierz_plik' r.id %}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> <span id="mat-fm-{{ r.id }}">—</span></div>
+        </div>
+        <div class="r-actions">
+          <a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>
+          <script>
+            (function(){
+              const start=new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
+              const now=Date.now(), endWindow=start+55*60*1000;
+              const el=document.getElementById("mat-fm-{{ r.id }}");
+              const hasBoard={% if r.excalidraw_link %}true{% else %}false{% endif %};
+              const boardUrl={% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+              const hasFile={% if r.material_po_zajeciach %}true{% else %}false{% endif %};
+              const fileUrl={% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
+              let html="";
+              if (now>=endWindow && hasBoard && boardUrl) html+=`<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
+              if (hasFile && fileUrl) html+= (html? " " : "") + `<a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a>`;
+              el.innerHTML = html || "Brak";
+            })();
+          </script>
+        </div>
+      </article>
+    {% empty %}
+      <article class="r-card"><div class="empty">Brak zakończonych zajęć.</div></article>
     {% endfor %}
   </div>
 
