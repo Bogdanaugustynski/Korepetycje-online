@@ -702,16 +702,27 @@ def moje_konto_view(request):
 
 @login_required
 def dostepne_terminy_view(request):
-    # pokaż tylko wolne terminy z przyszłości
+    """Lista dostępnych terminów dla ucznia — tylko dzisiaj i przyszłość, bez już zarezerwowanych (jeśli istnieje model Rezerwacja)."""
     dzisiaj = timezone.localdate()
+
     terminy = (
         WolnyTermin.objects
-        .filter(data__gte=dzisiaj, zajety=False)  # <-- jeśli masz pole zajety=True/False
+        .filter(data__gte=dzisiaj)          # TYLKO dzisiejsze i przyszłe
         .select_related("nauczyciel")
         .order_by("data", "godzina")
     )
-    return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
+    # Jeśli istnieje model Rezerwacja, wyklucz terminy już zarezerwowane
+    try:
+        Rezerwacja = apps.get_model("panel", "Rezerwacja")
+        if Rezerwacja is not None:
+            zajete_ids = Rezerwacja.objects.values_list("termin_id", flat=True)
+            terminy = terminy.exclude(id__in=list(zajete_ids))
+    except LookupError:
+        # Brak modelu Rezerwacja – nic nie wykluczamy
+        pass
+
+    return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
 @login_required
 def archiwum_rezerwacji_view(request):
