@@ -782,6 +782,57 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
+@login_required
+def dostepne_terminy_view(request):
+    """
+    Lista dostępnych terminów:
+    - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
+    - rosnąco po (data, godzina)
+    - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
+    """
+    now = timezone.localtime()
+
+    terminy = (
+        WolnyTermin.objects
+        .select_related("nauczyciel")
+        .filter(
+            models.Q(data__gt=now.date()) |
+            models.Q(data=now.date(), godzina__gte=now.time())
+        )
+        .order_by("data", "godzina")
+    )
+
+    # Wyklucz zajęte (działa zarówno gdy Rezerwacja.termin jest FK, jak i DateTimeField)
+    try:
+        Rezerwacja = apps.get_model("panel", "Rezerwacja")
+    except LookupError:
+        Rezerwacja = None
+
+    if Rezerwacja:
+        try:
+            pole = Rezerwacja._meta.get_field("termin")
+        except Exception:
+            pole = None
+
+        if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
+            # Rezerwacja.termin -> FK do WolnyTermin
+            terminy = terminy.exclude(
+                Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
+            )
+        else:
+            # Rezerwacja.termin -> DateTimeField
+            terminy = terminy.exclude(
+                Exists(
+                    Rezerwacja.objects.filter(
+                        nauczyciel=OuterRef("nauczyciel"),
+                        termin__date=OuterRef("data"),
+                        termin__time=OuterRef("godzina"),
+                    )
+                )
+            )
+
+    return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
+
 @require_POST
 @login_required
 @transaction.atomic
