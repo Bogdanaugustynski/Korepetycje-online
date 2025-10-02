@@ -1,105 +1,274 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Dostępne terminy</title>
-    <style>
-        body { font-family: Arial; margin: 20px; background-color: #f9f9f9; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; background-color: #fff; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        .hidden { display: none; }
-        .form-box {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #ffffff;
-            border: 1px solid #ccc;
-            width: 100%;
-        }
-        label {
-            font-weight: bold;
-        }
-        input[type="text"],
-        input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            margin-top: 4px;
-            margin-bottom: 12px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #28a745;
-            border: none;
-            color: white;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dostępne terminy — PolubiszTo.pl</title>
+  <meta name="description" content="Lista wolnych terminów nauczycieli — PolubiszTo.pl korepetycje online">
+  <style>
+    :root{
+      --brand:#0b74ff;         /* główny niebieski */
+      --brand-700:#095cd1;
+      --ink:#0b1320;           /* tekst */
+      --muted:#5b6777;         /* opis/secondary */
+      --line:#e6edff;          /* linie */
+      --card:#ffffff;          /* tło kart */
+      --bg:#f7f9fe;            /* tło strony */
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --danger:#dc3545;
+      --shadow:0 14px 34px rgba(11,116,255,.12);
+      --radius:14px;
+      --maxw:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
+
+    /* --- Nagłówek z brandingiem PolubiszTo.pl --- */
+    header.brand{
+      position:sticky; top:0; z-index:50;
+      background:linear-gradient(180deg,#fff,rgba(255,255,255,.96));
+      border-bottom:1px solid var(--line);
+      backdrop-filter:saturate(180%) blur(6px);
+    }
+    .brand-wrap{max-width:var(--maxw);margin:0 auto;display:flex;align-items:center;gap:14px;padding:12px 16px}
+    .brand-logo{
+      width:36px;height:36px;border-radius:10px;background:var(--brand);
+      display:grid;place-items:center;box-shadow:0 6px 18px rgba(11,116,255,.25)
+    }
+    .brand-logo:before{content:"🎓";filter:grayscale(0);font-size:20px;color:#fff}
+    .brand-text{display:flex;flex-direction:column}
+    .brand-title{font-weight:800;letter-spacing:.2px}
+    .brand-sub{color:var(--muted);font-size:12px;margin-top:-2px}
+
+    /* --- Kontener --- */
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 40px}
+
+    h1{font-size:clamp(20px,4vw,28px);margin:10px 2px}
+    .lead{color:var(--muted);margin:4px 2px 18px}
+
+    /* --- Karta tabeli --- */
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+    .search{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .input{
+      background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:230px;
+      outline:none;transition:border .15s ease;
+    }
+    .input:focus{border-color:var(--brand)}
+    .btn{
+      appearance:none;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;
+      transition:transform .06s ease,box-shadow .15s ease,background .15s ease,color .15s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(11,116,255,.25)}
+    .btn-primary:hover{background:var(--brand-700)}
+    .btn-ghost{background:#eef5ff;color:#0b3d91}
+    .btn-ghost:hover{background:#e1ecff}
+
+    /* --- Tabela --- */
+    .table-wrap{overflow:auto}
+    table{border-collapse:collapse;width:100%}
+    th,td{padding:12px 14px;text-align:left}
+    thead th{
+      position:sticky; top:0; background:#f0f6ff; color:#0b3d91;
+      border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px
+    }
+    tbody tr{border-bottom:1px solid var(--line)}
+    tbody tr:hover{background:#fafcff}
+    .teacher{font-weight:700}
+    .when{white-space:nowrap}
+    .act{display:flex;gap:10px;flex-wrap:wrap}
+
+    .btn-book{
+      background:var(--ok);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;border:none;cursor:pointer
+    }
+    .btn-book:hover{background:#1ea34f}
+
+    /* --- Pusta lista --- */
+    .empty{
+      padding:20px;text-align:center;color:var(--muted)
+    }
+
+    /* --- Formularz --- */
+    .form-card{
+      margin-top:20px;background:var(--card);border:1px solid var(--line);
+      border-radius:var(--radius);box-shadow:var(--shadow);padding:16px
+    }
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-grid .full{grid-column:1/-1}
+    label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
+    input[type="text"], input[type="file"]{
+      width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none
+    }
+    input[type="text"]:focus, input[type="file"]:focus{border-color:var(--brand)}
+    .hint{color:var(--muted);font-size:12px;margin-top:4px}
+    .hidden{display:none}
+
+    .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
+    .btn-cancel:hover{background:#fecaca}
+
+    /* --- Responsywność / „kafelki” dla małych ekranów --- */
+    @media (max-width: 720px){
+      .form-grid{grid-template-columns:1fr}
+      .brand-title{font-size:16px}
+      .brand-sub{font-size:11px}
+      .card-head{align-items:stretch;flex-direction:column}
+      th:nth-child(1), td:nth-child(1){min-width:180px}
+      th:nth-child(2), td:nth-child(2),
+      th:nth-child(3), td:nth-child(3){min-width:140px}
+      .act{justify-content:flex-start}
+    }
+  </style>
 </head>
 <body>
 
-    <h2>Dostępne terminy nauczycieli</h2>
+  <!-- Nagłówek: logo + nazwa zgodnie z naszym standardem (103) -->
+  <header class="brand">
+    <div class="brand-wrap">
+      <div class="brand-logo" aria-hidden="true"></div>
+      <div class="brand-text">
+        <div class="brand-title">PolubiszTo.pl</div>
+        <div class="brand-sub">korepetycje online</div>
+      </div>
+    </div>
+  </header>
 
-    <table>
-        <thead>
+  <main class="wrap">
+    <h1>Dostępne terminy</h1>
+    <p class="lead">Wybierz pasujący termin i dołącz temat lekcji oraz (opcjonalnie) plik.</p>
+
+    <!-- LISTA TERMINÓW -->
+    <section class="card">
+      <div class="card-head">
+        <div class="search">
+          <input class="input" type="text" id="filterTeacher" placeholder="Filtruj po nauczycielu…" oninput="filterRows()">
+          <input class="input" type="text" id="filterDate" placeholder="Filtruj po dacie (RRRR-MM-DD)…" oninput="filterRows()">
+        </div>
+        <button class="btn btn-ghost" type="button" onclick="scrollToForm()">Przejdź do formularza</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="termsTable">
+          <thead>
             <tr>
-                <th>Nauczyciel</th>
-                <th>Data</th>
-                <th>Godzina</th>
-                <th>Akcja</th>
+              <th>Nauczyciel</th>
+              <th>Data</th>
+              <th>Godzina</th>
+              <th>Akcja</th>
             </tr>
-        </thead>
-        <tbody>
+          </thead>
+          <tbody>
             {% for t in terminy %}
             <tr>
-                <td>{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}</td>
-                <td>{{ t.data }}</td>
-                <td>{{ t.godzina }}</td>
-                <td>
-                    <button onclick="showForm('{{ t.id }}', '{{ t.data }} {{ t.godzina }}', '{{ t.nauczyciel.id }}')">Zarezerwuj</button>
-                </td>
+              <td class="teacher">{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}</td>
+              <td class="when">{{ t.data }}</td>
+              <td class="when">{{ t.godzina }}</td>
+              <td class="act">
+                <button class="btn-book" type="button"
+                        onclick="showForm('{{ t.id }}','{{ t.data }} {{ t.godzina }}','{{ t.nauczyciel.id }}','{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}')">
+                  Zarezerwuj
+                </button>
+              </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4">Brak dostępnych terminów</td>
+              <td class="empty" colspan="4">Brak dostępnych terminów</td>
             </tr>
             {% endfor %}
-        </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <div id="formularz" class="form-box hidden">
-        <h3>Podaj temat i załaduj plik:</h3>
-        <form method="POST" action="{% url 'zarezerwuj_zajecia' %}" enctype="multipart/form-data">
-            {% csrf_token %}
-            <input type="hidden" name="termin" id="termin">
-            <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
-            <input type="hidden" name="termin_id" id="termin_id">
+    <!-- FORMULARZ REZERWACJI -->
+    <section id="formularz" class="form-card hidden" aria-live="polite">
+      <h2 style="margin:4px 2px 10px">Rezerwacja terminu</h2>
+      <p class="lead" id="pickedInfo"></p>
 
-            <label>Temat lekcji:</label>
-            <input type="text" name="temat" required>
+      <form method="POST" action="{% url 'zarezerwuj_zajecia' %}" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="termin" id="termin">
+        <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
+        <input type="hidden" name="termin_id" id="termin_id">
 
-            <label>Dodaj plik (.pdf, .jpg, .jpeg):</label>
-            <input type="file" name="plik" accept=".pdf,.jpg,.jpeg">
+        <div class="form-grid">
+          <div class="full">
+            <label for="temat">Temat lekcji</label>
+            <input type="text" id="temat" name="temat" required placeholder="Np. Równania kwadratowe — przygotowanie do sprawdzianu">
+            <div class="hint">Krótko i konkretnie — nauczyciel zobaczy to w „Mój plan zajęć”.</div>
+          </div>
 
-            <button type="submit">Zarezerwuj</button>
-        </form>
-    </div>
+          <div class="full">
+            <label for="plik">Dodaj plik (.pdf, .jpg, .jpeg) — opcjonalnie</label>
+            <input type="file" id="plik" name="plik" accept=".pdf,.jpg,.jpeg">
+            <div class="hint">Jeśli masz zdjęcie zadania lub materiały, podepnij je od razu.</div>
+          </div>
+        </div>
 
-    <script>
-        function showForm(terminId, opis, nauczycielId) {
-            document.getElementById('formularz').classList.remove('hidden');
-            document.getElementById('termin').value = opis;
-            document.getElementById('nauczyciel_id').value = nauczycielId;
-            document.getElementById('termin_id').value = terminId;
-            window.scrollTo({ top: document.getElementById('formularz').offsetTop - 20, behavior: 'smooth' });
-        }
-    </script>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Zarezerwuj</button>
+          <button class="btn-cancel" type="button" onclick="hideForm()">Anuluj</button>
+        </div>
+      </form>
+    </section>
+  </main>
 
+  <script>
+    function showForm(terminId, opis, nauczycielId, nauczycielName){
+      const box = document.getElementById('formularz');
+      box.classList.remove('hidden');
+
+      document.getElementById('termin').value = opis;
+      document.getElementById('nauczyciel_id').value = nauczycielId;
+      document.getElementById('termin_id').value = terminId;
+
+      const picked = document.getElementById('pickedInfo');
+      picked.textContent = `Wybrano: ${opis} — ${nauczycielName}`;
+
+      scrollToForm();
+      // Ustaw focus na temat, żeby uczeń mógł od razu pisać
+      setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
+    }
+
+    function hideForm(){
+      const box = document.getElementById('formularz');
+      box.classList.add('hidden');
+      document.getElementById('pickedInfo').textContent = '';
+      document.getElementById('termin').value = '';
+      document.getElementById('nauczyciel_id').value = '';
+      document.getElementById('termin_id').value = '';
+    }
+
+    function scrollToForm(){
+      const el = document.getElementById('formularz');
+      if(!el) return;
+      const y = el.getBoundingClientRect().top + window.scrollY - 12;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+
+    // Prosty filtr po nauczycielu i dacie (klientowo)
+    function filterRows(){
+      const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
+      const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
+      const rows = document.querySelectorAll('#termsTable tbody tr');
+
+      rows.forEach(row => {
+        const t = (row.querySelector('.teacher')?.textContent || '').toLowerCase();
+        const d = (row.querySelectorAll('.when')[0]?.textContent || '').toLowerCase();
+        const matchTeacher = !qTeacher || t.includes(qTeacher);
+        const matchDate = !qDate || d.includes(qDate);
+        row.style.display = (matchTeacher && matchDate) ? '' : 'none';
+      });
+    }
+  </script>
 </body>
 </html>

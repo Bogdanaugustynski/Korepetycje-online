@@ -702,7 +702,14 @@ def moje_konto_view(request):
 
 @login_required
 def dostepne_terminy_view(request):
-    terminy = WolnyTermin.objects.select_related("nauczyciel").all()
+    # pokaż tylko wolne terminy z przyszłości
+    dzisiaj = timezone.localdate()
+    terminy = (
+        WolnyTermin.objects
+        .filter(data__gte=dzisiaj, zajety=False)  # <-- jeśli masz pole zajety=True/False
+        .select_related("nauczyciel")
+        .order_by("data", "godzina")
+    )
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
 
