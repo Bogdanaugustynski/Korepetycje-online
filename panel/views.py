@@ -32,6 +32,8 @@ from django.apps import apps
 from django.db.models import Exists, OuterRef, ForeignKey
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.urls import reverse
+from django.db import transaction, models
 
 # MODELE
 from .models import (
@@ -699,20 +701,108 @@ def moje_konto_view(request):
     cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
     return render(request, "moje_konto.html", {"profil": profil, "user": user, "cennik": cennik})
 
+@transaction.atomic
+def zarezerwuj_zajecia(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Nieprawidłowa metoda")
+
+    termin_txt = request.POST.get("termin", "").strip()  # "YYYY-MM-DD HH:MM"
+    nauczyciel_id = request.POST.get("nauczyciel_id")
+    termin_id = request.POST.get("termin_id")  # jeśli masz FK do WolnyTermin
+    temat = request.POST.get("temat", "").strip()
+    plik = request.FILES.get("plik")
+
+    if not (termin_txt and nauczyciel_id and temat):
+        return HttpResponseBadRequest("Brak danych")
+
+    # Parsowanie daty/godziny z termin_txt
+    try:
+        data_str, godz_str = termin_txt.split(" ")
+    except ValueError:
+        return HttpResponseBadRequest("Zły format terminu")
+
+    from datetime import datetime
+    try:
+        data = datetime.strptime(data_str, "%Y-%m-%d").date()
+        godzina = datetime.strptime(godz_str, "%H:%M").time()
+    except ValueError:
+        return HttpResponseBadRequest("Zły format daty/godziny")
+
+    now = timezone.localtime()
+    if (data < now.date()) or (data == now.date() and godzina < now.time()):
+        return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
+
+    User = apps.get_model("auth", "User")
+    Rezerwacja = apps.get_model("panel", "Rezerwacja")
+    WolnyTermin = apps.get_model("panel", "WolnyTermin")
+
+    # 1) Jeżeli używasz FK do WolnyTermin:
+    if termin_id:
+        try:
+            slot = (WolnyTermin.objects
+                    .select_for_update()
+                    .select_related("nauczyciel")
+                    .get(id=termin_id, nauczyciel_id=nauczyciel_id, data=data, godzina=godzina))
+        except WolnyTermin.DoesNotExist:
+            return HttpResponseBadRequest("Termin nie istnieje")
+
+        # Próba założenia rezerwacji – w połączeniu z UniqueConstraint przebija duplikaty
+        obj, created = Rezerwacja.objects.get_or_create(
+            # jeśli masz pole termin=FK:
+            # termin=slot,
+            # a jeśli masz termin=DateTimeField:
+            nauczyciel=slot.nauczyciel,
+            termin=timezone.make_aware(datetime.combine(data, godzina)),
+            defaults={
+                "uczen": request.user,
+                "temat": temat,
+                "plik": plik,
+            }
+        )
+        if not created:
+            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
+
+    else:
+        # 2) Jeżeli NIE masz FK – pilnuj unikalności (nauczyciel, termin[DT])
+        nauczyciel = User.objects.get(id=nauczyciel_id)
+        when_dt = timezone.make_aware(datetime.combine(data, godzina))
+
+        obj, created = Rezerwacja.objects.get_or_create(
+            nauczyciel=nauczyciel,
+            termin=when_dt,
+            defaults={
+                "uczen": request.user,
+                "temat": temat,
+                "plik": plik,
+            }
+        )
+        if not created:
+            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
+
+    # OK → przekierowanie (np. do „Moje rezerwacje”)
+    return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
 @login_required
 def dostepne_terminy_view(request):
-    """Lista dostępnych terminów dla ucznia — dziś i przyszłość, z próbą wykluczenia zajętych."""
-    dzisiaj = timezone.localdate()
+    """
+    Lista dostępnych terminów:
+    - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
+    - rosnąco po (data, godzina)
+    - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
+    """
+    now = timezone.localtime()
 
     terminy = (
         WolnyTermin.objects
-        .filter(data__gte=dzisiaj)
         .select_related("nauczyciel")
+        .filter(
+            models.Q(data__gt=now.date()) |
+            models.Q(data=now.date(), godzina__gte=now.time())
+        )
         .order_by("data", "godzina")
     )
 
-    # Spróbujmy wykluczyć już zarezerwowane terminy, ale tylko jeśli umiemy je stabilnie rozpoznać.
+    # Wyklucz zajęte (działa zarówno gdy Rezerwacja.termin jest FK, jak i DateTimeField)
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
     except LookupError:
@@ -724,27 +814,22 @@ def dostepne_terminy_view(request):
         except Exception:
             pole = None
 
-        # Przypadek A: Rezerwacja.termin jest FK do WolnyTermin -> najprostsze i najsolidniejsze
         if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
-            zajete_ids = Rezerwacja.objects.values_list("termin_id", flat=True)
-            terminy = terminy.exclude(id__in=zajete_ids)
-
+            # Rezerwacja.termin -> FK do WolnyTermin
+            terminy = terminy.exclude(
+                Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
+            )
         else:
-            # Przypadek B: jeśli 'termin' to DateTimeField — wyklucz po (nauczyciel, data, godzina)
-            # Używamy EXISTS z porównaniem termin__date i termin__time, co działa dla DateTimeField.
-            try:
-                terminy = terminy.exclude(
-                    Exists(
-                        Rezerwacja.objects.filter(
-                            nauczyciel=OuterRef("nauczyciel"),
-                            termin__date=OuterRef("data"),
-                            termin__time=OuterRef("godzina"),
-                        )
+            # Rezerwacja.termin -> DateTimeField
+            terminy = terminy.exclude(
+                Exists(
+                    Rezerwacja.objects.filter(
+                        nauczyciel=OuterRef("nauczyciel"),
+                        termin__date=OuterRef("data"),
+                        termin__time=OuterRef("godzina"),
                     )
                 )
-            except Exception:
-                # Inny typ pola (np. CharField) – nie próbujemy kombinować, zostawiamy bez wykluczania
-                pass
+            )
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 

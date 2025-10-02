@@ -60,21 +60,61 @@ class PrzedmiotCennik(models.Model):
         return f"{self.nazwa} ({self.poziom})"
 
 
+# --- Pomocnicze: bezpieczne, migracje-serializowalne defaulty ---
+def default_excalidraw_room_id() -> str:
+    # 8 bajtów => 16 znaków hex, stabilnie i krótko
+    return secrets.token_hex(8)
+
+def default_excalidraw_room_key() -> str:
+    # 32 bajty => 64 znaki hex (klucz do pokoju)
+    return secrets.token_hex(32)
+
+
 class Rezerwacja(models.Model):
     uczen = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rezerwacje_ucznia')
     nauczyciel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rezerwacje_nauczyciela')
+
+    # U Ciebie to DateTimeField (bez FK) — zostawiamy, ale zabezpieczamy unikalność
     termin = models.DateTimeField()
+
     temat = models.CharField(max_length=255)
     plik = models.FileField(upload_to='rezerwacje/', blank=True, null=True)
     material_po_zajeciach = models.FileField(upload_to='materialy/', blank=True, null=True)
 
-    excalidraw_room_id = models.CharField(max_length=64, default=secrets.token_hex(8))
-    excalidraw_room_key = models.CharField(max_length=128, default=secrets.token_hex(32))
+    # UWAGA: defaulty muszą być CALLABLE, nie wywołane przy imporcie!
+    excalidraw_room_id = models.CharField(max_length=64, default=default_excalidraw_room_id)
+    excalidraw_room_key = models.CharField(max_length=128, default=default_excalidraw_room_key)
     excalidraw_link = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.uczen.username} → {self.nauczyciel.username} ({self.termin})"
 
+    def save(self, *args, **kwargs):
+        # Zbuduj link Excalidraw jeśli brak
+        if not self.excalidraw_link and self.excalidraw_room_id and self.excalidraw_room_key:
+            self.excalidraw_link = f"https://excalidraw.com/#room={self.excalidraw_room_id},{self.excalidraw_room_key}"
+        super().save(*args, **kwargs)
+
+    class Meta:
+        # Chronologia od najbliższych (backendowo też porządkujemy)
+        ordering = ["termin"]
+        indexes = [
+            models.Index(fields=["termin"]),
+            models.Index(fields=["nauczyciel", "termin"]),
+            models.Index(fields=["uczen", "termin"]),
+        ]
+        constraints = [
+            # Kluczowa blokada duplikatów: jeden nauczyciel nie może mieć 2 rezerwacji na tę samą chwilę
+            models.UniqueConstraint(
+                fields=["nauczyciel", "termin"],
+                name="uniq_rez_teacher_datetime",
+            ),
+            # (opcjonalnie) zablokuj uczniowi nakładanie rezerwacji co do sekundy:
+            # models.UniqueConstraint(fields=["uczen", "termin"], name="uniq_rez_student_datetime"),
+            # (opcjonalnie, jeśli chcesz wymusić rezerwacje tylko w przyszłości — raczej NIE na stałe,
+            # bo przeszłe rezerwacje są przydatne do archiwum):
+            # models.CheckConstraint(check=models.Q(termin__gte=Now()), name="rez_termin_not_past"),
+        ]
 
 
 class WolnyTermin(models.Model):
@@ -83,7 +123,23 @@ class WolnyTermin(models.Model):
     godzina = models.TimeField()
 
     def __str__(self):
-        return f"{self.nauczyciel.get_full_name()} - {self.data} {self.godzina}"
+        full = self.nauczyciel.get_full_name().strip()
+        name = full if full else self.nauczyciel.username
+        return f"{name} - {self.data} {self.godzina}"
+
+    class Meta:
+        ordering = ["data", "godzina"]
+        indexes = [
+            models.Index(fields=["data", "godzina"]),
+            models.Index(fields=["nauczyciel", "data", "godzina"]),
+        ]
+        constraints = [
+            # Unikalny slot w grafiku nauczyciela — tu kończymy z duplikatami
+            models.UniqueConstraint(
+                fields=["nauczyciel", "data", "godzina"],
+                name="uniq_slot_teacher_date_time",
+            ),
+        ]
 
 class OnlineStatus(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
