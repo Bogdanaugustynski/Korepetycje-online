@@ -782,56 +782,70 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
+@require_POST
 @login_required
-def dostepne_terminy_view(request):
+@transaction.atomic
+def dodaj_wolny_termin(request):
     """
-    Lista dostępnych terminów:
-    - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
-    - rosnąco po (data, godzina)
-    - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
+    Dodaje wolny termin dla zalogowanego nauczyciela.
+    Idempotentnie: używa get_or_create(nauczyciel, data, godzina).
     """
-    now = timezone.localtime()
+    if not request.user.is_staff and not request.user.groups.filter(name="nauczyciele").exists():
+        return HttpResponseBadRequest("Brak uprawnień")
 
-    terminy = (
-        WolnyTermin.objects
-        .select_related("nauczyciel")
-        .filter(
-            models.Q(data__gt=now.date()) |
-            models.Q(data=now.date(), godzina__gte=now.time())
-        )
-        .order_by("data", "godzina")
+    data_str = (request.POST.get("data") or "").strip()        # "YYYY-MM-DD"
+    godzina_str = (request.POST.get("godzina") or "").strip()  # "HH:MM"
+
+    if not data_str or not godzina_str:
+        return HttpResponseBadRequest("Podaj datę i godzinę")
+
+    # parsowanie
+    try:
+        data = datetime.strptime(data_str, "%Y-%m-%d").date()
+        godzina = datetime.strptime(godzina_str, "%H:%M").time()
+    except ValueError:
+        return HttpResponseBadRequest("Zły format daty/godziny")
+
+    # najważniejsze: idempotencja
+    obj, created = WolnyTermin.objects.get_or_create(
+        nauczyciel=request.user,
+        data=data,
+        godzina=godzina,
     )
 
-    # Wyklucz zajęte (działa zarówno gdy Rezerwacja.termin jest FK, jak i DateTimeField)
-    try:
-        Rezerwacja = apps.get_model("panel", "Rezerwacja")
-    except LookupError:
-        Rezerwacja = None
+    # jeśli wywołujesz to fetch’em, możesz zwracać JSON:
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"ok": True, "created": created, "id": obj.id})
 
-    if Rezerwacja:
-        try:
-            pole = Rezerwacja._meta.get_field("termin")
-        except Exception:
-            pole = None
+    # albo zwykłe przekierowanie po sukcesie
+    return HttpResponseRedirect(reverse("panel_nauczyciela_kalendarz"))
 
-        if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
-            # Rezerwacja.termin -> FK do WolnyTermin
-            terminy = terminy.exclude(
-                Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
-            )
-        else:
-            # Rezerwacja.termin -> DateTimeField
-            terminy = terminy.exclude(
-                Exists(
-                    Rezerwacja.objects.filter(
-                        nauczyciel=OuterRef("nauczyciel"),
-                        termin__date=OuterRef("data"),
-                        termin__time=OuterRef("godzina"),
-                    )
-                )
-            )
+@require_POST
+@login_required
+@transaction.atomic
+def dodaj_wiele_wolnych_terminow(request):
+    # zakładamy że przyszły listy: data[] i godzina[]
+    datas = request.POST.getlist("data[]")      # ["2025-10-05", "2025-10-06", ...]
+    godziny = request.POST.getlist("godzina[]") # ["10:00", "11:00", ...]
+    slots = set()
 
-    return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
+    for d in datas:
+        for g in godziny:
+            try:
+                dt = datetime.strptime(d, "%Y-%m-%d").date()
+                tm = datetime.strptime(g, "%H:%M").time()
+            except ValueError:
+                continue
+            slots.add((dt, tm))
+
+    objs = [
+        WolnyTermin(nauczyciel=request.user, data=dt, godzina=tm)
+        for (dt, tm) in slots
+    ]
+    # klucz: brak duplikatów nawet gdy formularz wyśle się 2x
+    WolnyTermin.objects.bulk_create(objs, ignore_conflicts=True)
+
+    return JsonResponse({"ok": True, "added": len(objs)})
 
 @login_required
 def archiwum_rezerwacji_view(request):
