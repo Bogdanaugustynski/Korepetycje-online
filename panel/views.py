@@ -29,7 +29,7 @@ from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.apps import apps
-
+from django.db.models import Exists, OuterRef, ForeignKey
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -702,25 +702,49 @@ def moje_konto_view(request):
 
 @login_required
 def dostepne_terminy_view(request):
-    """Lista dostępnych terminów dla ucznia — tylko dzisiaj i przyszłość, bez już zarezerwowanych (jeśli istnieje model Rezerwacja)."""
+    """Lista dostępnych terminów dla ucznia — dziś i przyszłość, z próbą wykluczenia zajętych."""
     dzisiaj = timezone.localdate()
 
     terminy = (
         WolnyTermin.objects
-        .filter(data__gte=dzisiaj)          # TYLKO dzisiejsze i przyszłe
+        .filter(data__gte=dzisiaj)
         .select_related("nauczyciel")
         .order_by("data", "godzina")
     )
 
-    # Jeśli istnieje model Rezerwacja, wyklucz terminy już zarezerwowane
+    # Spróbujmy wykluczyć już zarezerwowane terminy, ale tylko jeśli umiemy je stabilnie rozpoznać.
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
-        if Rezerwacja is not None:
-            zajete_ids = Rezerwacja.objects.values_list("termin_id", flat=True)
-            terminy = terminy.exclude(id__in=list(zajete_ids))
     except LookupError:
-        # Brak modelu Rezerwacja – nic nie wykluczamy
-        pass
+        Rezerwacja = None
+
+    if Rezerwacja:
+        try:
+            pole = Rezerwacja._meta.get_field("termin")
+        except Exception:
+            pole = None
+
+        # Przypadek A: Rezerwacja.termin jest FK do WolnyTermin -> najprostsze i najsolidniejsze
+        if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
+            zajete_ids = Rezerwacja.objects.values_list("termin_id", flat=True)
+            terminy = terminy.exclude(id__in=zajete_ids)
+
+        else:
+            # Przypadek B: jeśli 'termin' to DateTimeField — wyklucz po (nauczyciel, data, godzina)
+            # Używamy EXISTS z porównaniem termin__date i termin__time, co działa dla DateTimeField.
+            try:
+                terminy = terminy.exclude(
+                    Exists(
+                        Rezerwacja.objects.filter(
+                            nauczyciel=OuterRef("nauczyciel"),
+                            termin__date=OuterRef("data"),
+                            termin__time=OuterRef("godzina"),
+                        )
+                    )
+                )
+            except Exception:
+                # Inny typ pola (np. CharField) – nie próbujemy kombinować, zostawiamy bez wykluczania
+                pass
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
