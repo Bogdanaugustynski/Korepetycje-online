@@ -8,81 +8,48 @@
   <meta name="description" content="Lista wolnych terminów nauczycieli — PolubiszTo.pl korepetycje online">
   <style>
     :root{
-      --brand:#0b74ff;         /* główny niebieski */
-      --brand-700:#095cd1;
-      --ink:#0b1320;           /* tekst */
-      --muted:#5b6777;         /* opis/secondary */
-      --line:#e6edff;          /* linie */
-      --card:#ffffff;          /* tło kart */
-      --bg:#f7f9fe;            /* tło strony */
-      --ok:#22c55e;
-      --warn:#f59e0b;
-      --danger:#dc3545;
-      --shadow:0 14px 34px rgba(11,116,255,.12);
-      --radius:14px;
-      --maxw:1100px;
+      --brand:#0b74ff; --brand-700:#095cd1; --ink:#0b1320; --muted:#5b6777;
+      --line:#e6edff; --card:#ffffff; --bg:#f7f9fe; --ok:#22c55e; --warn:#f59e0b;
+      --danger:#dc3545; --shadow:0 14px 34px rgba(11,116,255,.12); --radius:14px; --maxw:1100px;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
 
-    /* --- Kontener --- */
     .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 40px}
     h1{font-size:clamp(20px,4vw,28px);margin:10px 2px}
     .lead{color:var(--muted);margin:4px 2px 18px}
 
-    /* --- Karta tabeli --- */
-    .card{
-      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow);
-    }
+    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
     .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
     .search{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
-    .input{
-      background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:230px;
-      outline:none;transition:border .15s ease;
-    }
+    .input{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:230px;outline:none;transition:border .15s ease;}
     .input:focus{border-color:var(--brand)}
-    .btn{
-      appearance:none;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;
-      transition:transform .06s ease,box-shadow .15s ease,background .15s ease,color .15s ease;
-    }
+    .btn{appearance:none;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;transition:transform .06s ease,box-shadow .15s ease,background .15s ease,color .15s ease;}
     .btn:active{transform:translateY(1px)}
     .btn-primary{background:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(11,116,255,.25)}
     .btn-primary:hover{background:var(--brand-700)}
     .btn-ghost{background:#eef5ff;color:#0b3d91}
     .btn-ghost:hover{background:#e1ecff}
 
-    /* --- Tabela (desktop) --- */
     .table-wrap{overflow:auto}
     table{border-collapse:collapse;width:100%}
     th,td{padding:12px 14px;text-align:left}
-    thead th{
-      position:sticky; top:0; background:#f0f6ff; color:#0b3d91;
-      border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px
-    }
+    thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
     tbody tr{border-bottom:1px solid var(--line)}
     tbody tr:hover{background:#fafcff}
     .teacher{font-weight:700}
     .when{white-space:nowrap}
     .act{display:flex;gap:10px;flex-wrap:wrap}
-    .btn-book{
-      background:var(--ok);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;border:none;cursor:pointer
-    }
+    .btn-book{background:var(--ok);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;border:none;cursor:pointer}
     .btn-book:hover{background:#1ea34f}
     .empty{padding:20px;text-align:center;color:var(--muted)}
 
-    /* --- Formularz --- */
-    .form-card{
-      margin-top:20px;background:var(--card);border:1px solid var(--line);
-      border-radius:var(--radius);box-shadow:var(--shadow);padding:16px
-    }
+    .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line); border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .form-grid .full{grid-column:1/-1}
     label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
-    input[type="text"], input[type="file"]{
-      width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none
-    }
+    input[type="text"], input[type="file"]{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
     input[type="text"]:focus, input[type="file"]:focus{border-color:var(--brand)}
     .hint{color:var(--muted);font-size:12px;margin-top:4px}
     .hidden{display:none}
@@ -90,49 +57,18 @@
     .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
     .btn-cancel:hover{background:#fecaca}
 
-    /* --- Mobilny tryb kart (bez poziomego scrolla) --- */
+    /* Kafelki na mobilu (bez poziomego scrolla) */
     @media (max-width: 720px){
       .form-grid{grid-template-columns:1fr}
       .card-head{align-items:stretch;flex-direction:column}
       .table-wrap{overflow:visible}
-
-      /* chowamy thead, każdy wiersz jako osobna karta */
-      table thead{
-        position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;
-      }
+      table thead{position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;}
       table, tbody, tr, td { display:block; width:100% }
-      tbody tr{
-        border:1px solid var(--line);
-        border-radius:12px;
-        box-shadow: var(--shadow);
-        background:#fff;
-        padding:10px 12px;
-        margin:12px 0;
-      }
-      tbody tr:hover{ background:#fff } /* hover off na mobile */
-
-      td{
-        border:none;
-        border-bottom:1px solid var(--line);
-        padding:10px 6px 10px 120px; /* miejsce na etykietę */
-        position:relative;
-        min-height:42px;
-      }
+      tbody tr{border:1px solid var(--line);border-radius:12px;box-shadow: var(--shadow);background:#fff;padding:10px 12px;margin:12px 0;}
+      tbody tr:hover{ background:#fff }
+      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px 10px 120px; position:relative; min-height:42px;}
       td:last-child{ border-bottom:none; padding-bottom:6px }
-
-      /* Etykieta kolumny */
-      td::before{
-        content: attr(data-label);
-        position:absolute;
-        left:10px; top:10px;
-        width:100px;
-        color:var(--muted);
-        font-size:12px;
-        font-weight:700;
-        letter-spacing:.2px;
-        line-height:1.2;
-      }
-
+      td::before{content: attr(data-label); position:absolute; left:10px; top:10px; width:100px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.2px; line-height:1.2;}
       .teacher{ font-weight:800 }
       .act{ display:block; margin-top:4px }
       .btn-book{ width:100%; padding:12px }
@@ -141,14 +77,12 @@
 </head>
 <body>
 
-  <!-- Nagłówek: wspólny brand -->
   {% include "partials/brand.html" %}
 
   <main class="wrap">
     <h1>Dostępne terminy</h1>
     <p class="lead">Wybierz pasujący termin i dołącz temat lekcji oraz (opcjonalnie) plik.</p>
 
-    <!-- LISTA TERMINÓW -->
     <section class="card">
       <div class="card-head">
         <div class="search">
@@ -162,15 +96,17 @@
         <table id="termsTable">
           <thead>
             <tr>
-              <th>Nauczyciel</th>
-              <th>Data</th>
-              <th>Godzina</th>
-              <th>Akcja</th>
+              <th>Nauczyciel</th><th>Data</th><th>Godzina</th><th>Akcja</th>
             </tr>
           </thead>
           <tbody>
             {% for t in terminy %}
-            <tr>
+            <tr
+              data-teacher-id="{{ t.nauczyciel.id }}"
+              data-date="{{ t.data|date:'Y-m-d' }}"
+              data-time="{{ t.godzina|time:'H:i' }}"
+              data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
+            >
               <td class="teacher" data-label="Nauczyciel">
                 {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
               </td>
@@ -178,27 +114,24 @@
               <td class="when" data-label="Godzina">{{ t.godzina }}</td>
               <td class="act" data-label="Akcja">
                 <button class="btn-book" type="button"
-                        onclick="showForm('{{ t.id }}','{{ t.data }} {{ t.godzina }}','{{ t.nauczyciel.id }}','{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}')">
+                        onclick="pickAndLock(this,'{{ t.id }}','{{ t.data|date:'Y-m-d' }} {{ t.godzina|time:'H:i' }}','{{ t.nauczyciel.id }}','{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}')">
                   Zarezerwuj
                 </button>
               </td>
             </tr>
             {% empty %}
-            <tr>
-              <td class="empty" data-label="Dostępne terminy" colspan="4">Brak dostępnych terminów</td>
-            </tr>
+            <tr><td class="empty" data-label="Dostępne terminy" colspan="4">Brak dostępnych terminów</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </section>
 
-    <!-- FORMULARZ REZERWACJI -->
     <section id="formularz" class="form-card hidden" aria-live="polite">
       <h2 style="margin:4px 2px 10px">Rezerwacja terminu</h2>
       <p class="lead" id="pickedInfo"></p>
 
-      <form method="POST" action="{% url 'zarezerwuj_zajecia' %}" enctype="multipart/form-data" novalidate>
+      <form id="rezForm" method="POST" action="{% url 'zarezerwuj_zajecia' %}" enctype="multipart/form-data" novalidate onsubmit="return lockSubmit(this)">
         {% csrf_token %}
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
@@ -219,7 +152,7 @@
         </div>
 
         <div class="form-actions">
-          <button class="btn btn-primary" type="submit">Zarezerwuj</button>
+          <button id="submitBtn" class="btn btn-primary" type="submit">Zarezerwuj</button>
           <button class="btn-cancel" type="button" onclick="hideForm()">Anuluj</button>
         </div>
       </form>
@@ -227,16 +160,27 @@
   </main>
 
   <script>
-    function showForm(terminId, opis, nauczycielId, nauczycielName){
+    // ------------- UX: wybór terminu, blokada klików -------------
+    function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
+      // Blokuj wieloklik na przycisku w wierszu
+      if (btn.dataset.locked === "1") return;
+      btn.dataset.locked = "1";
+      btn.disabled = true;
+      btn.textContent = "Wybrano";
+
+      showForm(terminId, iso, nauczycielId, nauczycielName);
+    }
+
+    function showForm(terminId, iso, nauczycielId, nauczycielName){
       const box = document.getElementById('formularz');
       box.classList.remove('hidden');
 
-      document.getElementById('termin').value = opis;
+      document.getElementById('termin').value = iso; // ISO: YYYY-MM-DD HH:MM
       document.getElementById('nauczyciel_id').value = nauczycielId;
       document.getElementById('termin_id').value = terminId;
 
       const picked = document.getElementById('pickedInfo');
-      picked.textContent = `Wybrano: ${opis} — ${nauczycielName}`;
+      picked.textContent = `Wybrano: ${iso} — ${nauczycielName}`;
 
       scrollToForm();
       setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
@@ -249,6 +193,17 @@
       document.getElementById('termin').value = '';
       document.getElementById('nauczyciel_id').value = '';
       document.getElementById('termin_id').value = '';
+      // Odblokuj ewentualnie zablokowany wiersz
+      document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
+    }
+
+    function lockSubmit(form){
+      const btn = document.getElementById('submitBtn');
+      if (btn.dataset.locked === "1") return false;
+      btn.dataset.locked = "1";
+      btn.disabled = true;
+      btn.textContent = "Rezerwuję…";
+      return true;
     }
 
     function scrollToForm(){
@@ -258,7 +213,7 @@
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
 
-    // Filtr po nauczycielu i dacie (klientowo)
+    // ------------- Filtry -------------
     function filterRows(){
       const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
       const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
@@ -266,12 +221,85 @@
 
       rows.forEach(row => {
         const t = (row.querySelector('.teacher')?.textContent || '').toLowerCase();
-        const d = (row.querySelectorAll('.when')[0]?.textContent || '').toLowerCase();
+        const dText = (row.querySelectorAll('.when')[0]?.textContent || '').toLowerCase();
         const matchTeacher = !qTeacher || t.includes(qTeacher);
-        const matchDate = !qDate || d.includes(qDate);
+        const matchDate = !qDate || dText.includes(qDate);
         row.style.display = (matchTeacher && matchDate) ? '' : 'none';
       });
     }
+
+    // ------------- Porządkowanie tabeli: deduplikacja, sort, ukrycie przeszłości -------------
+    function cleanupTable(){
+      const tbody = document.querySelector('#termsTable tbody');
+      if(!tbody) return;
+
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const now = new Date();
+
+      // zbierz wiersze z metadanymi
+      const items = [];
+      const seen = new Set();
+
+      rows.forEach(row => {
+        const key = row.getAttribute('data-key');
+        const dateISO = row.getAttribute('data-date'); // YYYY-MM-DD
+        const timeISO = row.getAttribute('data-time'); // HH:MM
+
+        // puste (np. wiersz "Brak...") zostaw jak jest
+        if(!dateISO || !timeISO || !key){
+          items.push({row, keep:true, sort:null, key:null});
+          return;
+        }
+
+        // przeszłość?
+        const [y,m,d] = dateISO.split('-').map(Number);
+        const [hh,mm] = timeISO.split(':').map(Number);
+        const dt = new Date(y, (m-1), d, hh, mm);
+
+        const isPast = dt.getTime() < now.getTime();
+
+        // deduplikacja: pierwszy wygrywa
+        if(seen.has(key)){
+          row.remove(); // usuń duplikat z DOM
+          return;
+        }
+        seen.add(key);
+
+        // jeżeli przeszłość — ukryj
+        if(isPast){
+          row.remove();
+          return;
+        }
+
+        items.push({row, keep:true, sort:dt.getTime(), key});
+      });
+
+      // posortuj: rosnąco po dacie/godzinie
+      const sortable = items.filter(i=>i.sort!==null);
+      sortable.sort((a,b)=>a.sort-b.sort);
+
+      // usuń wszystko i wstaw z powrotem: najpierw te z sort, potem pozostałe (np. empty row)
+      tbody.innerHTML = '';
+      sortable.forEach(i=>tbody.appendChild(i.row));
+
+      const others = items.filter(i=>i.sort===null && i.keep);
+      others.forEach(i=>tbody.appendChild(i.row));
+
+      // jeżeli po czyszczeniu nie ma rekordów – pokaż komunikat
+      if (!tbody.querySelector('tr') || tbody.querySelectorAll('tr').length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.className = 'empty';
+        td.colSpan = 4;
+        td.textContent = 'Brak dostępnych terminów';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      cleanupTable();
+    });
   </script>
 </body>
 </html>
