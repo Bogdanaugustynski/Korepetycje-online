@@ -28,7 +28,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-
+from django.apps import apps
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
