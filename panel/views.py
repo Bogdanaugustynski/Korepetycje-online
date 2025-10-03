@@ -1001,24 +1001,21 @@ def moj_plan_zajec_view(request):
 
 def _is_future(d, t):
     now = timezone.localtime()
-    aware = timezone.make_aware(datetime.combine(d, t), now.tzinfo)
-    return aware >= now
+    dt = timezone.make_aware(datetime.combine(d, t), now.tzinfo)
+    return dt >= now
 
-@csrf_exempt     # możesz usunąć to i zostawić CSRF, jeśli masz pewność, że cookie 'csrftoken' jest ustawione
+@ensure_csrf_cookie                 # ustawi cookie CSRF na GET
 @login_required
-@require_http_methods(["POST"])
 @transaction.atomic
 def wybierz_godziny_view(request):
-    """
-    JSON IN:
-    {
-      "terminy": [
-        {"data": "YYYY-MM-DD", "godziny": ["HH:MM", ...]},
-        ...
-      ]
-    }
-    Zapis idempotentny; pomija przeszłość i błędne formaty.
-    """
+    if request.method == "GET":
+        # To jest ta strona „Wybierz dzień i godzinę…”
+        return render(request, "wybierz_dzien_i_godzine_w_ktorej_poprowadzisz_korepetycje.html")
+
+    if request.method != "POST":
+        return HttpResponseBadRequest("Niedozwolona metoda")
+
+    # --- POST JSON z kalendarza ---
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception as e:
@@ -1029,8 +1026,7 @@ def wybierz_godziny_view(request):
         return JsonResponse({"ok": False, "error": "Pole 'terminy' musi być listą."}, status=400)
 
     nauczyciel = request.user
-    to_create = []
-    skipped = []
+    to_create, skipped = [], []
 
     for it in items:
         d = parse_date((it.get("data") or "").strip())
@@ -1047,9 +1043,7 @@ def wybierz_godziny_view(request):
                 continue
             to_create.append(WolnyTermin(nauczyciel=nauczyciel, data=d, godzina=t))
 
-    # Nie wywali się na duplikatach (pilnuje tego constraint + ignore_conflicts)
     created = WolnyTermin.objects.bulk_create(to_create, ignore_conflicts=True)
-
     return JsonResponse({"ok": True, "created": len(created), "skipped": len(skipped), "details": skipped})
 
 
