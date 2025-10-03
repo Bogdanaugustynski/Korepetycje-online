@@ -1,138 +1,184 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Moje Konto</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        .account-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            max-width: 700px;
-            margin: auto;
-        }
-        h2 {
-            text-align: center;
-            color: #007bff;
-            margin-bottom: 20px;
-        }
-        label {
-            font-weight: bold;
-            margin-top: 15px;
-            display: block;
-        }
-        input[type="text"],
-        textarea {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .checkbox-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .checkbox-group label {
-            font-weight: normal;
-            display: flex;
-            align-items: center;
-        }
-        .buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .btn {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 16px;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moje konto — PolubiszTo.pl</title>
+  <meta name="description" content="Edycja danych użytkownika, zmiana hasła, przedmioty i cennik — PolubiszTo.pl">
+  <style>
+    :root{
+      --brand:#0b74ff;
+      --brand-700:#095cd1;
+      --ink:#0b1320;
+      --muted:#5b6777;
+      --line:#e6edff;
+      --bg:#f7f9fe;
+      --card:#ffffff;
+      --shadow:0 14px 40px rgba(11,116,255,.12);
+      --radius:14px;
+      --maxw:1000px;
+
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --danger:#dc2626;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
+
+    /* layout */
+    .wrap{max-width:var(--maxw);margin:24px auto;padding:0 16px}
+    .pagehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 16px}
+    h1{font-size:clamp(20px,2.8vw,28px);margin:0}
+    .hint{color:var(--muted);font-size:14px}
+
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:960px){ .grid{grid-template-columns:1fr 1fr} }
+
+    .card{
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:18px
+    }
+    .card h2{font-size:18px;margin:0 0 10px 0}
+    .sep{height:1px;background:var(--line);margin:12px 0}
+
+    /* forms */
+    label{font-weight:600;font-size:14px;display:block;margin:10px 0 6px}
+    .sub{font-weight:500;color:var(--muted);font-size:12px;margin-top:-4px;margin-bottom:6px}
+    input[type="text"], textarea{
+      width:100%;padding:11px 12px;border:1px solid #d5def0;border-radius:10px;background:#fff;font-size:15px;
+      transition:border .15s, box-shadow .15s
+    }
+    input[disabled]{background:#f3f6ff;color:#6b7280}
+    input[type="text"]:focus, textarea:focus{
+      outline:none;border-color:#9ec5ff;box-shadow:0 0 0 4px rgba(11,116,255,.12)
+    }
+    textarea{min-height:110px;resize:vertical}
+
+    .row{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:640px){ .row{grid-template-columns:1fr 1fr} }
+
+    .checks{display:flex;flex-wrap:wrap;gap:10px}
+    .check{
+      display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #dbe6ff;border-radius:999px;background:#f5f8ff;
+      font-size:13px;font-weight:600
+    }
+    .check input{accent-color:var(--brand)}
+
+    /* subjects (cennik) */
+    .subject{
+      border:1px dashed #dbe6ff;border-radius:12px;padding:12px;margin-bottom:12px;background:#fbfcff
+    }
+    .subject .name{font-weight:800;color:#12223f;margin-bottom:8px}
+    .subject .levels{display:flex;flex-wrap:wrap;gap:14px}
+    .price{font-size:12px;color:var(--muted)}
+
+    /* actions */
+    .actions{
+      display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:14px
+    }
+    .btn{
+      appearance:none;border:0;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;text-decoration:none;
+      box-shadow:0 6px 18px rgba(11,116,255,.18);font-size:15px
+    }
+    .btn-primary{background:var(--brand);color:#fff}
+    .btn-primary:hover{background:var(--brand-700)}
+    .btn-ghost{background:#fff;color:#0b1320;border:1px solid var(--line);box-shadow:none}
+    .btn-ghost:hover{border-color:#c9d8ff}
+
+    .footnote{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+  </style>
 </head>
 <body>
 
-<div class="account-box">
-    <h2>Moje Konto</h2>
+  {% include "partials/brand.html" %}
+
+  <div class="wrap">
+    <div class="pagehead">
+      <h1>Moje konto</h1>
+      <div class="hint">Edytuj swoje dane, wybierz stopień/poziomy i zaktualizuj opis.</div>
+    </div>
 
     <form method="post">
-        {% csrf_token %}
+      {% csrf_token %}
 
-        <label>Imię:</label>
-        <input type="text" name="first_name" value="{{ user.first_name }}">
+      <div class="grid">
+        <!-- Dane podstawowe -->
+        <div class="card">
+          <h2>Dane użytkownika</h2>
+          <div class="sep"></div>
 
-        <label>Nazwisko:</label>
-        <input type="text" name="last_name" value="{{ user.last_name }}">
+          <div class="row">
+            <div>
+              <label>Imię</label>
+              <input type="text" name="first_name" value="{{ user.first_name }}" autocomplete="given-name">
+            </div>
+            <div>
+              <label>Nazwisko</label>
+              <input type="text" name="last_name" value="{{ user.last_name }}" autocomplete="family-name">
+            </div>
+          </div>
 
-        <label>Adres email (niezmienialny):</label>
-        <input type="text" value="{{ user.email }}" disabled>
-
-        <label>Numer telefonu:</label>
-        <input type="text" name="numer_telefonu" value="{{ profil.numer_telefonu }}">
-
-        <label>Stopień naukowy:</label>
-        <div class="checkbox-group">
-            <label><input type="checkbox" name="tytul_naukowy" value="licencjat" {% if "licencjat" in profil.tytul_naukowy %}checked{% endif %}> Licencjat</label>
-            <label><input type="checkbox" name="tytul_naukowy" value="inżynier" {% if "inżynier" in profil.tytul_naukowy %}checked{% endif %}> Inżynier</label>
-            <label><input type="checkbox" name="tytul_naukowy" value="magister" {% if "magister" in profil.tytul_naukowy %}checked{% endif %}> Magister</label>
-            <label><input type="checkbox" name="tytul_naukowy" value="doktor" {% if "doktor" in profil.tytul_naukowy %}checked{% endif %}> Doktor</label>
-            <label><input type="checkbox" name="tytul_naukowy" value="profesor" {% if "profesor" in profil.tytul_naukowy %}checked{% endif %}> Profesor</label>
+          <label>Adres e-mail <span class="sub">(niezmienialny)</span></label>
+          <input type="text" value="{{ user.email }}" disabled>
+          
+          <label>Numer telefonu</label>
+          <input type="text" name="numer_telefonu" value="{{ profil.numer_telefonu }}" inputmode="tel" autocomplete="tel">
         </div>
 
-        <label style="font-weight: bold; margin-top: 20px; display: block;">Przedmioty nauczania (z poziomem):</label>
-        <div style="margin-top: 10px; margin-bottom: 20px;">
-            {% regroup cennik by nazwa as przedmioty_zgrupowane %}
-            {% for przedmiot in przedmioty_zgrupowane %}
-                <div style="margin-bottom: 15px; background-color: #f8f9fa; padding: 15px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
-                    <div style="font-weight: bold; font-size: 16px; color: #333; margin-bottom: 8px;">
-                        {{ przedmiot.grouper }}
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 25px; padding-left: 5px;">
-                        {% for p in przedmiot.list %}
-                            {% with full_label=p.nazwa|stringformat:"s"|add:" - "|add:p.poziom %}
-                                <label style="display: flex; align-items: center; gap: 6px; font-size: 14px;">
-                                    <input type="checkbox" name="przedmioty" value="{{ full_label }}"
-                                           {% if full_label in profil.przedmioty %}checked{% endif %}>
-                                    {{ p.poziom|title }}
-                                    <span style="font-size: 12px; color: #777;">({{ p.cena|floatformat:2 }} zł/h)</span>
-                                </label>
-                            {% endwith %}
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
+        <!-- Stopień + opis -->
+        <div class="card">
+          <h2>Stopień naukowy &amp; opis</h2>
+          <div class="sep"></div>
 
-        <label>Opis o sobie:</label>
-        <textarea name="opis" rows="4">{{ profil.opis }}</textarea>
+          <label>Stopień naukowy</label>
+          <div class="checks">
+            <label class="check"><input type="checkbox" name="tytul_naukowy" value="licencjat" {% if "licencjat" in profil.tytul_naukowy %}checked{% endif %}> Licencjat</label>
+            <label class="check"><input type="checkbox" name="tytul_naukowy" value="inżynier" {% if "inżynier" in profil.tytul_naukowy %}checked{% endif %}> Inżynier</label>
+            <label class="check"><input type="checkbox" name="tytul_naukowy" value="magister" {% if "magister" in profil.tytul_naukowy %}checked{% endif %}> Magister</label>
+            <label class="check"><input type="checkbox" name="tytul_naukowy" value="doktor" {% if "doktor" in profil.tytul_naukowy %}checked{% endif %}> Doktor</label>
+            <label class="check"><input type="checkbox" name="tytul_naukowy" value="profesor" {% if "profesor" in profil.tytul_naukowy %}checked{% endif %}> Profesor</label>
+          </div>
 
-        <div class="buttons">
-            <button type="submit" class="btn">Zapisz zmiany</button>
-           <a href="{% url 'panel_nauczyciela' %}" class="btn">Powrót</a>
-            <a href="{% url 'zmien_haslo' %}" class="btn">Zmień hasło</a>
+          <label>Opis o sobie</label>
+          <textarea name="opis" rows="5" placeholder="Napisz kilka zdań o swoim doświadczeniu, stylu pracy, osiągnięciach…">{{ profil.opis }}</textarea>
         </div>
+      </div>
+
+      <!-- Przedmioty i poziomy (indywidualny wybór na bazie ogólnego cennika) -->
+      <div class="card" style="margin-top:16px">
+        <h2>Przedmioty nauczania (z poziomem)</h2>
+        <div class="sep"></div>
+
+        {% regroup cennik by nazwa as przedmioty_zgrupowane %}
+        {% for przedmiot in przedmioty_zgrupowane %}
+          <div class="subject">
+            <div class="name">{{ przedmiot.grouper }}</div>
+            <div class="levels">
+              {% for p in przedmiot.list %}
+                {% with full_label=p.nazwa|stringformat:"s"|add:" - "|add:p.poziom %}
+                  <label class="check" style="gap:6px">
+                    <input type="checkbox" name="przedmioty" value="{{ full_label }}" {% if full_label in profil.przedmioty %}checked{% endif %}>
+                    {{ p.poziom|title }}
+                    <span class="price">({{ p.cena|floatformat:2 }} zł/h)</span>
+                  </label>
+                {% endwith %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        <a href="{% url 'zmien_haslo' %}" class="btn btn-ghost">Zmień hasło</a>
+        <a href="{% url 'panel_nauczyciela' %}" class="btn btn-ghost">Powrót</a>
+      </div>
+
+      <div class="footnote">Twoje dane są chronione. Zmiany profilu zapisują się od razu po kliknięciu „Zapisz zmiany”.</div>
     </form>
-</div>
-
+  </div>
 </body>
 </html>
