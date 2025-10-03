@@ -26,7 +26,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.apps import apps
 from django.db.models import Exists, OuterRef, ForeignKey
@@ -34,6 +34,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.db import transaction, models
+from django.db.models import Q
 
 # MODELE
 from .models import (
@@ -998,23 +999,72 @@ def moj_plan_zajec_view(request):
     return render(request, "moj_plan_zajec.html", ctx)
 
 
+def _is_future(d, t):
+    now = timezone.localtime()
+    aware = timezone.make_aware(datetime.combine(d, t), now.tzinfo)
+    return aware >= now
+
+@csrf_exempt     # możesz usunąć to i zostawić CSRF, jeśli masz pewność, że cookie 'csrftoken' jest ustawione
+@login_required
+@require_http_methods(["POST"])
+@transaction.atomic
 def wybierz_godziny_view(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        wybrane_daty = data.get("terminy", [])
+    """
+    JSON IN:
+    {
+      "terminy": [
+        {"data": "YYYY-MM-DD", "godziny": ["HH:MM", ...]},
+        ...
+      ]
+    }
+    Zapis idempotentny; pomija przeszłość i błędne formaty.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": f"Błąd JSON: {e}"}, status=400)
 
-        for wpis in wybrane_daty:
-            data_str = wpis.get("data")
-            godziny = wpis.get("godziny", [])
-            for godzina_str in godziny:
-                WolnyTermin.objects.create(
-                    nauczyciel=request.user,
-                    data=parse_date(data_str),
-                    godzina=parse_time(godzina_str),
-                )
-        return JsonResponse({"status": "success"})
+    items = payload.get("terminy", [])
+    if not isinstance(items, list):
+        return JsonResponse({"ok": False, "error": "Pole 'terminy' musi być listą."}, status=400)
 
-    return render(request, "wybierz_dzien_i_godzine_w_ktorej_poprowadzisz_korepetycje.html")
+    nauczyciel = request.user
+    to_create = []
+    skipped = []
+
+    for it in items:
+        d = parse_date((it.get("data") or "").strip())
+        if not d:
+            skipped.append({"data": it.get("data"), "powod": "zły format daty"})
+            continue
+        for g_str in it.get("godziny") or []:
+            t = parse_time((g_str or "").strip())
+            if not t:
+                skipped.append({"data": it.get("data"), "godzina": g_str, "powod": "zły format godziny"})
+                continue
+            if not _is_future(d, t):
+                skipped.append({"data": it.get("data"), "godzina": g_str, "powod": "przeszłość"})
+                continue
+            to_create.append(WolnyTermin(nauczyciel=nauczyciel, data=d, godzina=t))
+
+    # Nie wywali się na duplikatach (pilnuje tego constraint + ignore_conflicts)
+    created = WolnyTermin.objects.bulk_create(to_create, ignore_conflicts=True)
+
+    return JsonResponse({"ok": True, "created": len(created), "skipped": len(skipped), "details": skipped})
+
+
+@login_required
+@ensure_csrf_cookie     # upewnia się, że przeglądarka ma cookie CSRF dla kolejnych fetchy
+@require_http_methods(["GET"])
+def pobierz_terminy_view(request):
+    """Zwraca tylko przyszłe sloty zalogowanego nauczyciela, posortowane."""
+    now = timezone.localtime()
+    qs = (WolnyTermin.objects
+          .filter(nauczyciel=request.user)
+          .filter(Q(data__gt=now.date()) | Q(data=now.date(), godzina__gte=now.time()))
+          .order_by("data", "godzina"))
+    out = [{"data": w.data.strftime("%Y-%m-%d"), "godzina": w.godzina.strftime("%H:%M")} for w in qs]
+    return JsonResponse({"terminy": out})
 
 
 @login_required
