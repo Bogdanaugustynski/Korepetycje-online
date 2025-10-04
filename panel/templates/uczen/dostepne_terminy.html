@@ -43,11 +43,12 @@
     .act{display:flex;gap:10px;flex-wrap:wrap}
     .btn-book{background:var(--ok);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;border:none;cursor:pointer}
     .btn-book:hover{background:#1ea34f}
+    .btn-disabled{background:#e5e7eb;color:#6b7280;cursor:not-allowed}
     .empty{padding:20px;text-align:center;color:var(--muted)}
 
-    /* kolumna subject/level (bez etykiet wewnątrz) */
-    .sl{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef5ff;color:#0b3d91;font-weight:700;font-size:12px}
+    /* kolumna subject/level – minimalistycznie, bez etykiet wewnątrz  */
+    .sl{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .sl .text{font-weight:700}
     .select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none;min-width:160px}
 
     /* mobil */
@@ -74,7 +75,7 @@
 
   <main class="wrap">
     <h1>Dostępne terminy</h1>
-    <p class="lead">W tej kolumnie pokazujemy <strong>przedmiot i poziom</strong> z profilu nauczyciela. Jeśli poziomów jest kilka — wybierz właściwy.</p>
+    <p class="lead">Kolumna poniżej pokazuje <strong>przedmiot i poziom</strong> z profilu nauczyciela. Jeśli poziomów jest kilka — wybierz właściwy.</p>
 
     <section class="card">
       <div class="card-head">
@@ -105,15 +106,19 @@
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
               data-subj-levels='{{ t.subj_levels_json|default:"[]"|escapejs }}'
             >
-              <!-- KOLUMNA 1: bez etykiet wewnątrz -->
+              <!-- KOLUMNA 1: czysty subject/level -->
               <td class="sl" data-label="Przedmiot / poziom">
-                <!-- PRZEDMIOT: tekst lub select (gdy >1 przedmiot) -->
-                <span class="pill subj-text hidden"></span>
-                <select class="select subj-select hidden" aria-label="Przedmiot"></select>
+                <span class="text subj-text hidden"></span>
+                <select class="select subj-select hidden" aria-label="Wybierz przedmiot">
+                  <option value="">— wybierz przedmiot —</option>
+                </select>
 
-                <!-- POZIOM: tekst lub select (gdy >1 poziom dla wybranego przedmiotu) -->
-                <span class="pill lvl-text hidden"></span>
-                <select class="select lvl-select hidden" aria-label="Poziom"></select>
+                <span class="text sep">—</span>
+
+                <span class="text lvl-text hidden"></span>
+                <select class="select lvl-select hidden" aria-label="Wybierz poziom">
+                  <option value="">— wybierz poziom —</option>
+                </select>
               </td>
 
               <td class="teacher" data-label="Nauczyciel">
@@ -176,7 +181,7 @@
     function show(el){ el && el.classList.remove('hidden'); }
     function hide(el){ el && el.classList.add('hidden'); }
 
-    // Inicjalizacja przedmiot/poziom (bez etykiet w wierszach)
+    // Inicjalizacja: bez 'Ogólne', bez auto-wyboru
     function initSL(){
       document.querySelectorAll('#termsTable tbody tr').forEach(row=>{
         const data = row.getAttribute('data-subj-levels') || '[]';
@@ -187,81 +192,102 @@
         const subjSelect = row.querySelector('.subj-select');
         const lvlText = row.querySelector('.lvl-text');
         const lvlSelect = row.querySelector('.lvl-select');
+        const btn = row.querySelector('.btn-book');
 
-        if(!Array.isArray(list) || list.length === 0){
-          // brak danych — Ogólne
-          subjText.textContent = 'Ogólne';
-          show(subjText); hide(subjSelect); hide(lvlSelect); hide(lvlText);
-          row.dataset.subject = 'Ogólne';
+        // brak danych -> zablokuj rezerwację tego wiersza
+        if(!Array.isArray(list) || list.length===0){
+          hide(subjText); hide(lvlText);
+          hide(lvlSelect); hide(subjSelect);
+          btn.classList.add('btn-disabled');
+          btn.disabled = true;
+          btn.textContent = 'Brak ustawień w profilu';
+          row.dataset.subject = '';
           row.dataset.level = '';
           return;
         }
 
-        if(list.length === 1){
-          // 1 przedmiot -> tekst
-          const subj = list[0].przedmiot || 'Ogólne';
+        // 1 przedmiot
+        if(list.length===1){
+          const subj = list[0].przedmiot || '';
           const levels = Array.isArray(list[0].levels) ? list[0].levels : [];
+
+          // PRZEDMIOT: tekst
           subjText.textContent = subj;
           show(subjText); hide(subjSelect);
           row.dataset.subject = subj;
 
-          if(levels.length <= 1){
+          // POZIOM:
+          if(levels.length<=1){
+            const lvl = levels[0] || '';
+            lvlText.textContent = lvl || '—';
+            show(lvlText); hide(lvlSelect);
+            row.dataset.level = lvl; // jeden poziom -> wpisany
+          }else{
+            // kilka poziomów -> select (bez domyślnego wyboru)
+            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
+            show(lvlSelect); hide(lvlText);
+            row.dataset.level = ''; // wymagamy wyboru
+          }
+          return;
+        }
+
+        // >1 przedmiot -> select przedmiotu (bez domyślnego wyboru)
+        subjSelect.innerHTML = '<option value="">— wybierz przedmiot —</option>' + list.map(it=>{
+          const s = (it.przedmiot || '').replace(/"/g,'&quot;');
+          return `<option value="${s}">${s}</option>`;
+        }).join('');
+        show(subjSelect); hide(subjText);
+
+        const updateLevels = ()=>{
+          const chosen = subjSelect.value;
+          row.dataset.subject = chosen || '';
+          const entry = list.find(it => (it.przedmiot||'') === chosen) || {levels:[]};
+          const levels = Array.isArray(entry.levels) ? entry.levels : [];
+          if(!chosen){
+            // nic nie wybrane -> pokaż pusty poziom i wymagaj wyboru
+            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>';
+            show(lvlSelect); hide(lvlText);
+            row.dataset.level = '';
+            return;
+          }
+
+          if(levels.length<=1){
             const lvl = levels[0] || '';
             lvlText.textContent = lvl || '—';
             show(lvlText); hide(lvlSelect);
             row.dataset.level = lvl;
           }else{
-            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>';
-            levels.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; lvlSelect.appendChild(o); });
+            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
             show(lvlSelect); hide(lvlText);
             row.dataset.level = '';
           }
-        }else{
-          // >1 przedmiot -> select
-          subjSelect.innerHTML = '';
-          list.forEach((it, idx)=>{
-            const o=document.createElement('option');
-            o.value = it.przedmiot || `subj-${idx}`;
-            o.textContent = it.przedmiot || `Przedmiot ${idx+1}`;
-            subjSelect.appendChild(o);
-          });
-          show(subjSelect); hide(subjText);
+        };
 
-          const updateLevels = ()=>{
-            const chosen = subjSelect.value;
-            row.dataset.subject = chosen;
-            const entry = list.find(it => (it.przedmiot||'') === chosen) || {levels:[]};
-            const levels = Array.isArray(entry.levels) ? entry.levels : [];
-            if(levels.length <= 1){
-              const lvl = levels[0] || '';
-              lvlText.textContent = lvl || '—';
-              show(lvlText); hide(lvlSelect);
-              row.dataset.level = lvl;
-            }else{
-              lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>';
-              levels.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; lvlSelect.appendChild(o); });
-              show(lvlSelect); hide(lvlText);
-              row.dataset.level = '';
-            }
-          };
-          subjSelect.addEventListener('change', updateLevels);
-          updateLevels();
-        }
+        subjSelect.addEventListener('change', updateLevels);
+        updateLevels();
       });
     }
 
+    // Rezerwacja
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
       const row = btn.closest('tr');
-      const subj = row?.dataset?.subject || '';
-      let lvl = row?.dataset?.level || '';
+      // walidacja: przycisk może być już zablokowany gdy brak danych
+      if(btn.disabled) return;
 
-      const lvlSelect = row?.querySelector('.lvl-select');
-      if(lvlSelect && !lvl && !lvlSelect.classList.contains('hidden')){
-        lvl = lvlSelect.value || '';
+      const subjSelect = row.querySelector('.subj-select');
+      const lvlSelect  = row.querySelector('.lvl-select');
+
+      const subj = row.dataset.subject || (subjSelect ? subjSelect.value : '') || '';
+      let   lvl  = row.dataset.level   || (lvlSelect  ? lvlSelect.value  : '') || '';
+
+      if(subjSelect && subjSelect.classList.contains('hidden')===false && !subj){
+        alert('Wybierz przedmiot.');
+        subjSelect.focus(); return;
       }
-
-      if(!subj){ alert('Wybierz przedmiot.'); return; }
-      if(lvlSelect && !lvl && !lvlSelect.classList.contains('hidden')){ alert('Wybierz poziom.'); lvlSelect.focus(); return; }
+      if(lvlSelect && lvlSelect.classList.contains('hidden')===false && !lvl){
+        alert('Wybierz poziom.');
+        lvlSelect.focus(); return;
+      }
 
       if (btn.dataset.locked === "1") return;
       btn.dataset.locked = "1"; btn.disabled = true; btn.textContent = "Wybrano";
@@ -269,6 +295,7 @@
       showForm(terminId, iso, nauczycielId, nauczycielName, {subj, lvl});
     }
 
+    // Form — BEZ zmian wizualnych (jak u Ali)
     function showForm(terminId, iso, nauczycielId, nauczycielName, picked){
       const box = document.getElementById('formularz');
       box.classList.remove('hidden');
@@ -293,7 +320,12 @@
       ['termin','nauczyciel_id','termin_id','przedmiot','poziom'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.value='';
       });
-      document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
+      document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ 
+        // nie odblokowujemy tych, które były trwale disabled z powodu braku danych
+        if(!b.classList.contains('btn-disabled')){
+          b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0";
+        }
+      });
     }
 
     function lockSubmit(form){
@@ -333,25 +365,13 @@
         const key=row.getAttribute('data-key');
         const dateISO=row.getAttribute('data-date');
         const timeISO=row.getAttribute('data-time');
-        if(!dateISO || !timeISO || !key){ items.push({row,sort:null}); return; }
+        if(!dateISO || !timeISO || !key){ return; }
         const [y,m,d]=dateISO.split('-').map(Number);
         const [hh,mm]=timeISO.split(':').map(Number);
         const dt=new Date(y,(m-1),d,hh,mm);
         if(seen.has(key)) return; seen.add(key);
-        if(dt.getTime()<now.getTime()) return;
-        items.push({row,sort:dt.getTime()});
+        if(dt.getTime()<now.getTime()) row.remove();
       });
-
-      const sortable=items.filter(i=>i.sort!==null).sort((a,b)=>a.sort-b.sort);
-      const frag=document.createDocumentFragment();
-      sortable.forEach(i=>frag.appendChild(i.row));
-      tbody.innerHTML=''; tbody.appendChild(frag);
-
-      if(!tbody.querySelector('tr')){
-        const tr=document.createElement('tr'); const td=document.createElement('td');
-        td.className='empty'; td.colSpan=5; td.textContent='Brak dostępnych terminów';
-        tr.appendChild(td); tbody.appendChild(tr);
-      }
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{

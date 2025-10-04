@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+import ast
 from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -35,7 +37,7 @@ from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.db import transaction, models
 from django.db.models import Q
-import re
+
 
 # MODELE
 from .models import (
@@ -784,54 +786,85 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
+def _parse_przedmioty_value(raw):
+    """
+    Normalizuje profil.przedmioty do listy stringów:
+      ["Matematyka - podstawowy", "Matematyka - rozszerzony", ...]
+    Obsługuje:
+      - listę/tuplę,
+      - JSON-owy string,
+      - 'pythonową' listę jako string,
+      - zwykły tekst z przecinkami i/lub nowymi liniami.
+    """
+    if not raw:
+        return []
+
+    # już lista/tuple
+    if isinstance(raw, (list, tuple)):
+        return [str(x).strip() for x in raw if str(x).strip()]
+
+    if isinstance(raw, str):
+        s = raw.strip()
+        # spróbuj JSON
+        if s.startswith('[') or s.startswith('{'):
+            try:
+                data = json.loads(s)
+                if isinstance(data, list):
+                    return [str(x).strip() for x in data if str(x).strip()]
+            except Exception:
+                pass
+        # spróbuj literal_eval (np. "['Matematyka - podstawowy', ...]")
+        try:
+            data = ast.literal_eval(s)
+            if isinstance(data, (list, tuple)):
+                return [str(x).strip() for x in data if str(x).strip()]
+        except Exception:
+            pass
+        # fallback: rozbij po liniach/przecinkach
+        return [x.strip() for x in re.split(r'[\n,]+', s) if x.strip()]
+
+    # ostatecznie spróbuj iterować
+    try:
+        return [str(x).strip() for x in raw if str(x).strip()]
+    except Exception:
+        return []
+
+
 def _subject_levels_from_profile(nauczyciel):
     """
-    Czyta profil.przedmioty (lista stringów jak 'Matematyka - podstawowy')
-    i buduje słownik: {"Matematyka": ["podstawowy","rozszerzony"], ...}.
-    Obsługuje przypadek, gdy dane są stringiem (po przecinku/nowej linii).
+    Buduje mapę { 'Matematyka': ['podstawowy','rozszerzony'], ... }
+    z pola profil.przedmioty (to właśnie zaznacza nauczyciel w „Moje konto”).
+    Nie dodaje 'Ogólne'.
     """
-    result = {}
-
     profil = getattr(nauczyciel, "profil", None)
     raw = getattr(profil, "przedmioty", None)
-    if not raw:
-        return result
+    items = _parse_przedmioty_value(raw)
 
-    # Ujednolicenie do listy stringów
-    if isinstance(raw, str):
-        # rozdziel po przecinkach lub liniach
-        items = [x.strip() for x in re.split(r"[\n,]+", raw) if x.strip()]
-    elif isinstance(raw, (list, tuple)):
-        items = [str(x).strip() for x in raw if str(x).strip()]
-    else:
-        # np. QuerySet lub inne — spróbuj iterować
-        try:
-            items = [str(x).strip() for x in raw if str(x).strip()]
-        except Exception:
-            items = []
-
+    mapping = {}
     for item in items:
-        # formatu "Nazwa - poziom" / "Nazwa – poziom"
+        # akceptujemy "Nazwa - poziom" lub "Nazwa – poziom"
         parts = re.split(r"\s*[-–]\s*", item, maxsplit=1)
-        subject = (parts[0] if parts else "").strip() or "Ogólne"
+        subject = (parts[0] if parts else "").strip()
         level = (parts[1] if len(parts) > 1 else "").strip()
-        result.setdefault(subject, set())
+        if not subject:
+            continue
+        mapping.setdefault(subject, set())
         if level:
-            result[subject].add(level)
+            mapping[subject].add(level)
 
-    # zamień sety na posortowane listy
-    return {s: sorted(list(levels)) for s, levels in result.items()}
+    # zamień set na posortowane listy
+    return {s: sorted(list(lvls)) for s, lvls in mapping.items()}
 
 
-# --- (Awaryjny) HELPER: z modeli tabelarycznych (np. StawkaNauczyciela) ---
-def _subject_levels_from_table(nauczyciel):
+def _subject_levels_from_tables(nauczyciel):
     """
-    Próbuje odczytać przedmiot/poziom z panel.StawkaNauczyciela lub panel.NauczycielPrzedmiot.
-    Działa nawet, gdy FK 'nauczyciel' wskazuje na profil lub Usera (próbuje kilku wariantów).
+    Alternatywa: gdyby profil był pusty — spróbuj z modeli tabelarycznych,
+    np. panel.StawkaNauczyciela lub panel.NauczycielPrzedmiot.
+    Nic nie zwraca, jeśli nie ma danych; nie dokłada 'Ogólne'.
     """
-    def collect(model_label):
+    def collect(label):
         try:
-            M = apps.get_model("panel", model_label)
+            M = apps.get_model("panel", label)
         except LookupError:
             return {}
 
@@ -839,24 +872,19 @@ def _subject_levels_from_table(nauczyciel):
         if not {"nauczyciel", "przedmiot", "poziom"} <= field_names:
             return {}
 
-        fk = M._meta.get_field("nauczyciel")
-        target = getattr(fk.remote_field, "model", None)
-
-        filters = []
-        # Najpierw po obiekcie
-        filters.append({"nauczyciel": nauczyciel})
-        # Po id nauczyciela
-        if hasattr(nauczyciel, "id"):
-            filters.append({"nauczyciel_id": nauczyciel.id})
-        # Po profilu, jeśli FK nie jest do Usera
+        filters = [
+            {"nauczyciel": nauczyciel},
+            {"nauczyciel_id": getattr(nauczyciel, "id", None)},
+        ]
         profil = getattr(nauczyciel, "profil", None)
         if profil is not None:
-            filters.append({"nauczyciel": profil})
-            if hasattr(profil, "id"):
-                filters.append({"nauczyciel_id": profil.id})
+            filters += [{"nauczyciel": profil}, {"nauczyciel_id": getattr(profil, "id", None)}]
 
         rows = []
         for f in filters:
+            f = {k: v for k, v in f.items() if v is not None}
+            if not f:
+                continue
             try:
                 qs = M.objects.filter(**f).values("przedmiot", "poziom")
                 if qs.exists():
@@ -867,14 +895,15 @@ def _subject_levels_from_table(nauczyciel):
 
         out = {}
         for r in rows:
-            s = (r.get("przedmiot") or "").strip() or "Ogólne"
+            s = (r.get("przedmiot") or "").strip()
             l = (r.get("poziom") or "").strip()
+            if not s:
+                continue
             out.setdefault(s, set())
             if l:
                 out[s].add(l)
         return {k: sorted(list(v)) for k, v in out.items()}
 
-    # Najpierw StawkaNauczyciela, potem alternatywny model
     data = collect("StawkaNauczyciela")
     if not data:
         data = collect("NauczycielPrzedmiot")
@@ -884,13 +913,8 @@ def _subject_levels_from_table(nauczyciel):
 @login_required
 def dostepne_terminy_view(request):
     """
-    Lista dostępnych terminów (tylko przyszłość, sort, wykluczenie zajętych)
-    + wierszowa informacja o PRZEDMIOCIE i POZIOMIE z panelu 'Moje konto'.
-    W kolumnie:
-      - jeśli nauczyciel ma 1 przedmiot → pokazujemy nazwę przedmiotu, a dla poziomu:
-          * 1 poziom → tekst,
-          * >1 poziom → select.
-      - jeśli ma >1 przedmiot → pokażemy select PRZEDMIOT, a POZIOM zależny od wyboru.
+    Lista dostępnych terminów (przyszłość, sort, wykluczenie zajętych) + kolumna
+    „Przedmiot / poziom” z danych nauczyciela (profil.przedmioty -> 'Nazwa - poziom').
     """
     now = timezone.localtime()
 
@@ -904,7 +928,7 @@ def dostepne_terminy_view(request):
         .order_by("data", "godzina")
     )
 
-    # Wyklucz zajęte (obsługa FK / DateTimeField)
+    # Wyklucz zajęte (FK/DateTimeField)
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
     except LookupError:
@@ -933,18 +957,14 @@ def dostepne_terminy_view(request):
 
     terminy = list(terminy_qs)
 
-    # Dla każdego nauczyciela: najpierw dane z profilu, jeśli brak — tabela
+    # Zbuduj dane do kolumny „Przedmiot / poziom”
     for t in terminy:
         subj_map = _subject_levels_from_profile(t.nauczyciel)
         if not subj_map:
-            subj_map = _subject_levels_from_table(t.nauczyciel)
-        if not subj_map:
-            subj_map = {"Ogólne": []}
-        # przekaż do szablonu
-        t.subj_levels_json = json.dumps(
-            [{"przedmiot": s, "levels": lvls} for s, lvls in subj_map.items()],
-            ensure_ascii=False
-        )
+            subj_map = _subject_levels_from_tables(t.nauczyciel)
+        # Nie pokazujemy 'Ogólne' — jeśli pusto, zostaw pustą mapę
+        sl = [{"przedmiot": s, "levels": lvls} for s, lvls in subj_map.items()]
+        t.subj_levels_json = json.dumps(sl, ensure_ascii=False)
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
