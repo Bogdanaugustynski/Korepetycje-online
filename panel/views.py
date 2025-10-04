@@ -785,24 +785,21 @@ def zarezerwuj_zajecia(request):
 
 def _subject_options_for_teacher(user):
     """
-    Zwraca JSON (lista słowników) postaci:
-    [{"id": 101, "przedmiot": "Matematyka", "poziom": "podstawowy"}, ...]
-    Próbujemy kilku źródeł (w zależności od tego co masz w modelach):
-      1) panel.StawkaNauczyciela (nauczyciel, przedmiot, poziom, aktywny)
-      2) panel.NauczycielPrzedmiot (nauczyciel, przedmiot, poziom, aktywny)
-      3) profil.przedmioty_json (JSON w profilu)
-      4) fallback: jedna opcja „Ogólne”
+    Zwraca JSON listy:
+    [{"id": ..., "przedmiot": "...", "poziom": "..."}]
+    Działa dla modeli mających pola: id, przedmiot, poziom (+ opcjonalnie aktywny).
+    Jeśli brak dedykowanych modeli—spróbuje profil.przedmioty_json; na końcu fallback.
     """
     opts = []
 
-    # 1) StawkaNauczyciela
+    # 1) panel.StawkaNauczyciela
     try:
         StawkaNauczyciela = apps.get_model("panel", "StawkaNauczyciela")
-        qs = (
-            StawkaNauczyciela.objects
-            .filter(nauczyciel=user, aktywny=True)
-            .values("id", "przedmiot", "poziom")
-        )
+        qs = StawkaNauczyciela.objects.filter(nauczyciel=user)
+        # warunkowe filtrowanie po 'aktywny'
+        if "aktywny" in [f.name for f in StawkaNauczyciela._meta.get_fields()]:
+            qs = qs.filter(aktywny=True)
+        qs = qs.values("id", "przedmiot", "poziom")
         for r in qs:
             opts.append({
                 "id": r["id"],
@@ -810,17 +807,16 @@ def _subject_options_for_teacher(user):
                 "poziom": r.get("poziom") or "",
             })
     except LookupError:
-        StawkaNauczyciela = None
+        pass
 
-    # 2) NauczycielPrzedmiot
+    # 2) panel.NauczycielPrzedmiot
     if not opts:
         try:
             NauczycielPrzedmiot = apps.get_model("panel", "NauczycielPrzedmiot")
-            qs = (
-                NauczycielPrzedmiot.objects
-                .filter(nauczyciel=user, aktywny=True)
-                .values("id", "przedmiot", "poziom")
-            )
+            qs = NauczycielPrzedmiot.objects.filter(nauczyciel=user)
+            if "aktywny" in [f.name for f in NauczycielPrzedmiot._meta.get_fields()]:
+                qs = qs.filter(aktywny=True)
+            qs = qs.values("id", "przedmiot", "poziom")
             for r in qs:
                 opts.append({
                     "id": r["id"],
@@ -828,9 +824,9 @@ def _subject_options_for_teacher(user):
                     "poziom": r.get("poziom") or "",
                 })
         except LookupError:
-            NauczycielPrzedmiot = None
+            pass
 
-    # 3) JSON w profilu (np. profil.przedmioty_json = '[{"id":1,"przedmiot":"Matematyka","poziom":"podstawowy"},...]')
+    # 3) JSON w profilu
     if not opts:
         profil = getattr(user, "profil", None)
         data = getattr(profil, "przedmioty_json", None)
@@ -847,7 +843,7 @@ def _subject_options_for_teacher(user):
             except Exception:
                 pass
 
-    # 4) Fallback — zawsze chociaż jedna opcja
+    # 4) Fallback
     if not opts:
         opts = [{"id": f"{user.id}-default", "przedmiot": "Ogólne", "poziom": ""}]
 
