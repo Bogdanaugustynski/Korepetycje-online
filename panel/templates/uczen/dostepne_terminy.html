@@ -87,7 +87,7 @@
       <div class="card-head">
         <div class="search">
           <input class="input" type="text" id="filterTeacher" placeholder="Filtruj po nauczycielu…" oninput="filterRows()">
-          <input class="input" type="text" id="filterDate" placeholder="Filtruj po dacie (RRRR-MM-DD)…" oninput="filterRows()">
+          <input class="input" type="text" id="filterDate" placeholder="Filtruj po dacie (RRRR-MM-DD)…" oninput="filterRows()" autocomplete="off">
         </div>
         <button class="btn btn-ghost" type="button" onclick="scrollToForm()">Przejdź do formularza</button>
       </div>
@@ -96,7 +96,7 @@
         <table id="termsTable">
           <thead>
             <tr>
-              <th>Nauczyciel</th><th>Data</th><th>Godzina</th><th>Akcja</th>
+              <th>Nauczyciel</th><th><span>Data</span></th><th>Godzina</th><th>Akcja</th>
             </tr>
           </thead>
           <tbody>
