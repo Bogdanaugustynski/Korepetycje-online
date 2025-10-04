@@ -34,38 +34,44 @@
 
     .table-wrap{overflow:auto}
     table{border-collapse:collapse;width:100%}
-    th,td{padding:12px 14px;text-align:left;vertical-align:top}
+    th,td{padding:12px 14px;text-align:left}
     thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
-    tbody tr{border-bottom:1px solid var(--line)}
+    tbody tr{border-bottom:1px solid var(--line')}
     tbody tr:hover{background:#fafcff}
     .teacher{font-weight:700}
     .when{white-space:nowrap}
     .act{display:flex;gap:10px;flex-wrap:wrap}
     .btn-book{background:var(--ok);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;border:none;cursor:pointer}
     .btn-book:hover{background:#1ea34f}
-    .btn-disabled{background:#e5e7eb;color:#6b7280;cursor:not-allowed}
     .empty{padding:20px;text-align:center;color:var(--muted)}
 
-    /* kolumna subject/level – minimalistycznie, bez etykiet wewnątrz  */
-    .sl{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .sl .text{font-weight:700}
-    .select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none;min-width:160px}
+    .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line); border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-grid .full{grid-column:1/-1}
+    label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
+    input[type="text"], input[type="file"]{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
+    input[type="text"]:focus, input[type="file"]:focus{border-color:var(--brand)}
+    .hint{color:var(--muted);font-size:12px;margin-top:4px}
+    .hidden{display:none}
+    .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
+    .btn-cancel:hover{background:#fecaca}
 
-    /* mobil */
+    /* Kafelki na mobilu (bez poziomego scrolla) */
     @media (max-width: 720px){
+      .form-grid{grid-template-columns:1fr}
       .card-head{align-items:stretch;flex-direction:column}
       .table-wrap{overflow:visible}
       table thead{position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;}
       table, tbody, tr, td { display:block; width:100% }
       tbody tr{border:1px solid var(--line);border-radius:12px;box-shadow: var(--shadow);background:#fff;padding:10px 12px;margin:12px 0;}
       tbody tr:hover{ background:#fff }
-      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px; position:relative;}
+      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px 10px 120px; position:relative; min-height:42px;}
       td:last-child{ border-bottom:none; padding-bottom:6px }
       td::before{content: attr(data-label); position:absolute; left:10px; top:10px; width:100px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.2px; line-height:1.2;}
+      .teacher{ font-weight:800 }
       .act{ display:block; margin-top:4px }
       .btn-book{ width:100%; padding:12px }
-      .sl{flex-direction:column; align-items:flex-start}
-      .select{min-width:100%}
     }
   </style>
 </head>
@@ -75,7 +81,7 @@
 
   <main class="wrap">
     <h1>Dostępne terminy</h1>
-    <p class="lead">Kolumna poniżej pokazuje <strong>przedmiot i poziom</strong> z profilu nauczyciela. Jeśli poziomów jest kilka — wybierz właściwy.</p>
+    <p class="lead">Wybierz pasujący termin i dołącz temat lekcji oraz (opcjonalnie) plik.</p>
 
     <section class="card">
       <div class="card-head">
@@ -90,11 +96,7 @@
         <table id="termsTable">
           <thead>
             <tr>
-              <th>Przedmiot / poziom</th>
-              <th>Nauczyciel</th>
-              <th>Data</th>
-              <th>Godzina</th>
-              <th>Akcja</th>
+              <th>Nauczyciel</th><th>Data</th><th>Godzina</th><th>Akcja</th>
             </tr>
           </thead>
           <tbody>
@@ -104,23 +106,7 @@
               data-date="{{ t.data|date:'Y-m-d' }}"
               data-time="{{ t.godzina|time:'H:i' }}"
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
-              data-subj-levels='{{ t.subj_levels_json|default:"[]"|escapejs }}'
             >
-              <!-- KOLUMNA 1: czysty subject/level -->
-              <td class="sl" data-label="Przedmiot / poziom">
-                <span class="text subj-text hidden"></span>
-                <select class="select subj-select hidden" aria-label="Wybierz przedmiot">
-                  <option value="">— wybierz przedmiot —</option>
-                </select>
-
-                <span class="text sep">—</span>
-
-                <span class="text lvl-text hidden"></span>
-                <select class="select lvl-select hidden" aria-label="Wybierz poziom">
-                  <option value="">— wybierz poziom —</option>
-                </select>
-              </td>
-
               <td class="teacher" data-label="Nauczyciel">
                 {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
               </td>
@@ -134,7 +120,7 @@
               </td>
             </tr>
             {% empty %}
-            <tr><td class="empty" data-label="Dostępne terminy" colspan="5">Brak dostępnych terminów</td></tr>
+            <tr><td class="empty" data-label="Dostępne terminy" colspan="4">Brak dostępnych terminów</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -150,10 +136,6 @@
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
-
-        <!-- z kolumny 1 -->
-        <input type="hidden" name="przedmiot" id="przedmiot">
-        <input type="hidden" name="poziom" id="poziom">
 
         <div class="form-grid">
           <div class="full">
@@ -178,160 +160,46 @@
   </main>
 
   <script>
-    function show(el){ el && el.classList.remove('hidden'); }
-    function hide(el){ el && el.classList.add('hidden'); }
-
-    // Inicjalizacja: bez 'Ogólne', bez auto-wyboru
-    function initSL(){
-      document.querySelectorAll('#termsTable tbody tr').forEach(row=>{
-        const data = row.getAttribute('data-subj-levels') || '[]';
-        let list = [];
-        try{ list = JSON.parse(data); }catch(e){ list = []; }
-
-        const subjText = row.querySelector('.subj-text');
-        const subjSelect = row.querySelector('.subj-select');
-        const lvlText = row.querySelector('.lvl-text');
-        const lvlSelect = row.querySelector('.lvl-select');
-        const btn = row.querySelector('.btn-book');
-
-        // brak danych -> zablokuj rezerwację tego wiersza
-        if(!Array.isArray(list) || list.length===0){
-          hide(subjText); hide(lvlText);
-          hide(lvlSelect); hide(subjSelect);
-          btn.classList.add('btn-disabled');
-          btn.disabled = true;
-          btn.textContent = 'Brak ustawień w profilu';
-          row.dataset.subject = '';
-          row.dataset.level = '';
-          return;
-        }
-
-        // 1 przedmiot
-        if(list.length===1){
-          const subj = list[0].przedmiot || '';
-          const levels = Array.isArray(list[0].levels) ? list[0].levels : [];
-
-          // PRZEDMIOT: tekst
-          subjText.textContent = subj;
-          show(subjText); hide(subjSelect);
-          row.dataset.subject = subj;
-
-          // POZIOM:
-          if(levels.length<=1){
-            const lvl = levels[0] || '';
-            lvlText.textContent = lvl || '—';
-            show(lvlText); hide(lvlSelect);
-            row.dataset.level = lvl; // jeden poziom -> wpisany
-          }else{
-            // kilka poziomów -> select (bez domyślnego wyboru)
-            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
-            show(lvlSelect); hide(lvlText);
-            row.dataset.level = ''; // wymagamy wyboru
-          }
-          return;
-        }
-
-        // >1 przedmiot -> select przedmiotu (bez domyślnego wyboru)
-        subjSelect.innerHTML = '<option value="">— wybierz przedmiot —</option>' + list.map(it=>{
-          const s = (it.przedmiot || '').replace(/"/g,'&quot;');
-          return `<option value="${s}">${s}</option>`;
-        }).join('');
-        show(subjSelect); hide(subjText);
-
-        const updateLevels = ()=>{
-          const chosen = subjSelect.value;
-          row.dataset.subject = chosen || '';
-          const entry = list.find(it => (it.przedmiot||'') === chosen) || {levels:[]};
-          const levels = Array.isArray(entry.levels) ? entry.levels : [];
-          if(!chosen){
-            // nic nie wybrane -> pokaż pusty poziom i wymagaj wyboru
-            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>';
-            show(lvlSelect); hide(lvlText);
-            row.dataset.level = '';
-            return;
-          }
-
-          if(levels.length<=1){
-            const lvl = levels[0] || '';
-            lvlText.textContent = lvl || '—';
-            show(lvlText); hide(lvlSelect);
-            row.dataset.level = lvl;
-          }else{
-            lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
-            show(lvlSelect); hide(lvlText);
-            row.dataset.level = '';
-          }
-        };
-
-        subjSelect.addEventListener('change', updateLevels);
-        updateLevels();
-      });
-    }
-
-    // Rezerwacja
+    // ------------- UX: wybór terminu, blokada klików -------------
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
-      const row = btn.closest('tr');
-      // walidacja: przycisk może być już zablokowany gdy brak danych
-      if(btn.disabled) return;
-
-      const subjSelect = row.querySelector('.subj-select');
-      const lvlSelect  = row.querySelector('.lvl-select');
-
-      const subj = row.dataset.subject || (subjSelect ? subjSelect.value : '') || '';
-      let   lvl  = row.dataset.level   || (lvlSelect  ? lvlSelect.value  : '') || '';
-
-      if(subjSelect && subjSelect.classList.contains('hidden')===false && !subj){
-        alert('Wybierz przedmiot.');
-        subjSelect.focus(); return;
-      }
-      if(lvlSelect && lvlSelect.classList.contains('hidden')===false && !lvl){
-        alert('Wybierz poziom.');
-        lvlSelect.focus(); return;
-      }
-
       if (btn.dataset.locked === "1") return;
-      btn.dataset.locked = "1"; btn.disabled = true; btn.textContent = "Wybrano";
-
-      showForm(terminId, iso, nauczycielId, nauczycielName, {subj, lvl});
+      btn.dataset.locked = "1";
+      btn.disabled = true;
+      btn.textContent = "Wybrano";
+      showForm(terminId, iso, nauczycielId, nauczycielName);
     }
 
-    // Form — BEZ zmian wizualnych (jak u Ali)
-    function showForm(terminId, iso, nauczycielId, nauczycielName, picked){
+    function showForm(terminId, iso, nauczycielId, nauczycielName){
       const box = document.getElementById('formularz');
       box.classList.remove('hidden');
 
-      document.getElementById('termin').value = iso;
+      document.getElementById('termin').value = iso; // ISO: YYYY-MM-DD HH:MM
       document.getElementById('nauczyciel_id').value = nauczycielId;
       document.getElementById('termin_id').value = terminId;
 
-      document.getElementById('przedmiot').value = picked?.subj || '';
-      document.getElementById('poziom').value = picked?.lvl || '';
-
-      const txt = picked?.subj ? ` — ${picked.subj}${picked?.lvl ? ' ('+picked.lvl+')' : ''}` : '';
-      document.getElementById('pickedInfo').textContent = `Wybrano: ${iso} — ${nauczycielName}${txt}`;
+      const picked = document.getElementById('pickedInfo');
+      picked.textContent = `Wybrano: ${iso} — ${nauczycielName}`;
 
       scrollToForm();
-      setTimeout(()=>{ const t=document.getElementById('temat'); if(t) t.focus(); },120);
+      setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
     }
 
     function hideForm(){
-      document.getElementById('formularz').classList.add('hidden');
+      const box = document.getElementById('formularz');
+      box.classList.add('hidden');
       document.getElementById('pickedInfo').textContent = '';
-      ['termin','nauczyciel_id','termin_id','przedmiot','poziom'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.value='';
-      });
-      document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ 
-        // nie odblokowujemy tych, które były trwale disabled z powodu braku danych
-        if(!b.classList.contains('btn-disabled')){
-          b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0";
-        }
-      });
+      document.getElementById('termin').value = '';
+      document.getElementById('nauczyciel_id').value = '';
+      document.getElementById('termin_id').value = '';
+      document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
 
     function lockSubmit(form){
       const btn = document.getElementById('submitBtn');
       if (btn.dataset.locked === "1") return false;
-      btn.dataset.locked = "1"; btn.disabled = true; btn.textContent = "Rezerwuję…";
+      btn.dataset.locked = "1";
+      btn.disabled = true;
+      btn.textContent = "Rezerwuję…";
       return true;
     }
 
@@ -342,40 +210,83 @@
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
 
+    // ------------- Filtry -------------
     function filterRows(){
       const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
       const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
       const rows = document.querySelectorAll('#termsTable tbody tr');
-      rows.forEach(row=>{
+
+      rows.forEach(row => {
         const t = (row.querySelector('.teacher')?.textContent || '').toLowerCase();
         const dText = (row.querySelectorAll('.when')[0]?.textContent || '').toLowerCase();
-        const ok = (!qTeacher || t.includes(qTeacher)) && (!qDate || dText.includes(qDate));
-        row.style.display = ok ? '' : 'none';
+        const matchTeacher = !qTeacher || t.includes(qTeacher);
+        const matchDate = !qDate || dText.includes(qDate);
+        row.style.display = (matchTeacher && matchDate) ? '' : 'none';
       });
     }
 
+    // ------------- Porządkowanie tabeli: deduplikacja, sort, ukrycie przeszłości -------------
     function cleanupTable(){
       const tbody = document.querySelector('#termsTable tbody');
       if(!tbody) return;
+
       const rows = Array.from(tbody.querySelectorAll('tr'));
       const now = new Date();
-      const items=[]; const seen=new Set();
 
-      rows.forEach(row=>{
-        const key=row.getAttribute('data-key');
-        const dateISO=row.getAttribute('data-date');
-        const timeISO=row.getAttribute('data-time');
-        if(!dateISO || !timeISO || !key){ return; }
-        const [y,m,d]=dateISO.split('-').map(Number);
-        const [hh,mm]=timeISO.split(':').map(Number);
-        const dt=new Date(y,(m-1),d,hh,mm);
-        if(seen.has(key)) return; seen.add(key);
-        if(dt.getTime()<now.getTime()) row.remove();
+      const items = [];
+      const seen = new Set();
+
+      rows.forEach(row => {
+        const key = row.getAttribute('data-key');
+        const dateISO = row.getAttribute('data-date'); // YYYY-MM-DD
+        const timeISO = row.getAttribute('data-time'); // HH:MM
+
+        if(!dateISO || !timeISO || !key){
+          items.push({row, keep:true, sort:null, key:null});
+          return;
+        }
+
+        const [y,m,d] = dateISO.split('-').map(Number);
+        const [hh,mm] = timeISO.split(':').map(Number);
+        const dt = new Date(y, (m-1), d, hh, mm);
+
+        const isPast = dt.getTime() < now.getTime();
+
+        if(seen.has(key)){
+          row.remove();
+          return;
+        }
+        seen.add(key);
+
+        if(isPast){
+          row.remove();
+          return;
+        }
+
+        items.push({row, keep:true, sort:dt.getTime(), key});
       });
+
+      const sortable = items.filter(i=>i.sort!==null);
+      sortable.sort((a,b)=>a.sort-b.sort);
+
+      tbody.innerHTML = '';
+      sortable.forEach(i=>tbody.appendChild(i.row));
+
+      const others = items.filter(i=>i.sort===null && i.keep);
+      others.forEach(i=>tbody.appendChild(i.row));
+
+      if (!tbody.querySelector('tr') || tbody.querySelectorAll('tr').length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.className = 'empty';
+        td.colSpan = 4;
+        td.textContent = 'Brak dostępnych terminów';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
     }
 
-    document.addEventListener('DOMContentLoaded', ()=>{
-      initSL();
+    document.addEventListener('DOMContentLoaded', () => {
       cleanupTable();
     });
   </script>

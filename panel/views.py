@@ -913,12 +913,14 @@ def _subject_levels_from_tables(nauczyciel):
 @login_required
 def dostepne_terminy_view(request):
     """
-    Lista dostępnych terminów (przyszłość, sort, wykluczenie zajętych) + kolumna
-    „Przedmiot / poziom” z danych nauczyciela (profil.przedmioty -> 'Nazwa - poziom').
+    Lista dostępnych terminów:
+    - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
+    - rosnąco po (data, godzina)
+    - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
     """
     now = timezone.localtime()
 
-    terminy_qs = (
+    terminy = (
         WolnyTermin.objects
         .select_related("nauczyciel")
         .filter(
@@ -928,7 +930,7 @@ def dostepne_terminy_view(request):
         .order_by("data", "godzina")
     )
 
-    # Wyklucz zajęte (FK/DateTimeField)
+    # Wyklucz zajęte (działa zarówno gdy Rezerwacja.termin jest FK, jak i DateTimeField)
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
     except LookupError:
@@ -941,11 +943,13 @@ def dostepne_terminy_view(request):
             pole = None
 
         if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
-            terminy_qs = terminy_qs.exclude(
+            # Rezerwacja.termin -> FK do WolnyTermin
+            terminy = terminy.exclude(
                 Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
             )
         else:
-            terminy_qs = terminy_qs.exclude(
+            # Rezerwacja.termin -> DateTimeField
+            terminy = terminy.exclude(
                 Exists(
                     Rezerwacja.objects.filter(
                         nauczyciel=OuterRef("nauczyciel"),
@@ -954,17 +958,6 @@ def dostepne_terminy_view(request):
                     )
                 )
             )
-
-    terminy = list(terminy_qs)
-
-    # Zbuduj dane do kolumny „Przedmiot / poziom”
-    for t in terminy:
-        subj_map = _subject_levels_from_profile(t.nauczyciel)
-        if not subj_map:
-            subj_map = _subject_levels_from_tables(t.nauczyciel)
-        # Nie pokazujemy 'Ogólne' — jeśli pusto, zostaw pustą mapę
-        sl = [{"przedmiot": s, "levels": lvls} for s, lvls in subj_map.items()]
-        t.subj_levels_json = json.dumps(sl, ensure_ascii=False)
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
