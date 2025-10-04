@@ -180,7 +180,7 @@
       document.getElementById('termin_id').value = terminId;
 
       const picked = document.getElementById('pickedInfo');
-      picked.textContent = Wybrano: ${iso} — ${nauczycielName};
+      picked.textContent = `Wybrano: ${iso} — ${nauczycielName}`;
 
       scrollToForm();
       setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
