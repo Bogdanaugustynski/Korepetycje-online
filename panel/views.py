@@ -783,81 +783,91 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
-def _subject_options_for_teacher(user):
+def _subjects_levels_for_teacher(user):
     """
-    Zwraca JSON listy:
-    [{"id": ..., "przedmiot": "...", "poziom": "..."}]
-    Działa dla modeli mających pola: id, przedmiot, poziom (+ opcjonalnie aktywny).
-    Jeśli brak dedykowanych modeli—spróbuje profil.przedmioty_json; na końcu fallback.
+    Zbiera z modeli (np. panel.StawkaNauczyciela) listę przedmiotów i ich poziomów:
+    Zwraca JSON (string) o strukturze:
+    [
+      {"przedmiot":"Matematyka", "levels":["podstawowy","rozszerzony"]},
+      {"przedmiot":"Fizyka", "levels":["podstawowy"]}
+    ]
+    Jeżeli nie ma danych – fallback do Ogólne (bez poziomu).
     """
-    opts = []
+    result = []
 
-    # 1) panel.StawkaNauczyciela
+    # 1) StawkaNauczyciela
     try:
         StawkaNauczyciela = apps.get_model("panel", "StawkaNauczyciela")
         qs = StawkaNauczyciela.objects.filter(nauczyciel=user)
-        # warunkowe filtrowanie po 'aktywny'
+        # warunkowo po 'aktywny' (pole może nie istnieć)
         if "aktywny" in [f.name for f in StawkaNauczyciela._meta.get_fields()]:
             qs = qs.filter(aktywny=True)
-        qs = qs.values("id", "przedmiot", "poziom")
+        qs = qs.values("przedmiot", "poziom")
+        subj_map = {}
         for r in qs:
-            opts.append({
-                "id": r["id"],
-                "przedmiot": r.get("przedmiot") or "",
-                "poziom": r.get("poziom") or "",
-            })
+            subj = (r.get("przedmiot") or "").strip() or "Ogólne"
+            lvl = (r.get("poziom") or "").strip()
+            subj_map.setdefault(subj, set())
+            if lvl:
+                subj_map[subj].add(lvl)
+        if subj_map:
+            for subj, lvls in subj_map.items():
+                result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
     except LookupError:
         pass
 
-    # 2) panel.NauczycielPrzedmiot
-    if not opts:
+    # 2) NauczycielPrzedmiot (jeśli nie znaleziono powyżej)
+    if not result:
         try:
             NauczycielPrzedmiot = apps.get_model("panel", "NauczycielPrzedmiot")
             qs = NauczycielPrzedmiot.objects.filter(nauczyciel=user)
             if "aktywny" in [f.name for f in NauczycielPrzedmiot._meta.get_fields()]:
                 qs = qs.filter(aktywny=True)
-            qs = qs.values("id", "przedmiot", "poziom")
+            qs = qs.values("przedmiot", "poziom")
+            subj_map = {}
             for r in qs:
-                opts.append({
-                    "id": r["id"],
-                    "przedmiot": r.get("przedmiot") or "",
-                    "poziom": r.get("poziom") or "",
-                })
+                subj = (r.get("przedmiot") or "").strip() or "Ogólne"
+                lvl = (r.get("poziom") or "").strip()
+                subj_map.setdefault(subj, set())
+                if lvl:
+                    subj_map[subj].add(lvl)
+            if subj_map:
+                for subj, lvls in subj_map.items():
+                    result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
         except LookupError:
             pass
 
-    # 3) JSON w profilu
-    if not opts:
+    # 3) profil.przedmioty_json (opcjonalny fallback)
+    if not result:
         profil = getattr(user, "profil", None)
         data = getattr(profil, "przedmioty_json", None)
         if data:
             try:
                 arr = json.loads(data)
+                subj_map = {}
                 if isinstance(arr, list):
-                    for i, o in enumerate(arr):
-                        opts.append({
-                            "id": o.get("id") or f"{user.id}-json-{i}",
-                            "przedmiot": o.get("przedmiot", ""),
-                            "poziom": o.get("poziom", ""),
-                        })
+                    for o in arr:
+                        subj = (o.get("przedmiot") or "").strip() or "Ogólne"
+                        lvl = (o.get("poziom") or "").strip()
+                        subj_map.setdefault(subj, set())
+                        if lvl:
+                            subj_map[subj].add(lvl)
+                if subj_map:
+                    for subj, lvls in subj_map.items():
+                        result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
             except Exception:
                 pass
 
-    # 4) Fallback
-    if not opts:
-        opts = [{"id": f"{user.id}-default", "przedmiot": "Ogólne", "poziom": ""}]
+    if not result:
+        result = [{"przedmiot": "Ogólne", "levels": []}]
 
-    return json.dumps(opts, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
 
 
 @login_required
 def dostepne_terminy_view(request):
     """
-    Lista dostępnych terminów:
-    - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
-    - rosnąco po (data, godzina)
-    - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
-    - DODANE: dla każdego terminu dołączamy JSON z opcjami „przedmiot/poziom”
+    Lista dostępnych terminów (przyszłość, sort, wykluczenie zajętych) + dane 'przedmiot/poziom' z kont nauczycieli
     """
     now = timezone.localtime()
 
@@ -871,7 +881,7 @@ def dostepne_terminy_view(request):
         .order_by("data", "godzina")
     )
 
-    # Wyklucz zajęte (działa zarówno gdy Rezerwacja.termin jest FK, jak i DateTimeField)
+    # Wyklucz zajęte
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
     except LookupError:
@@ -884,12 +894,10 @@ def dostepne_terminy_view(request):
             pole = None
 
         if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
-            # Rezerwacja.termin -> FK do WolnyTermin
             terminy_qs = terminy_qs.exclude(
                 Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
             )
         else:
-            # Rezerwacja.termin -> DateTimeField
             terminy_qs = terminy_qs.exclude(
                 Exists(
                     Rezerwacja.objects.filter(
@@ -900,11 +908,10 @@ def dostepne_terminy_view(request):
                 )
             )
 
-    # MATERIALIZUJEMY I DOŁĄCZAMY OPCJE „PRZEDMIOT/POZIOM”
     terminy = list(terminy_qs)
     for t in terminy:
-        # DYNAM. atrybut widoczny w szablonie jako t.przedmiot_options_json
-        t.przedmiot_options_json = _subject_options_for_teacher(t.nauczyciel)
+        # JSON: [{"przedmiot":"Matematyka","levels":["podstawowy","rozszerzony"]}, ...]
+        t.subj_levels_json = _subjects_levels_for_teacher(t.nauczyciel)
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
