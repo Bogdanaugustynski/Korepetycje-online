@@ -783,6 +783,77 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
+def _subject_options_for_teacher(user):
+    """
+    Zwraca JSON (lista słowników) postaci:
+    [{"id": 101, "przedmiot": "Matematyka", "poziom": "podstawowy"}, ...]
+    Próbujemy kilku źródeł (w zależności od tego co masz w modelach):
+      1) panel.StawkaNauczyciela (nauczyciel, przedmiot, poziom, aktywny)
+      2) panel.NauczycielPrzedmiot (nauczyciel, przedmiot, poziom, aktywny)
+      3) profil.przedmioty_json (JSON w profilu)
+      4) fallback: jedna opcja „Ogólne”
+    """
+    opts = []
+
+    # 1) StawkaNauczyciela
+    try:
+        StawkaNauczyciela = apps.get_model("panel", "StawkaNauczyciela")
+        qs = (
+            StawkaNauczyciela.objects
+            .filter(nauczyciel=user, aktywny=True)
+            .values("id", "przedmiot", "poziom")
+        )
+        for r in qs:
+            opts.append({
+                "id": r["id"],
+                "przedmiot": r.get("przedmiot") or "",
+                "poziom": r.get("poziom") or "",
+            })
+    except LookupError:
+        StawkaNauczyciela = None
+
+    # 2) NauczycielPrzedmiot
+    if not opts:
+        try:
+            NauczycielPrzedmiot = apps.get_model("panel", "NauczycielPrzedmiot")
+            qs = (
+                NauczycielPrzedmiot.objects
+                .filter(nauczyciel=user, aktywny=True)
+                .values("id", "przedmiot", "poziom")
+            )
+            for r in qs:
+                opts.append({
+                    "id": r["id"],
+                    "przedmiot": r.get("przedmiot") or "",
+                    "poziom": r.get("poziom") or "",
+                })
+        except LookupError:
+            NauczycielPrzedmiot = None
+
+    # 3) JSON w profilu (np. profil.przedmioty_json = '[{"id":1,"przedmiot":"Matematyka","poziom":"podstawowy"},...]')
+    if not opts:
+        profil = getattr(user, "profil", None)
+        data = getattr(profil, "przedmioty_json", None)
+        if data:
+            try:
+                arr = json.loads(data)
+                if isinstance(arr, list):
+                    for i, o in enumerate(arr):
+                        opts.append({
+                            "id": o.get("id") or f"{user.id}-json-{i}",
+                            "przedmiot": o.get("przedmiot", ""),
+                            "poziom": o.get("poziom", ""),
+                        })
+            except Exception:
+                pass
+
+    # 4) Fallback — zawsze chociaż jedna opcja
+    if not opts:
+        opts = [{"id": f"{user.id}-default", "przedmiot": "Ogólne", "poziom": ""}]
+
+    return json.dumps(opts, ensure_ascii=False)
+
+
 @login_required
 def dostepne_terminy_view(request):
     """
@@ -790,10 +861,11 @@ def dostepne_terminy_view(request):
     - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
     - rosnąco po (data, godzina)
     - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
+    - DODANE: dla każdego terminu dołączamy JSON z opcjami „przedmiot/poziom”
     """
     now = timezone.localtime()
 
-    terminy = (
+    terminy_qs = (
         WolnyTermin.objects
         .select_related("nauczyciel")
         .filter(
@@ -817,12 +889,12 @@ def dostepne_terminy_view(request):
 
         if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
             # Rezerwacja.termin -> FK do WolnyTermin
-            terminy = terminy.exclude(
+            terminy_qs = terminy_qs.exclude(
                 Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
             )
         else:
             # Rezerwacja.termin -> DateTimeField
-            terminy = terminy.exclude(
+            terminy_qs = terminy_qs.exclude(
                 Exists(
                     Rezerwacja.objects.filter(
                         nauczyciel=OuterRef("nauczyciel"),
@@ -831,6 +903,12 @@ def dostepne_terminy_view(request):
                     )
                 )
             )
+
+    # MATERIALIZUJEMY I DOŁĄCZAMY OPCJE „PRZEDMIOT/POZIOM”
+    terminy = list(terminy_qs)
+    for t in terminy:
+        # DYNAM. atrybut widoczny w szablonie jako t.przedmiot_options_json
+        t.przedmiot_options_json = _subject_options_for_teacher(t.nauczyciel)
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 

@@ -45,6 +45,10 @@
     .btn-book:hover{background:#1ea34f}
     .empty{padding:20px;text-align:center;color:var(--muted)}
 
+    /* select w tabeli */
+    .select-subject{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none}
+    .select-subject:focus{border-color:var(--brand)}
+
     .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line); border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .form-grid .full{grid-column:1/-1}
@@ -57,7 +61,7 @@
     .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
     .btn-cancel:hover{background:#fecaca}
 
-    /* Kafelki na mobilu (bez poziomego scrolla) */
+    /* Kafelki na mobilu */
     @media (max-width: 720px){
       .form-grid{grid-template-columns:1fr}
       .card-head{align-items:stretch;flex-direction:column}
@@ -81,7 +85,7 @@
 
   <main class="wrap">
     <h1>Dostępne terminy</h1>
-    <p class="lead">Wybierz pasujący termin i dołącz temat lekcji oraz (opcjonalnie) plik.</p>
+    <p class="lead">Wybierz pasujący termin, przedmiot i poziom, a potem dołącz temat lekcji oraz (opcjonalnie) plik.</p>
 
     <section class="card">
       <div class="card-head">
@@ -96,7 +100,11 @@
         <table id="termsTable">
           <thead>
             <tr>
-              <th>Nauczyciel</th><th>Data</th><th>Godzina</th><th>Akcja</th>
+              <th>Przedmiot / poziom</th>
+              <th>Nauczyciel</th>
+              <th>Data</th>
+              <th>Godzina</th>
+              <th>Akcja</th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +114,16 @@
               data-date="{{ t.data|date:'Y-m-d' }}"
               data-time="{{ t.godzina|time:'H:i' }}"
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
+              data-options='{{ t.przedmiot_options_json|default:"[]"|escapejs }}'
             >
+              <!-- NOWA 1. kolumna: wybór przedmiotu/poziomu -->
+              <td class="subject" data-label="Przedmiot / poziom">
+                <select class="select-subject" aria-label="Wybierz przedmiot i poziom">
+                  <option value="" selected>— wybierz —</option>
+                  <!-- Opcje zostaną wstrzyknięte JS-em z data-options -->
+                </select>
+              </td>
+
               <td class="teacher" data-label="Nauczyciel">
                 {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
               </td>
@@ -120,7 +137,7 @@
               </td>
             </tr>
             {% empty %}
-            <tr><td class="empty" data-label="Dostępne terminy" colspan="4">Brak dostępnych terminów</td></tr>
+            <tr><td class="empty" data-label="Dostępne terminy" colspan="5">Brak dostępnych terminów</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -136,6 +153,11 @@
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
+
+        <!-- NOWE: co wybrał uczeń -->
+        <input type="hidden" name="przedmiot_poziom_id" id="przedmiot_poziom_id">
+        <input type="hidden" name="przedmiot" id="przedmiot">
+        <input type="hidden" name="poziom" id="poziom">
 
         <div class="form-grid">
           <div class="full">
@@ -160,18 +182,64 @@
   </main>
 
   <script>
+    // ---- Inicjalizacja opcji "Przedmiot / poziom" z data-options (JSON)
+    function initSubjectSelects(){
+      document.querySelectorAll('#termsTable tbody tr').forEach(row=>{
+        const select = row.querySelector('.select-subject');
+        if(!select) return;
+        const raw = row.getAttribute('data-options') || '[]';
+        let opts = [];
+        try{ opts = JSON.parse(raw); }catch(e){ opts = []; }
+
+        // Wyczyść i wstaw
+        select.innerHTML = '<option value="" selected>— wybierz —</option>';
+        if(Array.isArray(opts) && opts.length){
+          opts.forEach(o=>{
+            const opt = document.createElement('option');
+            opt.value = String(o.id ?? '');
+            opt.textContent = `${o.przedmiot ?? '—'} — ${o.poziom ?? '—'}`;
+            // zachowaj dane do późniejszego użycia
+            if(o.przedmiot) opt.dataset.przedmiot = o.przedmiot;
+            if(o.poziom) opt.dataset.poziom = o.poziom;
+            select.appendChild(opt);
+          });
+        } else {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '— brak ustawionych —';
+          select.appendChild(opt);
+        }
+      });
+    }
+
     // ------------- UX: wybór terminu, blokada klików -------------
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
+      const row = btn.closest('tr');
+      const select = row?.querySelector('.select-subject');
+
+      // Wymagamy wyboru przedmiotu/poziomu
+      if(!select || !select.value){
+        alert('Wybierz najpierw przedmiot i poziom dla tego nauczyciela.');
+        if(select) select.focus();
+        return;
+      }
+
+      // Pobierz wybrane info
+      const opt = select.options[select.selectedIndex];
+      const pid = select.value;
+      const subj = opt?.dataset?.przedmiot || '';
+      const lvl  = opt?.dataset?.poziom || '';
+
       // Blokuj wieloklik na przycisku w wierszu
       if (btn.dataset.locked === "1") return;
       btn.dataset.locked = "1";
       btn.disabled = true;
       btn.textContent = "Wybrano";
 
-      showForm(terminId, iso, nauczycielId, nauczycielName);
+      showForm(terminId, iso, nauczycielId, nauczycielName, {pid, subj, lvl});
     }
 
-    function showForm(terminId, iso, nauczycielId, nauczycielName){
+    function showForm(terminId, iso, nauczycielId, nauczycielName, pickedSL){
       const box = document.getElementById('formularz');
       box.classList.remove('hidden');
 
@@ -179,8 +247,14 @@
       document.getElementById('nauczyciel_id').value = nauczycielId;
       document.getElementById('termin_id').value = terminId;
 
+      // Zapisz wybór przedmiotu/poziomu
+      document.getElementById('przedmiot_poziom_id').value = pickedSL?.pid || '';
+      document.getElementById('przedmiot').value = pickedSL?.subj || '';
+      document.getElementById('poziom').value = pickedSL?.lvl || '';
+
       const picked = document.getElementById('pickedInfo');
-      picked.textContent = `Wybrano: ${iso} — ${nauczycielName}`;
+      const slTxt = (pickedSL?.subj && pickedSL?.lvl) ? ` — ${pickedSL.subj} (${pickedSL.lvl})` : '';
+      picked.textContent = `Wybrano: ${iso} — ${nauczycielName}${slTxt}`;
 
       scrollToForm();
       setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
@@ -193,6 +267,9 @@
       document.getElementById('termin').value = '';
       document.getElementById('nauczyciel_id').value = '';
       document.getElementById('termin_id').value = '';
+      document.getElementById('przedmiot_poziom_id').value = '';
+      document.getElementById('przedmiot').value = '';
+      document.getElementById('poziom').value = '';
       // Odblokuj ewentualnie zablokowany wiersz
       document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
@@ -236,7 +313,6 @@
       const rows = Array.from(tbody.querySelectorAll('tr'));
       const now = new Date();
 
-      // zbierz wiersze z metadanymi
       const items = [];
       const seen = new Set();
 
@@ -245,27 +321,23 @@
         const dateISO = row.getAttribute('data-date'); // YYYY-MM-DD
         const timeISO = row.getAttribute('data-time'); // HH:MM
 
-        // puste (np. wiersz "Brak...") zostaw jak jest
         if(!dateISO || !timeISO || !key){
           items.push({row, keep:true, sort:null, key:null});
           return;
         }
 
-        // przeszłość?
         const [y,m,d] = dateISO.split('-').map(Number);
         const [hh,mm] = timeISO.split(':').map(Number);
         const dt = new Date(y, (m-1), d, hh, mm);
 
         const isPast = dt.getTime() < now.getTime();
 
-        // deduplikacja: pierwszy wygrywa
         if(seen.has(key)){
-          row.remove(); // usuń duplikat z DOM
+          row.remove();
           return;
         }
         seen.add(key);
 
-        // jeżeli przeszłość — ukryj
         if(isPast){
           row.remove();
           return;
@@ -274,23 +346,20 @@
         items.push({row, keep:true, sort:dt.getTime(), key});
       });
 
-      // posortuj: rosnąco po dacie/godzinie
       const sortable = items.filter(i=>i.sort!==null);
       sortable.sort((a,b)=>a.sort-b.sort);
 
-      // usuń wszystko i wstaw z powrotem: najpierw te z sort, potem pozostałe (np. empty row)
       tbody.innerHTML = '';
       sortable.forEach(i=>tbody.appendChild(i.row));
 
       const others = items.filter(i=>i.sort===null && i.keep);
       others.forEach(i=>tbody.appendChild(i.row));
 
-      // jeżeli po czyszczeniu nie ma rekordów – pokaż komunikat
       if (!tbody.querySelector('tr') || tbody.querySelectorAll('tr').length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         td.className = 'empty';
-        td.colSpan = 4;
+        td.colSpan = 5;
         td.textContent = 'Brak dostępnych terminów';
         tr.appendChild(td);
         tbody.appendChild(tr);
@@ -298,6 +367,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      initSubjectSelects();
       cleanupTable();
     });
   </script>
