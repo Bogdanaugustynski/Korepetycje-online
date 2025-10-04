@@ -783,63 +783,85 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
-def _subjects_levels_for_teacher(user):
-    """
-    Zbiera z modeli (np. panel.StawkaNauczyciela) listę przedmiotów i ich poziomów:
-    Zwraca JSON (string) o strukturze:
-    [
-      {"przedmiot":"Matematyka", "levels":["podstawowy","rozszerzony"]},
-      {"przedmiot":"Fizyka", "levels":["podstawowy"]}
-    ]
-    Jeżeli nie ma danych – fallback do Ogólne (bez poziomu).
-    """
-    result = []
+User = get_user_model()
 
-    # 1) StawkaNauczyciela
-    try:
-        StawkaNauczyciela = apps.get_model("panel", "StawkaNauczyciela")
-        qs = StawkaNauczyciela.objects.filter(nauczyciel=user)
-        # warunkowo po 'aktywny' (pole może nie istnieć)
-        if "aktywny" in [f.name for f in StawkaNauczyciela._meta.get_fields()]:
-            qs = qs.filter(aktywny=True)
-        qs = qs.values("przedmiot", "poziom")
+def _subjects_levels_for_teacher(teacher_user):
+    """
+    Zwraca JSON listy słowników:
+      [{"przedmiot":"Matematyka","levels":["podstawowy","rozszerzony"]}, ...]
+    Robi to tak, żeby NIE zależeć od tego, czy FK 'nauczyciel' w Twoich modelach
+    wskazuje na User, Profil itp. – helper sam wykrywa model docelowy i próbuje
+    kilku bezpiecznych wariantów filtrowania.
+    """
+    def _collect_from_model(model_label, teacher_user):
+        try:
+            M = apps.get_model("panel", model_label)
+        except LookupError:
+            return []
+
+        # brak tych pól = nie ma czego zbierać
+        field_names = {f.name for f in M._meta.get_fields()}
+        if not {"nauczyciel", "przedmiot", "poziom"} <= field_names:
+            return []
+
+        # ustal, do jakiego modelu FK 'nauczyciel' faktycznie prowadzi
+        nauczyciel_fk = M._meta.get_field("nauczyciel")
+        target_model = getattr(nauczyciel_fk.remote_field, "model", None)
+
+        # zbuduj listę możliwych filtrów (najbardziej precyzyjne najpierw)
+        filters = []
+
+        # 1) jeśli target_model to User i mamy obiekt User
+        if target_model is not None and issubclass(target_model, User) and isinstance(teacher_user, User):
+            filters.append({"nauczyciel": teacher_user})
+            filters.append({"nauczyciel_id": teacher_user.id})
+
+        # 2) jeśli target_model NIE jest Userem, spróbuj przez profil
+        profil = getattr(teacher_user, "profil", None)
+        if target_model is not None and profil is not None and isinstance(profil, target_model):
+            filters.append({"nauczyciel": profil})
+            if hasattr(profil, "id"):
+                filters.append({"nauczyciel_id": profil.id})
+
+        # 3) bezpieczne próby po id (gdyby FK jednak wskazywał na Usera, a model to np. CustomUser)
+        if hasattr(teacher_user, "id"):
+            filters.append({"nauczyciel_id": teacher_user.id})
+
+        # wykonuj filtry aż któryś zwróci rekordy
+        rows = []
+        for f in filters:
+            qs = M.objects.filter(**f).values("przedmiot", "poziom")
+            if qs.exists():
+                rows = list(qs)
+                break
+
+        # zbuduj mapę przedmiot -> set(poziomów)
         subj_map = {}
-        for r in qs:
+        for r in rows:
             subj = (r.get("przedmiot") or "").strip() or "Ogólne"
-            lvl = (r.get("poziom") or "").strip()
+            lvl  = (r.get("poziom") or "").strip()
             subj_map.setdefault(subj, set())
             if lvl:
                 subj_map[subj].add(lvl)
+
+        # zwróć listę słowników
+        result = []
         if subj_map:
             for subj, lvls in subj_map.items():
                 result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
-    except LookupError:
-        pass
+        return result
 
-    # 2) NauczycielPrzedmiot (jeśli nie znaleziono powyżej)
+    # próbujemy z modeli, które wymieniłeś wcześniej w projekcie
+    result = []
+    # 1) najpierw StawkaNauczyciela (ma dokładnie pola: id, nauczyciel, przedmiot, poziom, stawka)
+    result = _collect_from_model("StawkaNauczyciela", teacher_user)
+    # 2) jeśli brak wyników – alternatywny model
     if not result:
-        try:
-            NauczycielPrzedmiot = apps.get_model("panel", "NauczycielPrzedmiot")
-            qs = NauczycielPrzedmiot.objects.filter(nauczyciel=user)
-            if "aktywny" in [f.name for f in NauczycielPrzedmiot._meta.get_fields()]:
-                qs = qs.filter(aktywny=True)
-            qs = qs.values("przedmiot", "poziom")
-            subj_map = {}
-            for r in qs:
-                subj = (r.get("przedmiot") or "").strip() or "Ogólne"
-                lvl = (r.get("poziom") or "").strip()
-                subj_map.setdefault(subj, set())
-                if lvl:
-                    subj_map[subj].add(lvl)
-            if subj_map:
-                for subj, lvls in subj_map.items():
-                    result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
-        except LookupError:
-            pass
+        result = _collect_from_model("NauczycielPrzedmiot", teacher_user)
 
-    # 3) profil.przedmioty_json (opcjonalny fallback)
+    # 3) JSON w profilu jako awaryjny fallback
     if not result:
-        profil = getattr(user, "profil", None)
+        profil = getattr(teacher_user, "profil", None)
         data = getattr(profil, "przedmioty_json", None)
         if data:
             try:
@@ -848,15 +870,14 @@ def _subjects_levels_for_teacher(user):
                 if isinstance(arr, list):
                     for o in arr:
                         subj = (o.get("przedmiot") or "").strip() or "Ogólne"
-                        lvl = (o.get("poziom") or "").strip()
+                        lvl  = (o.get("poziom") or "").strip()
                         subj_map.setdefault(subj, set())
                         if lvl:
                             subj_map[subj].add(lvl)
                 if subj_map:
-                    for subj, lvls in subj_map.items():
-                        result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
+                    result = [{"przedmiot": s, "levels": sorted(lvls)} for s, lvls in subj_map.items()]
             except Exception:
-                pass
+                result = []
 
     if not result:
         result = [{"przedmiot": "Ogólne", "levels": []}]
