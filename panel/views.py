@@ -783,112 +783,113 @@ def zarezerwuj_zajecia(request):
     # OK → przekierowanie (np. do „Moje rezerwacje”)
     return HttpResponseRedirect(reverse("moje_rezerwacje"))
 
-User = get_user_model()
+def _subject_levels_from_profile(nauczyciel):
+    """
+    Czyta profil.przedmioty (lista stringów jak 'Matematyka - podstawowy')
+    i buduje słownik: {"Matematyka": ["podstawowy","rozszerzony"], ...}.
+    Obsługuje przypadek, gdy dane są stringiem (po przecinku/nowej linii).
+    """
+    result = {}
 
-def _subjects_levels_for_teacher(teacher_user):
+    profil = getattr(nauczyciel, "profil", None)
+    raw = getattr(profil, "przedmioty", None)
+    if not raw:
+        return result
+
+    # Ujednolicenie do listy stringów
+    if isinstance(raw, str):
+        # rozdziel po przecinkach lub liniach
+        items = [x.strip() for x in re.split(r"[\n,]+", raw) if x.strip()]
+    elif isinstance(raw, (list, tuple)):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+    else:
+        # np. QuerySet lub inne — spróbuj iterować
+        try:
+            items = [str(x).strip() for x in raw if str(x).strip()]
+        except Exception:
+            items = []
+
+    for item in items:
+        # formatu "Nazwa - poziom" / "Nazwa – poziom"
+        parts = re.split(r"\s*[-–]\s*", item, maxsplit=1)
+        subject = (parts[0] if parts else "").strip() or "Ogólne"
+        level = (parts[1] if len(parts) > 1 else "").strip()
+        result.setdefault(subject, set())
+        if level:
+            result[subject].add(level)
+
+    # zamień sety na posortowane listy
+    return {s: sorted(list(levels)) for s, levels in result.items()}
+
+
+# --- (Awaryjny) HELPER: z modeli tabelarycznych (np. StawkaNauczyciela) ---
+def _subject_levels_from_table(nauczyciel):
     """
-    Zwraca JSON listy słowników:
-      [{"przedmiot":"Matematyka","levels":["podstawowy","rozszerzony"]}, ...]
-    Robi to tak, żeby NIE zależeć od tego, czy FK 'nauczyciel' w Twoich modelach
-    wskazuje na User, Profil itp. – helper sam wykrywa model docelowy i próbuje
-    kilku bezpiecznych wariantów filtrowania.
+    Próbuje odczytać przedmiot/poziom z panel.StawkaNauczyciela lub panel.NauczycielPrzedmiot.
+    Działa nawet, gdy FK 'nauczyciel' wskazuje na profil lub Usera (próbuje kilku wariantów).
     """
-    def _collect_from_model(model_label, teacher_user):
+    def collect(model_label):
         try:
             M = apps.get_model("panel", model_label)
         except LookupError:
-            return []
+            return {}
 
-        # brak tych pól = nie ma czego zbierać
         field_names = {f.name for f in M._meta.get_fields()}
         if not {"nauczyciel", "przedmiot", "poziom"} <= field_names:
-            return []
+            return {}
 
-        # ustal, do jakiego modelu FK 'nauczyciel' faktycznie prowadzi
-        nauczyciel_fk = M._meta.get_field("nauczyciel")
-        target_model = getattr(nauczyciel_fk.remote_field, "model", None)
+        fk = M._meta.get_field("nauczyciel")
+        target = getattr(fk.remote_field, "model", None)
 
-        # zbuduj listę możliwych filtrów (najbardziej precyzyjne najpierw)
         filters = []
-
-        # 1) jeśli target_model to User i mamy obiekt User
-        if target_model is not None and issubclass(target_model, User) and isinstance(teacher_user, User):
-            filters.append({"nauczyciel": teacher_user})
-            filters.append({"nauczyciel_id": teacher_user.id})
-
-        # 2) jeśli target_model NIE jest Userem, spróbuj przez profil
-        profil = getattr(teacher_user, "profil", None)
-        if target_model is not None and profil is not None and isinstance(profil, target_model):
+        # Najpierw po obiekcie
+        filters.append({"nauczyciel": nauczyciel})
+        # Po id nauczyciela
+        if hasattr(nauczyciel, "id"):
+            filters.append({"nauczyciel_id": nauczyciel.id})
+        # Po profilu, jeśli FK nie jest do Usera
+        profil = getattr(nauczyciel, "profil", None)
+        if profil is not None:
             filters.append({"nauczyciel": profil})
             if hasattr(profil, "id"):
                 filters.append({"nauczyciel_id": profil.id})
 
-        # 3) bezpieczne próby po id (gdyby FK jednak wskazywał na Usera, a model to np. CustomUser)
-        if hasattr(teacher_user, "id"):
-            filters.append({"nauczyciel_id": teacher_user.id})
-
-        # wykonuj filtry aż któryś zwróci rekordy
         rows = []
         for f in filters:
-            qs = M.objects.filter(**f).values("przedmiot", "poziom")
-            if qs.exists():
-                rows = list(qs)
-                break
-
-        # zbuduj mapę przedmiot -> set(poziomów)
-        subj_map = {}
-        for r in rows:
-            subj = (r.get("przedmiot") or "").strip() or "Ogólne"
-            lvl  = (r.get("poziom") or "").strip()
-            subj_map.setdefault(subj, set())
-            if lvl:
-                subj_map[subj].add(lvl)
-
-        # zwróć listę słowników
-        result = []
-        if subj_map:
-            for subj, lvls in subj_map.items():
-                result.append({"przedmiot": subj, "levels": sorted(lvls) if lvls else []})
-        return result
-
-    # próbujemy z modeli, które wymieniłeś wcześniej w projekcie
-    result = []
-    # 1) najpierw StawkaNauczyciela (ma dokładnie pola: id, nauczyciel, przedmiot, poziom, stawka)
-    result = _collect_from_model("StawkaNauczyciela", teacher_user)
-    # 2) jeśli brak wyników – alternatywny model
-    if not result:
-        result = _collect_from_model("NauczycielPrzedmiot", teacher_user)
-
-    # 3) JSON w profilu jako awaryjny fallback
-    if not result:
-        profil = getattr(teacher_user, "profil", None)
-        data = getattr(profil, "przedmioty_json", None)
-        if data:
             try:
-                arr = json.loads(data)
-                subj_map = {}
-                if isinstance(arr, list):
-                    for o in arr:
-                        subj = (o.get("przedmiot") or "").strip() or "Ogólne"
-                        lvl  = (o.get("poziom") or "").strip()
-                        subj_map.setdefault(subj, set())
-                        if lvl:
-                            subj_map[subj].add(lvl)
-                if subj_map:
-                    result = [{"przedmiot": s, "levels": sorted(lvls)} for s, lvls in subj_map.items()]
+                qs = M.objects.filter(**f).values("przedmiot", "poziom")
+                if qs.exists():
+                    rows = list(qs)
+                    break
             except Exception:
-                result = []
+                continue
 
-    if not result:
-        result = [{"przedmiot": "Ogólne", "levels": []}]
+        out = {}
+        for r in rows:
+            s = (r.get("przedmiot") or "").strip() or "Ogólne"
+            l = (r.get("poziom") or "").strip()
+            out.setdefault(s, set())
+            if l:
+                out[s].add(l)
+        return {k: sorted(list(v)) for k, v in out.items()}
 
-    return json.dumps(result, ensure_ascii=False)
+    # Najpierw StawkaNauczyciela, potem alternatywny model
+    data = collect("StawkaNauczyciela")
+    if not data:
+        data = collect("NauczycielPrzedmiot")
+    return data
 
 
 @login_required
 def dostepne_terminy_view(request):
     """
-    Lista dostępnych terminów (przyszłość, sort, wykluczenie zajętych) + dane 'przedmiot/poziom' z kont nauczycieli
+    Lista dostępnych terminów (tylko przyszłość, sort, wykluczenie zajętych)
+    + wierszowa informacja o PRZEDMIOCIE i POZIOMIE z panelu 'Moje konto'.
+    W kolumnie:
+      - jeśli nauczyciel ma 1 przedmiot → pokazujemy nazwę przedmiotu, a dla poziomu:
+          * 1 poziom → tekst,
+          * >1 poziom → select.
+      - jeśli ma >1 przedmiot → pokażemy select PRZEDMIOT, a POZIOM zależny od wyboru.
     """
     now = timezone.localtime()
 
@@ -902,7 +903,7 @@ def dostepne_terminy_view(request):
         .order_by("data", "godzina")
     )
 
-    # Wyklucz zajęte
+    # Wyklucz zajęte (obsługa FK / DateTimeField)
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
     except LookupError:
@@ -930,9 +931,19 @@ def dostepne_terminy_view(request):
             )
 
     terminy = list(terminy_qs)
+
+    # Dla każdego nauczyciela: najpierw dane z profilu, jeśli brak — tabela
     for t in terminy:
-        # JSON: [{"przedmiot":"Matematyka","levels":["podstawowy","rozszerzony"]}, ...]
-        t.subj_levels_json = _subjects_levels_for_teacher(t.nauczyciel)
+        subj_map = _subject_levels_from_profile(t.nauczyciel)
+        if not subj_map:
+            subj_map = _subject_levels_from_table(t.nauczyciel)
+        if not subj_map:
+            subj_map = {"Ogólne": []}
+        # przekaż do szablonu
+        t.subj_levels_json = json.dumps(
+            [{"przedmiot": s, "levels": lvls} for s, lvls in subj_map.items()],
+            ensure_ascii=False
+        )
 
     return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 

@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dostępne terminy — PolubiszTo.pl</title>
   <meta name="description" content="Lista wolnych terminów nauczycieli — PolubiszTo.pl korepetycje online">
-  <link rel="icon" href="{% static 'favicon.ico' %}">
   <style>
     :root{
       --brand:#0b74ff; --brand-700:#095cd1; --ink:#0b1320; --muted:#5b6777;
@@ -46,43 +45,26 @@
     .btn-book:hover{background:#1ea34f}
     .empty{padding:20px;text-align:center;color:var(--muted)}
 
-    /* Pierwsza kolumna z przedmiotem/poziomem */
-    .sl-col .label{display:block;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.2px;margin-bottom:4px}
-    .sl-col .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef5ff;color:#0b3d91;font-weight:700;font-size:12px}
+    /* kolumna subject/level (bez etykiet wewnątrz) */
+    .sl{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef5ff;color:#0b3d91;font-weight:700;font-size:12px}
+    .select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none;min-width:160px}
 
-    .select{width:100%;max-width:280px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;outline:none}
-    .select:focus{border-color:var(--brand)}
-
-    .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line); border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
-    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .form-grid .full{grid-column:1/-1}
-    label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
-    input[type="text"], input[type="file"]{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
-    input[type="text"]:focus, input[type="file"]:focus{border-color:var(--brand)}
-    .hint{color:var(--muted);font-size:12px;margin-top:4px}
-    .hidden{display:none}
-    .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
-    .btn-cancel:hover{background:#fecaca}
-
-    /* Kafelki na mobilu */
+    /* mobil */
     @media (max-width: 720px){
-      .form-grid{grid-template-columns:1fr}
       .card-head{align-items:stretch;flex-direction:column}
       .table-wrap{overflow:visible}
       table thead{position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;}
       table, tbody, tr, td { display:block; width:100% }
       tbody tr{border:1px solid var(--line);border-radius:12px;box-shadow: var(--shadow);background:#fff;padding:10px 12px;margin:12px 0;}
       tbody tr:hover{ background:#fff }
-      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px 10px 120px; position:relative; min-height:42px;}
+      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px; position:relative;}
       td:last-child{ border-bottom:none; padding-bottom:6px }
       td::before{content: attr(data-label); position:absolute; left:10px; top:10px; width:100px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.2px; line-height:1.2;}
-      .teacher{ font-weight:800 }
       .act{ display:block; margin-top:4px }
       .btn-book{ width:100%; padding:12px }
-      .sl-col .row{flex-direction:column; align-items:flex-start}
-      .select{max-width:100%}
+      .sl{flex-direction:column; align-items:flex-start}
+      .select{min-width:100%}
     }
   </style>
 </head>
@@ -92,7 +74,7 @@
 
   <main class="wrap">
     <h1>Dostępne terminy</h1>
-    <p class="lead">Wybierz pasujący termin. Przedmiot jest zawsze widoczny; poziom wybierz tylko jeśli nauczyciel oferuje kilka.</p>
+    <p class="lead">W tej kolumnie pokazujemy <strong>przedmiot i poziom</strong> z profilu nauczyciela. Jeśli poziomów jest kilka — wybierz właściwy.</p>
 
     <section class="card">
       <div class="card-head">
@@ -123,20 +105,15 @@
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
               data-subj-levels='{{ t.subj_levels_json|default:"[]"|escapejs }}'
             >
-              <!-- 1. kolumna: zawsze pokazuje PRZEDMIOT; POZIOM: select jeśli >1, inaczej tekst -->
-              <td class="sl-col" data-label="Przedmiot / poziom">
-                <div class="row">
-                  <div>
-                    <span class="label">Przedmiot</span>
-                    <span class="pill subj-text hidden"></span>
-                    <select class="select subj-select hidden" aria-label="Wybierz przedmiot"></select>
-                  </div>
-                  <div>
-                    <span class="label">Poziom</span>
-                    <span class="pill lvl-text hidden"></span>
-                    <select class="select lvl-select hidden" aria-label="Wybierz poziom"></select>
-                  </div>
-                </div>
+              <!-- KOLUMNA 1: bez etykiet wewnątrz -->
+              <td class="sl" data-label="Przedmiot / poziom">
+                <!-- PRZEDMIOT: tekst lub select (gdy >1 przedmiot) -->
+                <span class="pill subj-text hidden"></span>
+                <select class="select subj-select hidden" aria-label="Przedmiot"></select>
+
+                <!-- POZIOM: tekst lub select (gdy >1 poziom dla wybranego przedmiotu) -->
+                <span class="pill lvl-text hidden"></span>
+                <select class="select lvl-select hidden" aria-label="Poziom"></select>
               </td>
 
               <td class="teacher" data-label="Nauczyciel">
@@ -169,7 +146,7 @@
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
 
-        <!-- wybrane z 1. kolumny -->
+        <!-- z kolumny 1 -->
         <input type="hidden" name="przedmiot" id="przedmiot">
         <input type="hidden" name="poziom" id="poziom">
 
@@ -196,140 +173,98 @@
   </main>
 
   <script>
-    // ---------- utils ----------
     function show(el){ el && el.classList.remove('hidden'); }
     function hide(el){ el && el.classList.add('hidden'); }
 
-    // ---------- inicjalizacja 1. kolumny (Przedmiot/Poziom) ----------
-    function initSubjectLevelColumns(){
+    // Inicjalizacja przedmiot/poziom (bez etykiet w wierszach)
+    function initSL(){
       document.querySelectorAll('#termsTable tbody tr').forEach(row=>{
         const data = row.getAttribute('data-subj-levels') || '[]';
         let list = [];
-        try{ list = JSON.parse(data); }catch(e){ list=[]; }
+        try{ list = JSON.parse(data); }catch(e){ list = []; }
 
         const subjText = row.querySelector('.subj-text');
         const subjSelect = row.querySelector('.subj-select');
         const lvlText = row.querySelector('.lvl-text');
         const lvlSelect = row.querySelector('.lvl-select');
 
-        // brak danych → Ogólne (tekst) i brak poziomu
-        if(!Array.isArray(list) || list.length===0){
+        if(!Array.isArray(list) || list.length === 0){
+          // brak danych — Ogólne
           subjText.textContent = 'Ogólne';
-          show(subjText);
-          hide(subjSelect);
-          hide(lvlSelect);
-          hide(lvlText);
-          row.dataset.selectedSubject = 'Ogólne';
-          row.dataset.selectedLevel = '';
+          show(subjText); hide(subjSelect); hide(lvlSelect); hide(lvlText);
+          row.dataset.subject = 'Ogólne';
+          row.dataset.level = '';
           return;
         }
 
-        // jeśli jest 1 przedmiot
         if(list.length === 1){
+          // 1 przedmiot -> tekst
           const subj = list[0].przedmiot || 'Ogólne';
           const levels = Array.isArray(list[0].levels) ? list[0].levels : [];
-
-          // PRZEDMIOT jako tekst
           subjText.textContent = subj;
-          show(subjText);
-          hide(subjSelect);
-          row.dataset.selectedSubject = subj;
+          show(subjText); hide(subjSelect);
+          row.dataset.subject = subj;
 
-          // POZIOM — jeśli 1 poziom → tekst; jeśli >1 → select
           if(levels.length <= 1){
             const lvl = levels[0] || '';
             lvlText.textContent = lvl || '—';
-            show(lvlText);
-            hide(lvlSelect);
-            row.dataset.selectedLevel = lvl;
+            show(lvlText); hide(lvlSelect);
+            row.dataset.level = lvl;
           }else{
             lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>';
-            levels.forEach(l=>{
-              const opt = document.createElement('option');
-              opt.value = l;
-              opt.textContent = l;
-              lvlSelect.appendChild(opt);
-            });
-            show(lvlSelect);
-            hide(lvlText);
-            row.dataset.selectedLevel = ''; // wymagamy wyboru
+            levels.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; lvlSelect.appendChild(o); });
+            show(lvlSelect); hide(lvlText);
+            row.dataset.level = '';
           }
         }else{
-          // >1 przedmiot → PRZEDMIOT jako select
+          // >1 przedmiot -> select
           subjSelect.innerHTML = '';
-          list.forEach((item, idx)=>{
-            const opt = document.createElement('option');
-            opt.value = item.przedmiot || `subj-${idx}`;
-            opt.textContent = item.przedmiot || `Przedmiot ${idx+1}`;
-            subjSelect.appendChild(opt);
+          list.forEach((it, idx)=>{
+            const o=document.createElement('option');
+            o.value = it.przedmiot || `subj-${idx}`;
+            o.textContent = it.przedmiot || `Przedmiot ${idx+1}`;
+            subjSelect.appendChild(o);
           });
-          show(subjSelect);
-          hide(subjText);
+          show(subjSelect); hide(subjText);
 
-          // zainicjuj poziomy dla pierwszego przedmiotu
           const updateLevels = ()=>{
             const chosen = subjSelect.value;
-            row.dataset.selectedSubject = chosen;
-
+            row.dataset.subject = chosen;
             const entry = list.find(it => (it.przedmiot||'') === chosen) || {levels:[]};
             const levels = Array.isArray(entry.levels) ? entry.levels : [];
-
             if(levels.length <= 1){
               const lvl = levels[0] || '';
               lvlText.textContent = lvl || '—';
-              show(lvlText);
-              hide(lvlSelect);
-              row.dataset.selectedLevel = lvl;
+              show(lvlText); hide(lvlSelect);
+              row.dataset.level = lvl;
             }else{
               lvlSelect.innerHTML = '<option value="">— wybierz poziom —</option>';
-              levels.forEach(l=>{
-                const opt = document.createElement('option');
-                opt.value = l;
-                opt.textContent = l;
-                lvlSelect.appendChild(opt);
-              });
-              show(lvlSelect);
-              hide(lvlText);
-              row.dataset.selectedLevel = ''; // wymagamy wyboru
+              levels.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; lvlSelect.appendChild(o); });
+              show(lvlSelect); hide(lvlText);
+              row.dataset.level = '';
             }
           };
-
           subjSelect.addEventListener('change', updateLevels);
           updateLevels();
         }
       });
     }
 
-    // ---------- wybór terminu ----------
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
       const row = btn.closest('tr');
-      const subj = row?.dataset?.selectedSubject || '';
-      let lvl = row?.dataset?.selectedLevel || '';
+      const subj = row?.dataset?.subject || '';
+      let lvl = row?.dataset?.level || '';
 
-      // jeśli dla danej konfiguracji poziom jest selectem i nie wybrano go — spróbuj odczytać
       const lvlSelect = row?.querySelector('.lvl-select');
       if(lvlSelect && !lvl && !lvlSelect.classList.contains('hidden')){
         lvl = lvlSelect.value || '';
       }
 
-      // walidacja
-      if(!subj){
-        alert('Wybierz przedmiot.');
-        const sSel = row.querySelector('.subj-select');
-        if(sSel && !sSel.classList.contains('hidden')) sSel.focus();
-        return;
-      }
-      if(lvlSelect && !lvl && !lvlSelect.classList.contains('hidden')){
-        alert('Wybierz poziom.');
-        lvlSelect.focus();
-        return;
-      }
+      if(!subj){ alert('Wybierz przedmiot.'); return; }
+      if(lvlSelect && !lvl && !lvlSelect.classList.contains('hidden')){ alert('Wybierz poziom.'); lvlSelect.focus(); return; }
 
-      // blokada wielokliku
       if (btn.dataset.locked === "1") return;
-      btn.dataset.locked = "1";
-      btn.disabled = true;
-      btn.textContent = "Wybrano";
+      btn.dataset.locked = "1"; btn.disabled = true; btn.textContent = "Wybrano";
 
       showForm(terminId, iso, nauczycielId, nauczycielName, {subj, lvl});
     }
@@ -345,20 +280,18 @@
       document.getElementById('przedmiot').value = picked?.subj || '';
       document.getElementById('poziom').value = picked?.lvl || '';
 
-      const pickedInfo = document.getElementById('pickedInfo');
-      const slTxt = picked?.subj ? ` — ${picked.subj}${picked?.lvl ? ' ('+picked.lvl+')' : ''}` : '';
-      pickedInfo.textContent = `Wybrano: ${iso} — ${nauczycielName}${slTxt}`;
+      const txt = picked?.subj ? ` — ${picked.subj}${picked?.lvl ? ' ('+picked.lvl+')' : ''}` : '';
+      document.getElementById('pickedInfo').textContent = `Wybrano: ${iso} — ${nauczycielName}${txt}`;
 
       scrollToForm();
-      setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
+      setTimeout(()=>{ const t=document.getElementById('temat'); if(t) t.focus(); },120);
     }
 
     function hideForm(){
-      const box = document.getElementById('formularz');
-      box.classList.add('hidden');
+      document.getElementById('formularz').classList.add('hidden');
       document.getElementById('pickedInfo').textContent = '';
       ['termin','nauczyciel_id','termin_id','przedmiot','poziom'].forEach(id=>{
-        const el = document.getElementById(id); if(el) el.value = '';
+        const el=document.getElementById(id); if(el) el.value='';
       });
       document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
@@ -366,9 +299,7 @@
     function lockSubmit(form){
       const btn = document.getElementById('submitBtn');
       if (btn.dataset.locked === "1") return false;
-      btn.dataset.locked = "1";
-      btn.disabled = true;
-      btn.textContent = "Rezerwuję…";
+      btn.dataset.locked = "1"; btn.disabled = true; btn.textContent = "Rezerwuję…";
       return true;
     }
 
@@ -379,86 +310,52 @@
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
 
-    // ---------- filtry ----------
     function filterRows(){
       const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
       const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
       const rows = document.querySelectorAll('#termsTable tbody tr');
-
-      rows.forEach(row => {
+      rows.forEach(row=>{
         const t = (row.querySelector('.teacher')?.textContent || '').toLowerCase();
         const dText = (row.querySelectorAll('.when')[0]?.textContent || '').toLowerCase();
-        const matchTeacher = !qTeacher || t.includes(qTeacher);
-        const matchDate = !qDate || dText.includes(qDate);
-        row.style.display = (matchTeacher && matchDate) ? '' : 'none';
+        const ok = (!qTeacher || t.includes(qTeacher)) && (!qDate || dText.includes(qDate));
+        row.style.display = ok ? '' : 'none';
       });
     }
 
-    // ---------- porządkowanie ----------
     function cleanupTable(){
       const tbody = document.querySelector('#termsTable tbody');
       if(!tbody) return;
       const rows = Array.from(tbody.querySelectorAll('tr'));
       const now = new Date();
+      const items=[]; const seen=new Set();
 
-      const items = [];
-      const seen = new Set();
-
-      rows.forEach(row => {
-        const key = row.getAttribute('data-key');
-        const dateISO = row.getAttribute('data-date');
-        const timeISO = row.getAttribute('data-time');
-
-        if(!dateISO || !timeISO || !key){
-          items.push({row, keep:true, sort:null, key:null});
-          return;
-        }
-
-        const [y,m,d] = dateISO.split('-').map(Number);
-        const [hh,mm] = timeISO.split(':').map(Number);
-        const dt = new Date(y, (m-1), d, hh, mm);
-
-        const isPast = dt.getTime() < now.getTime();
-
-        if(seen.has(key)){
-          row.remove();
-          return;
-        }
-        seen.add(key);
-
-        if(isPast){
-          row.remove();
-          return;
-        }
-
-        items.push({row, keep:true, sort:dt.getTime(), key});
+      rows.forEach(row=>{
+        const key=row.getAttribute('data-key');
+        const dateISO=row.getAttribute('data-date');
+        const timeISO=row.getAttribute('data-time');
+        if(!dateISO || !timeISO || !key){ items.push({row,sort:null}); return; }
+        const [y,m,d]=dateISO.split('-').map(Number);
+        const [hh,mm]=timeISO.split(':').map(Number);
+        const dt=new Date(y,(m-1),d,hh,mm);
+        if(seen.has(key)) return; seen.add(key);
+        if(dt.getTime()<now.getTime()) return;
+        items.push({row,sort:dt.getTime()});
       });
 
-      const sortable = items.filter(i=>i.sort!==null);
-      sortable.sort((a,b)=>a.sort-b.sort);
-
-      const frag = document.createDocumentFragment();
+      const sortable=items.filter(i=>i.sort!==null).sort((a,b)=>a.sort-b.sort);
+      const frag=document.createDocumentFragment();
       sortable.forEach(i=>frag.appendChild(i.row));
+      tbody.innerHTML=''; tbody.appendChild(frag);
 
-      const others = items.filter(i=>i.sort===null && i.keep);
-      others.forEach(i=>frag.appendChild(i.row));
-
-      tbody.innerHTML = '';
-      tbody.appendChild(frag);
-
-      if (!tbody.querySelector('tr') || tbody.querySelectorAll('tr').length === 0) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.className = 'empty';
-        td.colSpan = 5;
-        td.textContent = 'Brak dostępnych terminów';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
+      if(!tbody.querySelector('tr')){
+        const tr=document.createElement('tr'); const td=document.createElement('td');
+        td.className='empty'; td.colSpan=5; td.textContent='Brak dostępnych terminów';
+        tr.appendChild(td); tbody.appendChild(tr);
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initSubjectLevelColumns();
+    document.addEventListener('DOMContentLoaded', ()=>{
+      initSL();
       cleanupTable();
     });
   </script>
