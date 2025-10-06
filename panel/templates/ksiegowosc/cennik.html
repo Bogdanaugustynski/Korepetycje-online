@@ -8,47 +8,36 @@
   <meta name="description" content="Panel księgowości — cennik przedmiotów i poziomów nauczania">
   <style>
     :root{
-      --brand:#0b74ff;
-      --brand-700:#095cd1;
-      --ink:#0b1320;
-      --muted:#5b6777;
-      --line:#e6edff;
-      --bg:#f7f9fe;
-      --card:#ffffff;
-      --shadow:0 12px 40px rgba(11,116,255,.12);
-      --radius:16px;
-      --maxw:1100px;
-      --ok:#22c55e;
-      --danger:#dc3545;
-      --neutral:#6c757d;
+      --brand:#0b74ff; --brand-700:#095cd1; --ink:#0b1320; --muted:#5b6777;
+      --line:#e6edff; --bg:#f7f9fe; --card:#ffffff; --shadow:0 12px 40px rgba(11,116,255,.12);
+      --radius:16px; --maxw:1100px; --ok:#22c55e; --danger:#dc3545; --neutral:#6c757d;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif; line-height:1.45}
-    a{color:inherit}
+    a{color:inherit;text-decoration:none}
 
-    /* Layout */
     .wrap{max-width:var(--maxw); margin:0 auto; padding:16px}
     .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px}
     .page-title{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:14px 0 18px}
     h1{font-size:clamp(20px,4vw,28px); margin:0}
     .actions-top{display:flex; gap:10px; flex-wrap:wrap}
+    .brand-spacer{height:8px}
 
-    /* Table */
+    /* Table (desktop) */
     .table-wrap{overflow:auto}
     table{width:100%; border-collapse:collapse; min-width:720px}
     th,td{padding:12px 14px; text-align:center; border-bottom:1px solid var(--line)}
     thead th{position:sticky; top:0; background:linear-gradient(0deg,var(--brand) 0%, var(--brand-700) 100%); color:#fff; z-index:1}
     tbody tr:hover{background:#f2f7ff}
     td strong{font-weight:700}
+    .row-actions{display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap}
 
-    /* Controls */
+    /* Inputs & Buttons */
     input[type="number"], input[type="text"], select{
       width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; outline:none; background:#fff
     }
     input:focus, select:focus{border-color:var(--brand)}
-    .row-actions{display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap}
-
     .btn{
       border:none; border-radius:12px; padding:10px 14px; cursor:pointer; transition:.2s transform ease, .2s opacity ease;
       font-weight:600; box-shadow:0 6px 16px rgba(11,116,255,.10)
@@ -60,25 +49,32 @@
     .btn-ok{background:var(--ok); color:#fff}
     .btn-danger{background:var(--danger); color:#fff}
     .btn-neutral{background:var(--neutral); color:#fff}
-
     .section-title{font-size:clamp(16px,3vw,20px); margin:4px 0 12px}
+    .hint{color:var(--muted); font-size:.92rem}
 
-    .grid-add{
-      display:grid; grid-template-columns:1fr 220px 220px auto; gap:12px; align-items:end
-    }
+    /* Add form grid */
+    .grid-add{display:grid; grid-template-columns:1fr 220px 220px auto; gap:12px; align-items:end}
     @media (max-width: 900px){
       .grid-add{grid-template-columns:1fr 1fr}
       .grid-add .wide{grid-column:1/-1}
     }
-    .hint{color:var(--muted); font-size:.92rem}
 
-    /* Back link as button */
-    .back{
-      display:inline-flex; align-items:center; gap:8px; text-decoration:none
+    /* --- MOBILE CARDS FOR PRICELIST --- */
+    .cards-mobile{display:none; gap:12px}
+    .card-item{
+      background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px;
+      box-shadow:0 8px 24px rgba(11,116,255,.08); display:flex; flex-direction:column; gap:10px
     }
+    .card-item .row{display:flex; justify-content:space-between; gap:10px}
+    .card-item .label{color:var(--muted); font-size:.92rem}
+    .card-item .value{font-weight:600}
+    .card-item .form-edit{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end}
+    .card-item .actions{display:flex; gap:8px; justify-content:flex-end}
 
-    /* Safe spacing below brand header */
-    .brand-spacer{height:8px}
+    @media (max-width: 780px){
+      .table-wrap{display:none}     /* chowamy tabelę na mobile */
+      .cards-mobile{display:grid; grid-template-columns:1fr;}
+    }
   </style>
 </head>
 <body>
@@ -90,12 +86,15 @@
     <div class="page-title">
       <h1>Cennik przedmiotów</h1>
       <div class="actions-top">
-        <a class="btn btn-neutral back" href="{% url 'panel_ksiegowosc' %}" aria-label="Powrót do panelu księgowości">⟵ Powrót</a>
+        <a class="btn btn-neutral" href="{% url 'panel_ksiegowosc' %}" aria-label="Powrót do panelu księgowości">⟵ Powrót</a>
       </div>
     </div>
 
+    <!-- LISTA / TABELA -->
     <div class="card" aria-labelledby="cennik-tabela">
       <div class="section-title" id="cennik-tabela">Aktualne stawki</div>
+
+      {# --- DESKTOP: tabela --- #}
       <div class="table-wrap">
         <table>
           <thead>
@@ -113,18 +112,15 @@
               <td>{{ p.nazwa }}</td>
               <td>{{ p.poziom|title }}</td>
               <td><strong>{{ p.cena|floatformat:2 }} zł</strong></td>
-
               <td>
                 <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę">
                   {% csrf_token %}
                   <input type="hidden" name="zapisz_id" value="{{ p.id }}">
                   <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena" required>
               </td>
-
               <td class="row-actions">
                   <button type="submit" class="btn btn-ok">Zapisz</button>
                 </form>
-
                 <form method="post" onsubmit="return confirmUsun(this);" aria-label="Usuń pozycję cennika">
                   {% csrf_token %}
                   <input type="hidden" name="usun_id" value="{{ p.id }}">
@@ -138,8 +134,51 @@
           </tbody>
         </table>
       </div>
+
+      {# --- MOBILE: kafelki --- #}
+      <div class="cards-mobile">
+        {% for p in przedmioty %}
+        <div class="card-item">
+          <div class="row">
+            <div>
+              <span class="label">Przedmiot</span>
+              <div class="value">{{ p.nazwa }}</div>
+            </div>
+            <div>
+              <span class="label">Poziom</span>
+              <div class="value">{{ p.poziom|title }}</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <span class="label">Aktualna cena</span>
+              <div class="value">{{ p.cena|floatformat:2 }} zł</div>
+            </div>
+          </div>
+
+          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę (mobile)">
+            {% csrf_token %}
+            <input type="hidden" name="zapisz_id" value="{{ p.id }}">
+            <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena" required>
+            <button type="submit" class="btn btn-ok">Zapisz</button>
+          </form>
+
+          <div class="actions">
+            <form method="post" onsubmit="return confirmUsun(this);" aria-label="Usuń pozycję (mobile)">
+              {% csrf_token %}
+              <input type="hidden" name="usun_id" value="{{ p.id }}">
+              <button type="submit" class="btn btn-danger">Usuń</button>
+            </form>
+          </div>
+        </div>
+        {% empty %}
+          <div class="hint">Brak przedmiotów w cenniku</div>
+        {% endfor %}
+      </div>
     </div>
 
+    <!-- DODAJ NOWĄ POZYCJĘ -->
     <div class="card" style="margin-top:16px" aria-labelledby="dodaj-przedmiot">
       <div class="section-title" id="dodaj-przedmiot">Dodaj nową pozycję</div>
       <form method="post">
@@ -168,7 +207,7 @@
           </div>
         </div>
       </form>
-      <p class="hint" style="margin-top:10px">Po dodaniu/edycji stawki wartości są od razu dostępne w panelu nauczyciela (podgląd cennika).</p>
+      <p class="hint" style="margin-top:10px">Zmiany są widoczne w panelu nauczyciela po zapisaniu.</p>
     </div>
 
     <div style="height:24px"></div>
