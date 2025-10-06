@@ -36,7 +36,7 @@
     table{border-collapse:collapse;width:100%}
     th,td{padding:12px 14px;text-align:left}
     thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
-    tbody tr{border-bottom:1px solid var(--line)}
+    tbody tr{border-bottom:1px solid var(--line')}
     tbody tr:hover{background:#fafcff}
     .teacher{font-weight:700}
     .when{white-space:nowrap}
@@ -96,17 +96,34 @@
         <table id="termsTable">
           <thead>
             <tr>
-              <th>Nauczyciel</th><th><span>Data</span></th><th>Godzina</th><th>Akcja</th>
+              <th>Przedmiot</th>
+              <th>Poziom</th>
+              <th>Nauczyciel</th>
+              <th><span>Data</span></th>
+              <th>Godzina</th>
+              <th>Akcja</th>
             </tr>
           </thead>
           <tbody>
-            {% for t in terminy %}
+            {% for row in terminy %}
+            {% with t=row.t info=row.info %}
             <tr
               data-teacher-id="{{ t.nauczyciel.id }}"
               data-date="{{ t.data|date:'Y-m-d' }}"
               data-time="{{ t.godzina|time:'H:i' }}"
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
+              data-levels="{{ info.levels|join:',' }}"
             >
+              <td class="subject" data-label="Przedmiot">
+                {{ info.subjects|join:", " }}
+              </td>
+              <td class="level" data-label="Poziom">
+                <select class="input level-select" aria-label="Wybierz poziom">
+                  {% for lvl in info.levels %}
+                    <option value="{{ lvl }}">{{ lvl|title }}</option>
+                  {% endfor %}
+                </select>
+              </td>
               <td class="teacher" data-label="Nauczyciel">
                 {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
               </td>
@@ -119,8 +136,9 @@
                 </button>
               </td>
             </tr>
+            {% endwith %}
             {% empty %}
-            <tr><td class="empty" data-label="Dostępne terminy" colspan="4">Brak dostępnych terminów</td></tr>
+            <tr><td class="empty" data-label="Dostępne terminy" colspan="6">Brak dostępnych terminów</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -136,6 +154,8 @@
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
+        <!-- NOWE: wybrany poziom -->
+        <input type="hidden" name="poziom" id="poziom">
 
         <div class="form-grid">
           <div class="full">
@@ -162,11 +182,20 @@
   <script>
     // ------------- UX: wybór terminu, blokada klików -------------
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
-      // Blokuj wieloklik na przycisku w wierszu
       if (btn.dataset.locked === "1") return;
       btn.dataset.locked = "1";
       btn.disabled = true;
       btn.textContent = "Wybrano";
+
+      // wyciągnij poziom z bieżącego wiersza (select)
+      const tr = btn.closest('tr');
+      let selectedLevel = 'podstawowy';
+      if (tr) {
+        const sel = tr.querySelector('.level-select');
+        if (sel && sel.value) selectedLevel = sel.value;
+        const poziomInput = document.getElementById('poziom');
+        if (poziomInput) poziomInput.value = selectedLevel;
+      }
 
       showForm(terminId, iso, nauczycielId, nauczycielName);
     }
@@ -193,7 +222,8 @@
       document.getElementById('termin').value = '';
       document.getElementById('nauczyciel_id').value = '';
       document.getElementById('termin_id').value = '';
-      // Odblokuj ewentualnie zablokowany wiersz
+      document.getElementById('poziom').value = '';
+      // odblokuj przyciski
       document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
 
@@ -236,7 +266,6 @@
       const rows = Array.from(tbody.querySelectorAll('tr'));
       const now = new Date();
 
-      // zbierz wiersze z metadanymi
       const items = [];
       const seen = new Set();
 
@@ -245,52 +274,44 @@
         const dateISO = row.getAttribute('data-date'); // YYYY-MM-DD
         const timeISO = row.getAttribute('data-time'); // HH:MM
 
-        // puste (np. wiersz "Brak...") zostaw jak jest
         if(!dateISO || !timeISO || !key){
           items.push({row, keep:true, sort:null, key:null});
           return;
         }
 
-        // przeszłość?
         const [y,m,d] = dateISO.split('-').map(Number);
         const [hh,mm] = timeISO.split(':').map(Number);
         const dt = new Date(y, (m-1), d, hh, mm);
 
         const isPast = dt.getTime() < now.getTime();
 
-        // deduplikacja: pierwszy wygrywa
         if(seen.has(key)){
-          row.remove(); // usuń duplikat z DOM
+          row.remove(); // duplikat
           return;
         }
         seen.add(key);
 
-        // jeżeli przeszłość — ukryj
         if(isPast){
-          row.remove();
+          row.remove(); // przeszłe terminy
           return;
         }
 
         items.push({row, keep:true, sort:dt.getTime(), key});
       });
 
-      // posortuj: rosnąco po dacie/godzinie
-      const sortable = items.filter(i=>i.sort!==null);
-      sortable.sort((a,b)=>a.sort-b.sort);
-
-      // usuń wszystko i wstaw z powrotem: najpierw te z sort, potem pozostałe (np. empty row)
+      const sortable = items.filter(i=>i.sort!==null).sort((a,b)=>a.sort-b.sort);
       tbody.innerHTML = '';
       sortable.forEach(i=>tbody.appendChild(i.row));
 
       const others = items.filter(i=>i.sort===null && i.keep);
       others.forEach(i=>tbody.appendChild(i.row));
 
-      // jeżeli po czyszczeniu nie ma rekordów – pokaż komunikat
-      if (!tbody.querySelector('tr') || tbody.querySelectorAll('tr').length === 0) {
+      // teraz mamy 6 kolumn
+      if (!tbody.querySelector('tr')) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         td.className = 'empty';
-        td.colSpan = 4;
+        td.colSpan = 6;
         td.textContent = 'Brak dostępnych terminów';
         tr.appendChild(td);
         tbody.appendChild(tr);

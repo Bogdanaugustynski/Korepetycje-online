@@ -684,26 +684,108 @@ def moje_rezerwacje_ucznia_view(request):
 
 
 @login_required
-def moje_konto_view(request):
-    profil = request.user.profil
-    user = request.user
+def dostepne_terminy_view(request):
+    """
+    Lista dostępnych terminów + 2 nowe kolumny:
+    - 'Przedmiot' (z profilu nauczyciela)
+    - 'Poziom'  (select z poziomami z profilu; zapis do formularza)
+    """
+    now = timezone.localtime()
 
-    if request.method == "POST":
-        user.first_name = request.POST.get("first_name", user.first_name)
-        user.last_name = request.POST.get("last_name", user.last_name)
-        profil.numer_telefonu = request.POST.get("numer_telefonu", profil.numer_telefonu)
+    terminy_qs = (
+        WolnyTermin.objects
+        .select_related("nauczyciel")
+        .filter(
+            models.Q(data__gt=now.date()) |
+            models.Q(data=now.date(), godzina__gte=now.time())
+        )
+        .order_by("data", "godzina")
+    )
 
-        profil.tytul_naukowy = ",".join(request.POST.getlist("tytul_naukowy"))
-        profil.poziom_nauczania = ",".join(request.POST.getlist("poziom_nauczania"))
-        profil.przedmioty = ",".join(request.POST.getlist("przedmioty"))
-        profil.opis = request.POST.get("opis", profil.opis)
+    # Wyklucz zajęte (jak u Ciebie)
+    try:
+        Rezerwacja = apps.get_model("panel", "Rezerwacja")
+    except LookupError:
+        Rezerwacja = None
 
-        user.save()
-        profil.save()
-        return redirect("panel_nauczyciela")
+    if Rezerwacja:
+        try:
+            pole = Rezerwacja._meta.get_field("termin")
+        except Exception:
+            pole = None
 
-    cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
-    return render(request, "moje_konto.html", {"profil": profil, "user": user, "cennik": cennik})
+        if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
+            terminy_qs = terminy_qs.exclude(
+                Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
+            )
+        else:
+            terminy_qs = terminy_qs.exclude(
+                Exists(
+                    Rezerwacja.objects.filter(
+                        nauczyciel=OuterRef("nauczyciel"),
+                        termin__date=OuterRef("data"),
+                        termin__time=OuterRef("godzina"),
+                    )
+                )
+            )
+
+    # --- NOWE: zbierz profile nauczycieli i wyciągnij przedmioty/poziomy ---
+    nauczyciel_ids = list(terminy_qs.values_list("nauczyciel_id", flat=True).distinct())
+
+    # model Profil bierzemy z obiektu jaki masz w projekcie (bez twardego importu)
+    ProfilModel = getattr(getattr(request.user, "profil", None), "__class__", None)
+    teacher_info = {}
+    if ProfilModel:
+        profile_map = {
+            p.user_id: p for p in ProfilModel.objects.filter(user_id__in=nauczyciel_ids)
+        }
+
+        def _norm_level(s: str) -> str:
+            s = (s or "").strip().lower()
+            if s.startswith("roz"):  # "rozszerzony", "rozszerzenie"
+                return "rozszerzony"
+            return "podstawowy"
+
+        for uid, profil in profile_map.items():
+            subjects_set = set()
+            levels_set = set()
+            # profil.przedmioty to CSV z "Nazwa - Poziom"
+            raw = (profil.przedmioty or "").strip()
+            if raw:
+                for item in [x.strip() for x in raw.split(",") if x.strip()]:
+                    # rozbij po " - " (pierwsze wystąpienie)
+                    if " - " in item:
+                        subj, lvl = item.split(" - ", 1)
+                        subjects_set.add(subj.strip())
+                        levels_set.add(_norm_level(lvl))
+                    else:
+                        # jeśli ktoś wpisał sam przedmiot bez poziomu
+                        subjects_set.add(item)
+            # fallback: jeśli nie ma nic, pokaż myślnik
+            if not subjects_set:
+                subjects_set.add("—")
+            if not levels_set:
+                levels_set.add("podstawowy")  # domyślnie
+
+            teacher_info[uid] = {
+                "subjects": sorted(subjects_set),
+                "levels": sorted(levels_set, key=lambda x: 0 if x=="podstawowy" else 1)
+            }
+
+    # zbuduj strukturę przyjazną dla template (unikamy dict lookupu po kluczu w Jinja)
+    entries = []
+    for t in terminy_qs:
+        info = teacher_info.get(t.nauczyciel_id, {"subjects": ["—"], "levels": ["podstawowy"]})
+        entries.append({"t": t, "info": info})
+
+    return render(
+        request,
+        "uczen/dostepne_terminy.html",
+        {
+            "terminy": entries,   # UWAGA: teraz iterujemy po entries
+        }
+    )
+
 
 @transaction.atomic
 def zarezerwuj_zajecia(request):
