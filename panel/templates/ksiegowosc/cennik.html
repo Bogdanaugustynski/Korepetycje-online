@@ -1,175 +1,186 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Cennik przedmiotów</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            padding: 40px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cennik przedmiotów — PolubiszTo.pl</title>
+  <meta name="description" content="Panel księgowości — cennik przedmiotów i poziomów nauczania">
+  <style>
+    :root{
+      --brand:#0b74ff;
+      --brand-700:#095cd1;
+      --ink:#0b1320;
+      --muted:#5b6777;
+      --line:#e6edff;
+      --bg:#f7f9fe;
+      --card:#ffffff;
+      --shadow:0 12px 40px rgba(11,116,255,.12);
+      --radius:16px;
+      --maxw:1100px;
+      --ok:#22c55e;
+      --danger:#dc3545;
+      --neutral:#6c757d;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif; line-height:1.45}
+    a{color:inherit}
 
-        .form-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 900px;
-        }
+    /* Layout */
+    .wrap{max-width:var(--maxw); margin:0 auto; padding:16px}
+    .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px}
+    .page-title{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:14px 0 18px}
+    h1{font-size:clamp(20px,4vw,28px); margin:0}
+    .actions-top{display:flex; gap:10px; flex-wrap:wrap}
 
-        h2, h3 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+    /* Table */
+    .table-wrap{overflow:auto}
+    table{width:100%; border-collapse:collapse; min-width:720px}
+    th,td{padding:12px 14px; text-align:center; border-bottom:1px solid var(--line)}
+    thead th{position:sticky; top:0; background:linear-gradient(0deg,var(--brand) 0%, var(--brand-700) 100%); color:#fff; z-index:1}
+    tbody tr:hover{background:#f2f7ff}
+    td strong{font-weight:700}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-        }
+    /* Controls */
+    input[type="number"], input[type="text"], select{
+      width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; outline:none; background:#fff
+    }
+    input:focus, select:focus{border-color:var(--brand)}
+    .row-actions{display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap}
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: center;
-        }
+    .btn{
+      border:none; border-radius:12px; padding:10px 14px; cursor:pointer; transition:.2s transform ease, .2s opacity ease;
+      font-weight:600; box-shadow:0 6px 16px rgba(11,116,255,.10)
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:active{transform:translateY(0)}
+    .btn-primary{background:var(--brand); color:#fff}
+    .btn-primary:hover{background:var(--brand-700)}
+    .btn-ok{background:var(--ok); color:#fff}
+    .btn-danger{background:var(--danger); color:#fff}
+    .btn-neutral{background:var(--neutral); color:#fff}
 
-        th {
-            background-color: #007bff;
-            color: white;
-        }
+    .section-title{font-size:clamp(16px,3vw,20px); margin:4px 0 12px}
 
-        input, select {
-            padding: 8px;
-            width: 100%;
-            box-sizing: border-box;
-        }
+    .grid-add{
+      display:grid; grid-template-columns:1fr 220px 220px auto; gap:12px; align-items:end
+    }
+    @media (max-width: 900px){
+      .grid-add{grid-template-columns:1fr 1fr}
+      .grid-add .wide{grid-column:1/-1}
+    }
+    .hint{color:var(--muted); font-size:.92rem}
 
-        .btn {
-            padding: 8px 14px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    /* Back link as button */
+    .back{
+      display:inline-flex; align-items:center; gap:8px; text-decoration:none
+    }
 
-        .btn:hover {
-            background-color: #218838;
-        }
-
-        .btn-delete {
-            background-color: #dc3545;
-        }
-
-        .btn-delete:hover {
-            background-color: #c82333;
-        }
-
-        .btn-add {
-            background-color: #007bff;
-            margin-top: 10px;
-        }
-
-        .btn-add:hover {
-            background-color: #0069d9;
-        }
-
-        .back-link {
-            display: block;
-            margin-top: 30px;
-            text-align: center;
-            text-decoration: none;
-            background-color: #6c757d;
-            color: white;
-            padding: 10px;
-            border-radius: 4px;
-        }
-
-        .back-link:hover {
-            background-color: #5a6268;
-        }
-
-        .action-forms {
-            display: flex;
-            gap: 5px;
-            justify-content: center;
-        }
-    </style>
+    /* Safe spacing below brand header */
+    .brand-spacer{height:8px}
+  </style>
 </head>
 <body>
-<div class="form-box">
-    <h2>Cennik przedmiotów</h2>
 
-    <table>
-        <tr>
-            <th>Przedmiot</th>
-            <th>Poziom</th>
-            <th>Aktualna cena</th>
-            <th>Edytuj cenę</th>
-            <th>Akcje</th>
-        </tr>
-        {% for p in przedmioty %}
-        <tr>
-            <td>{{ p.nazwa }}</td>
-            <td>{{ p.poziom|title }}</td>
-            <td><strong>{{ p.cena|floatformat:2 }} zł</strong></td>
-            <td>
-                <form method="post" onsubmit="return confirmZapis(this);">
-                    {% csrf_token %}
-                    <input type="hidden" name="zapisz_id" value="{{ p.id }}">
-                    <input type="number" name="cena" step="0.01" placeholder="Nowa cena" required>
-            </td>
-            <td class="action-forms">
-                    <button type="submit" class="btn">Zapisz</button>
-                </form>
-                <form method="post" onsubmit="return confirmUsun(this);">
-                    {% csrf_token %}
-                    <input type="hidden" name="usun_id" value="{{ p.id }}">
-                    <button type="submit" class="btn btn-delete">Usuń</button>
-                </form>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5">Brak przedmiotów w cenniku</td></tr>
-        {% endfor %}
-    </table>
+  {% include "partials/brand.html" %}
+  <div class="brand-spacer"></div>
 
-    <h3>Dodaj nowy przedmiot</h3>
-    <form method="post">
+  <div class="wrap">
+    <div class="page-title">
+      <h1>Cennik przedmiotów</h1>
+      <div class="actions-top">
+        <a class="btn btn-neutral back" href="{% url 'panel_ksiegowosc' %}" aria-label="Powrót do panelu księgowości">⟵ Powrót</a>
+      </div>
+    </div>
+
+    <div class="card" aria-labelledby="cennik-tabela">
+      <div class="section-title" id="cennik-tabela">Aktualne stawki</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Przedmiot</th>
+              <th scope="col">Poziom</th>
+              <th scope="col">Aktualna cena</th>
+              <th scope="col">Edytuj cenę</th>
+              <th scope="col">Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in przedmioty %}
+            <tr>
+              <td>{{ p.nazwa }}</td>
+              <td>{{ p.poziom|title }}</td>
+              <td><strong>{{ p.cena|floatformat:2 }} zł</strong></td>
+
+              <td>
+                <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę">
+                  {% csrf_token %}
+                  <input type="hidden" name="zapisz_id" value="{{ p.id }}">
+                  <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena" required>
+              </td>
+
+              <td class="row-actions">
+                  <button type="submit" class="btn btn-ok">Zapisz</button>
+                </form>
+
+                <form method="post" onsubmit="return confirmUsun(this);" aria-label="Usuń pozycję cennika">
+                  {% csrf_token %}
+                  <input type="hidden" name="usun_id" value="{{ p.id }}">
+                  <button type="submit" class="btn btn-danger">Usuń</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="hint">Brak przedmiotów w cenniku</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px" aria-labelledby="dodaj-przedmiot">
+      <div class="section-title" id="dodaj-przedmiot">Dodaj nową pozycję</div>
+      <form method="post">
         {% csrf_token %}
-        <label>Nazwa przedmiotu</label>
-        <input type="text" name="nazwa" required>
+        <div class="grid-add">
+          <div class="wide">
+            <label for="nazwa">Nazwa przedmiotu</label>
+            <input id="nazwa" type="text" name="nazwa" placeholder="np. Matematyka" required>
+          </div>
 
-        <label>Poziom</label>
-        <select name="poziom" required>
-            <option value="podstawowy">Podstawowy</option>
-            <option value="rozszerzony">Rozszerzony</option>
-        </select>
+          <div>
+            <label for="poziom">Poziom</label>
+            <select id="poziom" name="poziom" required>
+              <option value="podstawowy">Podstawowy</option>
+              <option value="rozszerzony">Rozszerzony</option>
+            </select>
+          </div>
 
-        <label>Cena [zł/h]</label>
-        <input type="number" step="0.01" name="nowa_cena" required>
+          <div>
+            <label for="nowa_cena">Cena [zł/h]</label>
+            <input id="nowa_cena" type="number" step="0.01" inputmode="decimal" name="nowa_cena" placeholder="np. 89.00" required>
+          </div>
 
-        <div style="text-align: center;">
-            <button type="submit" name="dodaj_przedmiot" class="btn btn-add">Dodaj przedmiot</button>
+          <div>
+            <button type="submit" name="dodaj_przedmiot" class="btn btn-primary">Dodaj</button>
+          </div>
         </div>
-    </form>
+      </form>
+      <p class="hint" style="margin-top:10px">Po dodaniu/edycji stawki wartości są od razu dostępne w panelu nauczyciela (podgląd cennika).</p>
+    </div>
 
-    <a href="{% url 'panel_ksiegowosc' %}" class="back-link">Powrót do panelu księgowości</a>
-</div>
+    <div style="height:24px"></div>
+  </div>
 
-<script>
+  <script>
     function confirmZapis(form) {
-        return confirm("Czy na pewno chcesz zapisać nową cenę?");
+      return confirm("Czy na pewno chcesz zapisać nową cenę?");
     }
-
     function confirmUsun(form) {
-        return confirm("Czy na pewno chcesz usunąć ten przedmiot?");
+      return confirm("Czy na pewno chcesz usunąć ten przedmiot?");
     }
-</script>
+  </script>
 </body>
 </html>
