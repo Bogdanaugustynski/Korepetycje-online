@@ -684,6 +684,111 @@ def moje_rezerwacje_ucznia_view(request):
 
 
 @login_required
+def moje_konto_view(request):
+    profil = request.user.profil
+    user = request.user
+
+    if request.method == "POST":
+        user.first_name = request.POST.get("first_name", user.first_name)
+        user.last_name = request.POST.get("last_name", user.last_name)
+        profil.numer_telefonu = request.POST.get("numer_telefonu", profil.numer_telefonu)
+
+        profil.tytul_naukowy = ",".join(request.POST.getlist("tytul_naukowy"))
+        profil.poziom_nauczania = ",".join(request.POST.getlist("poziom_nauczania"))
+        profil.przedmioty = ",".join(request.POST.getlist("przedmioty"))
+        profil.opis = request.POST.get("opis", profil.opis)
+
+        user.save()
+        profil.save()
+        return redirect("panel_nauczyciela")
+
+    cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
+    return render(request, "moje_konto.html", {"profil": profil, "user": user, "cennik": cennik})
+
+@transaction.atomic
+def zarezerwuj_zajecia(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Nieprawidłowa metoda")
+
+    termin_txt = request.POST.get("termin", "").strip()  # "YYYY-MM-DD HH:MM"
+    nauczyciel_id = request.POST.get("nauczyciel_id")
+    termin_id = request.POST.get("termin_id")  # jeśli masz FK do WolnyTermin
+    temat = request.POST.get("temat", "").strip()
+    plik = request.FILES.get("plik")
+
+    if not (termin_txt and nauczyciel_id and temat):
+        return HttpResponseBadRequest("Brak danych")
+
+    # Parsowanie daty/godziny z termin_txt
+    try:
+        data_str, godz_str = termin_txt.split(" ")
+    except ValueError:
+        return HttpResponseBadRequest("Zły format terminu")
+
+    from datetime import datetime
+    try:
+        data = datetime.strptime(data_str, "%Y-%m-%d").date()
+        godzina = datetime.strptime(godz_str, "%H:%M").time()
+    except ValueError:
+        return HttpResponseBadRequest("Zły format daty/godziny")
+
+    now = timezone.localtime()
+    if (data < now.date()) or (data == now.date() and godzina < now.time()):
+        return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
+
+    User = apps.get_model("auth", "User")
+    Rezerwacja = apps.get_model("panel", "Rezerwacja")
+    WolnyTermin = apps.get_model("panel", "WolnyTermin")
+
+    # 1) Jeżeli używasz FK do WolnyTermin:
+    if termin_id:
+        try:
+            slot = (WolnyTermin.objects
+                    .select_for_update()
+                    .select_related("nauczyciel")
+                    .get(id=termin_id, nauczyciel_id=nauczyciel_id, data=data, godzina=godzina))
+        except WolnyTermin.DoesNotExist:
+            return HttpResponseBadRequest("Termin nie istnieje")
+
+        # Próba założenia rezerwacji – w połączeniu z UniqueConstraint przebija duplikaty
+        obj, created = Rezerwacja.objects.get_or_create(
+            # jeśli masz pole termin=FK:
+            # termin=slot,
+            # a jeśli masz termin=DateTimeField:
+            nauczyciel=slot.nauczyciel,
+            termin=timezone.make_aware(datetime.combine(data, godzina)),
+            defaults={
+                "uczen": request.user,
+                "temat": temat,
+                "plik": plik,
+            }
+        )
+        if not created:
+            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
+
+    else:
+        # 2) Jeżeli NIE masz FK – pilnuj unikalności (nauczyciel, termin[DT])
+        nauczyciel = User.objects.get(id=nauczyciel_id)
+        when_dt = timezone.make_aware(datetime.combine(data, godzina))
+
+        obj, created = Rezerwacja.objects.get_or_create(
+            nauczyciel=nauczyciel,
+            termin=when_dt,
+            defaults={
+                "uczen": request.user,
+                "temat": temat,
+                "plik": plik,
+            }
+        )
+        if not created:
+            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
+
+    # OK → przekierowanie (np. do „Moje rezerwacje”)
+    return HttpResponseRedirect(reverse("moje_rezerwacje"))
+
+
+
+@login_required
 def dostepne_terminy_view(request):
     """
     Lista dostępnych terminów + 2 nowe kolumny:
@@ -785,141 +890,6 @@ def dostepne_terminy_view(request):
             "terminy": entries,   # UWAGA: teraz iterujemy po entries
         }
     )
-
-
-@transaction.atomic
-def zarezerwuj_zajecia(request):
-    if request.method != "POST":
-        return HttpResponseBadRequest("Nieprawidłowa metoda")
-
-    termin_txt = request.POST.get("termin", "").strip()  # "YYYY-MM-DD HH:MM"
-    nauczyciel_id = request.POST.get("nauczyciel_id")
-    termin_id = request.POST.get("termin_id")  # jeśli masz FK do WolnyTermin
-    temat = request.POST.get("temat", "").strip()
-    plik = request.FILES.get("plik")
-
-    if not (termin_txt and nauczyciel_id and temat):
-        return HttpResponseBadRequest("Brak danych")
-
-    # Parsowanie daty/godziny z termin_txt
-    try:
-        data_str, godz_str = termin_txt.split(" ")
-    except ValueError:
-        return HttpResponseBadRequest("Zły format terminu")
-
-    from datetime import datetime
-    try:
-        data = datetime.strptime(data_str, "%Y-%m-%d").date()
-        godzina = datetime.strptime(godz_str, "%H:%M").time()
-    except ValueError:
-        return HttpResponseBadRequest("Zły format daty/godziny")
-
-    now = timezone.localtime()
-    if (data < now.date()) or (data == now.date() and godzina < now.time()):
-        return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
-
-    User = apps.get_model("auth", "User")
-    Rezerwacja = apps.get_model("panel", "Rezerwacja")
-    WolnyTermin = apps.get_model("panel", "WolnyTermin")
-
-    # 1) Jeżeli używasz FK do WolnyTermin:
-    if termin_id:
-        try:
-            slot = (WolnyTermin.objects
-                    .select_for_update()
-                    .select_related("nauczyciel")
-                    .get(id=termin_id, nauczyciel_id=nauczyciel_id, data=data, godzina=godzina))
-        except WolnyTermin.DoesNotExist:
-            return HttpResponseBadRequest("Termin nie istnieje")
-
-        # Próba założenia rezerwacji – w połączeniu z UniqueConstraint przebija duplikaty
-        obj, created = Rezerwacja.objects.get_or_create(
-            # jeśli masz pole termin=FK:
-            # termin=slot,
-            # a jeśli masz termin=DateTimeField:
-            nauczyciel=slot.nauczyciel,
-            termin=timezone.make_aware(datetime.combine(data, godzina)),
-            defaults={
-                "uczen": request.user,
-                "temat": temat,
-                "plik": plik,
-            }
-        )
-        if not created:
-            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
-
-    else:
-        # 2) Jeżeli NIE masz FK – pilnuj unikalności (nauczyciel, termin[DT])
-        nauczyciel = User.objects.get(id=nauczyciel_id)
-        when_dt = timezone.make_aware(datetime.combine(data, godzina))
-
-        obj, created = Rezerwacja.objects.get_or_create(
-            nauczyciel=nauczyciel,
-            termin=when_dt,
-            defaults={
-                "uczen": request.user,
-                "temat": temat,
-                "plik": plik,
-            }
-        )
-        if not created:
-            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
-
-    # OK → przekierowanie (np. do „Moje rezerwacje”)
-    return HttpResponseRedirect(reverse("moje_rezerwacje"))
-
-
-
-@login_required
-def dostepne_terminy_view(request):
-    """
-    Lista dostępnych terminów:
-    - tylko przyszłość (data>dzisiaj lub data=dzisiaj i godzina>=teraz)
-    - rosnąco po (data, godzina)
-    - wyklucza już zarezerwowane (jeśli mamy model Rezerwacja)
-    """
-    now = timezone.localtime()
-
-    terminy = (
-        WolnyTermin.objects
-        .select_related("nauczyciel")
-        .filter(
-            models.Q(data__gt=now.date()) |
-            models.Q(data=now.date(), godzina__gte=now.time())
-        )
-        .order_by("data", "godzina")
-    )
-
-    # Wyklucz zajęte (działa zarówno gdy Rezerwacja.termin jest FK, jak i DateTimeField)
-    try:
-        Rezerwacja = apps.get_model("panel", "Rezerwacja")
-    except LookupError:
-        Rezerwacja = None
-
-    if Rezerwacja:
-        try:
-            pole = Rezerwacja._meta.get_field("termin")
-        except Exception:
-            pole = None
-
-        if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
-            # Rezerwacja.termin -> FK do WolnyTermin
-            terminy = terminy.exclude(
-                Exists(Rezerwacja.objects.filter(termin_id=OuterRef("id")))
-            )
-        else:
-            # Rezerwacja.termin -> DateTimeField
-            terminy = terminy.exclude(
-                Exists(
-                    Rezerwacja.objects.filter(
-                        nauczyciel=OuterRef("nauczyciel"),
-                        termin__date=OuterRef("data"),
-                        termin__time=OuterRef("godzina"),
-                    )
-                )
-            )
-
-    return render(request, "uczen/dostepne_terminy.html", {"terminy": terminy})
 
 
 @require_POST
