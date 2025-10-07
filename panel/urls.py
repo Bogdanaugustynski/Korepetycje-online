@@ -3,6 +3,7 @@ from django.views.generic import TemplateView
 from . import views
 from panel.views import strona_glowna_view
 from .views import login_view
+from .views import moje_konto_uczen_view
 from django.contrib.auth.views import LogoutView
 from .views import (
     podwyzki_nauczyciele_view,
