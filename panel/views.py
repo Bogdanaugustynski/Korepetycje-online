@@ -813,9 +813,10 @@ def zarezerwuj_zajecia(request):
 @login_required
 def dostepne_terminy_view(request):
     """
-    Lista dostępnych terminów + 2 nowe kolumny:
+    Lista dostępnych terminów + kolumny:
     - 'Przedmiot' (z profilu nauczyciela)
     - 'Poziom'  (select z poziomami z profilu; zapis do formularza)
+    - 'Cena [zł/h]' (z cennika PrzedmiotCennik.cena_uczen, zależna od wybranego poziomu)
     """
     now = timezone.localtime()
 
@@ -856,10 +857,9 @@ def dostepne_terminy_view(request):
                 )
             )
 
-    # --- NOWE: zbierz profile nauczycieli i wyciągnij przedmioty/poziomy ---
+    # --- Profile nauczycieli: przedmioty / poziomy ---
     nauczyciel_ids = list(terminy_qs.values_list("nauczyciel_id", flat=True).distinct())
 
-    # model Profil bierzemy z obiektu jaki masz w projekcie (bez twardego importu)
     ProfilModel = getattr(getattr(request.user, "profil", None), "__class__", None)
     teacher_info = {}
     if ProfilModel:
@@ -869,50 +869,79 @@ def dostepne_terminy_view(request):
 
         def _norm_level(s: str) -> str:
             s = (s or "").strip().lower()
-            if s.startswith("roz"):  # "rozszerzony", "rozszerzenie"
-                return "rozszerzony"
-            return "podstawowy"
+            return "rozszerzony" if s.startswith("roz") else "podstawowy"
 
         for uid, profil in profile_map.items():
             subjects_set = set()
             levels_set = set()
-            # profil.przedmioty to CSV z "Nazwa - Poziom"
-            raw = (profil.przedmioty or "").strip()
+
+            raw = (getattr(profil, "przedmioty", "") or "").strip()
             if raw:
                 for item in [x.strip() for x in raw.split(",") if x.strip()]:
-                    # rozbij po " - " (pierwsze wystąpienie)
                     if " - " in item:
                         subj, lvl = item.split(" - ", 1)
                         subjects_set.add(subj.strip())
                         levels_set.add(_norm_level(lvl))
                     else:
-                        # jeśli ktoś wpisał sam przedmiot bez poziomu
                         subjects_set.add(item)
-            # fallback: jeśli nie ma nic, pokaż myślnik
+
             if not subjects_set:
                 subjects_set.add("—")
             if not levels_set:
-                levels_set.add("podstawowy")  # domyślnie
+                levels_set.add("podstawowy")
 
             teacher_info[uid] = {
                 "subjects": sorted(subjects_set),
-                "levels": sorted(levels_set, key=lambda x: 0 if x=="podstawowy" else 1)
+                "levels": sorted(levels_set, key=lambda x: 0 if x == "podstawowy" else 1),
             }
 
-    # zbuduj strukturę przyjazną dla template (unikamy dict lookupu po kluczu w Jinja)
+    # --- CENY z cennika (PrzedmiotCennik.cena_uczen) dla nauczycieli/poziomów ---
+    try:
+        PrzedmiotCennik = apps.get_model("panel", "PrzedmiotCennik")
+    except LookupError:
+        PrzedmiotCennik = None
+
+    if PrzedmiotCennik:
+        for uid, info in teacher_info.items():
+            subjects = [s for s in info.get("subjects", []) if s != "—"]
+            levels = info.get("levels", [])
+            prices = {}
+
+            if subjects:
+                base_qs = PrzedmiotCennik.objects.filter(nazwa__in=subjects)
+                for lvl in levels:
+                    lvln = "rozszerzony" if lvl == "rozszerzony" else "podstawowy"
+                    vals = list(base_qs.filter(poziom=lvln).values_list("cena_uczen", flat=True))
+
+                    if vals:
+                        mn = min(vals)
+                        mx = max(vals)
+                        prices[lvln] = f"{mn:.2f} zł" if mn == mx else f"{mn:.2f}–{mx:.2f} zł"
+                    else:
+                        prices[lvln] = "—"
+            else:
+                prices = {"podstawowy": "—", "rozszerzony": "—"}
+
+            info["prices"] = prices
+    else:
+        # Brak modelu cennika – zabezpieczenie
+        for info in teacher_info.values():
+            info["prices"] = {"podstawowy": "—", "rozszerzony": "—"}
+
+    # --- Zbiór dla template ---
     entries = []
     for t in terminy_qs:
-        info = teacher_info.get(t.nauczyciel_id, {"subjects": ["—"], "levels": ["podstawowy"]})
+        info = teacher_info.get(
+            t.nauczyciel_id,
+            {"subjects": ["—"], "levels": ["podstawowy"], "prices": {"podstawowy": "—", "rozszerzony": "—"}}
+        )
         entries.append({"t": t, "info": info})
 
     return render(
         request,
         "uczen/dostepne_terminy.html",
-        {
-            "terminy": entries,   # UWAGA: teraz iterujemy po entries
-        }
+        {"terminy": entries}
     )
-
 
 @require_POST
 @login_required

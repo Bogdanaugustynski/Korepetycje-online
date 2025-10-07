@@ -43,17 +43,9 @@
     .when{white-space:nowrap}
     .act{display:flex;gap:10px;flex-wrap:wrap}
 
-    /* Przywrócony wygląd przycisku */
     .btn-book{
-      background:var(--ok);
-      color:#fff;
-      border-radius:10px;
-      padding:8px 12px;
-      font-weight:700;
-      border:none;
-      cursor:pointer;
-      box-shadow:0 4px 12px rgba(34,197,94,.25);
-      transition:transform .06s ease, filter .15s ease;
+      background:var(--ok); color:#fff; border-radius:10px; padding:8px 12px; font-weight:700; border:none; cursor:pointer;
+      box-shadow:0 4px 12px rgba(34,197,94,.25); transition:transform .06s ease, filter .15s ease;
     }
     .btn-book:hover{ background:#1ea34f; filter:brightness(1.02) }
     .btn-book:active{ transform:translateY(1px) }
@@ -72,11 +64,9 @@
     .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
     .btn-cancel:hover{background:#fecaca}
 
-    /* --- Ali: poprawka selecta "Poziom" --- */
-    .level-select{ min-width:0; max-width:100%; width:100%; } /* nie wymuszaj 230px */
+    .level-select{ min-width:0; max-width:100%; width:100%; }
     td.level{ vertical-align:middle; }
 
-    /* Kafelki na mobilu (bez poziomego scrolla) */
     @media (max-width: 720px){
       .form-grid{grid-template-columns:1fr}
       .card-head{align-items:stretch;flex-direction:column}
@@ -91,8 +81,6 @@
       .teacher{ font-weight:800 }
       .act{ display:block; margin-top:4px }
       .btn-book{ width:100%; padding:12px }
-
-      /* Ali: dopasowanie selecta do kafelka */
       td.level{ padding-right:12px; }
       .level-select{ display:block; width:100%; min-width:0; font-size:14px; padding:10px 12px; }
     }
@@ -121,6 +109,7 @@
             <tr>
               <th>Przedmiot</th>
               <th>Poziom</th>
+              <th>Cena [zł/h]</th>
               <th>Nauczyciel</th>
               <th><span translate="no">Data</span></th>
               <th>Godzina</th>
@@ -135,11 +124,13 @@
               data-date="{{ t.data|date:'Y-m-d' }}"
               data-time="{{ t.godzina|time:'H:i' }}"
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
-              data-levels="{{ info.levels|join:',' }}"
+              data-price-podstawowy="{{ info.prices.podstawowy|default:'—' }}"
+              data-price-rozszerzony="{{ info.prices.rozszerzony|default:'—' }}"
             >
               <td class="subject" data-label="Przedmiot">
                 {{ info.subjects|join:", " }}
               </td>
+
               <td class="level" data-label="Poziom">
                 <select class="input level-select" aria-label="Wybierz poziom" translate="no">
                   {% for lvl in info.levels %}
@@ -147,6 +138,12 @@
                   {% endfor %}
                 </select>
               </td>
+
+              <!-- NOWE: CENA – reaguje na wybór poziomu -->
+              <td class="price" data-label="Cena [zł/h]">
+                <span class="price-val">—</span>
+              </td>
+
               <td class="teacher" data-label="Nauczyciel">
                 {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
               </td>
@@ -161,7 +158,7 @@
             </tr>
             {% endwith %}
             {% empty %}
-            <tr><td class="empty" data-label="Dostępne terminy" colspan="6">Brak dostępnych terminów</td></tr>
+            <tr><td class="empty" data-label="Dostępne terminy" colspan="7">Brak dostępnych terminów</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -202,6 +199,16 @@
   </main>
 
   <script>
+    function updatePriceForRow(tr){
+      const sel = tr.querySelector('.level-select');
+      const span = tr.querySelector('.price-val');
+      if(!span || !sel) return;
+      const val = sel.value === 'rozszerzony'
+        ? tr.getAttribute('data-price-rozszerzony')
+        : tr.getAttribute('data-price-podstawowy');
+      span.textContent = val || '—';
+    }
+
     // ------------- UX: wybór terminu, blokada klików -------------
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
       if (btn.dataset.locked === "1") return;
@@ -209,7 +216,7 @@
       btn.disabled = true;
       btn.textContent = "Wybrano";
 
-      // wyciągnij poziom z bieżącego wiersza (select)
+      // poziom -> hidden
       const tr = btn.closest('tr');
       let selectedLevel = 'podstawowy';
       if (tr) {
@@ -226,7 +233,7 @@
       const box = document.getElementById('formularz');
       box.classList.remove('hidden');
 
-      document.getElementById('termin').value = iso; // ISO: YYYY-MM-DD HH:MM
+      document.getElementById('termin').value = iso;
       document.getElementById('nauczyciel_id').value = nauczycielId;
       document.getElementById('termin_id').value = terminId;
 
@@ -245,7 +252,6 @@
       document.getElementById('nauczyciel_id').value = '';
       document.getElementById('termin_id').value = '';
       document.getElementById('poziom').value = '';
-      // odblokuj przyciski
       document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
 
@@ -280,7 +286,7 @@
       });
     }
 
-    // ------------- Porządkowanie tabeli: deduplikacja, sort, ukrycie przeszłości -------------
+    // ------------- Porządkowanie + inicjalizacja cen -------------
     function cleanupTable(){
       const tbody = document.querySelector('#termsTable tbody');
       if(!tbody) return;
@@ -293,8 +299,8 @@
 
       rows.forEach(row => {
         const key = row.getAttribute('data-key');
-        const dateISO = row.getAttribute('data-date'); // YYYY-MM-DD
-        const timeISO = row.getAttribute('data-time'); // HH:MM
+        const dateISO = row.getAttribute('data-date');
+        const timeISO = row.getAttribute('data-time');
 
         if(!dateISO || !timeISO || !key){
           items.push({row, keep:true, sort:null, key:null});
@@ -307,33 +313,34 @@
 
         const isPast = dt.getTime() < now.getTime();
 
-        if(seen.has(key)){
-          row.remove(); // duplikat
-          return;
-        }
+        if(seen.has(key)){ row.remove(); return; }
         seen.add(key);
-
-        if(isPast){
-          row.remove(); // przeszłe terminy
-          return;
-        }
+        if(isPast){ row.remove(); return; }
 
         items.push({row, keep:true, sort:dt.getTime(), key});
       });
 
       const sortable = items.filter(i=>i.sort!==null).sort((a,b)=>a.sort-b.sort);
       tbody.innerHTML = '';
-      sortable.forEach(i=>tbody.appendChild(i.row));
+      sortable.forEach(i=>{
+        tbody.appendChild(i.row);
+        // inicjalizacja ceny dla domyślnego poziomu w tym wierszu
+        updatePriceForRow(i.row);
+        // nasłuch zmiany poziomu
+        const sel = i.row.querySelector('.level-select');
+        if(sel){
+          sel.addEventListener('change', ()=>updatePriceForRow(i.row));
+        }
+      });
 
       const others = items.filter(i=>i.sort===null && i.keep);
       others.forEach(i=>tbody.appendChild(i.row));
 
-      // teraz mamy 6 kolumn
       if (!tbody.querySelector('tr')) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         td.className = 'empty';
-        td.colSpan = 6;
+        td.colSpan = 7;
         td.textContent = 'Brak dostępnych terminów';
         tr.appendChild(td);
         tbody.appendChild(tr);
