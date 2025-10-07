@@ -21,9 +21,8 @@ class StudentAccountForm(forms.ModelForm):
     last_name  = forms.CharField(label="Nazwisko", max_length=150, required=True)
     email      = forms.EmailField(label="E-mail", required=True)
 
-    # Pole z Profil
+    # Pole „telefon” w formularzu (niezależne od nazwy w modelu)
     telefon    = forms.CharField(label="Telefon", max_length=32, required=False)
-    # Jeśli w modelu masz inną nazwę (np. numer_telefonu), podmień w __init__ i save().
 
     class Meta:
         model  = User
@@ -32,18 +31,35 @@ class StudentAccountForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+
+        # Wczytaj profil i ustaw initial zgodnie z tym, co *istnieje* w modelu
         if self.user:
             profil, _ = Profil.objects.get_or_create(user=self.user)
-            # ZMIEŃ TUTAJ jeżeli masz inną nazwę:
-            self.fields["telefon"].initial = getattr(profil, "telefon", "")
+            # Obsługa dwóch możliwych nazw w modelu:
+            tel_val = ""
+            if hasattr(profil, "telefon"):
+                tel_val = getattr(profil, "telefon", "") or ""
+            elif hasattr(profil, "numer_telefonu"):
+                tel_val = getattr(profil, "numer_telefonu", "") or ""
+            self.fields["telefon"].initial = tel_val
 
     def save(self, commit=True):
         user = super().save(commit=commit)
         profil, _ = Profil.objects.get_or_create(user=user)
-        # ZMIEŃ TUTAJ jeżeli masz inną nazwę:
-        profil.telefon = self.cleaned_data.get("telefon", "")
+        tel_form = self.cleaned_data.get("telefon", "")
+
+        # Zapisz do właściwego pola w modelu
+        if hasattr(profil, "telefon"):
+            profil.telefon = tel_form
+        elif hasattr(profil, "numer_telefonu"):
+            profil.numer_telefonu = tel_form
+        else:
+            # Awaryjnie – jeśli kiedyś zmienisz nazwę po raz trzeci, wiesz gdzie poprawić ;)
+            pass
+
         profil.save()
         return user
+
 
 
 class StudentPasswordChangeForm(PasswordChangeForm):
