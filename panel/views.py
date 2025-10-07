@@ -37,6 +37,7 @@ from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.db import transaction, models
 from django.db.models import Q
+from decimal import Decimal, InvalidOperation
 
 
 # MODELE
@@ -552,37 +553,58 @@ def dodaj_material_po_zajeciach(request, rezerwacja_id):
     return redirect("moj_plan_zajec")
 
 
+log = logging.getLogger(__name__)
+
 @login_required
 def cennik_view(request):
     if not is_accounting(request.user):
         raise PermissionDenied
 
     if request.method == "POST":
+        # 1) Zmiana ceny nauczyciela
         if "zapisz_id" in request.POST:
             try:
                 przedmiot_id = int(request.POST.get("zapisz_id"))
-                cena = float(request.POST.get("cena"))
+                cena_raw = request.POST.get("cena")
+                cena = Decimal(cena_raw).quantize(Decimal("0.01"))
                 przedmiot = PrzedmiotCennik.objects.get(pk=przedmiot_id)
                 przedmiot.cena = cena
-                przedmiot.save()
-            except Exception as e:
-                log.exception("Błąd zapisu cennika")
+                przedmiot.save(update_fields=["cena"])
+            except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
+                log.exception("Błąd zapisu cennika (nauczyciel) %s", e)
 
+        # 2) Zmiana ceny dla ucznia
+        elif "zapisz_uczen_id" in request.POST:
+            try:
+                przedmiot_id = int(request.POST.get("zapisz_uczen_id"))
+                cena_raw = request.POST.get("cena_uczen")
+                cena_uczen = Decimal(cena_raw).quantize(Decimal("0.01"))
+                przedmiot = PrzedmiotCennik.objects.get(pk=przedmiot_id)
+                przedmiot.cena_uczen = cena_uczen
+                przedmiot.save(update_fields=["cena_uczen"])
+            except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
+                log.exception("Błąd zapisu cennika (uczeń) %s", e)
+
+        # 3) Usunięcie pozycji
         elif "usun_id" in request.POST:
             try:
                 przedmiot_id = int(request.POST.get("usun_id"))
                 PrzedmiotCennik.objects.get(pk=przedmiot_id).delete()
-            except Exception as e:
-                log.exception("Błąd usuwania pozycji cennika")
+            except (PrzedmiotCennik.DoesNotExist, ValueError) as e:
+                log.exception("Błąd usuwania pozycji cennika %s", e)
 
+        # 4) Dodanie nowej pozycji
         elif "dodaj_przedmiot" in request.POST:
             try:
-                nazwa = request.POST.get("nazwa")
-                poziom = request.POST.get("poziom")
-                cena = float(request.POST.get("nowa_cena"))
-                PrzedmiotCennik.objects.create(nazwa=nazwa, poziom=poziom, cena=cena)
-            except Exception as e:
-                log.exception("Błąd dodawania pozycji cennika")
+                nazwa = (request.POST.get("nazwa") or "").strip()
+                poziom = (request.POST.get("poziom") or "").strip()
+                cena = Decimal(request.POST.get("nowa_cena")).quantize(Decimal("0.01"))
+                cena_uczen = Decimal(request.POST.get("nowa_cena_uczen")).quantize(Decimal("0.01"))
+                PrzedmiotCennik.objects.create(
+                    nazwa=nazwa, poziom=poziom, cena=cena, cena_uczen=cena_uczen
+                )
+            except (InvalidOperation, ValueError) as e:
+                log.exception("Błąd dodawania pozycji cennika %s", e)
 
     przedmioty = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
     return render(request, "ksiegowosc/cennik.html", {"przedmioty": przedmioty})

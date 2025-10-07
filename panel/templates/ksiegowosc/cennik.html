@@ -26,7 +26,7 @@
 
     /* Table (desktop) */
     .table-wrap{overflow:auto}
-    table{width:100%; border-collapse:collapse; min-width:720px}
+    table{width:100%; border-collapse:collapse; min-width:980px}
     th,td{padding:12px 14px; text-align:center; border-bottom:1px solid var(--line)}
     thead th{position:sticky; top:0; background:linear-gradient(0deg,var(--brand) 0%, var(--brand-700) 100%); color:#fff; z-index:1}
     tbody tr:hover{background:#f2f7ff}
@@ -53,8 +53,8 @@
     .hint{color:var(--muted); font-size:.92rem}
 
     /* Add form grid */
-    .grid-add{display:grid; grid-template-columns:1fr 220px 220px auto; gap:12px; align-items:end}
-    @media (max-width: 900px){
+    .grid-add{display:grid; grid-template-columns:1fr 200px 200px 200px auto; gap:12px; align-items:end}
+    @media (max-width: 1100px){
       .grid-add{grid-template-columns:1fr 1fr}
       .grid-add .wide{grid-column:1/-1}
     }
@@ -71,7 +71,7 @@
     .card-item .form-edit{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end}
     .card-item .actions{display:flex; gap:8px; justify-content:flex-end}
 
-    @media (max-width: 780px){
+    @media (max-width: 880px){
       .table-wrap{display:none}     /* chowamy tabelę na mobile */
       .cards-mobile{display:grid; grid-template-columns:1fr;}
     }
@@ -101,8 +101,10 @@
             <tr>
               <th scope="col">Przedmiot</th>
               <th scope="col">Poziom</th>
-              <th scope="col">Aktualna cena</th>
-              <th scope="col">Edytuj cenę</th>
+              <th scope="col">Aktualna cena [zł/h]</th>
+              <th scope="col">Edytuj (nauczyciel)</th>
+              <th scope="col">Cena dla ucznia [zł/h]</th>
+              <th scope="col">Edytuj (uczeń)</th>
               <th scope="col">Akcje</th>
             </tr>
           </thead>
@@ -113,14 +115,24 @@
               <td>{{ p.poziom|title }}</td>
               <td><strong>{{ p.cena|floatformat:2 }} zł</strong></td>
               <td>
-                <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę">
+                <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę nauczyciela">
                   {% csrf_token %}
                   <input type="hidden" name="zapisz_id" value="{{ p.id }}">
-                  <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena" required>
+                  <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena nauczyciela" required>
               </td>
+
+              <td><strong>{{ p.cena_uczen|floatformat:2 }} zł</strong></td>
+              <td>
+                <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę ucznia">
+                  {% csrf_token %}
+                  <input type="hidden" name="zapisz_uczen_id" value="{{ p.id }}">
+                  <input type="number" name="cena_uczen" step="0.01" inputmode="decimal" placeholder="Nowa cena ucznia" required>
+              </td>
+
               <td class="row-actions">
                   <button type="submit" class="btn btn-ok">Zapisz</button>
                 </form>
+
                 <form method="post" onsubmit="return confirmUsun(this);" aria-label="Usuń pozycję cennika">
                   {% csrf_token %}
                   <input type="hidden" name="usun_id" value="{{ p.id }}">
@@ -129,7 +141,7 @@
               </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="hint">Brak przedmiotów w cenniku</td></tr>
+            <tr><td colspan="7" class="hint">Brak przedmiotów w cenniku</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -152,15 +164,26 @@
 
           <div class="row">
             <div>
-              <span class="label">Aktualna cena</span>
+              <span class="label">Cena (nauczyciel)</span>
               <div class="value">{{ p.cena|floatformat:2 }} zł</div>
+            </div>
+            <div>
+              <span class="label">Cena dla ucznia</span>
+              <div class="value">{{ p.cena_uczen|floatformat:2 }} zł</div>
             </div>
           </div>
 
-          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę (mobile)">
+          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę nauczyciela (mobile)">
             {% csrf_token %}
             <input type="hidden" name="zapisz_id" value="{{ p.id }}">
-            <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena" required>
+            <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena nauczyciela" required>
+            <button type="submit" class="btn btn-ok">Zapisz</button>
+          </form>
+
+          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę ucznia (mobile)">
+            {% csrf_token %}
+            <input type="hidden" name="zapisz_uczen_id" value="{{ p.id }}">
+            <input type="number" name="cena_uczen" step="0.01" inputmode="decimal" placeholder="Nowa cena ucznia" required>
             <button type="submit" class="btn btn-ok">Zapisz</button>
           </form>
 
@@ -198,8 +221,13 @@
           </div>
 
           <div>
-            <label for="nowa_cena">Cena [zł/h]</label>
+            <label for="nowa_cena">Cena (nauczyciel) [zł/h]</label>
             <input id="nowa_cena" type="number" step="0.01" inputmode="decimal" name="nowa_cena" placeholder="np. 89.00" required>
+          </div>
+
+          <div>
+            <label for="nowa_cena_uczen">Cena dla ucznia [zł/h]</label>
+            <input id="nowa_cena_uczen" type="number" step="0.01" inputmode="decimal" name="nowa_cena_uczen" placeholder="np. 119.00" required>
           </div>
 
           <div>

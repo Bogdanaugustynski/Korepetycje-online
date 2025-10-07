@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from decimal import Decimal
 import secrets
 
 class Profil(models.Model):
@@ -52,9 +53,26 @@ class PrzedmiotCennik(models.Model):
         ('podstawowy', 'Podstawowy'),
         ('rozszerzony', 'Rozszerzony'),
     )
+
     nazwa = models.CharField(max_length=100)
     poziom = models.CharField(max_length=20, choices=POZIOMY)
-    cena = models.DecimalField(max_digits=6, decimal_places=2)
+    cena = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Cena nauczyciela [zł/h]"
+    )
+    cena_uczen = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Cena dla ucznia [zł/h]"
+    )
+
+    class Meta:
+        unique_together = ("nazwa", "poziom")
+        verbose_name = "Przedmiot w cenniku"
+        verbose_name_plural = "Cennik przedmiotów"
 
     def __str__(self):
         return f"{self.nazwa} ({self.poziom})"
