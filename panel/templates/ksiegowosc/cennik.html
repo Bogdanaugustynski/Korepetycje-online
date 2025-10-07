@@ -72,7 +72,7 @@
     .card-item .actions{display:flex; gap:8px; justify-content:flex-end}
 
     @media (max-width: 880px){
-      .table-wrap{display:none}     /* chowamy tabelę na mobile */
+      .table-wrap{display:none}
       .cards-mobile{display:grid; grid-template-columns:1fr;}
     }
   </style>
@@ -94,18 +94,17 @@
     <div class="card" aria-labelledby="cennik-tabela">
       <div class="section-title" id="cennik-tabela">Aktualne stawki</div>
 
-      {# --- DESKTOP: tabela --- #}
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th scope="col">Przedmiot</th>
-              <th scope="col">Poziom</th>
-              <th scope="col">Aktualna cena [zł/h]</th>
-              <th scope="col">Edytuj (nauczyciel)</th>
-              <th scope="col">Cena dla ucznia [zł/h]</th>
-              <th scope="col">Edytuj (uczeń)</th>
-              <th scope="col">Akcje</th>
+              <th>Przedmiot</th>
+              <th>Poziom</th>
+              <th>Aktualna cena [zł/h]</th>
+              <th>Edytuj (nauczyciel)</th>
+              <th>Cena dla ucznia [zł/h]</th>
+              <th>Edytuj (uczeń)</th>
+              <th>Akcje</th>
             </tr>
           </thead>
           <tbody>
@@ -113,27 +112,36 @@
             <tr>
               <td>{{ p.nazwa }}</td>
               <td>{{ p.poziom|title }}</td>
+
+              <!-- CENA NAUCZYCIELA -->
               <td><strong>{{ p.cena|floatformat:2 }} zł</strong></td>
               <td>
-                <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę nauczyciela">
+                <form method="post" onsubmit="return confirmZapis(this);">
                   {% csrf_token %}
                   <input type="hidden" name="zapisz_id" value="{{ p.id }}">
-                  <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena nauczyciela" required>
+                  <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end;">
+                    <input type="number" name="cena" step="0.01" min="0" inputmode="decimal" placeholder="Nowa cena" required>
+                    <button type="submit" class="btn btn-ok">Zapisz</button>
+                  </div>
+                </form>
               </td>
 
+              <!-- CENA UCZEŃ -->
               <td><strong>{{ p.cena_uczen|floatformat:2 }} zł</strong></td>
               <td>
-                <form method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę ucznia">
+                <form method="post" onsubmit="return confirmZapis(this);">
                   {% csrf_token %}
                   <input type="hidden" name="zapisz_uczen_id" value="{{ p.id }}">
-                  <input type="number" name="cena_uczen" step="0.01" inputmode="decimal" placeholder="Nowa cena ucznia" required>
+                  <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end;">
+                    <input type="number" name="cena_uczen" step="0.01" min="0" inputmode="decimal" placeholder="Nowa cena ucznia" required>
+                    <button type="submit" class="btn btn-ok">Zapisz</button>
+                  </div>
+                </form>
               </td>
 
+              <!-- USUŃ -->
               <td class="row-actions">
-                  <button type="submit" class="btn btn-ok">Zapisz</button>
-                </form>
-
-                <form method="post" onsubmit="return confirmUsun(this);" aria-label="Usuń pozycję cennika">
+                <form method="post" onsubmit="return confirmUsun(this);">
                   {% csrf_token %}
                   <input type="hidden" name="usun_id" value="{{ p.id }}">
                   <button type="submit" class="btn btn-danger">Usuń</button>
@@ -147,7 +155,7 @@
         </table>
       </div>
 
-      {# --- MOBILE: kafelki --- #}
+      <!-- MOBILE -->
       <div class="cards-mobile">
         {% for p in przedmioty %}
         <div class="card-item">
@@ -173,14 +181,14 @@
             </div>
           </div>
 
-          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę nauczyciela (mobile)">
+          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);">
             {% csrf_token %}
             <input type="hidden" name="zapisz_id" value="{{ p.id }}">
             <input type="number" name="cena" step="0.01" inputmode="decimal" placeholder="Nowa cena nauczyciela" required>
             <button type="submit" class="btn btn-ok">Zapisz</button>
           </form>
 
-          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);" aria-label="Edytuj cenę ucznia (mobile)">
+          <form class="form-edit" method="post" onsubmit="return confirmZapis(this);">
             {% csrf_token %}
             <input type="hidden" name="zapisz_uczen_id" value="{{ p.id }}">
             <input type="number" name="cena_uczen" step="0.01" inputmode="decimal" placeholder="Nowa cena ucznia" required>
@@ -188,7 +196,7 @@
           </form>
 
           <div class="actions">
-            <form method="post" onsubmit="return confirmUsun(this);" aria-label="Usuń pozycję (mobile)">
+            <form method="post" onsubmit="return confirmUsun(this);">
               {% csrf_token %}
               <input type="hidden" name="usun_id" value="{{ p.id }}">
               <button type="submit" class="btn btn-danger">Usuń</button>
@@ -196,14 +204,14 @@
           </div>
         </div>
         {% empty %}
-          <div class="hint">Brak przedmiotów w cenniku</div>
+        <div class="hint">Brak przedmiotów w cenniku</div>
         {% endfor %}
       </div>
     </div>
 
     <!-- DODAJ NOWĄ POZYCJĘ -->
-    <div class="card" style="margin-top:16px" aria-labelledby="dodaj-przedmiot">
-      <div class="section-title" id="dodaj-przedmiot">Dodaj nową pozycję</div>
+    <div class="card" style="margin-top:16px">
+      <div class="section-title">Dodaj nową pozycję</div>
       <form method="post">
         {% csrf_token %}
         <div class="grid-add">
