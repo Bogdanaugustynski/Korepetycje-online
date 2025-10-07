@@ -1,0 +1,148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moje konto — Uczeń | PolubiszTo.pl</title>
+  <meta name="description" content="Edycja danych konta ucznia oraz zmiana hasła.">
+  <style>
+    :root{
+      --brand:#0b74ff; --brand-700:#095cd1;
+      --ink:#0b1320; --muted:#5b6777;
+      --line:#e6edff; --bg:#f5f9ff; --card:#ffffff;
+      --shadow:0 20px 60px rgba(11,116,255,.15);
+      --radius:16px; --maxw:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,"Noto Sans",sans-serif}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+    .card-title{font-size:clamp(18px,2.4vw,20px);margin:0}
+    .card-body{padding:18px 20px}
+    label{display:block;margin:12px 0 6px;font-weight:600}
+    input{width:100%;padding:12px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px}
+    .row{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:600px){.row-2{grid-template-columns:1fr 1fr}}
+    .btnbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    button,.btn{appearance:none;border:0;border-radius:12px;padding:12px 16px;cursor:pointer;
+      background:var(--brand);color:#fff;font-weight:700}
+    button:hover,.btn:hover{background:var(--brand-700)}
+    .muted{color:var(--muted);font-size:14px}
+    .messages{margin:12px 0}
+    .msg{padding:10px 12px;border-radius:10px;margin-bottom:8px;font-size:14px}
+    .msg-success{background:#e6f9ed;border:1px solid #b6edc8}
+    .msg-error{background:#ffecec;border:1px solid #ffc4c4}
+  </style>
+</head>
+<body>
+
+  {% include "partials/brand.html" %}
+
+  <div class="wrap">
+    <h1 style="margin:12px 4px 16px;">Moje konto — Uczeń</h1>
+
+    <div class="messages">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="msg {% if message.tags %}msg-{{ message.tags }}{% endif %}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="grid">
+      <!-- Dane konta -->
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title">Dane konta</h2>
+        </div>
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="account_submit" value="1" />
+            <div class="row row-2">
+              <div>
+                <label for="id_first_name">Imię</label>
+                {{ account_form.first_name }}
+              </div>
+              <div>
+                <label for="id_last_name">Nazwisko</label>
+                {{ account_form.last_name }}
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="id_email">E-mail</label>
+                {{ account_form.email }}
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="id_telefon">Telefon</label>
+                {{ account_form.telefon }}
+                <div class="muted">Opcjonalnie. Ułatwia szybki kontakt przed zajęciami.</div>
+              </div>
+            </div>
+
+            {% if account_form.errors %}
+              <div class="msg msg-error" style="margin-top:10px">
+                Sprawdź pola — niektóre wartości są niepoprawne.
+              </div>
+            {% endif %}
+
+            <div class="btnbar">
+              <button type="submit">Zapisz zmiany</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Zmiana hasła -->
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title">Zmiana hasła</h2>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="password_submit" value="1" />
+            <div class="row">
+              <div>
+                <label for="id_old_password">Obecne hasło</label>
+                {{ password_form.old_password }}
+              </div>
+            </div>
+            <div class="row row-2">
+              <div>
+                <label for="id_new_password1">Nowe hasło</label>
+                {{ password_form.new_password1 }}
+              </div>
+              <div>
+                <label for="id_new_password2">Powtórz nowe hasło</label>
+                {{ password_form.new_password2 }}
+              </div>
+            </div>
+
+            {% if password_form.errors %}
+              <div class="msg msg-error" style="margin-top:10px">
+                Nie udało się zmienić hasła. Upewnij się, że obecne hasło jest poprawne i pola „nowe hasło” są zgodne.
+              </div>
+            {% endif %}
+
+            <div class="btnbar">
+              <button type="submit">Zmień hasło</button>
+            </div>
+          </form>
+          <p class="muted" style="margin-top:10px">
+            Po zmianie hasła pozostaniesz zalogowany.
+          </p>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

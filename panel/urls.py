@@ -20,6 +20,7 @@ urlpatterns = [
     path("register/", views.register_view, name="register"),
     path("logout/", views.logout_view, name="logout"),
     path("moje_konto/", views.moje_konto_view, name="moje_konto"),
+    path("uczen/moje-konto/", moje_konto_uczen_view, name="moje_konto_uczen"),
 
     # Panele
     path("panel_ucznia/", views.panel_ucznia_view, name="panel_ucznia"),
