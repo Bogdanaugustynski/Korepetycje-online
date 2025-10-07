@@ -89,22 +89,21 @@
       </div>
     </a>
 
-    <a href="/zmien_haslo/" class="tile" title="Zmień hasło">
+
+    <a href="{% url 'moje_konto_uczen' %}" class="tile account" title="Moje konto">
       <span class="ico">
-        <!-- lock -->
+        <!-- user -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21a8 8 0 0 0-16 0"/>
+          <circle cx="12" cy="8" r="4"/>
         </svg>
       </span>
       <div>
-        <h3>Zmień hasło</h3>
-        <p>Zaktualizuj swoje dane logowania</p>
+        <h3>Moje konto</h3>
+        <p>Edytuj dane i avatar</p>
       </div>
     </a>
-
-    <a class="btn" href="{% url 'moje_konto_uczen' %}">Moje konto</a>
 
     <a href="{% url 'logout' %}" class="tile logout" title="Wyloguj">
       <span class="ico">
