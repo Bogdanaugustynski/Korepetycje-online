@@ -1238,11 +1238,18 @@ def is_student(user):
         return True
 
 
+def is_student(user):
+    try:
+        return not user.profil.is_teacher
+    except Exception:
+        return True
+
+
 @login_required
 @user_passes_test(is_student)
 def moje_konto_uczen_view(request):
-    # ZAWSZE miej Profil – to rozwiązuje brak zapisu birth_date itp.
-    profil, _created = Profil.objects.get_or_create(user=request.user)
+    """Widok profilu ucznia: dane konta + zmiana hasła."""
+    profil, _ = Profil.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
         if "account_submit" in request.POST:
@@ -1252,11 +1259,24 @@ def moje_konto_uczen_view(request):
 
             if account_form.is_valid() and profile_form.is_valid():
                 with transaction.atomic():
-                    account_form.save()      # zapis User: imię/nazwisko/email + (telefon jeśli w tym formie)
-                    profile_form.save()      # zapis WSZYSTKICH pól Profil: w tym birth_date/opiekun/zgody/avatar
+                    account_form.save()
+                    profile_form.save()
+
+                # --- Audyt (Aron) ---
+                ip = request.META.get("REMOTE_ADDR")
+                AuditLog.objects.create(
+                    actor=str(request.user.username),
+                    action="manual_update_profile",
+                    obj_type="profil",
+                    obj_id=str(profil.pk),
+                    details={"note": "profile updated via MyAccountView"},
+                    created_by_ip=ip,
+                )
+
                 messages.success(request, "Zapisano zmiany w profilu.")
                 return redirect("moje_konto_uczen")
-            messages.error(request, "Sprawdź poprawność pól formularza.")
+            else:
+                messages.error(request, "Sprawdź poprawność pól formularza.")
 
         elif "password_submit" in request.POST:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
@@ -1268,7 +1288,8 @@ def moje_konto_uczen_view(request):
                 update_session_auth_hash(request, user)
                 messages.success(request, "Hasło zostało zmienione.")
                 return redirect("moje_konto_uczen")
-            messages.error(request, "Nie udało się zmienić hasła. Sprawdź wprowadzone dane.")
+            else:
+                messages.error(request, "Nie udało się zmienić hasła. Sprawdź wprowadzone dane.")
         else:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
             profile_form = ProfilForm(instance=profil)
@@ -1282,14 +1303,12 @@ def moje_konto_uczen_view(request):
     return render(
         request,
         "uczen/moje_konto.html",
-        {"account_form": account_form, "profile_form": profile_form, "password_form": password_form},
+        {
+            "account_form": account_form,
+            "profile_form": profile_form,
+            "password_form": password_form,
+        },
     )
-
-def is_student(user):
-    try:
-        return not user.profil.is_teacher
-    except Exception:
-        return True
 
 @method_decorator(csrf_protect, name='dispatch')
 class MyAccountView(LoginRequiredMixin, View):
