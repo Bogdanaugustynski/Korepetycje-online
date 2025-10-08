@@ -44,3 +44,8 @@ def profil_post_save(sender, instance, created, **kwargs):
     AuditLog.objects.create(actor="system", action="update_profile" if not created else "create_profile",
                             obj_type="profil", obj_id=str(instance.pk),
                             details=changes)
+    
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def ensure_profil(sender, instance, created, **kwargs):
+    if created:
+        Profil.objects.get_or_create(user=instance)
