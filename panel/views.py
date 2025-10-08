@@ -48,6 +48,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseForbidden
+from .forms import StudentPasswordChangeForm, StudentAccountForm, ProfilForm  # <-- ważne
 
 # MODELE
 from .models import (
@@ -1230,38 +1231,49 @@ def is_student(user):
     except Profil.DoesNotExist:
         return True  # brak profilu -> potraktuj jak ucznia (zostanie utworzony)
 
+def is_student(user):
+    try:
+        return not user.profil.is_teacher
+    except Exception:
+        return True
+
 @login_required
 @user_passes_test(is_student)
 def moje_konto_uczen_view(request):
+    profil = getattr(request.user, "profil", None)
+
     if request.method == "POST":
         if "account_submit" in request.POST:
-            account_form  = StudentAccountForm(request.POST, user=request.user, instance=request.user)
+            account_form = StudentAccountForm(request.POST, user=request.user, instance=request.user)
+            profile_form = ProfilForm(request.POST, request.FILES, instance=profil)   # <-- ważne
             password_form = StudentPasswordChangeForm(user=request.user)
-            if account_form.is_valid():
+
+            if account_form.is_valid() and profile_form.is_valid():                  # <-- ważne
                 account_form.save()
+                profile_form.save()
                 messages.success(request, "Zapisano zmiany w profilu.")
                 return redirect("moje_konto_uczen")
             else:
                 messages.error(request, "Sprawdź poprawność pól formularza.")
         elif "password_submit" in request.POST:
-            account_form  = StudentAccountForm(user=request.user, instance=request.user)
+            account_form = StudentAccountForm(user=request.user, instance=request.user)
+            profile_form = ProfilForm(instance=profil)                               # <-- ważne
             password_form = StudentPasswordChangeForm(user=request.user, data=request.POST)
             if password_form.is_valid():
                 user = password_form.save()
-                update_session_auth_hash(request, user)  # pozostań zalogowany
+                update_session_auth_hash(request, user)
                 messages.success(request, "Hasło zostało zmienione.")
                 return redirect("moje_konto_uczen")
             else:
-                messages.error(request, "Nie udało się zmienić hasła. Sprawdź wprowadzone dane.")
-        else:
-            account_form  = StudentAccountForm(user=request.user, instance=request.user)
-            password_form = StudentPasswordChangeForm(user=request.user)
+                messages.error(request, "Nie udało się zmienić hasła.")
     else:
-        account_form  = StudentAccountForm(user=request.user, instance=request.user)
+        account_form = StudentAccountForm(user=request.user, instance=request.user)
+        profile_form = ProfilForm(instance=profil)                                   # <-- ważne
         password_form = StudentPasswordChangeForm(user=request.user)
 
     return render(request, "uczen/moje_konto.html", {
         "account_form": account_form,
+        "profile_form": profile_form,                                                # <-- ważne
         "password_form": password_form,
     })
 
