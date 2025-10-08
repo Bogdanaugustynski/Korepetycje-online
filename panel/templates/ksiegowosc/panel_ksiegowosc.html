@@ -1,60 +1,106 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Panel Księgowości</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .accounting-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 500px;
-            text-align: center;
-        }
-        h2 {
-            margin-bottom: 20px;
-        }
-        .btn {
-            width: 90%;
-            padding: 12px;
-            margin: 10px 0;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 18px;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Księgowości — PolubiszTo.pl</title>
+  <meta name="description" content="Panel księgowości — PolubiszTo.pl korepetycje online">
+  <style>
+    :root{
+      --brand:#0b74ff;
+      --brand-700:#095cd1;
+      --ink:#0b1320;
+      --muted:#5b6777;
+      --line:#e6edff;
+      --bg:#f7f9fe;
+      --card:#fff;
+      --shadow:0 8px 32px rgba(11,116,255,.12);
+      --radius:14px;
+      --maxw:1100px;
+    }
+
+    *{box-sizing:border-box;}
+    html,body{
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+      min-height:100vh;
+    }
+
+    .wrap{
+      max-width:var(--maxw);
+      margin:auto;
+      padding:24px;
+    }
+
+    h1{
+      font-size:clamp(20px,4vw,28px);
+      margin:12px 0 24px;
+      text-align:center;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:20px;
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:30px 20px;
+      text-align:center;
+      transition:.2s transform;
+    }
+
+    .card:hover{
+      transform:translateY(-4px);
+    }
+
+    .card a{
+      display:block;
+      color:var(--brand);
+      font-weight:600;
+      text-decoration:none;
+      font-size:18px;
+    }
+
+    .card a:hover{
+      color:var(--brand-700);
+    }
+
+    footer{
+      text-align:center;
+      margin-top:30px;
+      color:var(--muted);
+      font-size:14px;
+    }
+  </style>
 </head>
 <body>
 
-<div class="accounting-box">
-    <h2>Panel Księgowości</h2>
+{% include "partials/brand.html" %}
 
-    <a class="btn" href="{% url 'edytuj_cene' %}">Cena za godzinę uczeń</a>
-    <a href="{% url 'cennik' %}" class="btn btn-primary">Cennik</a>
-    <a href="{% url 'podwyzki_nauczyciele' %}" class="btn btn-primary">Podwyżki nauczyciele</a>
-    <a href="{% url 'wypłaty_nauczycieli' %}" class="btn btn-primary">Wypłaty nauczycieli</a>
-    <a class="btn" href="#">Historia płatności</a>
-    <a class="btn" href="#">Wystawione faktury</a>
-    <a class="btn" href="/panel_admina/">Powrót do panelu administratora</a>
-    <a class="btn" href="{% url 'logout' %}">Wyloguj</a>
+<div class="wrap">
+  <h1>Panel Księgowości</h1>
+
+  <div class="grid">
+    <div class="card"><a href="{% url 'edytuj_cene' %}">Cena za godzinę ucznia</a></div>
+    <div class="card"><a href="{% url 'cennik' %}">Cennik</a></div>
+    <div class="card"><a href="{% url 'podwyzki_nauczyciele' %}">Podwyżki nauczycieli</a></div>
+    <div class="card"><a href="{% url 'wypłaty_nauczycieli' %}">Wypłaty nauczycieli</a></div>
+    <div class="card"><a href="#">Historia płatności</a></div>
+    <div class="card"><a href="#">Wystawione faktury</a></div>
+    <div class="card"><a href="/panel_admina/">Powrót do panelu administratora</a></div>
+    <div class="card"><a href="{% url 'logout' %}">Wyloguj</a></div>
+  </div>
+
+  <footer>
+    © {{ now|date:"Y" }} PolubiszTo.pl — korepetycje online
+  </footer>
 </div>
 
 </body>
