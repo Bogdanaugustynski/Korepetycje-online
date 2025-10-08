@@ -156,16 +156,46 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"  # (na darmowym Render pliki efemeryczne)
 
-# === SECURITY ===
-LOGIN_URL = "/login/"
-AUTH_PASSWORD_VALIDATORS = []
-CSRF_COOKIE_SECURE = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# === SECURITY (hardening) ===
+# HTTPS / proxy
 SECURE_SSL_REDIRECT = not DEBUG
-X_FRAME_OPTIONS = "DENY"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# === LOGI (diagnostyka WebRTC) ===
+# Cookies
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+# HSTS (tylko w prod)
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+
+# Nagłówki bezpieczeństwa
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True  # legacy, ale nie szkodzi
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "same-origin"
+
+# Logowanie / przekierowania
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/uczen/moje-konto/"
+
+# Walidatory haseł (na razie wyłączone - jak w Twojej bazie)
+AUTH_PASSWORD_VALIDATORS = []
+
+# === UPLOAD LIMITS / AVATAR ===
+# Maksymalny rozmiar pojedynczego pliku upload (np. avatar) – 2 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+# Limit całego requestu multipart (np. formularz z plikami) – 5 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+# Uprawnienia zapisanych plików: rw-r-----
+FILE_UPLOAD_PERMISSIONS = 0o640
+
+# === LOGI (diagnostyka WebRTC i Django) ===
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
