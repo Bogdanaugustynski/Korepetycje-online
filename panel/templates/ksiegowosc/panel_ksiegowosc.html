@@ -2,106 +2,183 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Panel Księgowości — PolubiszTo.pl</title>
-  <meta name="description" content="Panel księgowości — PolubiszTo.pl korepetycje online">
+
   <style>
-    :root{
-      --brand:#0b74ff;
-      --brand-700:#095cd1;
-      --ink:#0b1320;
-      --muted:#5b6777;
-      --line:#e6edff;
-      --bg:#f7f9fe;
-      --card:#fff;
-      --shadow:0 8px 32px rgba(11,116,255,.12);
-      --radius:14px;
-      --maxw:1100px;
-    }
+  :root{
+    --brand:#0b74ff;
+    --ink:#0b1320;
+    --muted:#5b6777;
+    --bg:#f7f9fe;
+    --line:#e6edff;
+    --maxw:1100px;
+    --radius:18px;
+    --shadow:0 12px 36px rgba(11,116,255,.14);
+    --chip:linear-gradient(135deg,#0b74ff,#095cd1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;line-height:1.45}
 
-    *{box-sizing:border-box;}
-    html,body{
-      margin:0;
-      background:var(--bg);
-      color:var(--ink);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
-      min-height:100vh;
-    }
+  /* HERO */
+  .hero{max-width:var(--maxw);margin:18px auto 12px;padding:0 18px}
+  .hero .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
+  .hero h1{margin:0 0 6px;font-size:22px}
+  .hero p{margin:0;color:var(--muted)}
 
-    .wrap{
-      max-width:var(--maxw);
-      margin:auto;
-      padding:24px;
-    }
-
-    h1{
-      font-size:clamp(20px,4vw,28px);
-      margin:12px 0 24px;
-      text-align:center;
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-      gap:20px;
-    }
-
-    .card{
-      background:var(--card);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:30px 20px;
-      text-align:center;
-      transition:.2s transform;
-    }
-
-    .card:hover{
-      transform:translateY(-4px);
-    }
-
-    .card a{
-      display:block;
-      color:var(--brand);
-      font-weight:600;
-      text-decoration:none;
-      font-size:18px;
-    }
-
-    .card a:hover{
-      color:var(--brand-700);
-    }
-
-    footer{
-      text-align:center;
-      margin-top:30px;
-      color:var(--muted);
-      font-size:14px;
-    }
+  /* GRID TILES */
+  .grid{max-width:var(--maxw);margin:0 auto;padding:12px 18px 28px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+  .tile{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);
+    padding:18px;display:flex;align-items:flex-start;gap:14px;text-decoration:none;color:inherit;
+    transition:transform .15s ease, box-shadow .15s ease}
+  .tile:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(11,116,255,.18)}
+  .ico{flex:0 0 auto;width:44px;height:44px;border-radius:14px;background:var(--chip);display:grid;place-items:center;color:#fff}
+  .ico svg{width:22px;height:22px;display:block}
+  .tile h3{margin:0 0 2px;font-size:16px;font-weight:800;color:var(--ink)}
+  .tile p{margin:0;font-size:13px;color:var(--muted)}
+  .tile.logout .ico{background:linear-gradient(135deg,#f43f5e,#e11d48)}
   </style>
 </head>
 <body>
 
-{% include "partials/brand.html" %}
+  {% include "partials/brand.html" %}
 
-<div class="wrap">
-  <h1>Panel Księgowości</h1>
+  <section class="hero">
+    <div class="card">
+      <h1>Panel księgowości</h1>
+      <p>Zarządzaj stawkami, wypłatami, historią płatności i fakturami.</p>
+    </div>
+  </section>
 
-  <div class="grid">
-    <div class="card"><a href="{% url 'edytuj_cene' %}">Cena za godzinę ucznia</a></div>
-    <div class="card"><a href="{% url 'cennik' %}">Cennik</a></div>
-    <div class="card"><a href="{% url 'podwyzki_nauczyciele' %}">Podwyżki nauczycieli</a></div>
-    <div class="card"><a href="{% url 'wypłaty_nauczycieli' %}">Wypłaty nauczycieli</a></div>
-    <div class="card"><a href="#">Historia płatności</a></div>
-    <div class="card"><a href="#">Wystawione faktury</a></div>
-    <div class="card"><a href="/panel_admina/">Powrót do panelu administratora</a></div>
-    <div class="card"><a href="{% url 'logout' %}">Wyloguj</a></div>
-  </div>
+  <section class="grid" aria-label="Akcje księgowe">
+    <a href="{% url 'edytuj_cene' %}" class="tile" title="Cena za godzinę ucznia">
+      <span class="ico">
+        <!-- tag (price) -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41 11 3H3v8l9.59 9.59a2 2 0 0 0 2.82 0l5.18-5.18a2 2 0 0 0 0-2.82z"/>
+          <path d="M7 7h.01"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Cena za godzinę ucznia</h3>
+        <p>Ustal stawkę i dane płatności</p>
+      </div>
+    </a>
 
-  <footer>
-    © {{ now|date:"Y" }} PolubiszTo.pl — korepetycje online
+    <a href="{% url 'cennik' %}" class="tile" title="Cennik">
+      <span class="ico">
+        <!-- table -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2"/>
+          <path d="M3 10h18M9 4v16M15 4v16"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Cennik</h3>
+        <p>Stawki wg przedmiotu i poziomu</p>
+      </div>
+    </a>
+
+    <a href="{% url 'podwyzki_nauczyciele' %}" class="tile" title="Podwyżki nauczyciele">
+      <span class="ico">
+        <!-- arrow up -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 19V5"/>
+          <path d="M5 12l7-7 7 7"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Podwyżki nauczyciele</h3>
+        <p>Zarządzaj wzrostami stawek</p>
+      </div>
+    </a>
+
+    <a href="{% url 'wypłaty_nauczycieli' %}" class="tile" title="Wypłaty nauczycieli">
+      <span class="ico">
+        <!-- wallet -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 7H5a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h15a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+          <path d="M16 12h.01"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Wypłaty nauczycieli</h3>
+        <p>Rozliczenia i przelewy</p>
+      </div>
+    </a>
+
+    <a href="#" class="tile" title="Historia płatności">
+      <span class="ico">
+        <!-- clock -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Historia płatności</h3>
+        <p>Wpłaty i rozliczenia</p>
+      </div>
+    </a>
+
+    <a href="#" class="tile" title="Wystawione faktury">
+      <span class="ico">
+        <!-- file-text -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M16 13H8M16 17H8M10 9H8"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Wystawione faktury</h3>
+        <p>Przegląd i pobieranie</p>
+      </div>
+    </a>
+
+    <a href="/panel_admina/" class="tile" title="Powrót do panelu administratora">
+      <span class="ico">
+        <!-- arrow-left -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5"/>
+          <path d="M12 19l-7-7 7-7"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Panel administratora</h3>
+        <p>Wróć do głównego panelu</p>
+      </div>
+    </a>
+
+    <a href="{% url 'logout' %}" class="tile logout" title="Wyloguj">
+      <span class="ico">
+        <!-- power -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v10"/>
+          <path d="M5.5 5.5a8 8 0 1 0 13 0"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Wyloguj</h3>
+        <p>Zakończ pracę w panelu</p>
+      </div>
+    </a>
+  </section>
+
+  <footer style="text-align:center;padding:16px 18px;font-size:13px;color:var(--muted)">
+    © PolubiszTo.pl — korepetycje online
   </footer>
-</div>
 
 </body>
 </html>
