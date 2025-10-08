@@ -1237,45 +1237,53 @@ def is_student(user):
     except Exception:
         return True
 
+
 @login_required
 @user_passes_test(is_student)
 def moje_konto_uczen_view(request):
-    profil = getattr(request.user, "profil", None)
+    # ZAWSZE miej Profil – to rozwiązuje brak zapisu birth_date itp.
+    profil, _created = Profil.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
         if "account_submit" in request.POST:
             account_form = StudentAccountForm(request.POST, user=request.user, instance=request.user)
-            profile_form = ProfilForm(request.POST, request.FILES, instance=profil)   # <-- ważne
+            profile_form = ProfilForm(request.POST, request.FILES, instance=profil)
             password_form = StudentPasswordChangeForm(user=request.user)
 
-            if account_form.is_valid() and profile_form.is_valid():                  # <-- ważne
-                account_form.save()
-                profile_form.save()
+            if account_form.is_valid() and profile_form.is_valid():
+                with transaction.atomic():
+                    account_form.save()      # zapis User: imię/nazwisko/email + (telefon jeśli w tym formie)
+                    profile_form.save()      # zapis WSZYSTKICH pól Profil: w tym birth_date/opiekun/zgody/avatar
                 messages.success(request, "Zapisano zmiany w profilu.")
                 return redirect("moje_konto_uczen")
-            else:
-                messages.error(request, "Sprawdź poprawność pól formularza.")
+            messages.error(request, "Sprawdź poprawność pól formularza.")
+
         elif "password_submit" in request.POST:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
-            profile_form = ProfilForm(instance=profil)                               # <-- ważne
+            profile_form = ProfilForm(instance=profil)
             password_form = StudentPasswordChangeForm(user=request.user, data=request.POST)
+
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
                 messages.success(request, "Hasło zostało zmienione.")
                 return redirect("moje_konto_uczen")
-            else:
-                messages.error(request, "Nie udało się zmienić hasła.")
+            messages.error(request, "Nie udało się zmienić hasła. Sprawdź wprowadzone dane.")
+        else:
+            account_form = StudentAccountForm(user=request.user, instance=request.user)
+            profile_form = ProfilForm(instance=profil)
+            password_form = StudentPasswordChangeForm(user=request.user)
+
     else:
         account_form = StudentAccountForm(user=request.user, instance=request.user)
-        profile_form = ProfilForm(instance=profil)                                   # <-- ważne
+        profile_form = ProfilForm(instance=profil)
         password_form = StudentPasswordChangeForm(user=request.user)
 
-    return render(request, "uczen/moje_konto.html", {
-        "account_form": account_form,
-        "profile_form": profile_form,                                                # <-- ważne
-        "password_form": password_form,
-    })
+    return render(
+        request,
+        "uczen/moje_konto.html",
+        {"account_form": account_form, "profile_form": profile_form, "password_form": password_form},
+    )
 
 def is_student(user):
     try:
