@@ -40,7 +40,14 @@ from django.db.models import Q
 from decimal import Decimal, InvalidOperation
 from django.contrib.auth import update_session_auth_hash
 from .forms import StudentAccountForm, StudentPasswordChangeForm
-
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .forms import UserBasicForm, ProfilForm
+from .models import Profil, AuditLog
+from django.views.decorators.csrf import csrf_protect
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponseForbidden
 
 # MODELE
 from .models import (
@@ -1257,6 +1264,38 @@ def moje_konto_uczen_view(request):
         "account_form": account_form,
         "password_form": password_form,
     })
+
+def is_student(user):
+    try:
+        return not user.profil.is_teacher
+    except Exception:
+        return True
+
+@method_decorator(csrf_protect, name='dispatch')
+class MyAccountView(LoginRequiredMixin, View):
+    def get(self, request):
+        user_form = UserBasicForm(instance=request.user)
+        profil = getattr(request.user, "profil", None)
+        profile_form = ProfilForm(instance=profil)
+        return render(request, "uczen/moje_konto.html", {"user_form": user_form, "profile_form": profile_form})
+
+    def post(self, request):
+        user_form = UserBasicForm(request.POST, instance=request.user)
+        profil = getattr(request.user, "profil", None)
+        profile_form = ProfilForm(request.POST, request.FILES, instance=profil)
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile = profile_form.save()
+            # log to audit (Aron) with IP and actor
+            ip = request.META.get("REMOTE_ADDR")
+            AuditLog.objects.create(actor=str(request.user.username), action="manual_update_profile",
+                                    obj_type="profil", obj_id=str(profile.pk),
+                                    details={"note":"profile updated via MyAccountView"}, created_by_ip=ip)
+            messages.success(request, "Zapisano zmiany w profilu.")
+            return redirect("moje_konto_uczen")
+        else:
+            messages.error(request, "Popraw zaznaczone błędy.")
+        return render(request, "uczen/moje_konto.html", {"user_form": user_form, "profile_form": profile_form})
 
 
 @login_required
