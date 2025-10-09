@@ -6,10 +6,16 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils import timezone
 
+# --- upload paths ---
 def avatar_upload_path(instance, filename):
     return f"avatars/{instance.user_id}/{filename}"
 
+def invoice_upload_path(instance, filename):
+    # Uwaga: przy pierwszym zapisie instance.id może być None – to w niczym nie przeszkadza.
+    return f"invoices/{filename}" if instance.id is None else f"invoices/{instance.id}_{filename}"
 
+
+# --- Profil / dane użytkownika ---
 class Profil(models.Model):
     # ----- podstawowe -----
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -67,7 +73,8 @@ class Profil(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - profil"
-    
+
+
 class AuditLog(models.Model):
     """
     Aron: zapis akcji zmian modelu/profilu/wdrożeń - audyt dla Arona.
@@ -84,6 +91,7 @@ class AuditLog(models.Model):
     def __str__(self):
         return f"{self.created_at.isoformat()} {self.action} {self.obj_type}:{self.obj_id}"
 
+
 class StawkaNauczyciela(models.Model):
     nauczyciel = models.ForeignKey(User, on_delete=models.CASCADE)
     przedmiot = models.CharField(max_length=100)
@@ -94,7 +102,10 @@ class StawkaNauczyciela(models.Model):
         unique_together = ('nauczyciel', 'przedmiot', 'poziom')
 
     def __str__(self):
-        return f"{self.nauczyciel.get_full_name()} – {self.przedmiot} ({self.poziom}) – {self.stawka} zł"
+        full = self.nauczyciel.get_full_name().strip()
+        name = full if full else self.nauczyciel.username
+        return f"{name} – {self.przedmiot} ({self.poziom}) – {self.stawka} zł"
+
 
 class UstawieniaPlatnosci(models.Model):
     cena_za_godzine = models.DecimalField(max_digits=6, decimal_places=2)
@@ -106,6 +117,7 @@ class UstawieniaPlatnosci(models.Model):
     def __str__(self):
         return f"Ustawienia płatności: {self.cena_za_godzine} zł"
 
+
 class Księgowość(models.Model):
     nazwa = models.CharField(max_length=100, default="Panel Księgowości")
 
@@ -116,6 +128,7 @@ class Księgowość(models.Model):
 
     def __str__(self):
         return self.nazwa
+
 
 class PrzedmiotCennik(models.Model):
     POZIOMY = (
@@ -149,11 +162,11 @@ class PrzedmiotCennik(models.Model):
 
 # --- Pomocnicze: bezpieczne, migracje-serializowalne defaulty ---
 def default_excalidraw_room_id() -> str:
-    # 8 bajtów => 16 znaków hex, stabilnie i krótko
+    # 8 bajtów => 16 znaków hex
     return secrets.token_hex(8)
 
 def default_excalidraw_room_key() -> str:
-    # 32 bajty => 64 znaki hex (klucz do pokoju)
+    # 32 bajty => 64 znaki hex
     return secrets.token_hex(32)
 
 
@@ -161,14 +174,12 @@ class Rezerwacja(models.Model):
     uczen = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rezerwacje_ucznia')
     nauczyciel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rezerwacje_nauczyciela')
 
-    # U Ciebie to DateTimeField (bez FK) — zostawiamy, ale zabezpieczamy unikalność
     termin = models.DateTimeField()
 
     temat = models.CharField(max_length=255)
     plik = models.FileField(upload_to='rezerwacje/', blank=True, null=True)
     material_po_zajeciach = models.FileField(upload_to='materialy/', blank=True, null=True)
 
-    # UWAGA: defaulty muszą być CALLABLE, nie wywołane przy imporcie!
     excalidraw_room_id = models.CharField(max_length=64, default=default_excalidraw_room_id)
     excalidraw_room_key = models.CharField(max_length=128, default=default_excalidraw_room_key)
     excalidraw_link = models.URLField(blank=True, null=True)
@@ -177,13 +188,11 @@ class Rezerwacja(models.Model):
         return f"{self.uczen.username} → {self.nauczyciel.username} ({self.termin})"
 
     def save(self, *args, **kwargs):
-        # Zbuduj link Excalidraw jeśli brak
         if not self.excalidraw_link and self.excalidraw_room_id and self.excalidraw_room_key:
             self.excalidraw_link = f"https://excalidraw.com/#room={self.excalidraw_room_id},{self.excalidraw_room_key}"
         super().save(*args, **kwargs)
 
     class Meta:
-        # Chronologia od najbliższych (backendowo też porządkujemy)
         ordering = ["termin"]
         indexes = [
             models.Index(fields=["termin"]),
@@ -191,16 +200,10 @@ class Rezerwacja(models.Model):
             models.Index(fields=["uczen", "termin"]),
         ]
         constraints = [
-            # Kluczowa blokada duplikatów: jeden nauczyciel nie może mieć 2 rezerwacji na tę samą chwilę
             models.UniqueConstraint(
                 fields=["nauczyciel", "termin"],
                 name="uniq_rez_teacher_datetime",
             ),
-            # (opcjonalnie) zablokuj uczniowi nakładanie rezerwacji co do sekundy:
-            # models.UniqueConstraint(fields=["uczen", "termin"], name="uniq_rez_student_datetime"),
-            # (opcjonalnie, jeśli chcesz wymusić rezerwacje tylko w przyszłości — raczej NIE na stałe,
-            # bo przeszłe rezerwacje są przydatne do archiwum):
-            # models.CheckConstraint(check=models.Q(termin__gte=Now()), name="rez_termin_not_past"),
         ]
 
 
@@ -221,12 +224,12 @@ class WolnyTermin(models.Model):
             models.Index(fields=["nauczyciel", "data", "godzina"]),
         ]
         constraints = [
-            # Unikalny slot w grafiku nauczyciela — tu kończymy z duplikatami
             models.UniqueConstraint(
                 fields=["nauczyciel", "data", "godzina"],
                 name="uniq_slot_teacher_date_time",
             ),
         ]
+
 
 class OnlineStatus(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -236,3 +239,40 @@ class OnlineStatus(models.Model):
     def __str__(self):
         return f"{self.user} online w rezerwacji {self.rezerwacja.id}"
 
+
+# --- Płatności i rachunki ---
+class Payment(models.Model):
+    reservation = models.ForeignKey("panel.Rezerwacja", on_delete=models.CASCADE, related_name="payments")
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payments")
+    provider = models.CharField(max_length=32, default="autopay")
+    provider_payment_id = models.CharField(max_length=128, unique=True)
+    amount_grosz = models.PositiveIntegerField()
+    currency = models.CharField(max_length=3, default="PLN")
+    status = models.CharField(max_length=32, default="pending")  # pending|paid|failed|refunded
+    paid_at = models.DateTimeField(null=True, blank=True)
+    raw_payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.provider}:{self.provider_payment_id} ({self.status})"
+
+
+class Invoice(models.Model):
+    number = models.CharField(max_length=64, unique=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="invoices")
+    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name="invoice")
+    reservation = models.ForeignKey("panel.Rezerwacja", on_delete=models.PROTECT, related_name="invoices")
+    issue_date = models.DateField()
+    place = models.CharField(max_length=128, blank=True, default="")
+    description = models.CharField(max_length=255)
+    hours = models.DecimalField(max_digits=5, decimal_places=2, default=1)
+    rate_grosz = models.PositiveIntegerField()
+    total_grosz = models.PositiveIntegerField()
+    pdf = models.FileField(upload_to=invoice_upload_path, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.number
