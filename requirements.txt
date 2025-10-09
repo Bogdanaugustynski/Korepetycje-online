@@ -8,4 +8,3 @@ dj-database-url
 psycopg2-binary
 Pillow
 pdfkit==1.0.0
-wkhtmltopdf-binary==0.12.6
