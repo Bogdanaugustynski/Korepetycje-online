@@ -1685,7 +1685,8 @@ def render_invoice_pdf(invoice, seller, buyer) -> bytes:
         pass
 
     # 3) Ostateczny placeholder, żeby nie wywalać 500
-    return b"%PDF-1.4\n% placeholder rachunku – generator PDF niedostępny\n"
+    return b"%PDF-1.4\n% placeholder invoice - PDF generator unavailable\n"
+
 
 def test_pdf(request):
     html = "<h1>PDF działa ✅</h1><p>To jest test pdfkit+wkhtmltopdf.</p>"
