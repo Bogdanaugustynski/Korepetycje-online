@@ -151,82 +151,125 @@ def strona_glowna_view(request):
 #       WEBRTC SIGNALING
 # ==========================
 # ====== Klucze w cache ======
-def _keys(rez_id: int):
-    """
-    Zestaw kluczy powiązanych z jedną sesją (rezerwacją):
-    - offer / answer: ładunki SDP
-    - lock: kto został offererem (anti-race)
-    """
+log = logging.getLogger("webrtc")
+
+# ===== Stałe TTL (jak wcześniej) =====
+OFFER_TTL    = 60 * 10
+ANSWER_TTL   = 60 * 10
+LOCK_TTL     = 60 * 2
+PRESENCE_TTL = 30
+
+def _keys(rez_id: int) -> dict:
     base = f"webrtc:{rez_id}"
     return {
-        "offer": f"{base}:offer",
+        "offer":  f"{base}:offer",
         "answer": f"{base}:answer",
-        "lock": f"{base}:lock",
+        "lock":   f"{base}:lock",
+        "state":  f"{base}:state",
     }
 
-# Stałe czasowe
-OFFER_TTL = 60 * 10   # 10 min
-ANSWER_TTL = 60 * 10  # 10 min
-LOCK_TTL  = 60 * 2    # 2 min – wystarczy, żeby student zdążył odebrać
-
-def _no_store(resp: JsonResponse) -> JsonResponse:
+def _json_no_store(data, status=200):
+    resp = JsonResponse(data, status=status, safe=isinstance(data, dict))
     resp["Cache-Control"] = "no-store"
     return resp
+
+def _parse_json_body(request):
+    raw = request.body or b""
+    if not raw:
+        raise ValueError("Empty body")
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        raise ValueError(f"Invalid JSON: {e}")
 
 @csrf_exempt
 @never_cache
 def webrtc_offer(request, rez_id: int):
-    offer_key, answer_key = _keys(rez_id)
+    k = _keys(rez_id)
+
     if request.method == "POST":
         try:
-            data = json.loads(request.body.decode("utf-8"))
-            if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
-                return HttpResponseBadRequest("Invalid SDP payload")
-            cache.set(offer_key, data, timeout=60*10)  # 10 min
-            cache.delete(answer_key)                   # nowy offer kasuje stare answer
-            log.info("OFFER POST rez=%s len=%s", rez_id, len(data.get("sdp","")))
-            return _no_store(JsonResponse({"ok": True}))
+            data = _parse_json_body(request)
+            t = data.get("type")
+            sdp = data.get("sdp")
+
+            if t != "offer" or not isinstance(sdp, str) or not sdp.startswith("v="):
+                return HttpResponseBadRequest("Invalid SDP payload (expect type='offer' and sdp starting with 'v=')")
+
+            cache.set(k["offer"], {"type": t, "sdp": sdp}, timeout=OFFER_TTL)
+            cache.delete(k["answer"])  # świeży offer kasuje stare answer
+
+            log.info("SET_OFFER rez=%s len=%s", rez_id, len(sdp))
+            return _json_no_store({"ok": True})
+        except ValueError as e:
+            log.warning("OFFER POST bad request rez=%s: %s", rez_id, e)
+            return HttpResponseBadRequest(str(e))
         except Exception as e:
             log.exception("OFFER POST error rez=%s", rez_id)
-            return HttpResponseBadRequest(str(e))
+            return HttpResponseBadRequest("Internal error while posting offer")
 
     if request.method == "GET":
-        data = cache.get(offer_key)
+        data = cache.get(k["offer"])
         if not data:
-            return HttpResponseNotFound("No offer yet")
-        return _no_store(JsonResponse(data))
+            return _json_no_store({"error": "No offer yet"}, status=404)
+        return _json_no_store(data)
 
     return HttpResponseBadRequest("Method not allowed")
 
 @csrf_exempt
 @never_cache
 def webrtc_answer(request, rez_id: int):
-    offer_key, answer_key = _keys(rez_id)
+    k = _keys(rez_id)
 
     if request.method == "POST":
         try:
-            data = json.loads(request.body.decode("utf-8"))
-            t = data.get("type"); sdp = data.get("sdp")
+            data = _parse_json_body(request)
+            t = data.get("type")
+            sdp = data.get("sdp")
+
             if t != "answer" or not isinstance(sdp, str) or not sdp.startswith("v="):
-                return HttpResponseBadRequest("Invalid SDP payload")
-            if not cache.get(offer_key):
+                return HttpResponseBadRequest("Invalid SDP payload (expect type='answer' and sdp starting with 'v=')")
+
+            if not cache.get(k["offer"]):
                 return HttpResponseNotFound("No offer to answer")
 
-            cache.set(answer_key, {"type": t, "sdp": sdp}, timeout=60*10)
-            cache.delete(offer_key)  # kluczowe: po przyjęciu answer usuwamy offer
-            log.info("ANSWER POST rez=%s len=%s", rez_id, len(sdp))
-            return _no_store(JsonResponse({"ok": True}))
+            cache.set(k["answer"], {"type": t, "sdp": sdp}, timeout=ANSWER_TTL)
+            cache.delete(k["offer"])  # po przyjęciu odpowiedzi kasujemy offer, żeby ring/watcher nie dzwonił
+
+            log.info("SET_ANSWER rez=%s len=%s", rez_id, len(sdp))
+            return _json_no_store({"ok": True})
+        except ValueError as e:
+            log.warning("ANSWER POST bad request rez=%s: %s", rez_id, e)
+            return HttpResponseBadRequest(str(e))
         except Exception as e:
             log.exception("ANSWER POST error rez=%s", rez_id)
-            return HttpResponseBadRequest(str(e))
+            return HttpResponseBadRequest("Internal error while posting answer")
 
     if request.method == "GET":
-        data = cache.get(answer_key)
+        data = cache.get(k["answer"])
         if not data:
-            return HttpResponseNotFound("No answer yet")
-        return _no_store(JsonResponse(data))
+            return _json_no_store({"error": "No answer yet"}, status=404)
+        return _json_no_store(data)
 
     return HttpResponseBadRequest("Method not allowed")
+
+@csrf_exempt
+@never_cache
+def webrtc_debug(request, rez_id: int):
+    if request.method != "GET":
+        return HttpResponseBadRequest("Method not allowed")
+
+    k = _keys(rez_id)
+    offer  = cache.get(k["offer"])
+    answer = cache.get(k["answer"])
+    data = {
+        "offer": bool(offer),
+        "answer": bool(answer),
+        "offer_len": len((offer or {}).get("sdp", "") or ""),
+        "answer_len": len((answer or {}).get("sdp", "") or ""),
+        "keys": k,
+    }
+    return _json_no_store(data)
 
 @csrf_exempt
 @never_cache
@@ -238,24 +281,6 @@ def webrtc_hangup(request, rez_id: int):
     cache.delete_many([offer_key, answer_key])
     log.info("HANGUP rez=%s (state cleared)", rez_id)
     return _no_store(JsonResponse({"ok": True}))
-
-@csrf_exempt
-@never_cache
-def webrtc_debug(request, rez_id: int):
-    """Podgląd: czy offer/answer istnieją i jaką mają długość SDP (do szybkiego debug)."""
-    if request.method != "GET":
-        return HttpResponseBadRequest("Method not allowed")
-    offer_key, answer_key = _keys(rez_id)
-    offer = cache.get(offer_key); answer = cache.get(answer_key)
-    def _s(x): 
-        try: return len((x or {}).get("sdp","") or "")
-        except: return 0
-    data = {
-        "offer": bool(offer), "answer": bool(answer),
-        "offer_len": _s(offer), "answer_len": _s(answer),
-        "keys": {"offer": offer_key, "answer": answer_key},
-    }
-    return _no_store(JsonResponse(data))
 
 
 # ==========================
