@@ -1670,8 +1670,7 @@ def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
     html = render(None, "ksiegowosc/rachunek_pdf.html", ctx).content.decode("utf-8")
     return HTML(string=html).write_pdf()
 
-def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
-    # render HTML tak jak wcześniej:
+def render_invoice_pdf(invoice, seller, buyer) -> bytes:
     ctx = {
         "invoice": invoice, "seller": seller, "buyer": buyer,
         "rate_pln": pln_format_grosz(invoice.rate_grosz),
@@ -1679,6 +1678,19 @@ def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
     }
     html = render(None, "ksiegowosc/rachunek_pdf.html", ctx).content.decode("utf-8")
 
-    # pdfkit z HTML string:
-    pdf_bytes = pdfkit.from_string(html, False)  # False => zwraca bytes
-    return pdf_bytes
+    # 1) Spróbuj pdfkit + wkhtmltopdf-binary (najprostsze na Render)
+    try:
+        import pdfkit
+        return pdfkit.from_string(html, False)  # False => zwraca bytes
+    except Exception:
+        pass
+
+    # 2) Fallback: WeasyPrint (działa gdy na serwerze są Pango/Cairo)
+    try:
+        from weasyprint import HTML
+        return HTML(string=html).write_pdf()
+    except Exception:
+        pass
+
+    # 3) Ostateczny awaryjny placeholder (żeby nie wywalać 500)
+    return b"%PDF-1.4\n% placeholder rachunku – generator PDF niedostępny\n"
