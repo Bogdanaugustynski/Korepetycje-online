@@ -1660,16 +1660,6 @@ def invoice_pdf_download_view(request, invoice_id: int):
     return FileResponse(inv.pdf.open("rb"), filename=f"{inv.number}.pdf", as_attachment=True)
 
 
-def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
-    from weasyprint import HTML  # <- lokalny import, bezpieczny dla migrate
-    ctx = {
-        "invoice": invoice, "seller": seller, "buyer": buyer,
-        "rate_pln": pln_format_grosz(invoice.rate_grosz),
-        "total_pln": pln_format_grosz(invoice.total_grosz),
-    }
-    html = render(None, "ksiegowosc/rachunek_pdf.html", ctx).content.decode("utf-8")
-    return HTML(string=html).write_pdf()
-
 def render_invoice_pdf(invoice, seller, buyer) -> bytes:
     ctx = {
         "invoice": invoice, "seller": seller, "buyer": buyer,
