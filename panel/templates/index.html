@@ -62,7 +62,6 @@
     .desc{color:#374151;font-size:14px;margin:0 0 10px}
     .tags{display:flex;flex-wrap:wrap;gap:6px}
     .tag{font-size:12px;color:#334155;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px}
-    /* ucięcie bio (2 linie mobile, 3 linie desktop) */
     .clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     @media (min-width: 900px){ .clamp-2{-webkit-line-clamp:3} }
 
@@ -91,19 +90,25 @@
   </style>
 </head>
 <body>
+  <!-- NOWY NAGŁÓWEK -->
   <header>
     <div class="wrap bar">
+      <!-- logo -->
       <a class="logo" href="/"><i></i>PolubiszTo.pl</a>
 
+      <!-- hamburger (mobile) -->
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="site-nav" aria-expanded="false"><i></i></button>
+
+      <!-- menu (desktop widoczne, mobile rozwijane) -->
       <nav class="nav" id="site-nav">
         <a class="btn" href="/o-nas">O nas</a>
         <a class="btn" href="/kontakt">Kontakt</a>
+        <!-- Zaloguj zawsze widoczny (także na mobile) -->
         <a class="btn" href="{% url 'login' %}">Zaloguj</a>
-        <a class="btn primary" href="{% url 'register' %}">Dołącz jako uczeń</a>
       </nav>
     </div>
   </header>
+  <!-- /NOWY NAGŁÓWEK -->
 
   <main>
     <!-- HERO -->
