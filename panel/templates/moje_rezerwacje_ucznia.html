@@ -23,18 +23,13 @@
     .hint{color:var(--muted);margin:0 0 12px}
     .section-title{margin:18px 0 10px;font-size:18px}
 
-    /* Zakładki */
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
     .tab{display:inline-flex;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid #dfe6f5;background:#fff;color:#213047;text-decoration:none;font-weight:800}
     .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
     .tab:hover{background:#f7fbff}
 
-    /* Tabela (desktop) */
     .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
-    .tbl thead th{
-      font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;
-      text-align:left;padding:10px 12px
-    }
+    .tbl thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;text-align:left;padding:10px 12px}
     .tbl tbody tr{background:#fff;border:1px solid var(--line)}
     .tbl td{padding:12px;vertical-align:top}
     .tbl td+td{border-left:1px solid var(--line)}
@@ -44,7 +39,6 @@
     .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
     .table-wrap{display:block}
 
-    /* Karty (mobile) */
     .cards{display:none}
     .r-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
     .r-title{font-weight:900}
@@ -52,10 +46,7 @@
     .meta div{background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
     .r-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 
-    /* Przyciski */
-    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;
-      border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;
-      text-decoration:none;white-space:nowrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
     .btn.small{padding:8px 12px;border-radius:10px;font-size:14px}
     .btn.ghost{background:#eef4ff;color:#17304e}
     .btn.disabled{background:#ecf0f8;color:#8aa1bf;cursor:not-allowed}
@@ -64,7 +55,6 @@
     .empty{color:var(--muted);text-align:center;padding:14px}
     .foot{text-align:center;color:#6b7a93;font-size:13px;padding:12px}
 
-    /* RWD — jak w panelu: wąsko -> karty */
     @media (max-width:860px){
       .table-wrap{display:none}
       .cards{display:grid;gap:10px}
@@ -80,9 +70,8 @@
 
 <div class="wrap">
   <h1>Moje rezerwacje</h1>
-  <p class="hint">Dostęp do pokoju aktywuje się na 5 minut przed startem i wygasa po 55 minutach od rozpoczęcia.</p>
+  <p class="hint">Dostęp aktywny od 5 minut przed startem do 55 minut po rozpoczęciu.</p>
 
-  <!-- Zakładki czasowe -->
   <nav class="tabs">
     <a class="tab {% if scope == 'day' %}active{% endif %}" href="?scope=day">Dziś</a>
     <a class="tab {% if scope == 'week' %}active{% endif %}" href="?scope=week">Tydzień</a>
@@ -120,8 +109,15 @@
                 const diff = start - now;
                 const activeFrom = -5*60*1000, activeTo = 55*60*1000;
                 const el = document.getElementById("btn-u-{{ r.id }}");
+                const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+
                 if (diff >= activeFrom && diff <= activeTo) {
-                  el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+                  // PRIORYTET: TABLICA; fallback do pokoju
+                  if (boardUrl) {
+                    el.innerHTML = `<a class="btn small" target="_blank" rel="noopener" href="${boardUrl}">Otwórz tablicę</a>`;
+                  } else {
+                    el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+                  }
                 } else {
                   const godzina = new Date(start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
                   el.innerHTML = `<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
@@ -138,13 +134,12 @@
                 const endWindow = start + 55*60*1000;
                 const el = document.getElementById("mat-u-{{ r.id }}");
 
-                const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
                 const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
                 const hasFile = {% if r.material_po_zajeciach %}true{% else %}false{% endif %};
                 const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
 
                 let html = "";
-                if (now >= endWindow && hasBoard && boardUrl) {
+                if (now >= endWindow && boardUrl) {
                   html += `<div style="margin-bottom:6px"><a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica (po zajęciach)</a></div>`;
                 }
                 if (hasFile && fileUrl) {
@@ -179,8 +174,15 @@
               const now=Date.now(), start=new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
               const diff=start-now, activeFrom=-5*60*1000, activeTo=55*60*1000;
               const el=document.getElementById("btn-um-{{ r.id }}");
-              if (diff>=activeFrom && diff<=activeTo) el.innerHTML=`<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
-              else {
+              const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
+
+              if (diff>=activeFrom && diff<=activeTo) {
+                if (boardUrl) {
+                  el.innerHTML = `<a class="btn small" target="_blank" rel="noopener" href="${boardUrl}">Otwórz tablicę</a>`;
+                } else {
+                  el.innerHTML = `<a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>`;
+                }
+              } else {
                 const godzina=new Date(start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
                 el.innerHTML=`<button class="btn small disabled" disabled>Dostęp od ${godzina}</button>`;
               }
@@ -191,13 +193,12 @@
               const start=new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
               const now=Date.now(), endWindow=start+55*60*1000;
               const el=document.getElementById("mat-um-{{ r.id }}");
-              const hasBoard={% if r.excalidraw_link %}true{% else %}false{% endif %};
               const boardUrl={% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
               const hasFile={% if r.material_po_zajeciach %}true{% else %}false{% endif %};
               const fileUrl={% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
 
               let html="";
-              if (now>=endWindow && hasBoard && boardUrl) html+=`<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
+              if (now>=endWindow && boardUrl) html+=`<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
               if (hasFile && fileUrl) html+= (html? " " : "") + `<a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a>`;
               el.innerHTML = html || "Brak";
             })();
@@ -231,7 +232,11 @@
             {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
           </td>
           <td>
-            <a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>
+            {% if r.excalidraw_link %}
+              <a class="btn small" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Otwórz tablicę</a>
+            {% else %}
+              <a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>
+            {% endif %}
           </td>
           <td>
             <div id="mat-f-{{ r.id }}"></div>
@@ -241,13 +246,12 @@
                 const now = Date.now();
                 const endWindow = start + 55*60*1000;
                 const el = document.getElementById("mat-f-{{ r.id }}");
-                const hasBoard = {% if r.excalidraw_link %}true{% else %}false{% endif %};
                 const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
                 const hasFile = {% if r.material_po_zajeciach %}true{% else %}false{% endif %};
                 const fileUrl = {% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
 
                 let html = "";
-                if (now >= endWindow && hasBoard && boardUrl) {
+                if (now >= endWindow && boardUrl) {
                   html += `<div style="margin-bottom:6px"><a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica (po zajęciach)</a></div>`;
                 }
                 if (hasFile && fileUrl) {
@@ -276,18 +280,21 @@
           <div><strong>Materiały:</strong> <span id="mat-fm-{{ r.id }}">—</span></div>
         </div>
         <div class="r-actions">
-          <a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>
+          {% if r.excalidraw_link %}
+            <a class="btn small" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Otwórz tablicę</a>
+          {% else %}
+            <a class="btn small" href="/zajecia_online/{{ r.id }}/">Wejdź do pokoju</a>
+          {% endif %}
           <script>
             (function(){
               const start=new Date("{{ r.termin|date:'Y-m-d H:i:s' }}").getTime();
               const now=Date.now(), endWindow=start+55*60*1000;
               const el=document.getElementById("mat-fm-{{ r.id }}");
-              const hasBoard={% if r.excalidraw_link %}true{% else %}false{% endif %};
               const boardUrl={% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
               const hasFile={% if r.material_po_zajeciach %}true{% else %}false{% endif %};
               const fileUrl={% if r.material_po_zajeciach %}"{% url 'pobierz_material' r.id %}"{% else %}null{% endif %};
               let html="";
-              if (now>=endWindow && hasBoard && boardUrl) html+=`<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
+              if (now>=endWindow && boardUrl) html+=`<a class="btn small ghost" target="_blank" rel="noopener" href="${boardUrl}">Tablica</a>`;
               if (hasFile && fileUrl) html+= (html? " " : "") + `<a class="btn small ghost" target="_blank" rel="noopener" href="${fileUrl}">Materiały</a>`;
               el.innerHTML = html || "Brak";
             })();
@@ -299,7 +306,6 @@
     {% endfor %}
   </div>
 
-  <!-- Pokój testowy -->
   <div style="margin-top:14px">
     <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
   </div>
