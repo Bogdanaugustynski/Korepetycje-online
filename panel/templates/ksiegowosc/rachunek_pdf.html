@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Rachunek {{ invoice.number }}</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif; color:#0b1320; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; }
+  .brand { display:flex; gap:10px; align-items:center; }
+  .logo { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,#0b74ff,#5aa3ff); display:grid; place-items:center; color:#fff; font-weight:800; }
+  h1 { font-size:18px; margin:0 0 2px; }
+  .muted { color:#5b6777; font-size:12px; }
+  .box { border:1px solid #e6edff; border-radius:10px; margin-top:12px; }
+  .box h3 { background:#f7fbff; border-bottom:1px solid #e6edff; margin:0; padding:8px 10px; font-size:13px; }
+  .inner { padding:10px; }
+  .kv { display:grid; grid-template-columns:160px 1fr; gap:6px 12px; font-size:14px; }
+  table { border-collapse:collapse; width:100%; margin-top:6px; }
+  th, td { padding:8px; border-bottom:1px solid #e6edff; text-align:left; font-size:14px; }
+  tfoot td { border-top:2px solid #e6edff; font-weight:700; }
+  .right { text-align:right; }
+  .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace; }
+  .legal { color:#5b6777; font-size:12px; margin-top:6px; }
+  .sign { margin-top:28px; display:flex; gap:18px; }
+  .sign .line { width:240px; text-align:center; padding-top:46px; border-top:1px solid #0b1320; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <div class="logo">PT</div>
+      <div>
+        <h1>Rachunek (działalność nierejestrowana)</h1>
+        <div class="muted">PolubiszTo.pl — korepetycje online</div>
+      </div>
+    </div>
+    <div>
+      <div><strong>Nr:</strong> {{ invoice.number }}</div>
+      <div><strong>Data:</strong> {{ invoice.issue_date }}</div>
+      <div><strong>Miejsce:</strong> {{ invoice.place }}</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Sprzedawca</h3>
+    <div class="inner kv">
+      <div>Imię i nazwisko</div><div>{{ seller.name }}</div>
+      <div>Adres</div><div>{{ seller.addr|linebreaksbr }}</div>
+      <div>NIP</div><div>{{ seller.nip|default:"—" }}</div>
+      <div>E-mail</div><div>{{ seller.mail|default:"—" }}</div>
+      <div>Nr konta</div><div class="mono">{{ seller.iban|default:"—" }}</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Nabywca</h3>
+    <div class="inner kv">
+      <div>Imię i nazwisko / nazwa</div><div>{{ buyer.name }}</div>
+      <div>Adres</div><div>{{ buyer.addr|linebreaksbr }}</div>
+      <div>NIP</div><div>{{ buyer.nip|default:"—" }}</div>
+      <div>E-mail</div><div>{{ buyer.mail|default:"—" }}</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Pozycje</h3>
+    <div class="inner">
+      <table>
+        <thead><tr><th>Opis</th><th class="right">Liczba godzin</th><th class="right">Stawka</th><th class="right">Razem</th></tr></thead>
+        <tbody><tr>
+          <td>{{ invoice.description }}</td>
+          <td class="right mono">{{ invoice.hours|floatformat:2 }}</td>
+          <td class="right mono">{{ rate_pln }}</td>
+          <td class="right mono">{{ total_pln }}</td>
+        </tr></tbody>
+        <tfoot><tr><td colspan="3" class="right">Do zapłaty</td><td class="right mono">{{ total_pln }}</td></tr></tfoot>
+      </table>
+      <div class="legal">Sprzedawca nie jest płatnikiem VAT – art. 113 ust. 1 ustawy o VAT. Usługa zwolniona z VAT.</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Płatność</h3>
+    <div class="inner kv">
+      <div>Sposób</div><div>Przelew – opłacone przez Autopay</div>
+      <div>Numer rachunku</div><div class="mono">{{ seller.iban|default:"—" }}</div>
+      <div>Tytuł przelewu</div><div>Rachunek {{ invoice.number }}</div>
+    </div>
+  </div>
+
+  <div class="sign">
+    <div style="flex:1">
+      <div class="muted">Uwagi</div>
+      <div style="min-height:44px; border:1px dashed #e6edff; border-radius:8px; padding:8px; color:#5b6777">
+        Dziękuję za skorzystanie z usług.
+      </div>
+    </div>
+    <div class="line">Podpis wystawcy</div>
+  </div>
+</body>
+</html>

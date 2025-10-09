@@ -1,0 +1,71 @@
+{% load static %}
+{% include "partials/brand.html" %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Moje rachunki — PolubiszTo.pl</title>
+<style>
+  :root{--brand:#0b74ff;--brand-700:#095cd1;--ink:#0b1320;--muted:#5b6777;--line:#e6edff;--bg:#f7f9fe;--card:#fff;--shadow:0 12px 36px rgba(11,116,255,.12);--radius:14px;--maxw:1100px}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+  .wrap{max-width:var(--maxw);margin:24px auto;padding:0 16px}
+  h1{font-size:clamp(20px,4vw,28px);margin:10px 4px}
+  .table-wrap{overflow:auto;display:block}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--muted);font-size:14px} td{font-size:15px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:600}
+  .btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:var(--brand-700)}
+  .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .tiles{display:none;grid-template-columns:1fr;gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .badge{font-size:12px;border-radius:999px;padding:4px 8px;border:1px solid var(--line);background:#f7fbff}
+  .nr{font-weight:800}
+  .muted{color:var(--muted);font-size:13px}
+  @media(max-width:767px){ .table-wrap{display:none} .tiles{display:grid} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧾 Moje rachunki</h1>
+
+  <!-- Desktop -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Nr rachunku</th><th>Data</th><th>Opis</th><th>Kwota</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for i in invoices %}
+        <tr>
+          <td>{{ i.number }}</td>
+          <td>{{ i.issue_date }}</td>
+          <td>{{ i.description }}</td>
+          <td class="mono">{{ i.total_grosz|floatformat:-2|divisibleby:100 }}</td>
+          <td><a class="btn btn-primary" href="{% url 'invoice_pdf' i.id %}">Pobierz PDF</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;color:#5b6777">Brak rachunków.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile -->
+  <div class="tiles">
+    {% for i in invoices %}
+    <div class="card">
+      <div class="row"><div class="nr">{{ i.number }}</div><div class="badge">{{ i.issue_date }}</div></div>
+      <div class="muted">{{ i.description }}</div>
+      <div class="row"><div class="mono"><strong>{{ i.total_grosz|floatformat:-2|divisibleby:100 }}</strong></div>
+        <a class="btn btn-primary" href="{% url 'invoice_pdf' i.id %}">Pobierz PDF</a></div>
+    </div>
+    {% empty %}
+      <div class="muted">Brak rachunków.</div>
+    {% endfor %}
+  </div>
+</div>
+</body>
+</html>
