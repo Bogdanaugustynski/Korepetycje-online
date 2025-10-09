@@ -83,5 +83,8 @@ urlpatterns = [
 
     path('', include('panel.urls')),
 
+    path("test-pdf/", views.test_pdf, name="test_pdf"),
+
+
 
 ]

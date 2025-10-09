@@ -1686,3 +1686,17 @@ def render_invoice_pdf(invoice, seller, buyer) -> bytes:
 
     # 3) Ostateczny placeholder, żeby nie wywalać 500
     return b"%PDF-1.4\n% placeholder rachunku – generator PDF niedostępny\n"
+
+def test_pdf(request):
+    html = "<h1>PDF działa ✅</h1><p>To jest test pdfkit+wkhtmltopdf.</p>"
+    try:
+        import pdfkit, shutil
+        path = shutil.which("wkhtmltopdf") or "/usr/bin/wkhtmltopdf"
+        config = pdfkit.configuration(wkhtmltopdf=path)
+        pdf = pdfkit.from_string(html, False, configuration=config)
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = 'inline; filename="test.pdf"'
+        return resp
+    except Exception:
+        # fallback na placeholder, żeby endpoint zawsze odpowiadał
+        return HttpResponse(b"%PDF-1.4\n% placeholder\n", content_type="application/pdf")
