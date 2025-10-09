@@ -36,7 +36,6 @@ urlpatterns = [
     path("ksiegowosc/podwyzki/", podwyzki_nauczyciele_view, name="podwyzki_nauczyciele"),
     path("ksiegowosc/rachunki/", views.accounting_invoices_view, name="accounting_invoices"),
     path("ksiegowosc/rachunki/export.csv", views.accounting_invoices_export_csv, name="accounting_invoices_export_csv"),
-    
     # Webhook Autopay (ustaw w panelu Autopay)
     path("webhooks/autopay/", views.autopay_webhook_view, name="autopay_webhook"),
 
