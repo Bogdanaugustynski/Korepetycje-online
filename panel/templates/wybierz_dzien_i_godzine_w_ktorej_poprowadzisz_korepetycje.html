@@ -1,202 +1,396 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Wybierz dzień i godzinę korepetycji</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .teacher-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 600px;
-            text-align: center;
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .btn:hover { background-color: #0056b3; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wybierz dzień i godzinę — PolubiszTo.pl</title>
 
-        .calendar { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
-        .day {
-            width: 40px; height: 40px; margin: 5px;
-            display: flex; align-items: center; justify-content: center;
-            background-color: #e9ecef; border-radius: 5px; cursor: pointer;
-        }
-        .day:hover { background-color: #ccc; }
-        .day.selected { background-color: #007bff; color: #fff; }
+  <style>
+    :root{
+      --brand:#0b74ff;
+      --brand-700:#095cd1;
+      --ink:#0b1320;
+      --muted:#5b6777;
+      --bg:#f7f9fe;
+      --card:#ffffff;
+      --line:#e6edff;
+      --radius:18px;
+      --shadow:0 12px 36px rgba(11,116,255,.14);
+      --maxw:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,"Noto Sans",sans-serif}
+    a{color:inherit}
+    .wrap{max-width:var(--maxw);margin:24px auto;padding:0 16px}
+    .card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:20px;
+    }
+    h1{font-size:clamp(20px,4vw,28px); margin:6px 0 14px}
+    .sub{color:var(--muted); margin:0 0 16px}
 
-        .hour-grid { display: none; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
-        .hour {
-            width: 80px; height: 30px; margin: 5px;
-            display: flex; align-items: center; justify-content: center;
-            background-color: #e9ecef; border-radius: 5px; cursor: pointer;
-        }
-        .hour.selected { background-color: #28a745; color: #fff; }
-    </style>
+    /* Buttons */
+    .btn{
+      appearance:none; border:0; cursor:pointer; border-radius:14px;
+      padding:12px 16px; font-weight:600;
+      background:var(--brand); color:#fff; box-shadow:0 6px 18px rgba(11,116,255,.22);
+      transition:.2s transform ease, .2s opacity ease, .2s background ease;
+    }
+    .btn:hover{background:var(--brand-700); transform:translateY(-1px)}
+    .btn.secondary{background:#eef3ff;color:#114; box-shadow:none; border:1px solid var(--line)}
+    .btn.secondary:hover{background:#e4ecff}
+
+    .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:12px}
+    .toolbar .grow{flex:1}
+
+    /* Calendar */
+    .calendar{
+      display:grid; gap:8px; margin-top:8px;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .weekday{font-size:.9rem; color:var(--muted); text-align:center}
+    .day{
+      height:46px; border-radius:12px; background:#eef3ff; color:#1b2440;
+      display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative;
+      transition:.15s ease background, .15s ease transform;
+      border:1px solid #e7edff;
+    }
+    .day:hover{background:#e2ebff}
+    .day.selected{background:var(--brand); color:#fff; border-color:transparent}
+    .day.disabled{opacity:.45; cursor:not-allowed; background:#f1f4fa}
+    .day.has-hours::after{
+      content:""; position:absolute; bottom:6px; width:6px; height:6px; border-radius:50%;
+      background:#28a745;
+    }
+    .legend{display:flex; gap:12px; align-items:center; justify-content:center; color:var(--muted); font-size:.92rem; margin-top:10px}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.green{background:#28a745}
+    .dot.blue{background:var(--brand)}
+
+    /* Month header */
+    .month-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0 4px}
+    .month-title{font-weight:700}
+
+    /* Hours */
+    .hours-wrap{margin-top:18px}
+    .hour-grid{
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px;
+    }
+    .hour{
+      height:36px; border-radius:12px; border:1px solid #e7edff; background:#f4f7ff; color:#1b2440;
+      display:flex; align-items:center; justify-content:center; cursor:pointer;
+      transition:.15s ease background, .15s ease transform;
+      font-weight:600;
+    }
+    .hour:hover{background:#e8f0ff}
+    .hour.selected{background:#28a745; color:#fff; border-color:transparent}
+
+    .hr{height:1px; background:var(--line); margin:18px 0}
+    .row{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+    .right{display:flex; gap:10px; align-items:center}
+
+    /* Toast */
+    .toast{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:24px; background:#111827; color:#fff; padding:12px 16px; border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:.2s opacity ease;
+    }
+    .toast.show{opacity:1}
+    .spinner{
+      width:16px;height:16px;border-radius:50%; border:2px solid #cbd5e1;border-top-color:var(--brand);
+      animation:spin .8s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
 </head>
 <body>
+  {% include "partials/brand.html" %}
 
-<div class="teacher-box">
-    <h2>Wybierz dzień i godzinę korepetycji</h2>
+  <div class="wrap">
+    <div class="card">
+      <h1>Wybierz dzień i godzinę korepetycji</h1>
+      <p class="sub">Zaznacz dni w kalendarzu, następnie klikaj w wybrane godziny. Zielona kropka oznacza, że dzień ma zapisane godziny.</p>
 
-    <h3>Wybierz dostępne godziny</h3>
-    <div style="display:flex; gap:4%; justify-content:center; margin-bottom:10px;">
-        <button class="btn" style="width:48%;" onclick="changeMonth(-1)">◀ Poprzedni miesiąc</button>
-        <button class="btn" style="width:48%;" onclick="changeMonth(1)">Następny miesiąc ▶</button>
+      <div class="month-head">
+        <button class="btn secondary" id="prevBtn" aria-label="Poprzedni miesiąc">◀ Poprzedni</button>
+        <div class="month-title" id="month-name">—</div>
+        <button class="btn secondary" id="nextBtn" aria-label="Następny miesiąc">Następny ▶</button>
+      </div>
+
+      <div class="calendar" id="calendar">
+        <!-- dni tygodnia -->
+      </div>
+
+      <div class="legend">
+        <span class="dot green"></span> zapisane godziny
+        <span class="dot blue"></span> aktualnie zaznaczony dzień
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="hours-wrap">
+        <div class="row" style="margin-bottom:8px">
+          <strong>Wybierz godziny</strong>
+          <div class="right">
+            <button class="btn secondary" id="clearDayBtn">Wyczyść dzień</button>
+            <button class="btn secondary" id="clearAllBtn">Wyczyść wszystko</button>
+          </div>
+        </div>
+        <div class="hour-grid" id="hourGrid" aria-live="polite" aria-label="Siatka godzin"></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div class="sub">Zmiany zapiszesz do systemu Django.</div>
+        <button class="btn" id="saveBtn">Zapisz dostępne godziny</button>
+      </div>
     </div>
-    <div id="month-name" style="font-weight:bold; margin-bottom:10px;"></div>
+  </div>
 
-    <div id="calendar" class="calendar"></div>
+  <div class="toast" id="toast"></div>
 
-    <h3>Wybierz godziny</h3>
-    <div id="hourGrid" class="hour-grid"></div>
+  <script>
+    // ================== USTAWIENIA ==================
+    const HOURS = [
+      "07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30",
+      "11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
+      "15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30",
+      "19:00","19:30","20:00"
+    ];
+    const WEEKDAYS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
 
-    <button class="btn" onclick="sendToDjango()">Zapisz dostępne godziny</button>
-</div>
+    // ================== STAN ==================
+    let viewDate = new Date();     // miesiąc wyświetlany
+    let selectedDateKey = null;    // klucz YYYY-MM-DD
+    const availableHours = {};     // { 'YYYY-MM-DD': ['07:30', ...] }
 
-<script>
-    let currentDate   = new Date();
-    let selectedDay   = null;
-    const availableHours = {};   // { 'DD': ['07:00', '08:00', ...] }
+    // ================== POMOCNICZE ==================
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function toKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+    function fromKey(key){ const [y,m,dd]=key.split('-').map(Number); return new Date(y, m-1, dd); }
+    function monthLabel(d){
+      return d.toLocaleString("pl-PL",{month:"long", year:"numeric"});
+    }
+    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+    function isPast(dateObj){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      return d < today;
+    }
+    function showToast(msg, ok=true){
+      const el = document.getElementById('toast');
+      el.innerHTML = msg;
+      el.style.background = ok ? "#111827" : "#991b1b";
+      el.classList.add('show');
+      setTimeout(()=>el.classList.remove('show'), 2200);
+    }
+    function spinnerText(text){ return `<span class="spinner"></span>${text}` }
 
-    /* -----------  Renderowanie kalendarza  ---------------- */
-    function renderCalendar() {
-        const calendar   = document.getElementById("calendar");
-        const monthName  = document.getElementById("month-name");
-        calendar.innerHTML = "";
+    // ================== RENDER KALENDARZA ==================
+    function renderCalendar(){
+      const cal = document.getElementById('calendar');
+      const monthName = document.getElementById('month-name');
+      cal.innerHTML = '';
 
-        monthName.textContent = currentDate.toLocaleString("pl-PL", { month: "long", year: "numeric" });
+      // nagłówki dni tygodnia
+      WEEKDAYS.forEach(w => {
+        const wEl = document.createElement('div');
+        wEl.className='weekday';
+        wEl.textContent = w;
+        cal.appendChild(wEl);
+      });
 
-        const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-        for (let i = 1; i <= daysInMonth; i++) {
-            const day = document.createElement("div");
-            day.className = "day";
-            day.textContent = i;
-            day.onclick = () => selectDay(i, day);
-            calendar.appendChild(day);
+      monthName.textContent = monthLabel(viewDate);
+
+      const first = startOfMonth(viewDate);
+      const last  = endOfMonth(viewDate);
+
+      // indeks dnia tygodnia (Pn=0 ... Nd=6)
+      let startIndex = (first.getDay()+6)%7;
+
+      // puste komórki do startu
+      for(let i=0;i<startIndex;i++){
+        const empty = document.createElement('div');
+        cal.appendChild(empty);
+      }
+
+      // dni miesiąca
+      for(let day=1; day<=last.getDate(); day++){
+        const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+        const key = toKey(d);
+
+        const el = document.createElement('div');
+        el.className = 'day';
+        el.textContent = day;
+
+        // disabled dla przeszłości
+        if (isPast(d)){
+          el.classList.add('disabled');
+        } else {
+          el.tabIndex = 0;
+          el.addEventListener('click', ()=>selectDate(key));
+          el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDate(key);} });
         }
-        // Jeśli dany dzień ma już zapamiętane godziny, zaznacz go
-        if (selectedDay) {
-            const dayEls = calendar.querySelectorAll(".day");
-            const match  = [...dayEls].find(el => parseInt(el.textContent, 10) === selectedDay);
-            if (match) match.classList.add("selected");
+
+        // zaznaczony?
+        if (selectedDateKey === key) el.classList.add('selected');
+
+        // ma zapisane godziny?
+        if (Array.isArray(availableHours[key]) && availableHours[key].length>0){
+          el.classList.add('has-hours');
         }
+
+        cal.appendChild(el);
+      }
     }
 
-    /* -----------  Wybór dnia  ---------------- */
-    function selectDay(day, element) {
-        selectedDay = day;
-        document.querySelectorAll(".day").forEach(d => d.classList.remove("selected"));
-        element.classList.add("selected");
-        document.getElementById("hourGrid").style.display = "flex";
-        renderHours();
+    function selectDate(key){
+      selectedDateKey = key;
+      renderCalendar();
+      renderHours();
     }
 
-    /* -----------  Renderowanie godzin  ---------------- */
-    function renderHours() {
-        const hourGrid = document.getElementById("hourGrid");
-        hourGrid.innerHTML = "";
-        const hours = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30",
-                       "11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
-                       "15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30",
-                       "19:00","19:30","20:00"];
-        hours.forEach(hour => {
-            const hourDiv = document.createElement("div");
-            hourDiv.className = "hour";
-            hourDiv.textContent = hour;
-            hourDiv.onclick = () => toggleHour(hour);
-            hourGrid.appendChild(hourDiv);
-        });
-        // zaznacz zapamiętane godziny
-        (availableHours[selectedDay] || []).forEach(h => {
-            const el = [...hourGrid.children].find(e => e.textContent === h);
-            if (el) el.classList.add("selected");
-        });
+    // ================== RENDER GODZIN ==================
+    function renderHours(){
+      const grid = document.getElementById('hourGrid');
+      grid.innerHTML = '';
+
+      if(!selectedDateKey){
+        grid.innerHTML = '<div style="color:var(--muted)">Najpierw wybierz dzień w kalendarzu.</div>';
+        return;
+      }
+
+      if(!availableHours[selectedDateKey]) availableHours[selectedDateKey] = [];
+
+      HOURS.forEach(h=>{
+        const el = document.createElement('div');
+        el.className = 'hour';
+        el.textContent = h;
+        if(availableHours[selectedDateKey].includes(h)) el.classList.add('selected');
+        el.addEventListener('click', ()=>toggleHour(h));
+        grid.appendChild(el);
+      });
     }
 
-    /* -----------  Dodawanie / usuwanie godziny  ---------------- */
-    function toggleHour(hour) {
-        if (!selectedDay) return;
-        if (!availableHours[selectedDay]) availableHours[selectedDay] = [];
-        const idx = availableHours[selectedDay].indexOf(hour);
-        idx === -1 ? availableHours[selectedDay].push(hour)
-                   : availableHours[selectedDay].splice(idx, 1);
-        renderHours();
+    function toggleHour(h){
+      const arr = availableHours[selectedDateKey] || (availableHours[selectedDateKey]=[]);
+      const i = arr.indexOf(h);
+      if(i===-1) arr.push(h); else arr.splice(i,1);
+      // sort godzin
+      arr.sort();
+      renderHours();
+      renderCalendar(); // kropka "has-hours"
     }
 
-    /* -----------  Wysyłka do Django  ---------------- */
-    function sendToDjango() {
-        if (!selectedDay) { alert("Wybierz dzień przed zapisaniem godzin!"); return; }
-
-        const terminy = Object.keys(availableHours).map(dzien => ({
-            data: `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(dzien).padStart(2,'0')}`,
-            godziny: availableHours[dzien]
-        }));
-
-        fetch('/wybierz_godziny/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ terminy })
-        })
-        .then(r => r.json())
-        .then(() => {
-            alert("Terminy zostały zapisane!");
-            // odśwież kalendarz
-            renderCalendar();
-            document.getElementById("hourGrid").style.display = "none";
-            selectedDay = null;
-        })
-        .catch(err => console.error('Błąd:', err));
+    // ================== ZMIANA MIESIĄCA ==================
+    function changeMonth(delta){
+      viewDate.setMonth(viewDate.getMonth()+delta);
+      // reset wyboru jeśli miesiąc się zmienił i data nie istnieje
+      if(selectedDateKey){
+        const d = fromKey(selectedDateKey);
+        if(d.getMonth() !== viewDate.getMonth() || d.getFullYear() !== viewDate.getFullYear()){
+          selectedDateKey = null;
+        }
+      }
+      renderCalendar();
+      renderHours();
     }
 
-    /* -----------  Zmiana miesiąca  ---------------- */
-    function changeMonth(delta) {
-        currentDate.setMonth(currentDate.getMonth() + delta);
-        selectedDay = null;                          // reset zaznaczonego dnia
-        document.getElementById("hourGrid").style.display = "none";
-        renderCalendar();
-    }
-
-    /* -----------  Pobierz cookie CSRF  ---------------- */
+    // ================== CSRF ==================
     function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        return parts.length === 2 ? decodeURIComponent(parts.pop().split(';').shift()) : null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      return parts.length === 2 ? decodeURIComponent(parts.pop().split(';').shift()) : null;
     }
 
-    /* -----------  Inicjalizacja: pobierz zapisane terminy  ---------------- */
-    window.onload = () => {
-        fetch('/pobierz_terminy/')
-            .then(r => r.json())
-            .then(data => {
-                data.terminy.forEach(t => {
-                    const dzien = parseInt(t.data.split('-')[2], 10);
-                    if (!availableHours[dzien]) availableHours[dzien] = [];
-                    availableHours[dzien].push(t.godzina);
-                });
-                renderCalendar();
-            });
-    };
-</script>
+    // ================== API ==================
+    async function loadTerminy(){
+      const cal = document.getElementById('calendar');
+      const monthName = document.getElementById('month-name');
+      const old = monthName.textContent;
+      monthName.innerHTML = spinnerText('Wczytywanie...');
+      try{
+        const r = await fetch('/pobierz_terminy/');
+        const data = await r.json();
+        // oczekujemy listy rekordów: {data: "YYYY-MM-DD", godzina: "HH:MM"}
+        (data.terminy || []).forEach(t=>{
+          if(!availableHours[t.data]) availableHours[t.data] = [];
+          if(!availableHours[t.data].includes(t.godzina)) availableHours[t.data].push(t.godzina);
+          availableHours[t.data].sort();
+        });
+      }catch(e){
+        showToast('Nie udało się pobrać terminów.', false);
+      }finally{
+        monthName.textContent = old || monthLabel(viewDate);
+        renderCalendar();
+        renderHours();
+      }
+    }
+
+    async function saveTerminy(){
+      // budujemy strukturę: [{data, godziny:[...]}]
+      const payload = Object.keys(availableHours).map(k=>({ data:k, godziny: availableHours[k] }));
+      const btn = document.getElementById('saveBtn');
+      const old = btn.innerHTML;
+      btn.innerHTML = spinnerText('Zapisywanie...');
+      btn.disabled = true;
+
+      try{
+        const r = await fetch('/wybierz_godziny/', {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ terminy: payload })
+        });
+        if(!r.ok){ throw new Error('HTTP '+r.status); }
+        await r.json().catch(()=>({}));
+
+        showToast('Terminy zapisane ✔️', true);
+        renderCalendar();
+      }catch(e){
+        showToast('Błąd zapisu terminów ❌', false);
+      }finally{
+        btn.innerHTML = old;
+        btn.disabled = false;
+      }
+    }
+
+    // ================== CZYSZCZENIE ==================
+    function clearDay(){
+      if(!selectedDateKey) return;
+      delete availableHours[selectedDateKey];
+      renderHours();
+      renderCalendar();
+    }
+    function clearAll(){
+      if(!confirm('Usunąć wszystkie zaznaczone godziny ze wszystkich dni?')) return;
+      for(const k of Object.keys(availableHours)) delete availableHours[k];
+      selectedDateKey = null;
+      renderHours();
+      renderCalendar();
+    }
+
+    // ================== INIT ==================
+    window.addEventListener('load', ()=>{
+      // UI bind
+      document.getElementById('prevBtn').addEventListener('click', ()=>changeMonth(-1));
+      document.getElementById('nextBtn').addEventListener('click', ()=>changeMonth(1));
+      document.getElementById('saveBtn').addEventListener('click', saveTerminy);
+      document.getElementById('clearDayBtn').addEventListener('click', clearDay);
+      document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+
+      // Start
+      renderCalendar();
+      renderHours();
+      loadTerminy();
+    });
+  </script>
 </body>
 </html>
