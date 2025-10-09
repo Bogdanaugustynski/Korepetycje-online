@@ -32,7 +32,6 @@
     h1{font-size:clamp(20px,4vw,28px); margin:6px 0 14px}
     .sub{color:var(--muted); margin:0 0 16px}
 
-    /* Buttons */
     .btn{
       appearance:none; border:0; cursor:pointer; border-radius:14px;
       padding:12px 16px; font-weight:600;
@@ -43,10 +42,6 @@
     .btn.secondary{background:#eef3ff;color:#114; box-shadow:none; border:1px solid var(--line)}
     .btn.secondary:hover{background:#e4ecff}
 
-    .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:12px}
-    .toolbar .grow{flex:1}
-
-    /* Calendar */
     .calendar{
       display:grid; gap:8px; margin-top:8px;
       grid-template-columns: repeat(7, 1fr);
@@ -71,11 +66,9 @@
     .dot.blue{background:var(--brand)}
     .dot.gray{background:#94a3b8}
 
-    /* Month header */
     .month-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0 4px}
     .month-title{font-weight:700}
 
-    /* Hours */
     .hours-wrap{margin-top:18px}
     .hour-grid{
       display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px;
@@ -84,8 +77,7 @@
       height:36px; border-radius:12px; border:1px solid #e7edff; background:#f4f7ff; color:#1b2440;
       display:flex; align-items:center; justify-content:center; cursor:pointer;
       transition:.15s ease background, .15s ease transform;
-      font-weight:600;
-      user-select:none;
+      font-weight:600; user-select:none;
     }
     .hour:hover{background:#e8f0ff}
     .hour.selected{background:#28a745; color:#fff; border-color:transparent}
@@ -97,7 +89,6 @@
     .row{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap}
     .right{display:flex; gap:10px; align-items:center}
 
-    /* Toast */
     .toast{
       position:fixed; left:50%; transform:translateX(-50%);
       bottom:24px; background:#111827; color:#fff; padding:12px 16px; border-radius:12px;
@@ -113,6 +104,10 @@
 </head>
 <body>
   {% include "partials/brand.html" %}
+
+  <!-- CSRF: wymuszenie nadania cookie + meta fallback -->
+  <form style="display:none">{% csrf_token %}</form>
+  <meta name="csrf-token" content="{{ csrf_token }}">
 
   <div class="wrap">
     <div class="card">
@@ -158,7 +153,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ================== USTAWIENIA ==================
+    // ================== KONFIG ==================
     const HOURS = [
       "07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30",
       "11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
@@ -195,19 +190,31 @@
     function spinnerText(text){ return `<span class="spinner"></span>${text}` }
     function nowHM(){
       const n = new Date();
-      return `${pad(n.getHours())}:${pad(n.getMinutes()>=30?30:0) === '30' ? '30' : '00'}`; // zaokrąglenie do 00/30
+      return `${pad(n.getHours())}:${n.getMinutes()>=30?'30':'00'}`;
     }
-    function compareHM(a,b){ // "HH:MM" string compare
-      return a.localeCompare(b);
+    function compareHM(a,b){ return a.localeCompare(b); }
+
+    // ================== CSRF ==================
+    function getCSRFToken(){
+      // 1) cookie standardowe
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; csrftoken=`);
+      if (parts.length === 2) {
+        const t = decodeURIComponent(parts.pop().split(';').shift());
+        if (t && t !== 'undefined' && t !== 'null') return t;
+      }
+      // 2) meta fallback
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+      return null;
     }
 
-    // ================== RENDER KALENDARZA ==================
+    // ================== KALENDARZ ==================
     function renderCalendar(){
       const cal = document.getElementById('calendar');
       const monthName = document.getElementById('month-name');
       cal.innerHTML = '';
 
-      // nagłówki dni tygodnia
       WEEKDAYS.forEach(w => {
         const wEl = document.createElement('div');
         wEl.className='weekday';
@@ -219,17 +226,13 @@
 
       const first = startOfMonth(viewDate);
       const last  = endOfMonth(viewDate);
-
-      // indeks dnia tygodnia (Pn=0 ... Nd=6)
       let startIndex = (first.getDay()+6)%7;
 
-      // puste komórki do startu
       for(let i=0;i<startIndex;i++){
         const empty = document.createElement('div');
         cal.appendChild(empty);
       }
 
-      // dni miesiąca
       for(let day=1; day<=last.getDate(); day++){
         const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
         const key = toKey(d);
@@ -238,7 +241,6 @@
         el.className = 'day';
         el.textContent = day;
 
-        // disabled dla przeszłości
         if (isPastDate(d)){
           el.classList.add('disabled');
         } else {
@@ -262,7 +264,7 @@
       renderHours();
     }
 
-    // ================== RENDER GODZIN ==================
+    // ================== GODZINY ==================
     function renderHours(){
       const grid = document.getElementById('hourGrid');
       grid.innerHTML = '';
@@ -304,10 +306,9 @@
       if(i===-1) arr.push(h); else arr.splice(i,1);
       arr.sort(compareHM);
       renderHours();
-      renderCalendar(); // kropka "has-hours"
+      renderCalendar();
     }
 
-    // ================== ZMIANA MIESIĄCA ==================
     function changeMonth(delta){
       viewDate.setMonth(viewDate.getMonth()+delta);
       if(selectedDateKey){
@@ -318,13 +319,6 @@
       }
       renderCalendar();
       renderHours();
-    }
-
-    // ================== CSRF ==================
-    function getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      return parts.length === 2 ? decodeURIComponent(parts.pop().split(';').shift()) : null;
     }
 
     // ================== API ==================
@@ -365,7 +359,6 @@
     }
 
     async function saveTerminy(){
-      // zbierz tylko dni z co najmniej 1 godziną
       const grouped = Object.keys(availableHours)
         .filter(k => Array.isArray(availableHours[k]) && availableHours[k].length > 0)
         .map(k => ({ data: k, godziny: [...availableHours[k]].sort(compareHM) }));
@@ -380,13 +373,15 @@
       btn.innerHTML = spinnerText('Zapisywanie...');
       btn.disabled = true;
 
+      const token = getCSRFToken();
+
       const postJson = async (bodyObj) => {
         const r = await fetch('/wybierz_godziny/', {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': token,
             'X-Requested-With': 'XMLHttpRequest'
           },
           body: JSON.stringify(bodyObj)
@@ -395,13 +390,13 @@
       };
 
       try{
-        // 1) format grupowany (domyślny): [{data, godziny:[...]}]
+        // 1) grouped
         let res = await postJson({ terminy: grouped, format: 'grouped' });
         if(!res.ok){
           const text = await res.text().catch(()=> '');
           console.warn('SAVE grouped failed:', res.status, text);
 
-          // 2) RETRY: format spłaszczony: [{data, godzina}]
+          // 2) flat retry
           const flat = [];
           grouped.forEach(item => item.godziny.forEach(h => flat.push({ data: item.data, godzina: h })));
           res = await postJson({ terminy: flat, format: 'flat' });
