@@ -80,8 +80,6 @@ urlpatterns = [
     # Pobieranie PDF
     path("rachunki/<int:invoice_id>/pdf/", views.invoice_pdf_download_view, name="invoice_pdf"),
 
-    path('', include('panel.urls')),
-
     path("test-pdf/", views.test_pdf, name="test_pdf"),
 
 
