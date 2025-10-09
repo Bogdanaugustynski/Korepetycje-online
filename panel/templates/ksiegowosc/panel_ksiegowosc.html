@@ -84,10 +84,19 @@
       </div>
     </a>
 
-    <a href="{% url 'accounting_invoices' %}" class="tile">
-      <div class="tile-icon">🧾</div>
-      <div class="tile-title">Rachunki</div>
-      <div class="tile-sub">Przegląd + eksport CSV</div>
+    <a href="{% url 'accounting_invoices' %}" class="tile" title="Rachunki">
+      <span class="ico">
+        <!-- receipt (SVG spójny z zestawem ikon) -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 3h14a1 1 0 0 1 1 1v16l-3-2-3 2-3-2-3 2-3-2V4a1 1 0 0 1 1-1z"/>
+          <path d="M8 8h8M8 12h8M8 16h5"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Rachunki</h3>
+        <p>Przegląd + eksport CSV</p>
+      </div>
     </a>
 
     <a href="{% url 'podwyzki_nauczyciele' %}" class="tile" title="Podwyżki nauczyciele">

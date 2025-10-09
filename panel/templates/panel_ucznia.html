@@ -89,7 +89,20 @@
       </div>
     </a>
 
-    <a href="{% url 'student_invoices' %}" class="btn btn-primary">🧾 Moje rachunki</a>
+    <a href="{% url 'student_invoices' %}" class="tile" title="Moje rachunki">
+      <span class="ico">
+        <!-- receipt -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 3h14a1 1 0 0 1 1 1v16l-3-2-3 2-3-2-3 2-3-2V4a1 1 0 0 1 1-1z"/>
+          <path d="M8 8h8M8 12h8M8 16h5"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Moje rachunki</h3>
+        <p>Pobierz potwierdzenia i PDF</p>
+      </div>
+    </a>
 
 
     <a href="{% url 'moje_konto_uczen' %}" class="tile account" title="Moje konto">
