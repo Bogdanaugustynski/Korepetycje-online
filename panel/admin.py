@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Profil, WolnyTermin, Rezerwacja
+from .models import Payment, Invoice
 
 @admin.register(Profil)
 class ProfilAdmin(admin.ModelAdmin):
@@ -13,3 +14,15 @@ class WolnyTerminAdmin(admin.ModelAdmin):
 @admin.register(Rezerwacja)
 class RezerwacjaAdmin(admin.ModelAdmin):
     list_display = ('uczen', 'nauczyciel', 'termin', 'temat')
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ("provider_payment_id","student","status","amount_grosz","paid_at","created_at")
+    search_fields = ("provider_payment_id","student__username","student__email")
+    list_filter = ("status","provider")
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ("number","student","issue_date","total_grosz","payment")
+    search_fields = ("number","student__username","student__email")
+    date_hierarchy = "issue_date"

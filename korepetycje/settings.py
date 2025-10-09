@@ -205,3 +205,7 @@ LOGGING = {
         "webrtc": {"handlers": ["console"], "level": "INFO"},
     },
 }
+
+
+AUTOPAY_WEBHOOK_SECRET = "change-me"   # tu Twój sekret z Autopay
+INVOICE_PLACE_DEFAULT = "Warszawa"

@@ -34,6 +34,11 @@ urlpatterns = [
     path("ksiegowosc/cennik/", views.cennik_view, name="cennik"),
     path("ksiegowosc/wyplaty/", views.wyplaty_nauczycieli_view, name="wypłaty_nauczycieli"),
     path("ksiegowosc/podwyzki/", podwyzki_nauczyciele_view, name="podwyzki_nauczyciele"),
+    path("ksiegowosc/rachunki/", views.accounting_invoices_view, name="accounting_invoices"),
+    path("ksiegowosc/rachunki/export.csv", views.accounting_invoices_export_csv, name="accounting_invoices_export_csv"),
+    
+    # Webhook Autopay (ustaw w panelu Autopay)
+    path("webhooks/autopay/", views.autopay_webhook_view, name="autopay_webhook"),
 
     # Zajęcia / terminy
     path("moj_plan_zajec/", views.moj_plan_zajec_view, name="moj_plan_zajec"),
@@ -69,5 +74,14 @@ urlpatterns = [
     path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
     path("webrtc/hangup/<int:rez_id>/", views.webrtc_hangup, name="webrtc_hangup"),
     path("webrtc/debug/<int:rez_id>/", views.webrtc_debug, name="webrtc_debug"),
+
+    # Uczeń
+    path("moje-rachunki/", views.student_invoices_view, name="student_invoices"),
+
+    # Pobieranie PDF
+    path("rachunki/<int:invoice_id>/pdf/", views.invoice_pdf_download_view, name="invoice_pdf"),
+
+    path('', include('panel.urls')),
+
 
 ]

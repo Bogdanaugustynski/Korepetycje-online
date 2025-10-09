@@ -1,6 +1,7 @@
 import json
 import logging
 import datetime
+import pdfkit
 import re
 import ast
 from datetime import datetime, timedelta
@@ -26,6 +27,17 @@ from django.http import (
     FileResponse,
     HttpResponseRedirect,
 )
+import hmac, hashlib, json, decimal, datetime, calendar
+from datetime import date
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, FileResponse, Http404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+from django.conf import settings
+from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+from .models import Payment, Invoice
+from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
@@ -1433,3 +1445,240 @@ def zarezerwuj_zajecia_view(request):
         return redirect("panel_ucznia")
 
     return HttpResponseRedirect("/")
+
+# --- Helpers ---
+
+def _is_accounting(u):
+    return u.is_superuser or u.groups.filter(name="Księgowość").exists()
+
+def pln_format_grosz(g):
+    return f"{decimal.Decimal(g)/100:.2f} zł".replace(".", ",")
+
+def next_invoice_number():
+    today = timezone.localdate()
+    y, m = today.year, today.month
+    prefix = f"R-{y}{str(m).zfill(2)}-"
+    last = Invoice.objects.filter(number__startswith=prefix).order_by("-number").first()
+    seq = 1
+    if last:
+        try:
+            seq = int(last.number.split("-")[-1]) + 1
+        except Exception:
+            seq = 1
+    return f"{prefix}{str(seq).zfill(4)}"
+
+def get_seller_defaults():
+    return {
+        "name": "Imię i Nazwisko",
+        "addr": "Ulica 1\n00-000 Miasto",
+        "nip": "",
+        "iban": "PL00 0000 0000 0000 0000 0000 0000",
+        "mail": "kontakt@polubiszto.pl",
+        "place": getattr(settings, "INVOICE_PLACE_DEFAULT", "Warszawa"),
+        "rate_grosz_default": 8000,  # 80 zł/h — można nadpisać z rezerwacji
+        "hours_default": decimal.Decimal("1.00"),
+    }
+
+def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
+    ctx = {
+        "invoice": invoice,
+        "seller": seller,
+        "buyer": buyer,
+        "rate_pln": pln_format_grosz(invoice.rate_grosz),
+        "total_pln": pln_format_grosz(invoice.total_grosz),
+    }
+    html = render(None, "ksiegowosc/rachunek_pdf.html", ctx).content.decode("utf-8")
+    return HTML(string=html, base_url=None).write_pdf()
+
+def bytes_to_django_file(b: bytes):
+    return ContentFile(b)
+
+# --- Webhook Autopay ---
+
+@csrf_exempt
+def autopay_webhook_view(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST only")
+
+    secret = getattr(settings, "AUTOPAY_WEBHOOK_SECRET", "")
+    raw = request.body
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        return HttpResponseBadRequest("Invalid JSON")
+
+    # Przykładowa weryfikacja podpisu HMAC-SHA256 (dopasuj do dokumentacji Autopay)
+    signature = request.headers.get("X-Autopay-Signature", "")
+    if secret:
+        expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            return HttpResponse(status=401)
+
+    provider_payment_id = str(payload.get("payment_id") or payload.get("id") or "")
+    status = payload.get("status")
+    amount_grosz = int(payload.get("amount_grosz") or payload.get("amount", 0))
+    reservation_id = payload.get("reservation_id")
+    student_id = payload.get("student_id")
+
+    if not provider_payment_id:
+        return HttpResponseBadRequest("Missing payment id")
+
+    payment, _ = Payment.objects.get_or_create(
+        provider="autopay",
+        provider_payment_id=provider_payment_id,
+        defaults=dict(
+            amount_grosz=amount_grosz,
+            currency="PLN",
+            status=status or "pending",
+            raw_payload=payload,
+            reservation_id=reservation_id,
+            student_id=student_id,
+        )
+    )
+    changed = False
+    if status and payment.status != status:
+        payment.status = status; changed = True
+    if amount_grosz and payment.amount_grosz != amount_grosz:
+        payment.amount_grosz = amount_grosz; changed = True
+    payment.raw_payload = payload
+    if status == "paid" and not payment.paid_at:
+        payment.paid_at = timezone.now(); changed = True
+    if changed:
+        payment.save()
+
+    if payment.status == "paid" and not hasattr(payment, "invoice"):
+        create_invoice_from_payment(payment)
+
+    return JsonResponse({"ok": True})
+
+def create_invoice_from_payment(payment: Payment):
+    seller = get_seller_defaults()
+    rez = payment.reservation
+    hours = getattr(rez, "liczba_godzin", seller["hours_default"])
+    rate_grosz = getattr(rez, "stawka_grosz", seller["rate_grosz_default"])
+    description = getattr(rez, "opis", f"Korepetycje online — {hours}h")
+    total_grosz = int(decimal.Decimal(hours) * decimal.Decimal(rate_grosz))
+
+    inv = Invoice.objects.create(
+        number=next_invoice_number(),
+        student=payment.student,
+        payment=payment,
+        reservation=rez,
+        issue_date=timezone.localdate(),
+        place=seller["place"],
+        description=description,
+        hours=hours,
+        rate_grosz=rate_grosz,
+        total_grosz=total_grosz,
+    )
+
+    buyer = {
+        "name": getattr(payment.student, "get_full_name", lambda: payment.student.username)(),
+        "addr": getattr(getattr(payment.student, "profile", None), "address", "") or "",
+        "nip": getattr(getattr(payment.student, "profile", None), "nip", "") or "",
+        "mail": payment.student.email or "",
+    }
+
+    pdf_bytes = render_invoice_pdf(inv, seller, buyer)
+    inv.pdf.save(f"{inv.number}.pdf", bytes_to_django_file(pdf_bytes), save=True)
+
+# --- Listy + CSV + PDF ---
+
+@login_required
+def student_invoices_view(request):
+    qs = (Invoice.objects
+          .filter(student=request.user)
+          .select_related("payment", "reservation")
+          .order_by("-issue_date", "-id"))
+    return render(request, "ksiegowosc/moje_rachunki_uczen.html", {"invoices": qs})
+
+@user_passes_test(_is_accounting)
+def accounting_invoices_view(request):
+    today = timezone.localdate()
+    ym = request.GET.get("month")
+    if ym:
+        y, m = map(int, ym.split("-"))
+    else:
+        y, m = today.year, today.month
+    first = date(y, m, 1)
+    last = date(y, m, calendar.monthrange(y, m)[1])
+    qs = (Invoice.objects
+          .select_related("student", "payment", "reservation")
+          .filter(issue_date__range=[first, last])
+          .order_by("-issue_date", "-id"))
+    ctx = {
+        "invoices": qs,
+        "month_value": f"{y}-{str(m).zfill(2)}",
+        "sum_count": qs.count(),
+        "sum_total_pln": f"{sum(i.total_grosz for i in qs)/100:.2f}".replace(".", ",") + " zł",
+        "sum_paid": qs.filter(payment__status='paid').count(),
+    }
+    return render(request, "ksiegowosc/ksiegowosc_rachunki.html", ctx)
+
+@user_passes_test(_is_accounting)
+def accounting_invoices_export_csv(request):
+    ym = request.GET.get("month")
+    if not ym:
+        return HttpResponse("Parametr month=YYYY-MM jest wymagany", status=400)
+    y, m = map(int, ym.split("-"))
+    first = date(y, m, 1)
+    last = date(y, m, calendar.monthrange(y, m)[1])
+    qs = (Invoice.objects
+          .select_related("student", "payment", "reservation")
+          .filter(issue_date__range=[first, last])
+          .order_by("issue_date", "id"))
+    import csv
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="rachunki_{ym}.csv"'
+    w = csv.writer(resp, delimiter=';')
+    w.writerow(["Nr","Data","Uczeń","Email","Opis","Godziny","Stawka (PLN)","Kwota (PLN)","Status","ID płatności","ID rezerwacji"])
+    for i in qs:
+        student_name = getattr(i.student, "get_full_name", lambda: i.student.username)() or i.student.username
+        email = getattr(i.student, "email", "") or ""
+        w.writerow([
+            i.number,
+            i.issue_date.isoformat(),
+            student_name,
+            email,
+            i.description,
+            f"{float(i.hours):.2f}".replace(".", ","),
+            f"{i.rate_grosz/100:.2f}".replace(".", ","),
+            f"{i.total_grosz/100:.2f}".replace(".", ","),
+            getattr(i.payment, "status", ""),
+            getattr(i.payment, "provider_payment_id", ""),
+            getattr(i.reservation, "id", ""),
+        ])
+    return resp
+
+@login_required
+def invoice_pdf_download_view(request, invoice_id: int):
+    inv = get_object_or_404(Invoice, id=invoice_id)
+    if inv.student != request.user and not _is_accounting(request.user):
+        raise Http404()
+    if not inv.pdf:
+        raise Http404("Brak PDF")
+    return FileResponse(inv.pdf.open("rb"), filename=f"{inv.number}.pdf", as_attachment=True)
+
+
+def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
+    from weasyprint import HTML  # <- lokalny import, bezpieczny dla migrate
+    ctx = {
+        "invoice": invoice, "seller": seller, "buyer": buyer,
+        "rate_pln": pln_format_grosz(invoice.rate_grosz),
+        "total_pln": pln_format_grosz(invoice.total_grosz),
+    }
+    html = render(None, "ksiegowosc/rachunek_pdf.html", ctx).content.decode("utf-8")
+    return HTML(string=html).write_pdf()
+
+def render_invoice_pdf(invoice: Invoice, seller: dict, buyer: dict) -> bytes:
+    # render HTML tak jak wcześniej:
+    ctx = {
+        "invoice": invoice, "seller": seller, "buyer": buyer,
+        "rate_pln": pln_format_grosz(invoice.rate_grosz),
+        "total_pln": pln_format_grosz(invoice.total_grosz),
+    }
+    html = render(None, "ksiegowosc/rachunek_pdf.html", ctx).content.decode("utf-8")
+
+    # pdfkit z HTML string:
+    pdf_bytes = pdfkit.from_string(html, False)  # False => zwraca bytes
+    return pdf_bytes
