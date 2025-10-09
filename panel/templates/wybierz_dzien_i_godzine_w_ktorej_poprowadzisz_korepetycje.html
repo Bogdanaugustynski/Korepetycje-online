@@ -69,6 +69,7 @@
     .dot{width:10px;height:10px;border-radius:50%}
     .dot.green{background:#28a745}
     .dot.blue{background:var(--brand)}
+    .dot.gray{background:#94a3b8}
 
     /* Month header */
     .month-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0 4px}
@@ -84,9 +85,13 @@
       display:flex; align-items:center; justify-content:center; cursor:pointer;
       transition:.15s ease background, .15s ease transform;
       font-weight:600;
+      user-select:none;
     }
     .hour:hover{background:#e8f0ff}
     .hour.selected{background:#28a745; color:#fff; border-color:transparent}
+    .hour.disabled{
+      background:#f1f5f9; color:#94a3b8; border-color:#e2e8f0; cursor:not-allowed; text-decoration:line-through;
+    }
 
     .hr{height:1px; background:var(--line); margin:18px 0}
     .row{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap}
@@ -112,7 +117,7 @@
   <div class="wrap">
     <div class="card">
       <h1>Wybierz dzień i godzinę korepetycji</h1>
-      <p class="sub">Zaznacz dni w kalendarzu, następnie klikaj w wybrane godziny. Zielona kropka oznacza, że dzień ma zapisane godziny.</p>
+      <p class="sub">Zaznacz dzień w kalendarzu, potem wybierz sloty godzin. Zielona kropka = dzień ma zapisane godziny. Szare godziny = niedostępne (przeszłe lub zajęte).</p>
 
       <div class="month-head">
         <button class="btn secondary" id="prevBtn" aria-label="Poprzedni miesiąc">◀ Poprzedni</button>
@@ -120,13 +125,12 @@
         <button class="btn secondary" id="nextBtn" aria-label="Następny miesiąc">Następny ▶</button>
       </div>
 
-      <div class="calendar" id="calendar">
-        <!-- dni tygodnia -->
-      </div>
+      <div class="calendar" id="calendar"></div>
 
       <div class="legend">
         <span class="dot green"></span> zapisane godziny
-        <span class="dot blue"></span> aktualnie zaznaczony dzień
+        <span class="dot blue"></span> zaznaczony dzień
+        <span class="dot gray"></span> zajęte/przeszłe sloty
       </div>
 
       <div class="hr"></div>
@@ -145,7 +149,7 @@
       <div class="hr"></div>
 
       <div class="row">
-        <div class="sub">Zmiany zapiszesz do systemu Django.</div>
+        <div class="sub">Kliknij, by zapisać w systemie.</div>
         <button class="btn" id="saveBtn">Zapisz dostępne godziny</button>
       </div>
     </div>
@@ -164,20 +168,19 @@
     const WEEKDAYS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
 
     // ================== STAN ==================
-    let viewDate = new Date();     // miesiąc wyświetlany
-    let selectedDateKey = null;    // klucz YYYY-MM-DD
-    const availableHours = {};     // { 'YYYY-MM-DD': ['07:30', ...] }
+    let viewDate = new Date();              // miesiąc wyświetlany
+    let selectedDateKey = null;             // klucz YYYY-MM-DD
+    const availableHours = {};              // { 'YYYY-MM-DD': ['07:30', ...] }
+    const busyHours = {};                   // { 'YYYY-MM-DD': Set('HH:MM',...) } opcjonalnie z backendu
 
     // ================== POMOCNICZE ==================
     function pad(n){ return String(n).padStart(2,'0'); }
     function toKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
     function fromKey(key){ const [y,m,dd]=key.split('-').map(Number); return new Date(y, m-1, dd); }
-    function monthLabel(d){
-      return d.toLocaleString("pl-PL",{month:"long", year:"numeric"});
-    }
+    function monthLabel(d){ return d.toLocaleString("pl-PL",{month:"long", year:"numeric"}); }
     function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
     function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-    function isPast(dateObj){
+    function isPastDate(dateObj){
       const today = new Date(); today.setHours(0,0,0,0);
       const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
       return d < today;
@@ -190,6 +193,13 @@
       setTimeout(()=>el.classList.remove('show'), 2200);
     }
     function spinnerText(text){ return `<span class="spinner"></span>${text}` }
+    function nowHM(){
+      const n = new Date();
+      return `${pad(n.getHours())}:${pad(n.getMinutes()>=30?30:0) === '30' ? '30' : '00'}`; // zaokrąglenie do 00/30
+    }
+    function compareHM(a,b){ // "HH:MM" string compare
+      return a.localeCompare(b);
+    }
 
     // ================== RENDER KALENDARZA ==================
     function renderCalendar(){
@@ -229,7 +239,7 @@
         el.textContent = day;
 
         // disabled dla przeszłości
-        if (isPast(d)){
+        if (isPastDate(d)){
           el.classList.add('disabled');
         } else {
           el.tabIndex = 0;
@@ -237,10 +247,7 @@
           el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDate(key);} });
         }
 
-        // zaznaczony?
         if (selectedDateKey === key) el.classList.add('selected');
-
-        // ma zapisane godziny?
         if (Array.isArray(availableHours[key]) && availableHours[key].length>0){
           el.classList.add('has-hours');
         }
@@ -266,13 +273,27 @@
       }
 
       if(!availableHours[selectedDateKey]) availableHours[selectedDateKey] = [];
+      const todayKey = toKey(new Date());
+      const disablePastToday = (selectedDateKey === todayKey);
+      const currentHM = nowHM();
+      const busySet = busyHours[selectedDateKey] || new Set();
 
       HOURS.forEach(h=>{
         const el = document.createElement('div');
         el.className = 'hour';
         el.textContent = h;
-        if(availableHours[selectedDateKey].includes(h)) el.classList.add('selected');
-        el.addEventListener('click', ()=>toggleHour(h));
+
+        const isSelected = availableHours[selectedDateKey].includes(h);
+        const isBusy = busySet.has(h);
+        const isPast = disablePastToday && compareHM(h, currentHM) < 0;
+
+        if(isSelected) el.classList.add('selected');
+        if(isBusy || isPast) el.classList.add('disabled');
+
+        el.addEventListener('click', ()=>{
+          if (el.classList.contains('disabled')) return;
+          toggleHour(h);
+        });
         grid.appendChild(el);
       });
     }
@@ -281,8 +302,7 @@
       const arr = availableHours[selectedDateKey] || (availableHours[selectedDateKey]=[]);
       const i = arr.indexOf(h);
       if(i===-1) arr.push(h); else arr.splice(i,1);
-      // sort godzin
-      arr.sort();
+      arr.sort(compareHM);
       renderHours();
       renderCalendar(); // kropka "has-hours"
     }
@@ -290,7 +310,6 @@
     // ================== ZMIANA MIESIĄCA ==================
     function changeMonth(delta){
       viewDate.setMonth(viewDate.getMonth()+delta);
-      // reset wyboru jeśli miesiąc się zmienił i data nie istnieje
       if(selectedDateKey){
         const d = fromKey(selectedDateKey);
         if(d.getMonth() !== viewDate.getMonth() || d.getFullYear() !== viewDate.getFullYear()){
@@ -310,20 +329,33 @@
 
     // ================== API ==================
     async function loadTerminy(){
-      const cal = document.getElementById('calendar');
       const monthName = document.getElementById('month-name');
       const old = monthName.textContent;
       monthName.innerHTML = spinnerText('Wczytywanie...');
       try{
-        const r = await fetch('/pobierz_terminy/');
+        const r = await fetch('/pobierz_terminy/', {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
         const data = await r.json();
-        // oczekujemy listy rekordów: {data: "YYYY-MM-DD", godzina: "HH:MM"}
+
+        // Oczekujemy: { terminy: [ {data:"YYYY-MM-DD", godzina:"HH:MM"} ], busy?: [ {data, godzina} ] }
         (data.terminy || []).forEach(t=>{
           if(!availableHours[t.data]) availableHours[t.data] = [];
           if(!availableHours[t.data].includes(t.godzina)) availableHours[t.data].push(t.godzina);
-          availableHours[t.data].sort();
+          availableHours[t.data].sort(compareHM);
         });
+
+        if (Array.isArray(data.busy)) {
+          data.busy.forEach(b=>{
+            if(!busyHours[b.data]) busyHours[b.data] = new Set();
+            busyHours[b.data].add(b.godzina);
+          });
+        }
+
       }catch(e){
+        console.error('LOAD error:', e);
         showToast('Nie udało się pobrać terminów.', false);
       }finally{
         monthName.textContent = old || monthLabel(viewDate);
@@ -333,28 +365,60 @@
     }
 
     async function saveTerminy(){
-      // budujemy strukturę: [{data, godziny:[...]}]
-      const payload = Object.keys(availableHours).map(k=>({ data:k, godziny: availableHours[k] }));
+      // zbierz tylko dni z co najmniej 1 godziną
+      const grouped = Object.keys(availableHours)
+        .filter(k => Array.isArray(availableHours[k]) && availableHours[k].length > 0)
+        .map(k => ({ data: k, godziny: [...availableHours[k]].sort(compareHM) }));
+
+      if(grouped.length === 0){
+        showToast('Brak godzin do zapisania.', false);
+        return;
+      }
+
       const btn = document.getElementById('saveBtn');
       const old = btn.innerHTML;
       btn.innerHTML = spinnerText('Zapisywanie...');
       btn.disabled = true;
 
-      try{
+      const postJson = async (bodyObj) => {
         const r = await fetch('/wybierz_godziny/', {
-          method:'POST',
-          headers:{
-            'Content-Type':'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
           },
-          body: JSON.stringify({ terminy: payload })
+          body: JSON.stringify(bodyObj)
         });
-        if(!r.ok){ throw new Error('HTTP '+r.status); }
-        await r.json().catch(()=>({}));
+        return r;
+      };
 
+      try{
+        // 1) format grupowany (domyślny): [{data, godziny:[...]}]
+        let res = await postJson({ terminy: grouped, format: 'grouped' });
+        if(!res.ok){
+          const text = await res.text().catch(()=> '');
+          console.warn('SAVE grouped failed:', res.status, text);
+
+          // 2) RETRY: format spłaszczony: [{data, godzina}]
+          const flat = [];
+          grouped.forEach(item => item.godziny.forEach(h => flat.push({ data: item.data, godzina: h })));
+          res = await postJson({ terminy: flat, format: 'flat' });
+
+          if(!res.ok){
+            const text2 = await res.text().catch(()=> '');
+            console.error('SAVE flat failed:', res.status, text2);
+            showToast(`Błąd zapisu (${res.status}). Szczegóły w konsoli.`, false);
+            return;
+          }
+        }
+
+        await res.json().catch(()=> ({}));
         showToast('Terminy zapisane ✔️', true);
         renderCalendar();
       }catch(e){
+        console.error('SAVE exception:', e);
         showToast('Błąd zapisu terminów ❌', false);
       }finally{
         btn.innerHTML = old;
@@ -379,14 +443,12 @@
 
     // ================== INIT ==================
     window.addEventListener('load', ()=>{
-      // UI bind
       document.getElementById('prevBtn').addEventListener('click', ()=>changeMonth(-1));
       document.getElementById('nextBtn').addEventListener('click', ()=>changeMonth(1));
       document.getElementById('saveBtn').addEventListener('click', saveTerminy);
       document.getElementById('clearDayBtn').addEventListener('click', clearDay);
       document.getElementById('clearAllBtn').addEventListener('click', clearAll);
 
-      // Start
       renderCalendar();
       renderHours();
       loadTerminy();
