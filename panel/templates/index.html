@@ -19,17 +19,9 @@
 
     .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--edge)}
     /* header: sticky + blur + lekki cień po scrollu */
-    header{
-      position:sticky;
-      top:0;
-      z-index:50;
-      border-bottom:1px solid #e5e7eb;
-      background:var(--bg);              /* dopasowane tło */
-      backdrop-filter:saturate(140%) blur(8px); /* zachowujemy subtelny efekt */
-    }
-@supports not (backdrop-filter: blur(8px)){
-  header{background:var(--bg);}       /* też dopasowane w fallbacku */
-}
+    header{position:sticky;top:0;z-index:50;border-bottom:1px solid #e5e7eb;
+      backdrop-filter:saturate(140%) blur(8px); background:rgba(255,255,255,.78)}
+    @supports not (backdrop-filter: blur(8px)){ header{background:#ffffff} }
     header.scrolled{box-shadow:0 6px 24px rgba(15, 23, 42, .06)}
     .bar{display:flex;align-items:center;gap:10px;padding:12px 0}
     .logo{display:flex;align-items:center;font-weight:800;letter-spacing:.2px}
