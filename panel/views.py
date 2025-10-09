@@ -173,120 +173,87 @@ def _no_store(resp: JsonResponse) -> JsonResponse:
     resp["Cache-Control"] = "no-store"
     return resp
 
-# ====== OFFER ======
 @csrf_exempt
 @never_cache
-@require_http_methods(["GET", "POST"])
 def webrtc_offer(request, rez_id: int):
-    keys = _keys(rez_id)
-    offer_key = keys["offer"]
-    answer_key = keys["answer"]
-    lock_key = keys["lock"]
-
+    offer_key, answer_key = _keys(rez_id)
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
-            if not isinstance(data, dict) or data.get("type") != "offer" or not isinstance(data.get("sdp"), str):
+            if not isinstance(data, dict) or "type" not in data or "sdp" not in data:
                 return HttpResponseBadRequest("Invalid SDP payload")
-
-            # Kto pierwszy – ten offerer (SETNX = cache.add)
-            user_id = getattr(getattr(request, "user", None), "id", None) or "anon"
-            claimed = cache.add(lock_key, str(user_id), timeout=LOCK_TTL)
-            current_locker = cache.get(lock_key)
-
-            # Jeżeli lock istnieje i nie my go trzymamy – ktoś już dzwoni
-            if not claimed and str(current_locker) != str(user_id):
-                log.info("OFFER POST blocked by lock rez=%s by=%s", rez_id, current_locker)
-                return JsonResponse({"error": "Offerer already set"}, status=409)
-
-            # Zapisz offer (najnowszy nadpisuje stary); answer czyścimy
-            cache.set(offer_key, {"type": "offer", "sdp": data["sdp"]}, timeout=OFFER_TTL)
-            cache.delete(answer_key)
-
-            log.info("OFFER POST rez=%s len=%s by=%s", rez_id, len(data["sdp"]), user_id)
+            cache.set(offer_key, data, timeout=60*10)  # 10 min
+            cache.delete(answer_key)                   # nowy offer kasuje stare answer
+            log.info("OFFER POST rez=%s len=%s", rez_id, len(data.get("sdp","")))
             return _no_store(JsonResponse({"ok": True}))
         except Exception as e:
             log.exception("OFFER POST error rez=%s", rez_id)
             return HttpResponseBadRequest(str(e))
 
-    # GET
-    data = cache.get(offer_key)
-    if not data:
-        return HttpResponseNotFound("No offer yet")
-    return _no_store(JsonResponse(data))
+    if request.method == "GET":
+        data = cache.get(offer_key)
+        if not data:
+            return HttpResponseNotFound("No offer yet")
+        return _no_store(JsonResponse(data))
 
-# ====== ANSWER ======
+    return HttpResponseBadRequest("Method not allowed")
+
 @csrf_exempt
 @never_cache
-@require_http_methods(["GET", "POST"])
 def webrtc_answer(request, rez_id: int):
-    keys = _keys(rez_id)
-    offer_key = keys["offer"]
-    answer_key = keys["answer"]
+    offer_key, answer_key = _keys(rez_id)
 
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
-            t = data.get("type")
-            sdp = data.get("sdp")
-
-            # Walidacja odpowiedzi
+            t = data.get("type"); sdp = data.get("sdp")
             if t != "answer" or not isinstance(sdp, str) or not sdp.startswith("v="):
                 return HttpResponseBadRequest("Invalid SDP payload")
-
-            # Odpowiadać można tylko na istniejącą ofertę
             if not cache.get(offer_key):
                 return HttpResponseNotFound("No offer to answer")
 
-            cache.set(answer_key, {"type": "answer", "sdp": sdp}, timeout=ANSWER_TTL)
-            # Po przyjęciu answer kasujemy offer, by watchery nie „dzwoniły” w kółko
-            cache.delete(offer_key)
-
+            cache.set(answer_key, {"type": t, "sdp": sdp}, timeout=60*10)
+            cache.delete(offer_key)  # kluczowe: po przyjęciu answer usuwamy offer
             log.info("ANSWER POST rez=%s len=%s", rez_id, len(sdp))
             return _no_store(JsonResponse({"ok": True}))
         except Exception as e:
             log.exception("ANSWER POST error rez=%s", rez_id)
             return HttpResponseBadRequest(str(e))
 
-    # GET
-    data = cache.get(answer_key)
-    if not data:
-        return HttpResponseNotFound("No answer yet")
-    return _no_store(JsonResponse(data))
+    if request.method == "GET":
+        data = cache.get(answer_key)
+        if not data:
+            return HttpResponseNotFound("No answer yet")
+        return _no_store(JsonResponse(data))
 
-# ====== HANGUP (sprzątanie stanu) ======
+    return HttpResponseBadRequest("Method not allowed")
+
 @csrf_exempt
 @never_cache
-@require_POST
 def webrtc_hangup(request, rez_id: int):
-    keys = _keys(rez_id)
-    cache.delete_many([keys["offer"], keys["answer"], keys["lock"]])
-    log.info("HANGUP rez=%s – cleared offer/answer/lock", rez_id)
+    """Czyści stan offer/answer po rozłączeniu, żeby nie wisił stary sygnał."""
+    if request.method != "POST":
+        return HttpResponseBadRequest("Method not allowed")
+    offer_key, answer_key = _keys(rez_id)
+    cache.delete_many([offer_key, answer_key])
+    log.info("HANGUP rez=%s (state cleared)", rez_id)
     return _no_store(JsonResponse({"ok": True}))
 
-# ====== DEBUG (podgląd kluczy) ======
 @csrf_exempt
 @never_cache
-@require_GET
 def webrtc_debug(request, rez_id: int):
-    keys = _keys(rez_id)
-    offer = cache.get(keys["offer"])
-    answer = cache.get(keys["answer"])
-    locker = cache.get(keys["lock"])
-
-    def _sdp_len(x):
-        try:
-            return len((x or {}).get("sdp", "") or "")
-        except Exception:
-            return 0
-
+    """Podgląd: czy offer/answer istnieją i jaką mają długość SDP (do szybkiego debug)."""
+    if request.method != "GET":
+        return HttpResponseBadRequest("Method not allowed")
+    offer_key, answer_key = _keys(rez_id)
+    offer = cache.get(offer_key); answer = cache.get(answer_key)
+    def _s(x): 
+        try: return len((x or {}).get("sdp","") or "")
+        except: return 0
     data = {
-        "keys": keys,
-        "offer": bool(offer),
-        "answer": bool(answer),
-        "offer_len": _sdp_len(offer),
-        "answer_len": _sdp_len(answer),
-        "lock_holder": locker,
+        "offer": bool(offer), "answer": bool(answer),
+        "offer_len": _s(offer), "answer_len": _s(answer),
+        "keys": {"offer": offer_key, "answer": answer_key},
     }
     return _no_store(JsonResponse(data))
 
@@ -402,40 +369,31 @@ def register_view(request):
 #         PRESENCE
 # ==========================
 @login_required
-@never_cache
-@require_POST
 def ping_online_status(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Tylko POST"}, status=405)
     rezerwacja_id = request.POST.get("rezerwacja_id")
     if not rezerwacja_id:
         return JsonResponse({"error": "Brak ID rezerwacji"}, status=400)
-
     status, _ = OnlineStatus.objects.get_or_create(user=request.user, rezerwacja_id=rezerwacja_id)
-    status.last_ping = timezone.now()
-    status.save()
-    return _no_store(JsonResponse({"status": "ping zapisany"}))
+    status.last_ping = timezone.now(); status.save()
+    return _no_store(JsonResponse({"status":"ok"}))
 
 @login_required
-@never_cache
-@require_GET
 def check_online_status(request, rezerwacja_id):
     try:
-        rezerwacja = Rezerwacja.objects.get(id=rezerwacja_id)
+        rez = Rezerwacja.objects.get(id=rezerwacja_id)
     except Rezerwacja.DoesNotExist:
-        return JsonResponse({"error": "Nie znaleziono rezerwacji"}, status=404)
-
-    if request.user == rezerwacja.uczen:
-        other_user = rezerwacja.nauczyciel
-    elif request.user == rezerwacja.nauczyciel:
-        other_user = rezerwacja.uczen
+        return JsonResponse({"error":"Nie znaleziono rezerwacji"}, status=404)
+    if request.user == rez.uczen: other = rez.nauczyciel
+    elif request.user == rez.nauczyciel: other = rez.uczen
     else:
-        return HttpResponseForbidden("Brak dostępu do tej rezerwacji")
-
+        return JsonResponse({"error":"Brak dostępu"}, status=403)
     try:
-        online_status = OnlineStatus.objects.get(user=other_user, rezerwacja_id=rezerwacja_id)
-        is_online = (timezone.now() - online_status.last_ping).total_seconds() < 20
+        os = OnlineStatus.objects.get(user=other, rezerwacja_id=rezerwacja_id)
+        is_online = (timezone.now() - os.last_ping).total_seconds() < 20
     except OnlineStatus.DoesNotExist:
         is_online = False
-
     return _no_store(JsonResponse({"online": is_online}))
 
 
