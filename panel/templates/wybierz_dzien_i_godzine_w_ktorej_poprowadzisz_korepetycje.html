@@ -24,42 +24,25 @@
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,"Noto Sans",sans-serif}
     a{color:inherit}
     .wrap{max-width:var(--maxw);margin:24px auto;padding:0 16px}
-    .card{
-      background:var(--card); border:1px solid var(--line);
-      border-radius:var(--radius); box-shadow:var(--shadow);
-      padding:20px;
-    }
+    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px;}
     h1{font-size:clamp(20px,4vw,28px); margin:6px 0 14px}
     .sub{color:var(--muted); margin:0 0 16px}
 
-    .btn{
-      appearance:none; border:0; cursor:pointer; border-radius:14px;
-      padding:12px 16px; font-weight:600;
-      background:var(--brand); color:#fff; box-shadow:0 6px 18px rgba(11,116,255,.22);
-      transition:.2s transform ease, .2s opacity ease, .2s background ease;
-    }
+    .btn{appearance:none; border:0; cursor:pointer; border-radius:14px;
+      padding:12px 16px; font-weight:600; background:var(--brand); color:#fff;
+      box-shadow:0 6px 18px rgba(11,116,255,.22); transition:.2s transform ease,.2s opacity ease,.2s background ease;}
     .btn:hover{background:var(--brand-700); transform:translateY(-1px)}
     .btn.secondary{background:#eef3ff;color:#114; box-shadow:none; border:1px solid var(--line)}
     .btn.secondary:hover{background:#e4ecff}
 
-    .calendar{
-      display:grid; gap:8px; margin-top:8px;
-      grid-template-columns: repeat(7, 1fr);
-    }
+    .calendar{display:grid; gap:8px; margin-top:8px; grid-template-columns: repeat(7, 1fr);}
     .weekday{font-size:.9rem; color:var(--muted); text-align:center}
-    .day{
-      height:46px; border-radius:12px; background:#eef3ff; color:#1b2440;
-      display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative;
-      transition:.15s ease background, .15s ease transform;
-      border:1px solid #e7edff;
-    }
+    .day{height:46px; border-radius:12px; background:#eef3ff; color:#1b2440; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; transition:.15s ease background,.15s ease transform; border:1px solid #e7edff;}
     .day:hover{background:#e2ebff}
     .day.selected{background:var(--brand); color:#fff; border-color:transparent}
     .day.disabled{opacity:.45; cursor:not-allowed; background:#f1f4fa}
-    .day.has-hours::after{
-      content:""; position:absolute; bottom:6px; width:6px; height:6px; border-radius:50%;
-      background:#28a745;
-    }
+    .day.has-hours::after{content:""; position:absolute; bottom:6px; width:6px; height:6px; border-radius:50%; background:#28a745;}
+
     .legend{display:flex; gap:12px; align-items:center; justify-content:center; color:var(--muted); font-size:.92rem; margin-top:10px}
     .dot{width:10px;height:10px;border-radius:50%}
     .dot.green{background:#28a745}
@@ -70,44 +53,24 @@
     .month-title{font-weight:700}
 
     .hours-wrap{margin-top:18px}
-    .hour-grid{
-      display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px;
-    }
-    .hour{
-      height:36px; border-radius:12px; border:1px solid #e7edff; background:#f4f7ff; color:#1b2440;
-      display:flex; align-items:center; justify-content:center; cursor:pointer;
-      transition:.15s ease background, .15s ease transform;
-      font-weight:600; user-select:none;
-    }
+    .hour-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px;}
+    .hour{height:36px; border-radius:12px; border:1px solid #e7edff; background:#f4f7ff; color:#1b2440; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.15s ease background,.15s ease transform; font-weight:600; user-select:none;}
     .hour:hover{background:#e8f0ff}
     .hour.selected{background:#28a745; color:#fff; border-color:transparent}
-    .hour.disabled{
-      background:#f1f5f9; color:#94a3b8; border-color:#e2e8f0; cursor:not-allowed; text-decoration:line-through;
-    }
+    .hour.disabled{background:#f1f5f9; color:#94a3b8; border-color:#e2e8f0; cursor:not-allowed; text-decoration:line-through;}
 
     .hr{height:1px; background:var(--line); margin:18px 0}
     .row{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap}
     .right{display:flex; gap:10px; align-items:center}
 
-    .toast{
-      position:fixed; left:50%; transform:translateX(-50%);
-      bottom:24px; background:#111827; color:#fff; padding:12px 16px; border-radius:12px;
-      box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:.2s opacity ease;
-    }
+    .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:24px; background:#111827; color:#fff; padding:12px 16px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:.2s opacity ease;}
     .toast.show{opacity:1}
-    .spinner{
-      width:16px;height:16px;border-radius:50%; border:2px solid #cbd5e1;border-top-color:var(--brand);
-      animation:spin .8s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px
-    }
+    .spinner{width:16px;height:16px;border-radius:50%; border:2px solid #cbd5e1;border-top-color:var(--brand); animation:spin .8s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   {% include "partials/brand.html" %}
-
-  <!-- CSRF: wymuszenie nadania cookie + meta fallback -->
-  <form style="display:none">{% csrf_token %}</form>
-  <meta name="csrf-token" content="{{ csrf_token }}">
 
   <div class="wrap">
     <div class="card">
@@ -153,7 +116,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ================== KONFIG ==================
+    // ======== USTAWIENIA ========
     const HOURS = [
       "07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30",
       "11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
@@ -162,23 +125,26 @@
     ];
     const WEEKDAYS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
 
-    // ================== STAN ==================
-    let viewDate = new Date();              // miesiąc wyświetlany
-    let selectedDateKey = null;             // klucz YYYY-MM-DD
-    const availableHours = {};              // { 'YYYY-MM-DD': ['07:30', ...] }
-    const busyHours = {};                   // { 'YYYY-MM-DD': Set('HH:MM',...) } opcjonalnie z backendu
+    // ======== STAN ========
+    let viewDate = new Date();          // pokazywany miesiąc
+    let selectedDateKey = null;         // "YYYY-MM-DD"
+    const availableHours = {};          // { 'YYYY-MM-DD': ['HH:MM', ...] }
+    const busyHours = {};               // { 'YYYY-MM-DD': Set('HH:MM',...) } (opcjonalnie z backendu)
 
-    // ================== POMOCNICZE ==================
-    function pad(n){ return String(n).padStart(2,'0'); }
-    function toKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-    function fromKey(key){ const [y,m,dd]=key.split('-').map(Number); return new Date(y, m-1, dd); }
-    function monthLabel(d){ return d.toLocaleString("pl-PL",{month:"long", year:"numeric"}); }
-    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-    function isPastDate(dateObj){
-      const today = new Date(); today.setHours(0,0,0,0);
-      const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-      return d < today;
+    // ======== POMOC ========
+    const pad = n => String(n).padStart(2,'0');
+    const toKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const fromKey = k => { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); };
+    const monthLabel = d => d.toLocaleString("pl-PL",{month:"long", year:"numeric"});
+    const startOfMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
+    const endOfMonth   = d => new Date(d.getFullYear(), d.getMonth()+1, 0);
+    const isPastDate = d => { const t=new Date(); t.setHours(0,0,0,0); const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); return x<t; };
+    const compareHM = (a,b)=> a.localeCompare(b);
+    const spinnerText = txt => `<span class="spinner"></span>${txt}`;
+    function nowRoundedHM(){
+      const n = new Date();
+      const mm = n.getMinutes() >= 30 ? '30' : '00';
+      return `${pad(n.getHours())}:${mm}`;
     }
     function showToast(msg, ok=true){
       const el = document.getElementById('toast');
@@ -187,72 +153,38 @@
       el.classList.add('show');
       setTimeout(()=>el.classList.remove('show'), 2200);
     }
-    function spinnerText(text){ return `<span class="spinner"></span>${text}` }
-    function nowHM(){
-      const n = new Date();
-      return `${pad(n.getHours())}:${n.getMinutes()>=30?'30':'00'}`;
-    }
-    function compareHM(a,b){ return a.localeCompare(b); }
 
-    // ================== CSRF ==================
-    function getCSRFToken(){
-      // 1) cookie standardowe
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; csrftoken=`);
-      if (parts.length === 2) {
-        const t = decodeURIComponent(parts.pop().split(';').shift());
-        if (t && t !== 'undefined' && t !== 'null') return t;
-      }
-      // 2) meta fallback
-      const meta = document.querySelector('meta[name="csrf-token"]');
-      if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
-      return null;
-    }
-
-    // ================== KALENDARZ ==================
+    // ======== KALENDARZ ========
     function renderCalendar(){
       const cal = document.getElementById('calendar');
       const monthName = document.getElementById('month-name');
       cal.innerHTML = '';
-
-      WEEKDAYS.forEach(w => {
-        const wEl = document.createElement('div');
-        wEl.className='weekday';
-        wEl.textContent = w;
-        cal.appendChild(wEl);
-      });
-
+      WEEKDAYS.forEach(w => { const e=document.createElement('div'); e.className='weekday'; e.textContent=w; cal.appendChild(e); });
       monthName.textContent = monthLabel(viewDate);
 
       const first = startOfMonth(viewDate);
       const last  = endOfMonth(viewDate);
       let startIndex = (first.getDay()+6)%7;
 
-      for(let i=0;i<startIndex;i++){
-        const empty = document.createElement('div');
-        cal.appendChild(empty);
-      }
+      for(let i=0;i<startIndex;i++){ cal.appendChild(document.createElement('div')); }
 
       for(let day=1; day<=last.getDate(); day++){
         const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
         const key = toKey(d);
-
         const el = document.createElement('div');
-        el.className = 'day';
+        el.className='day';
         el.textContent = day;
 
-        if (isPastDate(d)){
+        if(isPastDate(d)){
           el.classList.add('disabled');
         } else {
-          el.tabIndex = 0;
+          el.tabIndex=0;
           el.addEventListener('click', ()=>selectDate(key));
-          el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectDate(key);} });
+          el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); selectDate(key);} });
         }
 
-        if (selectedDateKey === key) el.classList.add('selected');
-        if (Array.isArray(availableHours[key]) && availableHours[key].length>0){
-          el.classList.add('has-hours');
-        }
+        if(selectedDateKey===key) el.classList.add('selected');
+        if(Array.isArray(availableHours[key]) && availableHours[key].length>0) el.classList.add('has-hours');
 
         cal.appendChild(el);
       }
@@ -264,36 +196,36 @@
       renderHours();
     }
 
-    // ================== GODZINY ==================
+    // ======== GODZINY ========
     function renderHours(){
       const grid = document.getElementById('hourGrid');
-      grid.innerHTML = '';
+      grid.innerHTML='';
 
       if(!selectedDateKey){
         grid.innerHTML = '<div style="color:var(--muted)">Najpierw wybierz dzień w kalendarzu.</div>';
         return;
       }
+      if(!availableHours[selectedDateKey]) availableHours[selectedDateKey]=[];
 
-      if(!availableHours[selectedDateKey]) availableHours[selectedDateKey] = [];
       const todayKey = toKey(new Date());
       const disablePastToday = (selectedDateKey === todayKey);
-      const currentHM = nowHM();
+      const currentHM = nowRoundedHM();
       const busySet = busyHours[selectedDateKey] || new Set();
 
       HOURS.forEach(h=>{
         const el = document.createElement('div');
-        el.className = 'hour';
-        el.textContent = h;
+        el.className='hour';
+        el.textContent=h;
 
         const isSelected = availableHours[selectedDateKey].includes(h);
         const isBusy = busySet.has(h);
-        const isPast = disablePastToday && compareHM(h, currentHM) < 0;
+        const isPast = disablePastToday && h.localeCompare(currentHM) < 0;
 
         if(isSelected) el.classList.add('selected');
         if(isBusy || isPast) el.classList.add('disabled');
 
         el.addEventListener('click', ()=>{
-          if (el.classList.contains('disabled')) return;
+          if(el.classList.contains('disabled')) return;
           toggleHour(h);
         });
         grid.appendChild(el);
@@ -313,37 +245,46 @@
       viewDate.setMonth(viewDate.getMonth()+delta);
       if(selectedDateKey){
         const d = fromKey(selectedDateKey);
-        if(d.getMonth() !== viewDate.getMonth() || d.getFullYear() !== viewDate.getFullYear()){
-          selectedDateKey = null;
+        if(d.getMonth()!==viewDate.getMonth() || d.getFullYear()!==viewDate.getFullYear()){
+          selectedDateKey=null;
         }
       }
-      renderCalendar();
-      renderHours();
+      renderCalendar(); renderHours();
     }
 
-    // ================== API ==================
+    // ======== CSRF ========
+    function getCookie(name){
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      return parts.length===2 ? decodeURIComponent(parts.pop().split(';').shift()) : null;
+    }
+
+    // ======== API ========
     async function loadTerminy(){
       const monthName = document.getElementById('month-name');
       const old = monthName.textContent;
       monthName.innerHTML = spinnerText('Wczytywanie...');
       try{
         const r = await fetch('/pobierz_terminy/', {
-          method: 'GET',
-          credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          method:'GET', credentials:'same-origin',
+          headers:{ 'X-Requested-With':'XMLHttpRequest' }
         });
         const data = await r.json();
 
-        // Oczekujemy: { terminy: [ {data:"YYYY-MM-DD", godzina:"HH:MM"} ], busy?: [ {data, godzina} ] }
+        // wyczyść lokalny stan i załaduj z serwera
+        for (const k of Object.keys(availableHours)) delete availableHours[k];
+
         (data.terminy || []).forEach(t=>{
-          if(!availableHours[t.data]) availableHours[t.data] = [];
+          if(!availableHours[t.data]) availableHours[t.data]=[];
           if(!availableHours[t.data].includes(t.godzina)) availableHours[t.data].push(t.godzina);
           availableHours[t.data].sort(compareHM);
         });
 
-        if (Array.isArray(data.busy)) {
+        // opcjonalne: zajęte sloty
+        if(Array.isArray(data.busy)){
+          for(const k of Object.keys(busyHours)) delete busyHours[k];
           data.busy.forEach(b=>{
-            if(!busyHours[b.data]) busyHours[b.data] = new Set();
+            if(!busyHours[b.data]) busyHours[b.data]=new Set();
             busyHours[b.data].add(b.godzina);
           });
         }
@@ -353,90 +294,66 @@
         showToast('Nie udało się pobrać terminów.', false);
       }finally{
         monthName.textContent = old || monthLabel(viewDate);
-        renderCalendar();
-        renderHours();
+        renderCalendar(); renderHours();
       }
     }
 
     async function saveTerminy(){
-      const grouped = Object.keys(availableHours)
-        .filter(k => Array.isArray(availableHours[k]) && availableHours[k].length > 0)
-        .map(k => ({ data: k, godziny: [...availableHours[k]].sort(compareHM) }));
+      // buduj ZAWSZE FLAT: [{data, godzina}]
+      const flat = [];
+      Object.keys(availableHours).forEach(dateKey=>{
+        (availableHours[dateKey] || []).forEach(h => flat.push({ data: dateKey, godzina: h }));
+      });
 
-      if(grouped.length === 0){
-        showToast('Brak godzin do zapisania.', false);
-        return;
-      }
+      if(flat.length===0){ showToast('Brak godzin do zapisania.', false); return; }
 
       const btn = document.getElementById('saveBtn');
-      const old = btn.innerHTML;
-      btn.innerHTML = spinnerText('Zapisywanie...');
-      btn.disabled = true;
-
-      const token = getCSRFToken();
-
-      const postJson = async (bodyObj) => {
-        const r = await fetch('/wybierz_godziny/', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': token,
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: JSON.stringify(bodyObj)
-        });
-        return r;
-      };
+      const old = btn.innerHTML; btn.innerHTML = spinnerText('Zapisywanie...'); btn.disabled = true;
 
       try{
-        // 1) grouped
-        let res = await postJson({ terminy: grouped, format: 'grouped' });
-        if(!res.ok){
-          const text = await res.text().catch(()=> '');
-          console.warn('SAVE grouped failed:', res.status, text);
+        const r = await fetch('/wybierz_godziny/', {
+          method:'POST', credentials:'same-origin',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ terminy: flat }) // FLAT ONLY
+        });
 
-          // 2) flat retry
-          const flat = [];
-          grouped.forEach(item => item.godziny.forEach(h => flat.push({ data: item.data, godzina: h })));
-          res = await postJson({ terminy: flat, format: 'flat' });
-
-          if(!res.ok){
-            const text2 = await res.text().catch(()=> '');
-            console.error('SAVE flat failed:', res.status, text2);
-            showToast(`Błąd zapisu (${res.status}). Szczegóły w konsoli.`, false);
-            return;
-          }
+        if(!r.ok){
+          const text = await r.text().catch(()=> '');
+          console.error('SAVE failed:', r.status, text);
+          showToast(`Błąd zapisu (${r.status}).`, false);
+          return;
         }
 
-        await res.json().catch(()=> ({}));
+        // Po sukcesie od razu ładujemy z bazy (źródło prawdy)
+        await loadTerminy();
         showToast('Terminy zapisane ✔️', true);
-        renderCalendar();
+
       }catch(e){
         console.error('SAVE exception:', e);
         showToast('Błąd zapisu terminów ❌', false);
       }finally{
-        btn.innerHTML = old;
-        btn.disabled = false;
+        btn.innerHTML = old; btn.disabled = false;
       }
     }
 
-    // ================== CZYSZCZENIE ==================
+    // ======== CZYSZCZENIE ========
     function clearDay(){
       if(!selectedDateKey) return;
       delete availableHours[selectedDateKey];
-      renderHours();
-      renderCalendar();
+      renderHours(); renderCalendar();
     }
     function clearAll(){
       if(!confirm('Usunąć wszystkie zaznaczone godziny ze wszystkich dni?')) return;
       for(const k of Object.keys(availableHours)) delete availableHours[k];
       selectedDateKey = null;
-      renderHours();
-      renderCalendar();
+      renderHours(); renderCalendar();
     }
 
-    // ================== INIT ==================
+    // ======== INIT ========
     window.addEventListener('load', ()=>{
       document.getElementById('prevBtn').addEventListener('click', ()=>changeMonth(-1));
       document.getElementById('nextBtn').addEventListener('click', ()=>changeMonth(1));
@@ -444,9 +361,7 @@
       document.getElementById('clearDayBtn').addEventListener('click', clearDay);
       document.getElementById('clearAllBtn').addEventListener('click', clearAll);
 
-      renderCalendar();
-      renderHours();
-      loadTerminy();
+      renderCalendar(); renderHours(); loadTerminy();
     });
   </script>
 </body>
