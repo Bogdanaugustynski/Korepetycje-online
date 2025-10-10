@@ -5,7 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wybierz dzień i godzinę — PolubiszTo.pl</title>
-
   <style>
     :root{
       --brand:#0b74ff; --brand-700:#095cd1; --ink:#0b1320; --muted:#5b6777;
@@ -18,6 +17,7 @@
     .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px;}
     h1{font-size:clamp(20px,4vw,28px); margin:6px 0 14px}
     .sub{color:var(--muted); margin:0 0 16px}
+
     .btn{appearance:none; border:0; cursor:pointer; border-radius:14px; padding:12px 16px; font-weight:600; background:var(--brand); color:#fff; box-shadow:0 6px 18px rgba(11,116,255,.22); transition:.2s transform ease,.2s opacity ease,.2s background ease;}
     .btn:hover{background:var(--brand-700); transform:translateY(-1px)}
     .btn.secondary{background:#eef3ff;color:#114; box-shadow:none; border:1px solid var(--line)}
@@ -34,7 +34,7 @@
     .legend{display:flex; gap:12px; align-items:center; justify-content:center; color:var(--muted); font-size:.92rem; margin-top:10px}
     .dot{width:10px;height:10px;border-radius:50%}
     .dot.green{background:#28a745}
-    .dot.blue{background:var(--brand)}
+    .dot.blue{background:#0b74ff}
     .dot.gray{background:#94a3b8}
 
     .month-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0 4px}
@@ -53,13 +53,13 @@
 
     .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:24px; background:#111827; color:#fff; padding:12px 16px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:.2s opacity ease;}
     .toast.show{opacity:1}
-    .spinner{width:16px;height:16px;border-radius:50%; border:2px solid #cbd5e1;border-top-color:var(--brand); animation:spin .8s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px}
+    .spinner{width:16px;height:16px;border-radius:50%; border:2px solid #cbd5e1;border-top-color:#0b74ff; animation:spin .8s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   {% include "partials/brand.html" %}
-  <!-- CSRF token z Django (działa także przy HttpOnly cookies) -->
+  <!-- CSRF token (do nagłówka X-CSRFToken) -->
   <form id="csrf-form" style="display:none">{% csrf_token %}</form>
 
   <div class="wrap">
@@ -116,10 +116,10 @@
     const WEEKDAYS = ["Pn","Wt","Śr","Cz","Pt","So","Nd"];
 
     // ======== STAN ========
-    let viewDate = new Date();          // pokazywany miesiąc
-    let selectedDateKey = null;         // "YYYY-MM-DD"
-    const availableHours = {};          // { 'YYYY-MM-DD': ['HH:MM', ...] }
-    const busyHours = {};               // { 'YYYY-MM-DD': Set('HH:MM',...) } (opcjonalnie z backendu)
+    let viewDate = new Date();
+    let selectedDateKey = null;              // "YYYY-MM-DD"
+    const availableHours = {};               // { 'YYYY-MM-DD': ['HH:MM', ...] }
+    const busyHours = {};                    // { 'YYYY-MM-DD': Set('HH:MM',...) } (opcjonalnie)
 
     // ======== POMOC ========
     const pad = n => String(n).padStart(2,'0');
@@ -131,24 +131,9 @@
     const isPastDate = d => { const t=new Date(); t.setHours(0,0,0,0); const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); return x<t; };
     const compareHM = (a,b)=> a.localeCompare(b);
     const spinnerText = txt => `<span class="spinner"></span>${txt}`;
-    function nowRoundedHM(){
-      const n = new Date();
-      const mm = n.getMinutes() >= 30 ? '30' : '00';
-      return `${pad(n.getHours())}:${mm}`;
-    }
-    function showToast(msg, ok=true){
-      const el = document.getElementById('toast');
-      el.innerHTML = msg;
-      el.style.background = ok ? "#111827" : "#991b1b";
-      el.classList.add('show');
-      setTimeout(()=>el.classList.remove('show'), 2200);
-    }
-
-    // CSRF z ukrytego formularza
-    function getCSRFToken(){
-      const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
-      return el ? el.value : '';
-    }
+    function nowRoundedHM(){ const n = new Date(); const mm = n.getMinutes() >= 30 ? '30' : '00'; return `${pad(n.getHours())}:${mm}`; }
+    function showToast(msg, ok=true){ const el = document.getElementById('toast'); el.innerHTML = msg; el.style.background = ok ? "#111827" : "#991b1b"; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2200); }
+    function getCSRFToken(){ const el = document.querySelector('input[name="csrfmiddlewaretoken"]'); return el ? el.value : ''; }
 
     // ======== KALENDARZ ========
     function renderCalendar(){
@@ -255,7 +240,8 @@
       monthName.innerHTML = spinnerText('Wczytywanie...');
       try{
         const r = await fetch('/pobierz_terminy/', {
-          method:'GET', credentials:'same-origin',
+          method:'GET',
+          credentials:'same-origin',
           headers:{ 'X-Requested-With':'XMLHttpRequest' }
         });
         const data = await r.json();
@@ -269,7 +255,6 @@
           availableHours[t.data].sort(compareHM);
         });
 
-        // opcjonalne: zajęte sloty
         if(Array.isArray(data.busy)){
           for(const k of Object.keys(busyHours)) delete busyHours[k];
           data.busy.forEach(b=>{
@@ -288,27 +273,26 @@
     }
 
     async function saveTerminy(){
-      // FLAT payload: [{data, godzina}]
-      const flat = [];
-      Object.keys(availableHours).forEach(dateKey=>{
-        (availableHours[dateKey] || []).forEach(h => flat.push({ data: dateKey, godzina: h }));
-      });
-      if(flat.length===0){ showToast('Brak godzin do zapisania.', false); return; }
+      // BUDUJEMY FORMAT GRUPOWANY >>> [{data:"YYYY-MM-DD", godziny:[...]}]
+      const grouped = Object.keys(availableHours)
+        .filter(k => Array.isArray(availableHours[k]) && availableHours[k].length > 0)
+        .map(k => ({ data: k, godziny: [...availableHours[k]].sort(compareHM) }));
+
+      if(grouped.length===0){ showToast('Brak godzin do zapisania.', false); return; }
 
       const btn = document.getElementById('saveBtn');
       const old = btn.innerHTML; btn.innerHTML = spinnerText('Zapisywanie...'); btn.disabled = true;
 
       try{
-        // użyj FormData + csrfmiddlewaretoken → zgodne z Django 3.x/4.x/5.x
-        const fd = new FormData();
-        fd.append('terminy', JSON.stringify(flat));
-        fd.append('csrfmiddlewaretoken', getCSRFToken());
-
         const r = await fetch('/wybierz_godziny/', {
           method:'POST',
           credentials:'same-origin',
-          // UWAGA: nie ustawiaj Content-Type ręcznie przy FormData!
-          body: fd
+          headers:{
+            'Content-Type':'application/json',
+            'X-Requested-With':'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()     // token z {% csrf_token %}
+          },
+          body: JSON.stringify({ terminy: grouped })
         });
 
         if(!r.ok){
@@ -318,7 +302,7 @@
           return;
         }
 
-        // Po sukcesie wczytaj z bazy (źródło prawdy)
+        // po sukcesie wczytaj z bazy (źródło prawdy)
         await loadTerminy();
         showToast('Terminy zapisane ✔️', true);
 
@@ -331,17 +315,8 @@
     }
 
     // ======== CZYSZCZENIE ========
-    function clearDay(){
-      if(!selectedDateKey) return;
-      delete availableHours[selectedDateKey];
-      renderHours(); renderCalendar();
-    }
-    function clearAll(){
-      if(!confirm('Usunąć wszystkie zaznaczone godziny ze wszystkich dni?')) return;
-      for(const k of Object.keys(availableHours)) delete availableHours[k];
-      selectedDateKey = null;
-      renderHours(); renderCalendar();
-    }
+    function clearDay(){ if(!selectedDateKey) return; delete availableHours[selectedDateKey]; renderHours(); renderCalendar(); }
+    function clearAll(){ if(!confirm('Usunąć wszystkie zaznaczone godziny ze wszystkich dni?')) return; for(const k of Object.keys(availableHours)) delete availableHours[k]; selectedDateKey=null; renderHours(); renderCalendar(); }
 
     // ======== INIT ========
     window.addEventListener('load', ()=>{
