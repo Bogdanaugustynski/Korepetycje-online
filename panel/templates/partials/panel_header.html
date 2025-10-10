@@ -1,0 +1,60 @@
+{# templates/partials/panel_header.html #}
+{% load static %}
+
+<header class="main-header">
+  <div class="brand-wrap">
+    {% include "partials/brand.html" %}
+
+    <nav class="header-actions">
+      {# 1) przycisk cofania JS (zawsze działa, gdy jest historia) #}
+      <button type="button" class="btn-back" onclick="history.back()">← Wstecz</button>
+
+      {# 2) przycisk do panelu głównego (po nazwie URL lub pełnym href) #}
+      {% if panel_url_name %}
+        <a href="{% url panel_url_name %}" class="btn-panel">
+          ↩ {{ panel_label|default:"Panel główny" }}
+        </a>
+      {% elif panel_href %}
+        <a href="{{ panel_href }}" class="btn-panel">
+          ↩ {{ panel_label|default:"Panel główny" }}
+        </a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<style>
+.main-header{
+  position:sticky; top:0; z-index:1000;
+  background:var(--bg, #f7f9fe);
+  box-shadow:0 6px 20px rgba(0,0,0,.08);
+  -webkit-backdrop-filter:saturate(120%) blur(6px);
+  backdrop-filter:saturate(120%) blur(6px);
+}
+.brand-wrap{
+  max-width:1100px; margin:0 auto;
+  padding:10px 16px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+}
+.header-actions{ display:flex; gap:10px; align-items:center; }
+.btn-back,.btn-panel{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:40px; padding:0 14px; border-radius:12px; text-decoration:none;
+  font-weight:600; border:none; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease;
+}
+.btn-back{
+  background:#fff; color:var(--ink,#0b1320);
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+.btn-back:hover{ transform:translateY(-1px); }
+.btn-panel{
+  background:var(--brand,#0b74ff); color:#fff;
+  box-shadow:0 3px 12px rgba(11,116,255,.28);
+}
+.btn-panel:hover{ background:var(--brand-700,#095cd1); transform:translateY(-1px); }
+@media (max-width:640px){
+  .btn-panel{ height:36px; padding:0 12px; font-weight:600; }
+  .btn-back{ display:none; } /* na mobile zostawiamy 1 główny przycisk */
+}
+</style>
