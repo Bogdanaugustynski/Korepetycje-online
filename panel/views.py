@@ -35,7 +35,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.decorators import login_required, user_passes_test
-
+import datetime as dt
+from django.utils import timezone
 from .models import Payment, Invoice
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404, redirect, render
@@ -1116,9 +1117,14 @@ def moj_plan_zajec_view(request):
 
 
 def _is_future(d, t):
-    now = timezone.localtime()
-    dt = timezone.make_aware(datetime.combine(d, t), now.tzinfo)
-    return dt >= now
+    """
+    True, jeśli kombinacja data+godzina jest w przyszłości względem teraz
+    (uwzględniamy strefę czasu aplikacji).
+    """
+    now = timezone.localtime()  # aware
+    naive = dt.datetime.combine(d, t)  # <- UŻYWA klasy dt.datetime
+    aware = naive if not timezone.is_naive(naive) else timezone.make_aware(naive, now.tzinfo)
+    return aware >= now
 
 @ensure_csrf_cookie                 # ustawi cookie CSRF na GET
 @login_required
