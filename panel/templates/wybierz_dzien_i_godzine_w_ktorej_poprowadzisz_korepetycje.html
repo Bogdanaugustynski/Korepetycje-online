@@ -8,16 +8,8 @@
 
   <style>
     :root{
-      --brand:#0b74ff;
-      --brand-700:#095cd1;
-      --ink:#0b1320;
-      --muted:#5b6777;
-      --bg:#f7f9fe;
-      --card:#ffffff;
-      --line:#e6edff;
-      --radius:18px;
-      --shadow:0 12px 36px rgba(11,116,255,.14);
-      --maxw:1100px;
+      --brand:#0b74ff; --brand-700:#095cd1; --ink:#0b1320; --muted:#5b6777;
+      --bg:#f7f9fe; --card:#ffffff; --line:#e6edff; --radius:18px; --shadow:0 12px 36px rgba(11,116,255,.14); --maxw:1100px;
     }
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -71,6 +63,8 @@
 </head>
 <body>
   {% include "partials/brand.html" %}
+  <!-- CSRF: ukryty formularz wygeneruje poprawny token -->
+  <form id="csrf-form" style="display:none">{% csrf_token %}</form>
 
   <div class="wrap">
     <div class="card">
@@ -116,7 +110,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ======== USTAWIENIA ========
+    // ======== KONFIG ========
     const HOURS = [
       "07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30",
       "11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30",
@@ -152,6 +146,11 @@
       el.style.background = ok ? "#111827" : "#991b1b";
       el.classList.add('show');
       setTimeout(()=>el.classList.remove('show'), 2200);
+    }
+    // CSRF z ukrytego formularza (działa nawet gdy cookie jest HttpOnly)
+    function getCSRFToken(){
+      const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      return el ? el.value : '';
     }
 
     // ======== KALENDARZ ========
@@ -252,13 +251,6 @@
       renderCalendar(); renderHours();
     }
 
-    // ======== CSRF ========
-    function getCookie(name){
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      return parts.length===2 ? decodeURIComponent(parts.pop().split(';').shift()) : null;
-    }
-
     // ======== API ========
     async function loadTerminy(){
       const monthName = document.getElementById('month-name');
@@ -315,10 +307,10 @@
           method:'POST', credentials:'same-origin',
           headers:{
             'Content-Type':'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': getCSRFToken(),             // ⭐️ token prosto z {% csrf_token %}
             'X-Requested-With': 'XMLHttpRequest'
           },
-          body: JSON.stringify({ terminy: flat }) // FLAT ONLY
+          body: JSON.stringify({ terminy: flat })
         });
 
         if(!r.ok){
