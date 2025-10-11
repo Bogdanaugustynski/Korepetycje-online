@@ -58,7 +58,7 @@
   </style>
 </head>
 <body>
-  {% include "partials/brand.html" %}
+  {% include "partials/panel_header.html" with panel_url_name='panel_nauczyciela' panel_label='Panel Nauczyciela' %}
   <!-- CSRF token (do nagłówka X-CSRFToken) -->
   <form id="csrf-form" style="display:none">{% csrf_token %}</form>
 
