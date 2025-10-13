@@ -158,19 +158,16 @@ def strona_glowna_view(request):
 # ====== Klucze w cache ======
 log = logging.getLogger("webrtc")
 
-# ===== Stałe TTL (jak wcześniej) =====
+# TTL (sekundy)
 OFFER_TTL    = 60 * 10
 ANSWER_TTL   = 60 * 10
-LOCK_TTL     = 60 * 2
 PRESENCE_TTL = 30
 
-def _keys(rez_id: int) -> dict:
+def _keys(rez_id: int):
     base = f"webrtc:{rez_id}"
     return {
         "offer":  f"{base}:offer",
         "answer": f"{base}:answer",
-        "lock":   f"{base}:lock",
-        "state":  f"{base}:state",
     }
 
 def _json_no_store(data, status=200):
@@ -190,31 +187,28 @@ def _parse_json_body(request):
 @csrf_exempt
 @never_cache
 def webrtc_offer(request, rez_id: int):
-    k = _keys(rez_id)
+    keys = _keys(rez_id)
+    offer_key = keys["offer"]
+    answer_key = keys["answer"]
 
     if request.method == "POST":
         try:
             data = _parse_json_body(request)
-            t = data.get("type")
-            sdp = data.get("sdp")
-
+            t = data.get("type"); sdp = data.get("sdp")
             if t != "offer" or not isinstance(sdp, str) or not sdp.startswith("v="):
-                return HttpResponseBadRequest("Invalid SDP payload (expect type='offer' and sdp starting with 'v=')")
-
-            cache.set(k["offer"], {"type": t, "sdp": sdp}, timeout=OFFER_TTL)
-            cache.delete(k["answer"])  # świeży offer kasuje stare answer
-
+                return HttpResponseBadRequest("Invalid SDP payload (must be type='offer')")
+            cache.set(offer_key, {"type": t, "sdp": sdp}, timeout=OFFER_TTL)
+            cache.delete(answer_key)  # nowe offer kasuje stare answer
             log.info("SET_OFFER rez=%s len=%s", rez_id, len(sdp))
             return _json_no_store({"ok": True})
         except ValueError as e:
-            log.warning("OFFER POST bad request rez=%s: %s", rez_id, e)
             return HttpResponseBadRequest(str(e))
         except Exception as e:
             log.exception("OFFER POST error rez=%s", rez_id)
             return HttpResponseBadRequest("Internal error while posting offer")
 
     if request.method == "GET":
-        data = cache.get(k["offer"])
+        data = cache.get(offer_key)
         if not data:
             return _json_no_store({"error": "No offer yet"}, status=404)
         return _json_no_store(data)
@@ -224,34 +218,30 @@ def webrtc_offer(request, rez_id: int):
 @csrf_exempt
 @never_cache
 def webrtc_answer(request, rez_id: int):
-    k = _keys(rez_id)
+    keys = _keys(rez_id)
+    offer_key = keys["offer"]
+    answer_key = keys["answer"]
 
     if request.method == "POST":
         try:
             data = _parse_json_body(request)
-            t = data.get("type")
-            sdp = data.get("sdp")
-
+            t = data.get("type"); sdp = data.get("sdp")
             if t != "answer" or not isinstance(sdp, str) or not sdp.startswith("v="):
-                return HttpResponseBadRequest("Invalid SDP payload (expect type='answer' and sdp starting with 'v=')")
-
-            if not cache.get(k["offer"]):
+                return HttpResponseBadRequest("Invalid SDP payload (must be type='answer')")
+            if not cache.get(offer_key):
                 return HttpResponseNotFound("No offer to answer")
-
-            cache.set(k["answer"], {"type": t, "sdp": sdp}, timeout=ANSWER_TTL)
-            cache.delete(k["offer"])  # po przyjęciu odpowiedzi kasujemy offer, żeby ring/watcher nie dzwonił
-
+            cache.set(answer_key, {"type": t, "sdp": sdp}, timeout=ANSWER_TTL)
+            cache.delete(offer_key)  # po przyjęciu answer kasujemy offer
             log.info("SET_ANSWER rez=%s len=%s", rez_id, len(sdp))
             return _json_no_store({"ok": True})
         except ValueError as e:
-            log.warning("ANSWER POST bad request rez=%s: %s", rez_id, e)
             return HttpResponseBadRequest(str(e))
         except Exception as e:
             log.exception("ANSWER POST error rez=%s", rez_id)
             return HttpResponseBadRequest("Internal error while posting answer")
 
     if request.method == "GET":
-        data = cache.get(k["answer"])
+        data = cache.get(answer_key)
         if not data:
             return _json_no_store({"error": "No answer yet"}, status=404)
         return _json_no_store(data)
@@ -260,32 +250,31 @@ def webrtc_answer(request, rez_id: int):
 
 @csrf_exempt
 @never_cache
-def webrtc_debug(request, rez_id: int):
-    if request.method != "GET":
+def webrtc_hangup(request, rez_id: int):
+    """Czyści offer i answer po rozłączeniu."""
+    if request.method != "POST":
         return HttpResponseBadRequest("Method not allowed")
-
-    k = _keys(rez_id)
-    offer  = cache.get(k["offer"])
-    answer = cache.get(k["answer"])
-    data = {
-        "offer": bool(offer),
-        "answer": bool(answer),
-        "offer_len": len((offer or {}).get("sdp", "") or ""),
-        "answer_len": len((answer or {}).get("sdp", "") or ""),
-        "keys": k,
-    }
-    return _json_no_store(data)
+    offer_key, answer_key = _keys(rez_id)["offer"], _keys(rez_id)["answer"]
+    cache.delete_many([offer_key, answer_key])
+    log.info("HANGUP rez=%s (state cleared)", rez_id)
+    return _json_no_store({"ok": True})
 
 @csrf_exempt
 @never_cache
-def webrtc_hangup(request, rez_id: int):
-    """Czyści stan offer/answer po rozłączeniu, żeby nie wisił stary sygnał."""
-    if request.method != "POST":
+def webrtc_debug(request, rez_id: int):
+    """Podgląd stanu (do debugowania)."""
+    if request.method != "GET":
         return HttpResponseBadRequest("Method not allowed")
-    offer_key, answer_key = _keys(rez_id)
-    cache.delete_many([offer_key, answer_key])
-    log.info("HANGUP rez=%s (state cleared)", rez_id)
-    return _no_store(JsonResponse({"ok": True}))
+    offer_key, answer_key = _keys(rez_id)["offer"], _keys(rez_id)["answer"]
+    offer = cache.get(offer_key)
+    answer = cache.get(answer_key)
+    data = {
+        "offer": bool(offer), "answer": bool(answer),
+        "offer_len": len((offer or {}).get("sdp","") or ""),
+        "answer_len": len((answer or {}).get("sdp","") or ""),
+        "keys": {"offer": offer_key, "answer": answer_key},
+    }
+    return _json_no_store(data)
 
 
 # ==========================
@@ -402,29 +391,29 @@ def register_view(request):
 def ping_online_status(request):
     if request.method != "POST":
         return JsonResponse({"error": "Tylko POST"}, status=405)
-    rezerwacja_id = request.POST.get("rezerwacja_id")
-    if not rezerwacja_id:
+    rez_id = request.POST.get("rezerwacja_id")
+    if not rez_id:
         return JsonResponse({"error": "Brak ID rezerwacji"}, status=400)
-    status, _ = OnlineStatus.objects.get_or_create(user=request.user, rezerwacja_id=rezerwacja_id)
+    status, _ = OnlineStatus.objects.get_or_create(user=request.user, rezerwacja_id=rez_id)
     status.last_ping = timezone.now(); status.save()
-    return _no_store(JsonResponse({"status":"ok"}))
+    return _json_no_store({"status":"ok"})
 
 @login_required
 def check_online_status(request, rezerwacja_id):
     try:
-        rez = Rezerwacja.objects.get(id=rezerwacja_id)
+      rez = Rezerwacja.objects.get(id=rezerwacja_id)
     except Rezerwacja.DoesNotExist:
-        return JsonResponse({"error":"Nie znaleziono rezerwacji"}, status=404)
+      return JsonResponse({"error":"Nie znaleziono rezerwacji"}, status=404)
     if request.user == rez.uczen: other = rez.nauczyciel
     elif request.user == rez.nauczyciel: other = rez.uczen
     else:
-        return JsonResponse({"error":"Brak dostępu"}, status=403)
+      return JsonResponse({"error":"Brak dostępu"}, status=403)
     try:
-        os = OnlineStatus.objects.get(user=other, rezerwacja_id=rezerwacja_id)
-        is_online = (timezone.now() - os.last_ping).total_seconds() < 20
+      os = OnlineStatus.objects.get(user=other, rezerwacja_id=rezerwacja_id)
+      is_online = (timezone.now() - os.last_ping).total_seconds() < 20
     except OnlineStatus.DoesNotExist:
-        is_online = False
-    return _no_store(JsonResponse({"online": is_online}))
+      is_online = False
+    return _json_no_store({"online": is_online})
 
 
 # ==========================

@@ -5,13 +5,14 @@
   <title>Zajęcia online — audio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#0b74ff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; --bg:#f4f6fb; --card:#fff; --focus:#8ab6ff; }
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg)}
+    :root { --primary:#0b74ff; --ok:#28a745; --warn:#ffb300; --danger:#dc3545; --bg:#f4f6fb; --card:#fff; }
+    body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg)}
     header{background:linear-gradient(180deg,rgba(11,116,255,.98),rgba(11,116,255,.92));color:#fff;padding:10px 14px;display:flex;gap:12px;flex-wrap:wrap}
     .title{font-weight:800;font-size:18px;margin-right:auto}
-    .pill{background:var(--card);color:#111;padding:8px 10px;border-radius:10px;border:1px solid #dfe6f5;display:inline-flex;gap:8px;font-weight:600}
+    .pill{background:var(--card);padding:8px 10px;border-radius:10px;border:1px solid #dfe6f5;display:inline-flex;align-items:center;gap:8px;font-weight:600;color:#111}
     .pill.disabled{opacity:.55;pointer-events:none}
-    .status-dot{width:14px;height:14px;border-radius:50%}.status--on{background:#2dd66f}.status--off{background:#bdbdbd}
+    .status-dot{width:14px;height:14px;border-radius:50%}
+    .status--on{background:#2dd66f}.status--off{background:#bdbdbd}
     main{padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:18px}
     .btn{padding:12px 18px;border-radius:10px;border:1px solid #d7e0f0;background:#fff;cursor:pointer}
     .btn.primary{background:linear-gradient(180deg,#28a745,#1f8b39);color:#fff;border:none}
@@ -20,17 +21,16 @@
     #vu{width:120px;height:10px;background:#e8eefc;border-radius:6px;overflow:hidden}
     #vu>span{display:block;height:100%;width:0;background:#28a745;transition:width .06s linear;border-radius:6px}
     #autoplay{display:none;align-items:center;gap:10px;background:#fff9e6;border:1px solid #ffe08a;color:#5a3c00;padding:10px 12px;border-radius:10px}
-    #autoplay button{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--warn);color:#000;font-weight:800}
     #incoming{display:none;align-items:center;gap:10px;background:#eef4ff;border:1px solid #bcd3ff;color:#0b3d91;padding:10px 12px;border-radius:12px}
-    small{opacity:.9;font-weight:600} audio{width:0;height:0;opacity:0;pointer-events:none}
+    small{opacity:.9;font-weight:600}
+    audio{width:0;height:0;opacity:0;pointer-events:none}
   </style>
 </head>
 <body>
-
 <header>
   <div class="title">Zajęcia online — audio</div>
 
-  <button class="pill" id="presence-pill" type="button" title="Status obecności">
+  <button class="pill" id="presence-pill" type="button" title="Status">
     <span id="presence-dot" class="status-dot status--off"></span>
     <span id="presence-text">Niedostępny</span>
   </button>
@@ -40,6 +40,9 @@
   <button class="pill disabled" id="mic-btn" type="button" onclick="toggleMic()">
     <span id="mic-ico">🔇</span><span id="mic-lbl">Wycisz mikrofon</span>
   </button>
+
+  <!-- Opcjonalny test Hard Mic -->
+  <button class="pill" id="hard-mic" type="button" onclick="forceMic()">🎤 Hard Mic</button>
 
   <div class="pill">
     🔈 <input id="vol" class="slider" type="range" min="0" max="100" value="100" oninput="setVolume(this.value)">
@@ -60,10 +63,9 @@
 
   {% if is_teacher %}
     <button class="pill" id="announce" type="button" onclick="announceHost()">📣 Ogłoś: jestem gospodarzem</button>
-    <button class="pill" id="host" type="button" onclick="startHost()">🔗 Połącz (gospodarz)</button>
+    <button class="pill" id="host" type="button" onclick="startHost()">📞 Połącz (gospodarz)</button>
   {% else %}
     <span class="pill" id="wait-host" style="display:none;">⏳ Czekamy na gospodarza…</span>
-    <button class="pill" id="student" type="button" onclick="void(0)">🔗 Połącz (uczeń)</button>
   {% endif %}
 
   <button class="pill btn danger" id="bye" type="button" onclick="hangup()" style="display:none;">🔌 Rozłącz</button>
@@ -83,7 +85,6 @@
 
   <div id="autoplay">🔇 Przeglądarka zablokowała dźwięk. Kliknij: <button type="button" id="autoplay-btn">Włącz audio</button></div>
 
-  <!-- Baner połączenia przychodzącego -->
   <div id="incoming">
     📞 Połączenie przychodzące od nauczyciela…
     <div style="margin-left:auto;display:flex;gap:8px">
@@ -99,26 +100,20 @@
 
 <script>
 /* ====== Kontekst ====== */
-const rezerwacjaId = "{{ rezerwacja.id }}";
-const csrfToken    = "{{ csrf_token }}";
-const IS_TEACHER   = {% if is_teacher %}true{% else %}false{% endif %};
+const rezId = "{{ rezerwacja.id }}";
+const csrfToken = "{{ csrf_token }}";
+const IS_TEACHER = {% if is_teacher %}true{% else %}false{% endif %};
 
 const OFFER_URL  = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_offer' rez_id=rezerwacja.id %}";
 const ANSWER_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_answer' rez_id=rezerwacja.id %}";
 const HANGUP_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'webrtc_hangup' rez_id=rezerwacja.id %}";
 
-/* ====== TURN (uzupełnij realnymi danymi!) ====== */
-const TURN = {
-  host: "",           // np. turn.twojadomena.pl (z certem TLS)
-  user: "",
-  pass: "",
-  tls: true,          // turns:// (TLS)
-  forceRelayIOS: true // wymuś relay na iOS Safari
-};
+/* ====== TURN (uzupełnij realnymi danymi) ====== */
+const TURN = { host:"", user:"", pass:"", tls:true, forceRelayIOS:true };
 
 /* ====== iOS/Safari detekcja ====== */
 const UA = navigator.userAgent || navigator.vendor || "";
-const IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 /* ====== RTC config ====== */
@@ -126,9 +121,9 @@ function buildRtcConfig(){
   const iceServers = [
     { urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] }
   ];
-  if (TURN.host && TURN.user && TURN.pass) {
+  if(TURN.host && TURN.user && TURN.pass){
     const base = TURN.tls ? `turns:${TURN.host}:5349?transport=` : `turn:${TURN.host}:3478?transport=`;
-    iceServers.push({ urls:[base+"tcp", base+"udp"], username:TURN.user, credential:TURN.pass });
+    iceServers.push({ urls:[base+"tcp",base+"udp"], username:TURN.user, credential:TURN.pass });
   }
   const forceRelay = (TURN.forceRelayIOS && IS_IOS && IS_SAFARI);
   return { iceServers, iceTransportPolicy: forceRelay ? "relay" : "all", bundlePolicy:"max-bundle" };
@@ -142,22 +137,23 @@ let offerWatch=null, vuLoop=null, inVuTimer=null, ringWatch=null, gumBusy=false;
 let incomingOffer=false; let wakeLock=null; let disconnectTimer=null;
 
 /* ====== Helpers/UI ====== */
-const $ = sel => document.querySelector(sel);
+const $ = s => document.querySelector(s);
 const supportsSink = ('setSinkId' in HTMLMediaElement.prototype);
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-
 function setSig(m){ $('#sig').textContent=m; }
 function setIce(m){ $('#ice').textContent=m; }
 function setIcePath(m){ $('#ice-path').textContent=m; }
-
 function uiRefresh(){
-  $('#participants').textContent = (joined?2:1);
+  $('#participants').textContent = joined?2:1;
   $('#mic-btn').classList.toggle('disabled', !localStream);
   $('#bye').style.display = joined ? 'inline-flex' : 'none';
-  if(IS_TEACHER){ $('#announce').style.display = joined ? 'none' : 'inline-flex'; $('#host').style.display = joined ? 'none' : 'inline-flex'; }
-  else{ $('#student').style.display = joined ? 'none' : 'inline-flex'; }
+  if(IS_TEACHER){
+    $('#announce').style.display = joined ? 'none' : 'inline-flex';
+    $('#host').style.display     = joined ? 'none' : 'inline-flex';
+  }else{
+    $('#student').style.display = joined ? 'none' : 'inline-flex';
+  }
 }
-function setVolume(v){ $('#vol-val').textContent = v+'%'; $('#remote').volume = Math.max(0,Math.min(1,Number(v)/100)); }
+function setVolume(v){ $('#vol-val').textContent=v+'%'; $('#remote').volume = Math.max(0,Math.min(1,Number(v)/100)); }
 async function populateOutputs(){
   if(!supportsSink){ $('#out-pill').style.display='none'; return; }
   try{
@@ -206,15 +202,9 @@ function startInboundStatsVU(){
   loop();
 }
 
-/* ====== Wake Lock (opcjonalnie) ====== */
-async function keepAwake(on){
-  if(!('wakeLock' in navigator)) return;
-  try{ if(on && !wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); }
-       if(!on && wakeLock){ await wakeLock.release(); wakeLock=null; } }catch(e){}
-}
-
 /* ====== RTC core ====== */
 function attachRemoteAudio(){ $('#remote').srcObject=null; ensureAudio(); }
+
 function setupPeer(){
   rtcConfig = buildRtcConfig();
   pc = new RTCPeerConnection(rtcConfig);
@@ -224,9 +214,15 @@ function setupPeer(){
 
   pc.oniceconnectionstatechange = ()=>{
     setIce(pc.iceConnectionState || ''); updateIcePath();
-    if(pc.iceConnectionState==='disconnected'){ clearTimeout(disconnectTimer); disconnectTimer=setTimeout(()=>{ if(pc && pc.iceConnectionState==='disconnected'){ doIceRestart('disconnected'); } }, 5000); }
+    if(pc.iceConnectionState==='disconnected'){
+      clearTimeout(disconnectTimer);
+      disconnectTimer = setTimeout(()=>{ if(pc && pc.iceConnectionState==='disconnected'){ doIceRestart('disconnected'); } }, 5000);
+    }
   };
-  pc.onconnectionstatechange = ()=>{ if(pc.connectionState==='failed'){ doIceRestart('failed'); } if(['disconnected','failed','closed'].includes(pc.connectionState)){ joined=false; uiRefresh(); } };
+  pc.onconnectionstatechange = ()=>{
+    if(pc.connectionState==='failed'){ doIceRestart('failed'); }
+    if(['disconnected','failed','closed'].includes(pc.connectionState)){ joined=false; uiRefresh(); }
+  };
   pc.ontrack = (e)=>{
     const el = $('#remote');
     if(e.streams && e.streams[0]){ el.srcObject=e.streams[0]; startInputVU(e.streams[0]); }
@@ -253,6 +249,7 @@ async function requestMicNow(){
     if(!audioTransceiver && pc){ audioTransceiver = pc.addTransceiver('audio',{direction:'sendrecv'}); }
     if(audioTransceiver?.sender){ audioTransceiver.direction='sendrecv'; await audioTransceiver.sender.replaceTrack(track); }
     else if(pc){ pc.addTrack(track, localStream); }
+    startInputVU(localStream);
     $('#mic-btn').classList.remove('disabled'); $('#mic-ico').textContent='🎙️'; $('#mic-lbl').textContent='Wycisz mikrofon'; uiRefresh();
   }catch(e){ alert('Błąd mikrofonu: '+(e?.message||e)); }
   finally{ gumBusy=false; }
@@ -269,8 +266,9 @@ function teardown(){
   if(offerWatch) clearTimeout(offerWatch); if(ringWatch) clearTimeout(ringWatch);
   clearTimeout(disconnectTimer);
   setSig('init'); setIce('init'); setIcePath(''); uiRefresh();
-  const inc = $('#incoming'); inc.style.display='none'; incomingOffer=false;
+  $('#incoming').style.display='none'; incomingOffer=false;
   keepAwake(false);
+  // czyść stan w cache
   fetch(HANGUP_URL,{method:'POST',headers:{'X-CSRFToken':csrfToken},credentials:'same-origin',cache:'no-store'}).catch(()=>{});
 }
 
@@ -308,7 +306,7 @@ async function startHost(){
   if(joined||connecting) return; connecting=true;
   const btn = $('#host'); btn.textContent='Dzwonienie…'; btn.classList.add('disabled');
   try{
-    attachRemoteAudio(); setupPeer(); setSig('creating-offer'); await keepAwake(true);
+    attachRemoteAudio(); setupPeer(); setSig('przygotowanie'); await keepAwake(true);
     const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce();
     await postJSON(OFFER_URL,{type:pc.localDescription.type,sdp:pc.localDescription.sdp},'offer-post');
     await requestMicNow();
@@ -316,23 +314,23 @@ async function startHost(){
     for(let i=0;i<180 && pc;i++){
       const ans = await getJSON(ANSWER_URL,'answer-get');
       if(ans && ans.type==='answer' && ans.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(ans)); ok=true; break; }
-      await sleep(800);
+      await new Promise(r=>setTimeout(r,800));
     }
     if(!ok) throw new Error('Brak odpowiedzi ucznia');
     joined=true; uiRefresh(); await populateOutputs();
     negReady=true; startOfferWatcher();
   }catch(e){ alert('Host error: '+e); teardown(); }
-  finally{ btn.textContent='🔗 Połącz (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
+  finally{ btn.textContent='📞 Połącz (gospodarz)'; btn.classList.remove('disabled'); connecting=false; updateIcePath(); }
 }
 
-/* ====== Student (Odbierz) ====== */
+/* ====== Student ====== */
 async function joinMeeting(){
   if(IS_TEACHER) return;
   if(joined||connecting) return; connecting=true;
   try{
     attachRemoteAudio(); setupPeer(); ensureAudio(); await keepAwake(true);
     let offer=null;
-    for(let i=0;i<6;i++){ offer = await getJSON(OFFER_URL,'offer-get'); if(offer && offer.type==='offer' && offer.sdp) break; await sleep(300); }
+    for(let i=0;i<6;i++){ offer = await getJSON(OFFER_URL,'offer-get'); if(offer && offer.type==='offer' && offer.sdp) break; await new Promise(r=>setTimeout(r,300)); }
     if(!offer){ alert('Brak połączenia przychodzącego.'); connecting=false; return; }
     setSig('set-remote-offer'); await pc.setRemoteDescription(new RTCSessionDescription(offer));
     await requestMicNow();
@@ -372,7 +370,7 @@ function updateIcePath(){ if(!pc){ setIcePath(''); return; }
   })();
 }
 
-/* ====== fetch helpers (no-store) ====== */
+/* ====== fetch helpers ====== */
 async function postJSON(url,data,label){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'});
   if(!r.ok) throw new Error(`${label} ${url} -> ${r.status}`);
@@ -385,9 +383,9 @@ async function getJSON(url,label){
 }
 
 /* ====== Presence & store ====== */
-function pingPresence(){ fetch("{% url 'ping_online_status' %}",{method:'POST',headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},body:'rezerwacja_id='+encodeURIComponent(rezerwacjaId),credentials:'same-origin',cache:'no-store'}).catch(()=>{}); }
+function pingPresence(){ fetch("{% url 'ping_online_status' %}",{method:'POST',headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},body:'rezerwacja_id='+encodeURIComponent(rezId),credentials:'same-origin',cache:'no-store'}).catch(()=>{}); }
 function checkPresence(){
-  fetch(`/check-online-status/${rezerwacjaId}/`,{credentials:'same-origin',cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{
+  fetch(`/check-online-status/${rezId}/`,{credentials:'same-origin',cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>{
     otherOnline = !!(d&&d.online);
     $('#presence-dot').className = 'status-dot '+(otherOnline?'status--on':'status--off');
     $('#presence-text').textContent = otherOnline?'Dostępny':'Niedostępny';
@@ -400,7 +398,7 @@ function updateStore(){
   }).catch(()=>{ $('#store').textContent='offer: ?, answer: ?'; });
 }
 
-/* ====== Ring watcher u ucznia ====== */
+/* ====== Ring watcher ====== */
 function startRingWatcherForStudent(){
   if(IS_TEACHER) return;
   if(ringWatch) clearTimeout(ringWatch);
@@ -415,7 +413,7 @@ function startRingWatcherForStudent(){
   }; loop();
 }
 
-/* ====== TURN sanity ====== */
+/* ====== TURN warning ====== */
 function warnIfNoTurn(){
   const isLocal = location.hostname==='localhost' || location.hostname==='127.0.0.1';
   if(isLocal) return;
@@ -431,7 +429,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setInterval(checkPresence, 10_000);
   setInterval(updateStore, 2_000);
   setVolume($('#vol').value);
-
   startRingWatcherForStudent();
   $('#accept')?.addEventListener('click', ()=>{ if(incomingOffer && !joined && !connecting){ joinMeeting(); } });
   $('#decline')?.addEventListener('click', ()=>{ $('#incoming').style.display='none'; incomingOffer=false; });

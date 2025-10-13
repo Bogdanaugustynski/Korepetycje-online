@@ -1,0 +1,88 @@
+{# templates/partials/panel_header.html #}
+{% load static %}
+
+<header class="main-header">
+  <div class="brand-wrap">
+    <div class="brand-left">
+      {% include "partials/brand.html" %}
+    </div>
+
+    <nav class="header-actions">
+      <button type="button" class="btn-back" onclick="history.back()">← Wstecz</button>
+      {% if panel_url_name %}
+        <a href="{% url panel_url_name %}" class="btn-panel">↩ {{ panel_label|default:"Panel główny" }}</a>
+      {% elif panel_href %}
+        <a href="{{ panel_href }}" class="btn-panel">↩ {{ panel_label|default:"Panel główny" }}</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<!-- Dystans pod fixed header (żeby treść nie wskakiwała pod spód) -->
+<div class="header-spacer" aria-hidden="true"></div>
+
+<style>
+/* --- NAGŁÓWEK JEST FIXED (pewne przyklejenie) --- */
+.main-header{
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  background:var(--bg,#f7f9fe);
+  box-shadow:0 6px 20px rgba(0,0,0,.08);
+  -webkit-backdrop-filter:saturate(120%) blur(6px);
+  backdrop-filter:saturate(120%) blur(6px);
+}
+
+/* Spacer ma wysokość równą headerowi (ustawiamy skryptem niżej) */
+.header-spacer{ height:var(--header-h, 64px); }
+
+/* Układ wnętrza — logo po LEWEJ, przyciski po PRAWEJ */
+.brand-wrap{
+  max-width:1100px; margin:0 auto; padding:10px 16px;
+  display:flex; align-items:center; gap:16px;
+}
+.brand-left{ display:flex; align-items:center; margin-right:auto; }
+
+/* Wymuszamy lewą krawędź nawet jeśli brand.html coś centruje */
+.brand-left :where(h1,.brand,.logo,.site-brand, .brand-root){
+  margin-left:0 !important; margin-right:auto !important; text-align:left !important;
+}
+
+.header-actions{ display:flex; gap:10px; align-items:center; margin-left:auto; }
+.btn-back,.btn-panel{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:40px; padding:0 14px; border-radius:12px; text-decoration:none;
+  font-weight:600; border:none; cursor:pointer;
+  transition:transform .15s, box-shadow .2s, background .2s;
+}
+.btn-back{
+  background:#fff; color:var(--ink,#0b1320);
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+.btn-back:hover{ transform:translateY(-1px); }
+.btn-panel{
+  background:var(--brand,#0b74ff); color:#fff;
+  box-shadow:0 3px 12px rgba(11,116,255,.28);
+}
+.btn-panel:hover{ background:var(--brand-700,#095cd1); transform:translateY(-1px); }
+
+@media (max-width:640px){
+  .btn-back{ display:none; } /* na mobile zostawiamy tylko główny przycisk */
+  .btn-panel{ height:36px; padding:0 12px; font-weight:600; }
+}
+</style>
+
+<script>
+  // Ustawiamy dynamicznie wysokość spacera = aktualna wysokość headera
+  (function(){
+    function setHeaderSpacer(){
+      var header = document.querySelector('.main-header');
+      var spacer = document.querySelector('.header-spacer');
+      if(!header || !spacer) return;
+      var h = header.offsetHeight || 64;
+      spacer.style.setProperty('--header-h', h + 'px');
+    }
+    window.addEventListener('load', setHeaderSpacer);
+    window.addEventListener('resize', setHeaderSpacer);
+    // na wypadek zmian fontów po załadowaniu
+    setTimeout(setHeaderSpacer, 150);
+  })();
+</script>
