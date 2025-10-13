@@ -728,6 +728,9 @@ def moje_konto_view(request):
     cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
     return render(request, "moje_konto.html", {"profil": profil, "user": user, "cennik": cennik})
 
+
+
+
 def _redirect_after_booking():
     """
     Bezpieczne przekierowanie po rezerwacji.
@@ -745,12 +748,17 @@ def zarezerwuj_zajecia(request):
     if request.method != "POST":
         return HttpResponseBadRequest("Nieprawidłowa metoda")
 
-    termin_txt   = (request.POST.get("termin") or "").strip()   # "YYYY-MM-DD HH:MM"
+    # --- NOWE: pola edukacyjne (bez wpływu na Twoje ceny/poziom) ---
+    typ_osoby    = (request.POST.get("typ_osoby") or "").strip() or None        # "podstawowa" | "srednia" | "student"
+    poziom_nauki = (request.POST.get("poziom_nauki") or "").strip() or None     # np. "3_podstawowa" | "1_liceum" | "2_rok"
+
+    # --- Dotychczasowe pola ---
+    termin_txt    = (request.POST.get("termin") or "").strip()   # "YYYY-MM-DD HH:MM"
     nauczyciel_id = request.POST.get("nauczyciel_id")
-    termin_id    = request.POST.get("termin_id")                 # jeśli masz FK do WolnyTermin
-    temat        = (request.POST.get("temat") or "").strip()
-    poziom       = (request.POST.get("poziom") or "").strip() or None
-    plik         = request.FILES.get("plik")
+    termin_id     = request.POST.get("termin_id")                 # jeśli masz FK do WolnyTermin
+    temat         = (request.POST.get("temat") or "").strip()
+    poziom        = (request.POST.get("poziom") or "").strip() or None  # Twoje pole do cennika — zostaje bez zmian
+    plik          = request.FILES.get("plik")
 
     if not (termin_txt and nauczyciel_id and temat):
         return HttpResponseBadRequest("Brak danych")
@@ -773,9 +781,9 @@ def zarezerwuj_zajecia(request):
         return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
 
     # Modele
-    User         = apps.get_model("auth", "User")
-    Rezerwacja   = apps.get_model("panel", "Rezerwacja")
-    WolnyTermin  = apps.get_model("panel", "WolnyTermin")
+    User        = apps.get_model("auth", "User")
+    Rezerwacja  = apps.get_model("panel", "Rezerwacja")
+    WolnyTermin = apps.get_model("panel", "WolnyTermin")
 
     # Czy model Rezerwacja ma pole 'termin' jako FK do WolnyTermin?
     has_fk_slot = False
@@ -786,16 +794,23 @@ def zarezerwuj_zajecia(request):
     except Exception:
         pass
 
-    # Czy model Rezerwacja ma pole 'poziom'?
-    rezerwacja_has_poziom = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
+    # Czy model Rezerwacja ma dane pola?
+    rezerwacja_has_poziom        = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby" for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki" for f in Rezerwacja._meta.get_fields())
 
+    # Domyślne wartości do create()
     defaults = {
         "uczen": request.user,
         "temat": temat,
-        "plik": plik,
+        "plik":  plik,
     }
     if rezerwacja_has_poziom:
-        defaults["poziom"] = poziom  # zapisujemy, jeśli pole istnieje
+        defaults["poziom"] = poziom  # (Twoje pole cenowe – zostaje)
+    if rezerwacja_has_typ_osoby:
+        defaults["typ_osoby"] = typ_osoby
+    if rezerwacja_has_poziom_nauki:
+        defaults["poziom_nauki"] = poziom_nauki
 
     when_dt = timezone.make_aware(datetime.combine(data, godzina))
 
@@ -842,6 +857,7 @@ def zarezerwuj_zajecia(request):
 
     # Sukces → bezpieczny redirect
     return _redirect_after_booking()
+
 
 
 

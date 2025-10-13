@@ -173,12 +173,21 @@ def default_excalidraw_room_key() -> str:
 class Rezerwacja(models.Model):
     uczen = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rezerwacje_ucznia')
     nauczyciel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rezerwacje_nauczyciela')
-
+    
     termin = models.DateTimeField()
 
     temat = models.CharField(max_length=255)
     plik = models.FileField(upload_to='rezerwacje/', blank=True, null=True)
     material_po_zajeciach = models.FileField(upload_to='materialy/', blank=True, null=True)
+
+    # --- EDUKACJA (NOWE) ---
+    TYP_OSOBY_CHOICES = [
+        ("podstawowa", "Uczeń szkoły podstawowej"),
+        ("srednia",    "Uczeń szkoły średniej"),
+        ("student",    "Student uczelni wyższej"),
+    ]
+    typ_osoby    = models.CharField(max_length=15, choices=TYP_OSOBY_CHOICES, blank=True, null=True)
+    poziom_nauki = models.CharField(max_length=30, blank=True, null=True)
 
     excalidraw_room_id = models.CharField(max_length=64, default=default_excalidraw_room_id)
     excalidraw_room_key = models.CharField(max_length=128, default=default_excalidraw_room_key)

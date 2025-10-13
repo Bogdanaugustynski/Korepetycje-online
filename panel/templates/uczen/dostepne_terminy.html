@@ -139,7 +139,7 @@
                 </select>
               </td>
 
-              <!-- NOWE: CENA – reaguje na wybór poziomu -->
+              <!-- CENA – reaguje na wybór poziomu -->
               <td class="price" data-label="Cena [zł/h]">
                 <span class="price-val">—</span>
               </td>
@@ -174,7 +174,7 @@
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
-        <input type="hidden" name="poziom" id="poziom">
+        <input type="hidden" name="poziom" id="poziom"><!-- (Twoje pole do cen – bez zmian) -->
 
         <div class="form-grid">
           <div class="full">
@@ -189,6 +189,75 @@
             <div class="hint">Jeśli masz zdjęcie zadania lub materiały, podepnij je od razu.</div>
           </div>
         </div>
+
+        <!-- >>> DODANE: TYP + KLASA/ROK (EDUKACJA) — bez ruszania reszty formularza <<< -->
+        <div class="form-grid">
+          <div class="full">
+            <label for="typ_osoby"><strong>Typ ucznia</strong></label>
+            <select id="typ_osoby" name="typ_osoby">
+              <option value="">-- wybierz --</option>
+              <option value="podstawowa">Uczeń szkoły podstawowej</option>
+              <option value="srednia">Uczeń szkoły średniej</option>
+              <option value="student">Student uczelni wyższej</option>
+            </select>
+            <div class="hint">Wybierz grupę edukacyjną.</div>
+          </div>
+
+          <div class="full" id="wrap_poziom_nauki" style="display:none;">
+            <!-- PODSTAWÓWKA -->
+            <div id="poziom_podstawowa" class="level-select-edu" style="display:none;">
+              <label for="klasa_podstawowa"><strong>Klasa (SP)</strong></label>
+              <select id="klasa_podstawowa" name="poziom_nauki">
+                <option value="">-- wybierz klasę --</option>
+                <option value="1_podstawowa">I klasa SP</option>
+                <option value="2_podstawowa">II klasa SP</option>
+                <option value="3_podstawowa">III klasa SP</option>
+                <option value="4_podstawowa">IV klasa SP</option>
+                <option value="5_podstawowa">V klasa SP</option>
+                <option value="6_podstawowa">VI klasa SP</option>
+                <option value="7_podstawowa">VII klasa SP</option>
+                <option value="8_podstawowa">VIII klasa SP</option>
+              </select>
+            </div>
+
+            <!-- ŚREDNIA -->
+            <div id="poziom_srednia" class="level-select-edu" style="display:none;">
+              <label for="klasa_srednia"><strong>Klasa (średnia)</strong></label>
+              <select id="klasa_srednia" name="poziom_nauki">
+                <option value="">-- wybierz klasę --</option>
+                <optgroup label="Liceum">
+                  <option value="1_liceum">I liceum</option>
+                  <option value="2_liceum">II liceum</option>
+                  <option value="3_liceum">III liceum</option>
+                  <option value="4_liceum">IV liceum</option>
+                </optgroup>
+                <optgroup label="Technikum">
+                  <option value="1_technikum">I technikum</option>
+                  <option value="2_technikum">II technikum</option>
+                  <option value="3_technikum">III technikum</option>
+                  <option value="4_technikum">IV technikum</option>
+                  <option value="5_technikum">V technikum</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- STUDIA -->
+            <div id="poziom_student" class="level-select-edu" style="display:none;">
+              <label for="rok_studiow"><strong>Rok studiów</strong></label>
+              <select id="rok_studiow" name="poziom_nauki">
+                <option value="">-- wybierz rok --</option>
+                <option value="1_rok">I rok studiów</option>
+                <option value="2_rok">II rok studiów</option>
+                <option value="3_rok">III rok studiów</option>
+                <option value="4_rok">IV rok studiów</option>
+                <option value="5_rok">V rok studiów</option>
+              </select>
+            </div>
+
+            <div class="hint">Po wyborze typu pojawi się odpowiednia lista klas/roku.</div>
+          </div>
+        </div>
+        <!-- <<< KONIEC DODATKU EDUKACYJNEGO >>> -->
 
         <div class="form-actions">
           <button id="submitBtn" class="btn btn-primary" type="submit">Zarezerwuj</button>
@@ -216,7 +285,7 @@
       btn.disabled = true;
       btn.textContent = "Wybrano";
 
-      // poziom -> hidden
+      // poziom (cenowy) -> hidden
       const tr = btn.closest('tr');
       let selectedLevel = 'podstawowy';
       if (tr) {
@@ -348,6 +417,35 @@
     }
 
     document.addEventListener('DOMContentLoaded', cleanupTable);
+
+    // >>> DODANE: init pokazywania klas/roku dla wybranego typu ucznia <<<
+    (function initEdukacja(){
+      const typ = document.getElementById('typ_osoby');
+      const wrap = document.getElementById('wrap_poziom_nauki');
+      const sPod = document.getElementById('poziom_podstawowa');
+      const sSr  = document.getElementById('poziom_srednia');
+      const sStu = document.getElementById('poziom_student');
+
+      if(!typ || !wrap) return;
+
+      function hideAll(){
+        [sPod, sSr, sStu].forEach(el=>{
+          if(!el) return;
+          el.style.display = 'none';
+          const sel = el.querySelector('select');
+          if(sel) sel.value = '';
+        });
+      }
+
+      typ.addEventListener('change', ()=>{
+        hideAll();
+        wrap.style.display = typ.value ? 'block' : 'none';
+        if (typ.value === 'podstawowa') sPod.style.display = 'block';
+        if (typ.value === 'srednia')    sSr.style.display  = 'block';
+        if (typ.value === 'student')    sStu.style.display = 'block';
+      });
+    })();
+    // <<< KONIEC DODATKU >>>
   </script>
 </body>
 </html>
