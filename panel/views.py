@@ -27,7 +27,7 @@ from django.http import (
     FileResponse,
     HttpResponseRedirect,
 )
-import hmac, hashlib, json, decimal, datetime, calendar
+import hmac, hashlib, json, decimal, calendar
 from datetime import date
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, FileResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
