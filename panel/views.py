@@ -56,6 +56,9 @@ from django.contrib.auth import update_session_auth_hash
 from .forms import StudentAccountForm, StudentPasswordChangeForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .forms import UserBasicForm, ProfilForm
+from django.db.models import Exists, OuterRef, ForeignKey
+from django.http import HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
+from django.urls import reverse, NoReverseMatch
 from .models import Profil, AuditLog
 from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
@@ -735,42 +738,78 @@ def moje_konto_view(request):
     cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
     return render(request, "moje_konto.html", {"profil": profil, "user": user, "cennik": cennik})
 
+def _redirect_after_booking():
+    """
+    Bezpieczne przekierowanie po rezerwacji.
+    1) próbuje 'moje_rezerwacje' (jeśli masz taki widok),
+    2) w razie potrzeby fallback do 'panel_ucznia' (logach widać, że istnieje).
+    """
+    try:
+        return HttpResponseRedirect(reverse("moje_rezerwacje"))
+    except NoReverseMatch:
+        return HttpResponseRedirect(reverse("panel_ucznia"))
+
+@login_required
 @transaction.atomic
 def zarezerwuj_zajecia(request):
     if request.method != "POST":
         return HttpResponseBadRequest("Nieprawidłowa metoda")
 
-    termin_txt = request.POST.get("termin", "").strip()  # "YYYY-MM-DD HH:MM"
+    termin_txt   = (request.POST.get("termin") or "").strip()   # "YYYY-MM-DD HH:MM"
     nauczyciel_id = request.POST.get("nauczyciel_id")
-    termin_id = request.POST.get("termin_id")  # jeśli masz FK do WolnyTermin
-    temat = request.POST.get("temat", "").strip()
-    plik = request.FILES.get("plik")
+    termin_id    = request.POST.get("termin_id")                 # jeśli masz FK do WolnyTermin
+    temat        = (request.POST.get("temat") or "").strip()
+    poziom       = (request.POST.get("poziom") or "").strip() or None
+    plik         = request.FILES.get("plik")
 
     if not (termin_txt and nauczyciel_id and temat):
         return HttpResponseBadRequest("Brak danych")
 
-    # Parsowanie daty/godziny z termin_txt
+    # Parsowanie daty/godziny
     try:
         data_str, godz_str = termin_txt.split(" ")
     except ValueError:
         return HttpResponseBadRequest("Zły format terminu")
 
-    from datetime import datetime
     try:
         data = datetime.strptime(data_str, "%Y-%m-%d").date()
         godzina = datetime.strptime(godz_str, "%H:%M").time()
     except ValueError:
         return HttpResponseBadRequest("Zły format daty/godziny")
 
+    # Przeszłość?
     now = timezone.localtime()
     if (data < now.date()) or (data == now.date() and godzina < now.time()):
         return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
 
-    User = apps.get_model("auth", "User")
-    Rezerwacja = apps.get_model("panel", "Rezerwacja")
-    WolnyTermin = apps.get_model("panel", "WolnyTermin")
+    # Modele
+    User         = apps.get_model("auth", "User")
+    Rezerwacja   = apps.get_model("panel", "Rezerwacja")
+    WolnyTermin  = apps.get_model("panel", "WolnyTermin")
 
-    # 1) Jeżeli używasz FK do WolnyTermin:
+    # Czy model Rezerwacja ma pole 'termin' jako FK do WolnyTermin?
+    has_fk_slot = False
+    try:
+        pole = Rezerwacja._meta.get_field("termin")
+        if isinstance(pole, ForeignKey) and getattr(pole.remote_field, "model", None) is WolnyTermin:
+            has_fk_slot = True
+    except Exception:
+        pass
+
+    # Czy model Rezerwacja ma pole 'poziom'?
+    rezerwacja_has_poziom = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
+
+    defaults = {
+        "uczen": request.user,
+        "temat": temat,
+        "plik": plik,
+    }
+    if rezerwacja_has_poziom:
+        defaults["poziom"] = poziom  # zapisujemy, jeśli pole istnieje
+
+    when_dt = timezone.make_aware(datetime.combine(data, godzina))
+
+    # Wariant 1: mamy ID wolnego terminu i chcemy z niego korzystać
     if termin_id:
         try:
             slot = (WolnyTermin.objects
@@ -780,41 +819,39 @@ def zarezerwuj_zajecia(request):
         except WolnyTermin.DoesNotExist:
             return HttpResponseBadRequest("Termin nie istnieje")
 
-        # Próba założenia rezerwacji – w połączeniu z UniqueConstraint przebija duplikaty
-        obj, created = Rezerwacja.objects.get_or_create(
-            # jeśli masz pole termin=FK:
-            # termin=slot,
-            # a jeśli masz termin=DateTimeField:
-            nauczyciel=slot.nauczyciel,
-            termin=timezone.make_aware(datetime.combine(data, godzina)),
-            defaults={
-                "uczen": request.user,
-                "temat": temat,
-                "plik": plik,
-            }
-        )
+        if has_fk_slot:
+            # Rezerwacja.termin -> FK do WolnyTermin
+            obj, created = Rezerwacja.objects.get_or_create(
+                termin=slot,
+                defaults=defaults | {"nauczyciel": slot.nauczyciel, "termin": slot}  # 'termin' nadpisze się FK
+            )
+        else:
+            # Rezerwacja.termin -> DateTimeField
+            obj, created = Rezerwacja.objects.get_or_create(
+                nauczyciel=slot.nauczyciel,
+                termin=when_dt,
+                defaults=defaults
+            )
         if not created:
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
 
     else:
-        # 2) Jeżeli NIE masz FK – pilnuj unikalności (nauczyciel, termin[DT])
-        nauczyciel = User.objects.get(id=nauczyciel_id)
-        when_dt = timezone.make_aware(datetime.combine(data, godzina))
+        # Wariant 2: bez FK — pilnuj unikalności (nauczyciel, termin[DT])
+        try:
+            nauczyciel = User.objects.get(id=nauczyciel_id)
+        except User.DoesNotExist:
+            return HttpResponseBadRequest("Nauczyciel nie istnieje")
 
         obj, created = Rezerwacja.objects.get_or_create(
             nauczyciel=nauczyciel,
             termin=when_dt,
-            defaults={
-                "uczen": request.user,
-                "temat": temat,
-                "plik": plik,
-            }
+            defaults=defaults
         )
         if not created:
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
 
-    # OK → przekierowanie (np. do „Moje rezerwacje”)
-    return HttpResponseRedirect(reverse("moje_rezerwacje"))
+    # Sukces → bezpieczny redirect
+    return _redirect_after_booking()
 
 
 
