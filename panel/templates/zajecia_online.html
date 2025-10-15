@@ -136,6 +136,7 @@
   </div>
 
   <div class="pill">📶 Wejście: <div id="vu"><span></span></div></div>
+
   <div class="pill">🧊 ICE: <small id="ice">init</small> <small id="ice-path" style="opacity:.8"></small></div>
   <div class="pill">🔁 Signaling: <small id="sig">init</small></div>
   <div class="pill">🗃️ Store: <small id="store">offer: –, answer: –</small></div>
@@ -614,8 +615,7 @@ function initTimer(){
   const el=$('#timer'); const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
   const end=start+55*60*1000;
   const tick=()=>{ const d=end-Date.now(); if(d<=0){ el.textContent='Zakończone'; return; }
-    const m=Math.floor(d/60000), s=Math.floor((d%60000)/1000); el.textContent=`${m}:${String(s).padStart(2,'0')}`;
-  };
+    const m=Math.floor(d/60000), s=Math.floor((d%60000)/1000); el.textContent=`${m}:${String(s).padStart(2,'0')}`; };
   tick(); setInterval(tick,1000);
 }
 </script>

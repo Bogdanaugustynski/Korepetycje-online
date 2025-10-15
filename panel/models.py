@@ -179,7 +179,8 @@ class Rezerwacja(models.Model):
     temat = models.CharField(max_length=255)
     plik = models.FileField(upload_to='rezerwacje/', blank=True, null=True)
     material_po_zajeciach = models.FileField(upload_to='materialy/', blank=True, null=True)
-
+    przedmiot = models.CharField(max_length=80, blank=True, null=True)
+    poziom    = models.CharField(max_length=20, blank=True, null=True)
     # --- EDUKACJA (NOWE) ---
     TYP_OSOBY_CHOICES = [
         ("podstawowa", "Uczeń szkoły podstawowej"),
