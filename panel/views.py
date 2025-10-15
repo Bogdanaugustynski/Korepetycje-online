@@ -1146,7 +1146,7 @@ def stawki_nauczyciela_view(request):
 @login_required
 def moj_plan_zajec_view(request):
     now = timezone.localtime()
-    scope = request.GET.get("scope", "all")   # "day" | "week" | "all"
+    scope = request.GET.get("scope", "all")      # "day" | "week" | "all"
     view_mode = request.GET.get("view", "auto")  # "auto" | "table" | "cards"
 
     qs = (
@@ -1156,7 +1156,7 @@ def moj_plan_zajec_view(request):
         .order_by("termin")
     )
 
-    # Zakres czasowy – identycznie jak w innych panelach (Noa)
+    # Zakres taki jak robiliśmy wcześniej (Noa)
     if scope == "day":
         start_d = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_d = start_d + timedelta(days=1)
@@ -1167,23 +1167,23 @@ def moj_plan_zajec_view(request):
         week_end = week_start + timedelta(days=7)
         qs = qs.filter(termin__gte=week_start, termin__lt=week_end)
 
-    # Wzbogacenie rekordów w tym samym stylu co Noa (row.obj/start/end/flags)
+    # Enrichment jak w innych panelach Noa
     upcoming, finished = [], []
     for r in qs:
         start = timezone.localtime(r.termin)
-        end = start + timedelta(minutes=55)  # długość lekcji jak dotąd
+        end = start + timedelta(minutes=55)
         is_past = now > end
+        status = "Zakończone" if is_past else ("Trwa" if start <= now <= end else "Nadchodzące")
 
         row = {
-            "obj": r,  # dostęp: r.temat, r.przedmiot, r.poziom, r.typ_osoby, r.poziom_nauki, r.plik, r.excalidraw_link, itp.
+            "obj": r,          # w szablonie używamy r= row.obj
             "start": start,
             "end": end,
             "is_past": is_past,
-            "status": "Zakończone" if is_past else ("Trwa" if start <= now <= end else "Nadchodzące"),
+            "status": status,
         }
         (finished if is_past else upcoming).append(row)
 
-    # Sortowanie: nadchodzące rosnąco, zakończone malejąco
     upcoming.sort(key=lambda x: x["start"])
     finished.sort(key=lambda x: x["start"], reverse=True)
 
