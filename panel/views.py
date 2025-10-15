@@ -69,8 +69,6 @@ from .models import (
     Invoice,
 )
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie, csrf_protect
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 
