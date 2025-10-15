@@ -1,74 +1,62 @@
+# --- Standard library
 import json
 import logging
-import datetime
-import pdfkit
 import re
-import ast
-from datetime import datetime, timedelta
-from django.contrib.auth.decorators import login_required
+from decimal import Decimal, InvalidOperation
+from datetime import datetime as DT, date, time, timedelta  # używamy KLASY DT, bez importu modułu 'datetime'
+import calendar
+import hmac, hashlib
+
+# --- Third-party
+import pdfkit
+
+# --- Django
+from django.apps import apps
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import authenticate, login, logout, get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User, Group
 from django.core.cache import cache
-from django.views.decorators.cache import never_cache
-from django.core.exceptions import PermissionDenied 
-from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.core.exceptions import PermissionDenied
+from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
+from django.db import transaction, models
+from django.db.models import Q, Exists, OuterRef, ForeignKey
 from django.http import (
     Http404,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
     HttpResponseNotFound,
+    HttpResponseRedirect,
     JsonResponse,
     FileResponse,
-    HttpResponseRedirect,
 )
-import hmac, hashlib, json, decimal, calendar
-from datetime import date
-from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, FileResponse, Http404
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from django.conf import settings
-from django.shortcuts import get_object_or_404, render
-from django.contrib.auth.decorators import login_required, user_passes_test
-import datetime as dt
-from django.utils import timezone
-from .models import Payment, Invoice
-from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, NoReverseMatch
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from django.apps import apps
-from django.db.models import Exists, OuterRef, ForeignKey
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-from django.urls import reverse
-from django.db import transaction, models
-from datetime import datetime as dt
-from django.db.models import Q
-from decimal import Decimal, InvalidOperation
-from django.contrib.auth import update_session_auth_hash
-from .forms import StudentAccountForm, StudentPasswordChangeForm
-from django.contrib.auth.decorators import login_required, user_passes_test
-from .forms import UserBasicForm, ProfilForm
-from django.db.models import Exists, OuterRef, ForeignKey
-from django.http import HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
-from django.urls import reverse, NoReverseMatch
-from .models import Profil, AuditLog
-from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseForbidden
-from .forms import StudentPasswordChangeForm, StudentAccountForm, ProfilForm  # <-- ważne
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-# MODELE
+# --- Channels (jeśli używasz powiadomień)
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+# --- Formularze (Twoje)
+from .forms import (
+    StudentAccountForm,
+    StudentPasswordChangeForm,
+    UserBasicForm,
+    ProfilForm,
+)
+
+# --- Modele (Twoje)
 from .models import (
     OnlineStatus,
     Profil,
@@ -76,8 +64,13 @@ from .models import (
     WolnyTermin,
     UstawieniaPlatnosci,
     AuditLog,
+    Payment,
+    Invoice,
 )
-from panel.models import PrzedmiotCennik, StawkaNauczyciela
+
+# Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
+# from panel.models import PrzedmiotCennik, StawkaNauczyciela
+
 
 log = logging.getLogger("webrtc")
 
