@@ -1147,13 +1147,16 @@ def stawki_nauczyciela_view(request):
 def moj_plan_zajec_view(request):
     now = timezone.localtime()
     scope = request.GET.get("scope", "all")  # "day" | "week" | "all"
+    view_mode = request.GET.get("view", "auto")  # "auto" | "table" | "cards"
 
-    qs = (Rezerwacja.objects
-          .filter(nauczyciel=request.user)
-          .select_related("uczen")
-          .order_by("termin"))
+    qs = (
+        Rezerwacja.objects
+        .filter(nauczyciel=request.user)
+        .select_related("uczen")
+        .order_by("termin")
+    )
 
-    # Zakresy
+    # Filtrowanie zakresu jak w innych panelach
     if scope == "day":
         start_d = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_d = start_d + timedelta(days=1)
@@ -1164,23 +1167,23 @@ def moj_plan_zajec_view(request):
         week_end = week_start + timedelta(days=7)
         qs = qs.filter(termin__gte=week_start, termin__lt=week_end)
 
-    # Wzbogacenie + podział na listy
+    # Wzbogacenie rekordów w tym samym stylu co „Noa” (row.obj/start/end/flags)
     upcoming, finished = [], []
     for r in qs:
         start = timezone.localtime(r.termin)
-        end = start + timedelta(minutes=55)
+        end = start + timedelta(minutes=55)  # długość lekcji – jak wcześniej
         is_past = now > end
-        status = "Zakończone" if is_past else ("Trwa" if start <= now <= end else "Nadchodzące")
-        item = {
-            "obj": r,
+
+        row = {
+            "obj": r,          # dostęp do pól: r.temat, r.przedmiot, r.poziom, r.typ_osoby, r.poziom_nauki, r.plik, itp.
             "start": start,
             "end": end,
             "is_past": is_past,
-            "status": status,
+            "status": "Zakończone" if is_past else ("Trwa" if start <= now <= end else "Nadchodzące"),
         }
-        (finished if is_past else upcoming).append(item)
+        (finished if is_past else upcoming).append(row)
 
-    # sortowanie: nadchodzące rosnąco, zakończone malejąco
+    # Sortowanie jak wcześniej (Nadchodzące ↑, Zakończone ↓)
     upcoming.sort(key=lambda x: x["start"])
     finished.sort(key=lambda x: x["start"], reverse=True)
 
@@ -1189,6 +1192,7 @@ def moj_plan_zajec_view(request):
         "finished": finished,
         "now": now,
         "scope": scope,
+        "view_mode": view_mode,  # steruje klasami body (auto/table/cards)
     }
     return render(request, "moj_plan_zajec.html", ctx)
 
