@@ -4,444 +4,278 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="google" content="notranslate">
-  <title>Dostępne terminy — PolubiszTo.pl</title>
-  <meta name="description" content="Lista wolnych terminów nauczycieli — PolubiszTo.pl korepetycje online">
+  <title>Mój plan zajęć — PolubiszTo.pl</title>
   <style>
     :root{
-      --brand:#0b74ff; --brand-700:#095cd1; --ink:#0b1320; --muted:#5b6777;
-      --line:#e6edff; --card:#ffffff; --bg:#f7f9fe; --ok:#22c55e; --warn:#f59e0b;
-      --danger:#dc3545; --shadow:0 14px 34px rgba(11,116,255,.12); --radius:14px; --maxw:1100px;
+      --brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--line:#e6edff;
+      --card:#fff;--bg:#f7f9fe;--shadow:0 8px 32px rgba(11,116,255,.12);
+      --radius:14px;--maxw:1100px
     }
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.45}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    h1{font-size:clamp(20px,4vw,28px);margin:12px 0}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+    .hint{color:var(--muted);margin:0 0 12px}
+    .section-title{margin:18px 0 10px;font-size:18px}
+    .site-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 16px}
 
-    .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 40px}
-    h1{font-size:clamp(20px,4vw,28px);margin:10px 2px}
-    .lead{color:var(--muted);margin:4px 2px 18px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+    .tab{display:inline-flex;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid #dfe6f5;background:#fff;color:#213047;text-decoration:none;font-weight:800}
+    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .tab:hover{background:#f7fbff}
 
-    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
-    .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
-    .search{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
-    .input{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:230px;outline:none;transition:border .15s ease;}
-    .input:focus{border-color:var(--brand)}
-    .btn{appearance:none;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;transition:transform .06s ease,box-shadow .15s ease,background .15s ease,color .15s ease;}
-    .btn:active{transform:translateY(1px)}
-    .btn-primary{background:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(11,116,255,.25)}
-    .btn-primary:hover{background:var(--brand-700)}
-    .btn-ghost{background:#eef5ff;color:#0b3d91}
-    .btn-ghost:hover{background:#e1ecff}
+    /* Tabela */
+    .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .tbl thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:#48607d;text-align:left;padding:10px 12px}
+    .tbl tbody tr{background:#fff;border:1px solid var(--line)}
+    .tbl td{padding:12px;vertical-align:top}
+    .tbl td+td{border-left:1px solid var(--line)}
+    .tbl tbody tr:first-child td:first-child{border-top-left-radius:12px}
+    .tbl tbody tr:first-child td:last-child{border-top-right-radius:12px}
+    .tbl tbody tr:last-child td:first-child{border-bottom-left-radius:12px}
+    .tbl tbody tr:last-child td:last-child{border-bottom-right-radius:12px}
 
-    .table-wrap{overflow:auto}
-    table{border-collapse:collapse;width:100%}
-    th,td{padding:12px 14px;text-align:left}
-    thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
-    tbody tr{border-bottom:1px solid var(--line')}
-    tbody tr:hover{background:#fafcff}
-    .teacher{font-weight:700}
-    .when{white-space:nowrap}
-    .act{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;border:none;padding:10px 14px;font-weight:800;border-radius:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+    .btn.small{padding:8px 12px;border-radius:10px;font-size:14px}
+    .btn.ghost{background:#eef4ff;color:#17304e}
+    .file-link{display:inline-block;margin:4px 0}
+    .empty{color:var(--muted);text-align:center;padding:14px}
 
-    .btn-book{
-      background:var(--ok); color:#fff; border-radius:10px; padding:8px 12px; font-weight:700; border:none; cursor:pointer;
-      box-shadow:0 4px 12px rgba(34,197,94,.25); transition:transform .06s ease, filter .15s ease;
+    /* Kafelki (desktop <1440px i mobile) */
+    .cards{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .r-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+    .r-title{font-weight:900}
+    .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+    .meta div{background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+    .r-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+    /* Hybryda: >1440px tabela, wężej kafelki */
+    .table-wrap{display:none}
+    @media (min-width:1440px){
+      .table-wrap{display:block}
+      .cards{display:none}
     }
-    .btn-book:hover{ background:#1ea34f; filter:brightness(1.02) }
-    .btn-book:active{ transform:translateY(1px) }
+    @media (min-width:1200px) and (max-width:1439px){
+      .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
 
-    .empty{padding:20px;text-align:center;color:var(--muted)}
+    /* Wymuszenie przez query (?view=table|cards) — klasy na <body> */
+    .view-table .table-wrap{display:block}
+    .view-table .cards{display:none}
+    .view-cards .table-wrap{display:none}
+    .view-cards .cards{display:grid}
 
-    .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line); border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
-    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .form-grid .full{grid-column:1/-1}
-    label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
-    input[type="text"], input[type="file"], select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
-    input[type="text"]:focus, input[type="file"]:focus, select:focus{border-color:var(--brand)}
-    .hint{color:var(--muted);font-size:12px;margin-top:4px}
-    .hidden{display:none}
-    .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
-    .btn-cancel:hover{background:#fecaca}
-
-    .level-select{ min-width:0; max-width:100%; width:100%; }
-    td.level{ vertical-align:middle; }
-
-    @media (max-width: 720px){
-      .form-grid{grid-template-columns:1fr}
-      .card-head{align-items:stretch;flex-direction:column}
-      .table-wrap{overflow:visible}
-      table thead{position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;}
-      table, tbody, tr, td { display:block; width:100% }
-      tbody tr{border:1px solid var(--line);border-radius:12px;box-shadow: var(--shadow);background:#fff;padding:10px 12px;margin:12px 0;}
-      tbody tr:hover{ background:#fff }
-      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px 10px 120px; position:relative; min-height:42px;}
-      td:last-child{ border-bottom:none; padding-bottom:6px }
-      td::before{content: attr(data-label); position:absolute; left:10px; top:10px; width:100px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.2px; line-height:1.2;}
-      .teacher{ font-weight:800 }
-      .act{ display:block; margin-top:4px }
-      .btn-book{ width:100%; padding:12px }
-      td.level{ padding-right:12px; }
-      .level-select{ display:block; width:100%; min-width:0; font-size:14px; padding:10px 12px; }
+    /* Mobile fallback (jak było u Ciebie) */
+    @media (max-width:860px){
+      .cards{display:grid}
+      .table-wrap{display:none}
     }
   </style>
 </head>
-<body>
+<body class="{% if view_mode == 'table' %}view-table{% elif view_mode == 'cards' %}view-cards{% endif %}">
 
-  {% include "partials/panel_header.html" with panel_url_name='panel_ucznia' panel_label='Panel Ucznia' %}
+<header class="site-header">
+  {% include "partials/panel_header.html" with panel_url_name='panel_nauczyciela' panel_label='Panel Nauczyciela' %}
+</header>
 
-  <main class="wrap">
-    <h1>Dostępne terminy</h1>
-    <p class="lead">Wybierz pasujący termin i dołącz temat lekcji oraz (opcjonalnie) plik.</p>
+<div class="wrap">
+  <h1>Mój plan zajęć</h1>
+  <p class="hint">Dostęp do pokoju jest zawsze możliwy — także dla zakończonych zajęć.</p>
 
-    <section class="card">
-      <div class="card-head">
-        <div class="search">
-          <input class="input" type="text" id="filterTeacher" placeholder="Filtruj po nauczycielu…" oninput="filterRows()">
-          <input class="input" type="text" id="filterDate" placeholder="Filtruj po dacie (RRRR-MM-DD)…" oninput="filterRows()" autocomplete="off">
+  <nav class="tabs">
+    <a class="tab {% if scope == 'day' %}active{% endif %}" href="?scope=day{% if view_mode %}&view={{ view_mode }}{% endif %}">Dziś</a>
+    <a class="tab {% if scope == 'week' %}active{% endif %}" href="?scope=week{% if view_mode %}&view={{ view_mode }}{% endif %}">Tydzień</a>
+    <a class="tab {% if scope == 'all' %}active{% endif %}" href="?scope=all{% if view_mode %}&view={{ view_mode }}{% endif %}">Wszystkie</a>
+
+    <span style="flex:1"></span>
+    <a class="tab {% if view_mode == 'table' %}active{% endif %}" href="?scope={{ scope|default:'all' }}&view=table">Tabela</a>
+    <a class="tab {% if view_mode == 'cards' %}active{% endif %}" href="?scope={{ scope|default:'all' }}&view=cards">Kafelki</a>
+  </nav>
+
+  <!-- NADCHODZĄCE -->
+  <h2 class="section-title">Nadchodzące ({{ upcoming|length }})</h2>
+
+  <div class="table-wrap card">
+    <table class="tbl" aria-label="Nadchodzące zajęcia">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Dzień</th>
+          <th>Godzina</th>
+          <th>Uczeń</th>
+          <th>Temat</th>
+          <th>Przedmiot</th>
+          <th>Poziom nauczania</th>
+          <th>Typ ucznia</th>
+          <th>Klasa/Rok</th>
+          <th>Pliki</th>
+          <th>Zajęcia online</th>
+          <th>Materiały</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in upcoming %}{% with r=row.obj start=row.start %}
+        <tr>
+          <td>{{ start|date:"Y-m-d" }}</td>
+          <td>{{ start|date:"l" }}</td>
+          <td>{{ start|date:"H:i" }}</td>
+          <td>{{ r.uczen.first_name }} {{ r.uczen.last_name }}</td>
+          <td>{{ r.temat|default:"—" }}</td>
+          <td>{{ r.przedmiot|default:"—" }}</td>
+          <td>{{ r.poziom|default:"—" }}</td>
+          <td>{{ r.typ_osoby|default:"—" }}</td>
+          <td>{{ r.poziom_nauki|default:"—" }}</td>
+          <td>
+            {% if r.plik %}
+              <a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>
+            {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
+          </td>
+          <td>
+            <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
+            {% if r.excalidraw_link %}
+              <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.material_po_zajeciach %}
+              <div style="margin-bottom:6px"><a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener" class="btn small ghost">Zobacz</a></div>
+            {% endif %}
+            <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
+              {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+              <button type="submit" class="btn small ghost">Dodaj plik</button>
+            </form>
+          </td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="12" class="empty">Brak nadchodzących zajęć.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Kafelki: nadchodzące -->
+  <div class="cards">
+    {% for row in upcoming %}{% with r=row.obj start=row.start %}
+      <article class="r-card">
+        <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
+        <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
+        <div class="meta">
+          <div><strong>Przedmiot:</strong> {{ r.przedmiot|default:"—" }}</div>
+          <div><strong>Poziom nauczania:</strong> {{ r.poziom|default:"—" }}</div>
+          <div><strong>Typ ucznia:</strong> {{ r.typ_osoby|default:"—" }}</div>
+          <div><strong>Klasa/Rok:</strong> {{ r.poziom_nauki|default:"—" }}</div>
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
-        <button class="btn btn-ghost" type="button" onclick="scrollToForm()">Przejdź do formularza</button>
-      </div>
-
-      <div class="table-wrap">
-        <table id="termsTable" translate="no">
-          <thead>
-            <tr>
-              <th>Przedmiot</th>
-              <th>Poziom</th>
-              <th>Cena [zł/h]</th>
-              <th>Nauczyciel</th>
-              <th><span translate="no">Data</span></th>
-              <th>Godzina</th>
-              <th>Akcja</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in terminy %}
-            {% with t=row.t info=row.info %}
-            <tr
-              data-teacher-id="{{ t.nauczyciel.id }}"
-              data-date="{{ t.data|date:'Y-m-d' }}"
-              data-time="{{ t.godzina|time:'H:i' }}"
-              data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
-              data-price-podstawowy="{{ info.prices.podstawowy|default:'—' }}"
-              data-price-rozszerzony="{{ info.prices.rozszerzony|default:'—' }}"
-            >
-              <td class="subject" data-label="Przedmiot">
-                {{ info.subjects|join:", " }}
-              </td>
-
-              <td class="level" data-label="Poziom">
-                <select class="input level-select" aria-label="Wybierz poziom" translate="no">
-                  {% for lvl in info.levels %}
-                    <option value="{{ lvl }}" translate="no">{{ lvl|title }}</option>
-                  {% endfor %}
-                </select>
-              </td>
-
-              <!-- CENA – reaguje na wybór poziomu -->
-              <td class="price" data-label="Cena [zł/h]">
-                <span class="price-val">—</span>
-              </td>
-
-              <td class="teacher" data-label="Nauczyciel">
-                {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
-              </td>
-              <td class="when" data-label="Data">{{ t.data }}</td>
-              <td class="when" data-label="Godzina">{{ t.godzina }}</td>
-              <td class="act" data-label="Akcja">
-                <button class="btn-book" type="button"
-                        onclick="pickAndLock(this,'{{ t.id }}','{{ t.data|date:'Y-m-d' }} {{ t.godzina|time:'H:i' }}','{{ t.nauczyciel.id }}','{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}')">
-                  Zarezerwuj
-                </button>
-              </td>
-            </tr>
-            {% endwith %}
-            {% empty %}
-            <tr><td class="empty" data-label="Dostępne terminy" colspan="7">Brak dostępnych terminów</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="formularz" class="form-card hidden" aria-live="polite">
-      <h2 style="margin:4px 2px 10px">Rezerwacja terminu</h2>
-      <p class="lead" id="pickedInfo"></p>
-
-      <form id="rezForm" method="POST" action="{% url 'zarezerwuj_zajecia' %}" enctype="multipart/form-data" novalidate onsubmit="return lockSubmit(this)">
-        {% csrf_token %}
-        <input type="hidden" name="termin" id="termin">
-        <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
-        <input type="hidden" name="termin_id" id="termin_id">
-
-        <!-- HIDDENY do zapisu w Rezerwacja -->
-        <input type="hidden" name="poziom" id="poziom">
-        <input type="hidden" name="przedmiot" id="przedmiot"><!-- NOWE: wypełnia JS -->
-
-        <div class="form-grid">
-          <div class="full">
-            <label for="temat">Temat lekcji</label>
-            <input type="text" id="temat" name="temat" required placeholder="Np. Równania kwadratowe — przygotowanie do sprawdzianu">
-            <div class="hint">Krótko i konkretnie — nauczyciel zobaczy to w „Mój plan zajęć”.</div>
-          </div>
-
-          <div class="full">
-            <label for="plik">Dodaj plik (.pdf, .jpg, .jpeg) — opcjonalnie</label>
-            <input type="file" id="plik" name="plik" accept=".pdf,.jpg,.jpeg">
-            <div class="hint">Jeśli masz zdjęcie zadania lub materiały, podepnij je od razu.</div>
-          </div>
+        <div class="r-actions">
+          <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
+          {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
+          <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+            <button type="submit" class="btn small ghost">Dodaj plik</button>
+          </form>
         </div>
+      </article>
+    {% endwith %}{% empty %}
+      <article class="r-card"><div class="empty">Brak nadchodzących zajęć.</div></article>
+    {% endfor %}
+  </div>
 
-        <!-- TYP + KLASA/ROK -->
-        <div class="form-grid">
-          <div class="full">
-            <label for="typ_osoby"><strong>Typ ucznia</strong></label>
-            <select id="typ_osoby" name="typ_osoby">
-              <option value="">-- wybierz --</option>
-              <option value="podstawowa">Uczeń szkoły podstawowej</option>
-              <option value="srednia">Uczeń szkoły średniej</option>
-              <option value="student">Student uczelni wyższej</option>
-            </select>
-            <div class="hint">Wybierz grupę edukacyjną.</div>
-          </div>
+  <!-- ZAKOŃCZONE -->
+  <h2 class="section-title">Zakończone ({{ finished|length }})</h2>
 
-          <div class="full" id="wrap_poziom_nauki" style="display:none;">
-            <div id="poziom_podstawowa" class="level-select-edu" style="display:none;">
-              <label for="klasa_podstawowa"><strong>Klasa (SP)</strong></label>
-              <select id="klasa_podstawowa" name="poziom_nauki">
-                <option value="">-- wybierz klasę --</option>
-                <option value="1_podstawowa">I klasa SP</option>
-                <option value="2_podstawowa">II klasa SP</option>
-                <option value="3_podstawowa">III klasa SP</option>
-                <option value="4_podstawowa">IV klasa SP</option>
-                <option value="5_podstawowa">V klasa SP</option>
-                <option value="6_podstawowa">VI klasa SP</option>
-                <option value="7_podstawowa">VII klasa SP</option>
-                <option value="8_podstawowa">VIII klasa SP</option>
-              </select>
-            </div>
+  <div class="table-wrap card">
+    <table class="tbl" aria-label="Zakończone zajęcia">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Dzień</th>
+          <th>Godzina</th>
+          <th>Uczeń</th>
+          <th>Temat</th>
+          <th>Przedmiot</th>
+          <th>Poziom nauczania</th>
+          <th>Typ ucznia</th>
+          <th>Klasa/Rok</th>
+          <th>Pliki</th>
+          <th>Zajęcia online</th>
+          <th>Materiały</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in finished %}{% with r=row.obj start=row.start %}
+        <tr>
+          <td>{{ start|date:"Y-m-d" }}</td>
+          <td>{{ start|date:"l" }}</td>
+          <td>{{ start|date:"H:i" }}</td>
+          <td>{{ r.uczen.first_name }} {{ r.uczen.last_name }}</td>
+          <td>{{ r.temat|default:"—" }}</td>
+          <td>{{ r.przedmiot|default:"—" }}</td>
+          <td>{{ r.poziom|default:"—" }}</td>
+          <td>{{ r.typ_osoby|default:"—" }}</td>
+          <td>{{ r.poziom_nauki|default:"—" }}</td>
+          <td>
+            {% if r.plik %}
+              <a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>
+            {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
+          </td>
+          <td>
+            <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
+            {% if r.excalidraw_link %}
+              <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.material_po_zajeciach %}
+              <div style="margin-bottom:6px"><a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener" class="btn small ghost">Zobacz</a></div>
+            {% endif %}
+            <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
+              {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+              <button type="submit" class="btn small ghost">Dodaj plik</button>
+            </form>
+          </td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="12" class="empty">Brak zakończonych zajęć.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-            <div id="poziom_srednia" class="level-select-edu" style="display:none;">
-              <label for="klasa_srednia"><strong>Klasa (średnia)</strong></label>
-              <select id="klasa_srednia" name="poziom_nauki">
-                <option value="">-- wybierz klasę --</option>
-                <optgroup label="Liceum">
-                  <option value="1_liceum">I liceum</option>
-                  <option value="2_liceum">II liceum</option>
-                  <option value="3_liceum">III liceum</option>
-                  <option value="4_liceum">IV liceum</option>
-                </optgroup>
-                <optgroup label="Technikum">
-                  <option value="1_technikum">I technikum</option>
-                  <option value="2_technikum">II technikum</option>
-                  <option value="3_technikum">III technikum</option>
-                  <option value="4_technikum">IV technikum</option>
-                  <option value="5_technikum">V technikum</option>
-                </optgroup>
-              </select>
-            </div>
-
-            <div id="poziom_student" class="level-select-edu" style="display:none;">
-              <label for="rok_studiow"><strong>Rok studiów</strong></label>
-              <select id="rok_studiow" name="poziom_nauki">
-                <option value="">-- wybierz rok --</option>
-                <option value="1_rok">I rok studiów</option>
-                <option value="2_rok">II rok studiów</option>
-                <option value="3_rok">III rok studiów</option>
-                <option value="4_rok">IV rok studiów</option>
-                <option value="5_rok">V rok studiów</option>
-              </select>
-            </div>
-
-            <div class="hint">Po wyborze typu pojawi się odpowiednia lista klas/roku.</div>
-          </div>
+  <!-- Kafelki: zakończone -->
+  <div class="cards">
+    {% for row in finished %}{% with r=row.obj start=row.start %}
+      <article class="r-card" style="opacity:.96">
+        <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
+        <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
+        <div class="meta">
+          <div><strong>Przedmiot:</strong> {{ r.przedmiot|default:"—" }}</div>
+          <div><strong>Poziom nauczania:</strong> {{ r.poziom|default:"—" }}</div>
+          <div><strong>Typ ucznia:</strong> {{ r.typ_osoby|default:"—" }}</div>
+          <div><strong>Klasa/Rok:</strong> {{ r.poziom_nauki|default:"—" }}</div>
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
-
-        <div class="form-actions">
-          <button id="submitBtn" class="btn btn-primary" type="submit">Zarezerwuj</button>
-          <button class="btn-cancel" type="button" onclick="hideForm()">Anuluj</button>
+        <div class="r-actions">
+          <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
+          <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+            <button type="submit" class="btn small ghost">Dodaj plik</button>
+          </form>
         </div>
-      </form>
-    </section>
-  </main>
+      </article>
+    {% endwith %}{% empty %}
+      <article class="r-card"><div class="empty">Brak zakończonych zajęć.</div></article>
+    {% endfor %}
+  </div>
 
-  <script>
-    function updatePriceForRow(tr){
-      const sel = tr.querySelector('.level-select');
-      const span = tr.querySelector('.price-val');
-      if(!span || !sel) return;
-      const val = sel.value === 'rozszerzony'
-        ? tr.getAttribute('data-price-rozszerzony')
-        : tr.getAttribute('data-price-podstawowy');
-      span.textContent = val || '—';
-    }
+  <!-- Pokój testowy -->
+  <div style="margin-top:14px">
+    <a class="btn" href="{% url 'zajecia_online' 1 %}">🔧 Testowy pokój (ID 1)</a>
+  </div>
+</div>
 
-    function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
-      if (btn.dataset.locked === "1") return;
-      btn.dataset.locked = "1";
-      btn.disabled = true;
-      btn.textContent = "Wybrano";
-
-      const tr = btn.closest('tr');
-
-      // poziom -> hidden
-      let selectedLevel = 'podstawowy';
-      const sel = tr?.querySelector('.level-select');
-      if (sel && sel.value) selectedLevel = sel.value;
-      const poziomInput = document.getElementById('poziom');
-      if (poziomInput) poziomInput.value = selectedLevel;
-
-      // przedmiot -> hidden (tekst z kolumny „Przedmiot”)
-      const subjText = (tr?.querySelector('.subject')?.textContent || '').trim();
-      const subjInput = document.getElementById('przedmiot');
-      if (subjInput) subjInput.value = subjText;
-
-      showForm(terminId, iso, nauczycielId, nauczycielName);
-    }
-
-    function showForm(terminId, iso, nauczycielId, nauczycielName){
-      const box = document.getElementById('formularz');
-      box.classList.remove('hidden');
-
-      document.getElementById('termin').value = iso;
-      document.getElementById('nauczyciel_id').value = nauczycielId;
-      document.getElementById('termin_id').value = terminId;
-
-      const picked = document.getElementById('pickedInfo');
-      picked.textContent = `Wybrano: ${iso} — ${nauczycielName}`;
-
-      scrollToForm();
-      setTimeout(() => { const t = document.getElementById('temat'); if(t) t.focus(); }, 120);
-    }
-
-    function hideForm(){
-      const box = document.getElementById('formularz');
-      box.classList.add('hidden');
-      document.getElementById('pickedInfo').textContent = '';
-      document.getElementById('termin').value = '';
-      document.getElementById('nauczyciel_id').value = '';
-      document.getElementById('termin_id').value = '';
-      document.getElementById('poziom').value = '';
-      document.getElementById('przedmiot').value = '';
-      document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
-    }
-
-    function lockSubmit(form){
-      const btn = document.getElementById('submitBtn');
-      if (btn.dataset.locked === "1") return false;
-      btn.dataset.locked = "1";
-      btn.disabled = true;
-      btn.textContent = "Rezerwuję…";
-      return true;
-    }
-
-    function scrollToForm(){
-      const el = document.getElementById('formularz');
-      if(!el) return;
-      const y = el.getBoundingClientRect().top + window.scrollY - 12;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-
-    function filterRows(){
-      const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
-      const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
-      const rows = document.querySelectorAll('#termsTable tbody tr');
-
-      rows.forEach(row => {
-        const t = (row.querySelector('.teacher')?.textContent || '').toLowerCase();
-        const dText = (row.querySelectorAll('.when')[0]?.textContent || '').toLowerCase();
-        const matchTeacher = !qTeacher || t.includes(qTeacher);
-        const matchDate = !qDate || dText.includes(qDate);
-        row.style.display = (matchTeacher && matchDate) ? '' : 'none';
-      });
-    }
-
-    function cleanupTable(){
-      const tbody = document.querySelector('#termsTable tbody');
-      if(!tbody) return;
-
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      const now = new Date();
-
-      const items = [];
-      const seen = new Set();
-
-      rows.forEach(row => {
-        const key = row.getAttribute('data-key');
-        const dateISO = row.getAttribute('data-date');
-        const timeISO = row.getAttribute('data-time');
-
-        if(!dateISO || !timeISO || !key){
-          items.push({row, keep:true, sort:null, key:null});
-          return;
-        }
-
-        const [y,m,d] = dateISO.split('-').map(Number);
-        const [hh,mm] = timeISO.split(':').map(Number);
-        const dt = new Date(y, (m-1), d, hh, mm);
-
-        const isPast = dt.getTime() < now.getTime();
-
-        if(seen.has(key)){ row.remove(); return; }
-        seen.add(key);
-        if(isPast){ row.remove(); return; }
-
-        items.push({row, keep:true, sort:dt.getTime(), key});
-      });
-
-      const sortable = items.filter(i=>i.sort!==null).sort((a,b)=>a.sort-b.sort);
-      tbody.innerHTML = '';
-      sortable.forEach(i=>{
-        tbody.appendChild(i.row);
-        updatePriceForRow(i.row);
-        const sel = i.row.querySelector('.level-select');
-        if(sel){
-          sel.addEventListener('change', ()=>updatePriceForRow(i.row));
-        }
-      });
-
-      const others = items.filter(i=>i.sort===null && i.keep);
-      others.forEach(i=>tbody.appendChild(i.row));
-
-      if (!tbody.querySelector('tr')) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.className = 'empty';
-        td.colSpan = 7;
-        td.textContent = 'Brak dostępnych terminów';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', ()=>{
-      cleanupTable();
-      // init edukacja: pokaz/ukryj selecty klasy/roku
-      const typ = document.getElementById('typ_osoby');
-      const wrap = document.getElementById('wrap_poziom_nauki');
-      const sPod = document.getElementById('poziom_podstawowa');
-      const sSr  = document.getElementById('poziom_srednia');
-      const sStu = document.getElementById('poziom_student');
-
-      function hideAll(){
-        [sPod,sSr,sStu].forEach(el=>{
-          if(!el) return;
-          el.style.display='none';
-          const sel = el.querySelector('select');
-          if(sel) sel.value='';
-        });
-      }
-      if(typ){
-        typ.addEventListener('change', ()=>{
-          hideAll();
-          wrap.style.display = typ.value ? 'block' : 'none';
-          if(typ.value==='podstawowa') sPod.style.display='block';
-          if(typ.value==='srednia')    sSr.style.display='block';
-          if(typ.value==='student')    sStu.style.display='block';
-        });
-      }
-    });
-  </script>
+<footer style="text-align:center;color:#6b7a93;font-size:13px;padding:12px">PolubiszTo.pl — korepetycje online</footer>
 </body>
 </html>
