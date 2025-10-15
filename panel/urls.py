@@ -5,6 +5,7 @@ from panel.views import strona_glowna_view
 from .views import login_view
 from .views import moje_konto_uczen_view
 from django.contrib.auth.views import LogoutView
+from .views import webrtc_offer, webrtc_answer, webrtc_hangup, webrtc_debug, ping_online_status, check_online_status
 from .views import (
     podwyzki_nauczyciele_view,
     virtual_room,
@@ -55,8 +56,6 @@ urlpatterns = [
     path("dodaj_material/<int:rezerwacja_id>/", dodaj_material_po_zajeciach, name="dodaj_material"),
 
     # Presence + pobieranie materiałów
-    path("ping-online-status/", views.ping_online_status, name="ping_online_status"),
-    path("check-online-status/<int:rezerwacja_id>/", views.check_online_status, name="check_online_status"),
     path("pobierz-plik/<int:id>/", views.pobierz_plik, name="pobierz_plik"),
     path("pobierz-material/<int:id>/", views.pobierz_material_po_zajeciach, name="pobierz_material"),
 
@@ -69,10 +68,12 @@ urlpatterns = [
     path("public-test/", views.public_test, name="public_test"),
 
     # WebRTC signaling (ważne dla audio)
-    path("webrtc/offer/<int:rez_id>/", views.webrtc_offer, name="webrtc_offer"),
-    path("webrtc/answer/<int:rez_id>/", views.webrtc_answer, name="webrtc_answer"),
-    path("webrtc/hangup/<int:rez_id>/", views.webrtc_hangup, name="webrtc_hangup"),
-    path("webrtc/debug/<int:rez_id>/", views.webrtc_debug, name="webrtc_debug"),
+    path("webrtc_offer/<int:rez_id>/", webrtc_offer, name="webrtc_offer"),
+    path("webrtc_answer/<int:rez_id>/", webrtc_answer, name="webrtc_answer"),
+    path("webrtc_hangup/<int:rez_id>/", webrtc_hangup, name="webrtc_hangup"),
+    path("webrtc_debug/<int:rez_id>/", webrtc_debug, name="webrtc_debug"),
+    path("ping_online_status/", ping_online_status, name="ping_online_status"),
+    path("check-online-status/<int:rezerwacja_id>/", check_online_status, name="check_online_status"),
 
     # Uczeń
     path("moje-rachunki/", views.student_invoices_view, name="student_invoices"),
