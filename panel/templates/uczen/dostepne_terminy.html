@@ -37,7 +37,7 @@
     table{border-collapse:collapse;width:100%}
     th,td{padding:12px 14px;text-align:left}
     thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
-    tbody tr{border-bottom:1px solid var(--line')}
+    tbody tr{border-bottom:1px solid var(--line)}
     tbody tr:hover{background:#fafcff}
     .teacher{font-weight:700}
     .when{white-space:nowrap}
@@ -56,8 +56,8 @@
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .form-grid .full{grid-column:1/-1}
     label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
-    input[type="text"], input[type="file"], select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
-    input[type="text"]:focus, input[type="file"]:focus, select:focus{border-color:var(--brand)}
+    input[type="text"], input[type="file"]{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
+    input[type="text"]:focus, input[type="file"]:focus{border-color:var(--brand)}
     .hint{color:var(--muted);font-size:12px;margin-top:4px}
     .hidden{display:none}
     .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
@@ -174,10 +174,7 @@
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
-
-        <!-- HIDDENY do zapisu w Rezerwacja -->
-        <input type="hidden" name="poziom" id="poziom">
-        <input type="hidden" name="przedmiot" id="przedmiot"><!-- NOWE: wypełnia JS -->
+        <input type="hidden" name="poziom" id="poziom"><!-- (Twoje pole do cen – bez zmian) -->
 
         <div class="form-grid">
           <div class="full">
@@ -193,7 +190,7 @@
           </div>
         </div>
 
-        <!-- TYP + KLASA/ROK -->
+        <!-- >>> DODANE: TYP + KLASA/ROK (EDUKACJA) — bez ruszania reszty formularza <<< -->
         <div class="form-grid">
           <div class="full">
             <label for="typ_osoby"><strong>Typ ucznia</strong></label>
@@ -207,6 +204,7 @@
           </div>
 
           <div class="full" id="wrap_poziom_nauki" style="display:none;">
+            <!-- PODSTAWÓWKA -->
             <div id="poziom_podstawowa" class="level-select-edu" style="display:none;">
               <label for="klasa_podstawowa"><strong>Klasa (SP)</strong></label>
               <select id="klasa_podstawowa" name="poziom_nauki">
@@ -222,6 +220,7 @@
               </select>
             </div>
 
+            <!-- ŚREDNIA -->
             <div id="poziom_srednia" class="level-select-edu" style="display:none;">
               <label for="klasa_srednia"><strong>Klasa (średnia)</strong></label>
               <select id="klasa_srednia" name="poziom_nauki">
@@ -242,6 +241,7 @@
               </select>
             </div>
 
+            <!-- STUDIA -->
             <div id="poziom_student" class="level-select-edu" style="display:none;">
               <label for="rok_studiow"><strong>Rok studiów</strong></label>
               <select id="rok_studiow" name="poziom_nauki">
@@ -257,6 +257,7 @@
             <div class="hint">Po wyborze typu pojawi się odpowiednia lista klas/roku.</div>
           </div>
         </div>
+        <!-- <<< KONIEC DODATKU EDUKACYJNEGO >>> -->
 
         <div class="form-actions">
           <button id="submitBtn" class="btn btn-primary" type="submit">Zarezerwuj</button>
@@ -277,25 +278,22 @@
       span.textContent = val || '—';
     }
 
+    // ------------- UX: wybór terminu, blokada klików -------------
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
       if (btn.dataset.locked === "1") return;
       btn.dataset.locked = "1";
       btn.disabled = true;
       btn.textContent = "Wybrano";
 
+      // poziom (cenowy) -> hidden
       const tr = btn.closest('tr');
-
-      // poziom -> hidden
       let selectedLevel = 'podstawowy';
-      const sel = tr?.querySelector('.level-select');
-      if (sel && sel.value) selectedLevel = sel.value;
-      const poziomInput = document.getElementById('poziom');
-      if (poziomInput) poziomInput.value = selectedLevel;
-
-      // przedmiot -> hidden (tekst z kolumny „Przedmiot”)
-      const subjText = (tr?.querySelector('.subject')?.textContent || '').trim();
-      const subjInput = document.getElementById('przedmiot');
-      if (subjInput) subjInput.value = subjText;
+      if (tr) {
+        const sel = tr.querySelector('.level-select');
+        if (sel && sel.value) selectedLevel = sel.value;
+        const poziomInput = document.getElementById('poziom');
+        if (poziomInput) poziomInput.value = selectedLevel;
+      }
 
       showForm(terminId, iso, nauczycielId, nauczycielName);
     }
@@ -323,7 +321,6 @@
       document.getElementById('nauczyciel_id').value = '';
       document.getElementById('termin_id').value = '';
       document.getElementById('poziom').value = '';
-      document.getElementById('przedmiot').value = '';
       document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
 
@@ -343,6 +340,7 @@
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
 
+    // ------------- Filtry -------------
     function filterRows(){
       const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
       const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
@@ -357,6 +355,7 @@
       });
     }
 
+    // ------------- Porządkowanie + inicjalizacja cen -------------
     function cleanupTable(){
       const tbody = document.querySelector('#termsTable tbody');
       if(!tbody) return;
@@ -394,7 +393,9 @@
       tbody.innerHTML = '';
       sortable.forEach(i=>{
         tbody.appendChild(i.row);
+        // inicjalizacja ceny dla domyślnego poziomu w tym wierszu
         updatePriceForRow(i.row);
+        // nasłuch zmiany poziomu
         const sel = i.row.querySelector('.level-select');
         if(sel){
           sel.addEventListener('change', ()=>updatePriceForRow(i.row));
@@ -415,33 +416,36 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', ()=>{
-      cleanupTable();
-      // init edukacja: pokaz/ukryj selecty klasy/roku
+    document.addEventListener('DOMContentLoaded', cleanupTable);
+
+    // >>> DODANE: init pokazywania klas/roku dla wybranego typu ucznia <<<
+    (function initEdukacja(){
       const typ = document.getElementById('typ_osoby');
       const wrap = document.getElementById('wrap_poziom_nauki');
       const sPod = document.getElementById('poziom_podstawowa');
       const sSr  = document.getElementById('poziom_srednia');
       const sStu = document.getElementById('poziom_student');
 
+      if(!typ || !wrap) return;
+
       function hideAll(){
-        [sPod,sSr,sStu].forEach(el=>{
+        [sPod, sSr, sStu].forEach(el=>{
           if(!el) return;
-          el.style.display='none';
+          el.style.display = 'none';
           const sel = el.querySelector('select');
-          if(sel) sel.value='';
+          if(sel) sel.value = '';
         });
       }
-      if(typ){
-        typ.addEventListener('change', ()=>{
-          hideAll();
-          wrap.style.display = typ.value ? 'block' : 'none';
-          if(typ.value==='podstawowa') sPod.style.display='block';
-          if(typ.value==='srednia')    sSr.style.display='block';
-          if(typ.value==='student')    sStu.style.display='block';
-        });
-      }
-    });
+
+      typ.addEventListener('change', ()=>{
+        hideAll();
+        wrap.style.display = typ.value ? 'block' : 'none';
+        if (typ.value === 'podstawowa') sPod.style.display = 'block';
+        if (typ.value === 'srednia')    sSr.style.display  = 'block';
+        if (typ.value === 'student')    sStu.style.display = 'block';
+      });
+    })();
+    // <<< KONIEC DODATKU >>>
   </script>
 </body>
 </html>
