@@ -299,6 +299,9 @@ def webrtc_debug(request, rez_id: int):
     return _no_store(JsonResponse(data))
 
 # ====== Presence (jak u Ciebie – z lekkimi poprawkami cache) ======
+
+
+@csrf_exempt
 @login_required
 @never_cache
 @require_POST
@@ -312,6 +315,8 @@ def ping_online_status(request):
     status.save()
     return _no_store(JsonResponse({"status": "ping zapisany"}))
 
+
+@csrf_exempt
 @login_required
 @never_cache
 @require_GET
