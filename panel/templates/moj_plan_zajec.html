@@ -66,7 +66,9 @@
     <table class="tbl" aria-label="Nadchodzące zajęcia">
       <thead>
         <tr>
-          <th>Data</th><th>Dzień</th><th>Godzina</th><th>Uczeń</th><th>Temat</th><th>Pliki</th><th>Zajęcia online</th><th>Materiały</th>
+          <th>Data</th><th>Dzień</th><th>Godzina</th><th>Uczeń</th>
+          <th>Przedmiot</th><th>Poziom</th><th>Typ</th><th>Klasa/Rok</th>
+          <th>Temat</th><th>Pliki</th><th>Zajęcia online</th><th>Materiały</th>
         </tr>
       </thead>
       <tbody>
@@ -76,25 +78,18 @@
           <td>{{ start|date:"l" }}</td>
           <td>{{ start|date:"H:i" }}</td>
           <td>{{ r.uczen.first_name }} {{ r.uczen.last_name }}</td>
+
+          <!-- NOWE KOLUMNY -->
+          <td>{{ r.przedmiot|default:"—" }}</td>
+          <td>{{ r.poziom|default:"—" }}</td>
+          <td>{{ r.typ_osoby|default:"—" }}</td>
+          <td>{{ r.poziom_nauki|default:"—" }}</td>
+
+          <td>{{ r.temat|default:"—" }}</td>
+          <td>{% if r.plik %}<a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}<span style="color:var(--muted)">Brak</span>{% endif %}</td>
           <td>
-            {{ r.temat|default:"—" }}
-            {# jeśli chcesz podgląd pól z dostępnych terminów (bez zmiany układu): #}
-            {# <div style="color:#6b7a93;font-size:12px;margin-top:4px">
-               {{ r.przedmiot|default:"" }} {{ r.poziom|default:"" }}
-               {{ r.typ_osoby|default:"" }} {{ r.poziom_nauki|default:"" }}
-            </div> #}
-          </td>
-          <td>
-            {% if r.plik %}
-              <a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>
-            {% else %}<span style="color:var(--muted)">Brak</span>{% endif %}
-          </td>
-          <td>
-            <!-- PRZYCISKI PRZYWRÓCONE -->
             <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
-            {% if r.excalidraw_link %}
-              <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
-            {% endif %}
+            {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
           </td>
           <td>
             {% if r.material_po_zajeciach %}
@@ -107,7 +102,7 @@
           </td>
         </tr>
       {% endwith %}{% empty %}
-        <tr><td colspan="8" class="empty">Brak nadchodzących zajęć.</td></tr>
+        <tr><td colspan="12" class="empty">Brak nadchodzących zajęć.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -120,15 +115,16 @@
         <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
         <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
         <div class="meta">
+          <div><strong>Przedmiot:</strong> {{ r.przedmiot|default:"—" }}</div>
+          <div><strong>Poziom:</strong> {{ r.poziom|default:"—" }}</div>
+          <div><strong>Typ:</strong> {{ r.typ_osoby|default:"—" }}</div>
+          <div><strong>Klasa/Rok:</strong> {{ r.poziom_nauki|default:"—" }}</div>
           <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
           <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
         <div class="r-actions">
-          <!-- PRZYCISKI PRZYWRÓCONE (mobile) -->
           <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
-          {% if r.excalidraw_link %}
-            <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
-          {% endif %}
+          {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
           <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
             {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
             <button type="submit" class="btn small ghost">Dodaj plik</button>
@@ -146,7 +142,9 @@
     <table class="tbl" aria-label="Zakończone zajęcia">
       <thead>
         <tr>
-          <th>Data</th><th>Dzień</th><th>Godzina</th><th>Uczeń</th><th>Temat</th><th>Pliki</th><th>Zajęcia online</th><th>Materiały</th>
+          <th>Data</th><th>Dzień</th><th>Godzina</th><th>Uczeń</th>
+          <th>Przedmiot</th><th>Poziom</th><th>Typ</th><th>Klasa/Rok</th>
+          <th>Temat</th><th>Pliki</th><th>Zajęcia online</th><th>Materiały</th>
         </tr>
       </thead>
       <tbody>
@@ -156,14 +154,18 @@
           <td>{{ start|date:"l" }}</td>
           <td>{{ start|date:"H:i" }}</td>
           <td>{{ r.uczen.first_name }} {{ r.uczen.last_name }}</td>
+
+          <!-- NOWE KOLUMNY -->
+          <td>{{ r.przedmiot|default:"—" }}</td>
+          <td>{{ r.poziom|default:"—" }}</td>
+          <td>{{ r.typ_osoby|default:"—" }}</td>
+          <td>{{ r.poziom_nauki|default:"—" }}</td>
+
           <td>{{ r.temat|default:"—" }}</td>
           <td>{% if r.plik %}<a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}<span style="color:var(--muted)">Brak</span>{% endif %}</td>
           <td>
-            <!-- PRZYCISKI PRZYWRÓCONE -->
             <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
-            {% if r.excalidraw_link %}
-              <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
-            {% endif %}
+            {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
           </td>
           <td>
             {% if r.material_po_zajeciach %}
@@ -176,7 +178,7 @@
           </td>
         </tr>
       {% endwith %}{% empty %}
-        <tr><td colspan="8" class="empty">Brak zakończonych zajęć.</td></tr>
+        <tr><td colspan="12" class="empty">Brak zakończonych zajęć.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -189,15 +191,16 @@
         <div class="r-title">{{ start|date:"Y-m-d" }} • {{ start|date:"H:i" }}</div>
         <div style="color:var(--muted)">{{ r.uczen.first_name }} {{ r.uczen.last_name }} — {{ r.temat|default:"—" }}</div>
         <div class="meta">
+          <div><strong>Przedmiot:</strong> {{ r.przedmiot|default:"—" }}</div>
+          <div><strong>Poziom:</strong> {{ r.poziom|default:"—" }}</div>
+          <div><strong>Typ:</strong> {{ r.typ_osoby|default:"—" }}</div>
+          <div><strong>Klasa/Rok:</strong> {{ r.poziom_nauki|default:"—" }}</div>
           <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
           <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
         <div class="r-actions">
-          <!-- PRZYCISKI PRZYWRÓCONE (mobile) -->
           <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
-          {% if r.excalidraw_link %}
-            <a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>
-          {% endif %}
+          {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
           <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
             {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
             <button type="submit" class="btn small ghost">Dodaj plik</button>
