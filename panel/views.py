@@ -1196,13 +1196,9 @@ def moj_plan_zajec_view(request):
     return render(request, "moj_plan_zajec.html", ctx)
 
 
-def _is_future(d, t):
-    """
-    True, jeśli kombinacja data+godzina jest w przyszłości względem teraz
-    (uwzględniamy strefę czasu aplikacji).
-    """
-    now = timezone.localtime()  # aware
-    naive = dt.datetime.combine(d, t)  # <- UŻYWA klasy dt.datetime
+def _is_future(d: date, t: time) -> bool:
+    now = timezone.localtime()          # aware datetime
+    naive = DT.combine(d, t)            # <<< TU klasa DT (nie dt)
     aware = naive if not timezone.is_naive(naive) else timezone.make_aware(naive, now.tzinfo)
     return aware >= now
 
