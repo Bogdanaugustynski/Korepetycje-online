@@ -158,65 +158,75 @@ def strona_glowna_view(request):
 # ====== Klucze w cache ======
 log = logging.getLogger("webrtc")
 
-# TTL (sekundy)
-OFFER_TTL    = 60 * 10
-ANSWER_TTL   = 60 * 10
-PRESENCE_TTL = 30
-
+# ====== Klucze w cache ======
 def _keys(rez_id: int):
+    """
+    Zestaw kluczy powiązanych z jedną sesją (rezerwacją):
+    - offer / answer: ładunki SDP
+    - lock: kto został offererem (anti-race)
+    """
     base = f"webrtc:{rez_id}"
     return {
-        "offer":  f"{base}:offer",
+        "offer": f"{base}:offer",
         "answer": f"{base}:answer",
+        "lock": f"{base}:lock",
     }
 
-def _json_no_store(data, status=200):
-    resp = JsonResponse(data, status=status, safe=isinstance(data, dict))
+# Stałe czasowe
+OFFER_TTL = 60 * 10   # 10 min
+ANSWER_TTL = 60 * 10  # 10 min
+LOCK_TTL  = 60 * 2    # 2 min – wystarczy, żeby student zdążył odebrać
+
+def _no_store(resp: JsonResponse) -> JsonResponse:
     resp["Cache-Control"] = "no-store"
     return resp
 
-def _parse_json_body(request):
-    raw = request.body or b""
-    if not raw:
-        raise ValueError("Empty body")
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except Exception as e:
-        raise ValueError(f"Invalid JSON: {e}")
-
+# ====== OFFER ======
 @csrf_exempt
 @never_cache
+@require_http_methods(["GET", "POST"])
 def webrtc_offer(request, rez_id: int):
     keys = _keys(rez_id)
     offer_key = keys["offer"]
     answer_key = keys["answer"]
+    lock_key = keys["lock"]
 
     if request.method == "POST":
         try:
-            data = _parse_json_body(request)
-            t = data.get("type"); sdp = data.get("sdp")
-            if t != "offer" or not isinstance(sdp, str) or not sdp.startswith("v="):
-                return HttpResponseBadRequest("Invalid SDP payload (must be type='offer')")
-            cache.set(offer_key, {"type": t, "sdp": sdp}, timeout=OFFER_TTL)
-            cache.delete(answer_key)  # nowe offer kasuje stare answer
-            log.info("SET_OFFER rez=%s len=%s", rez_id, len(sdp))
-            return _json_no_store({"ok": True})
-        except ValueError as e:
-            return HttpResponseBadRequest(str(e))
+            data = json.loads(request.body.decode("utf-8"))
+            if not isinstance(data, dict) or data.get("type") != "offer" or not isinstance(data.get("sdp"), str):
+                return HttpResponseBadRequest("Invalid SDP payload")
+
+            # Kto pierwszy – ten offerer (SETNX = cache.add)
+            user_id = getattr(getattr(request, "user", None), "id", None) or "anon"
+            claimed = cache.add(lock_key, str(user_id), timeout=LOCK_TTL)
+            current_locker = cache.get(lock_key)
+
+            # Jeżeli lock istnieje i nie my go trzymamy – ktoś już dzwoni
+            if not claimed and str(current_locker) != str(user_id):
+                log.info("OFFER POST blocked by lock rez=%s by=%s", rez_id, current_locker)
+                return JsonResponse({"error": "Offerer already set"}, status=409)
+
+            # Zapisz offer (najnowszy nadpisuje stary); answer czyścimy
+            cache.set(offer_key, {"type": "offer", "sdp": data["sdp"]}, timeout=OFFER_TTL)
+            cache.delete(answer_key)
+
+            log.info("OFFER POST rez=%s len=%s by=%s", rez_id, len(data["sdp"]), user_id)
+            return _no_store(JsonResponse({"ok": True}))
         except Exception as e:
             log.exception("OFFER POST error rez=%s", rez_id)
-            return HttpResponseBadRequest("Internal error while posting offer")
+            return HttpResponseBadRequest(str(e))
 
-    if request.method == "GET":
-        data = cache.get(offer_key)
-        if not data:
-            return _json_no_store({"error": "No offer yet"}, status=404)
-        return _json_no_store(data)
+    # GET
+    data = cache.get(offer_key)
+    if not data:
+        return HttpResponseNotFound("No offer yet")
+    return _no_store(JsonResponse(data))
 
-    return HttpResponseBadRequest("Method not allowed")
-
+# ====== ANSWER ======
 @csrf_exempt
 @never_cache
+@require_http_methods(["GET", "POST"])
 def webrtc_answer(request, rez_id: int):
     keys = _keys(rez_id)
     offer_key = keys["offer"]
@@ -224,57 +234,107 @@ def webrtc_answer(request, rez_id: int):
 
     if request.method == "POST":
         try:
-            data = _parse_json_body(request)
-            t = data.get("type"); sdp = data.get("sdp")
+            data = json.loads(request.body.decode("utf-8"))
+            t = data.get("type")
+            sdp = data.get("sdp")
+
+            # Walidacja odpowiedzi
             if t != "answer" or not isinstance(sdp, str) or not sdp.startswith("v="):
-                return HttpResponseBadRequest("Invalid SDP payload (must be type='answer')")
+                return HttpResponseBadRequest("Invalid SDP payload")
+
+            # Odpowiadać można tylko na istniejącą ofertę
             if not cache.get(offer_key):
                 return HttpResponseNotFound("No offer to answer")
-            cache.set(answer_key, {"type": t, "sdp": sdp}, timeout=ANSWER_TTL)
-            cache.delete(offer_key)  # po przyjęciu answer kasujemy offer
-            log.info("SET_ANSWER rez=%s len=%s", rez_id, len(sdp))
-            return _json_no_store({"ok": True})
-        except ValueError as e:
-            return HttpResponseBadRequest(str(e))
+
+            cache.set(answer_key, {"type": "answer", "sdp": sdp}, timeout=ANSWER_TTL)
+            # Po przyjęciu answer kasujemy offer, by watchery nie „dzwoniły” w kółko
+            cache.delete(offer_key)
+
+            log.info("ANSWER POST rez=%s len=%s", rez_id, len(sdp))
+            return _no_store(JsonResponse({"ok": True}))
         except Exception as e:
             log.exception("ANSWER POST error rez=%s", rez_id)
-            return HttpResponseBadRequest("Internal error while posting answer")
+            return HttpResponseBadRequest(str(e))
 
-    if request.method == "GET":
-        data = cache.get(answer_key)
-        if not data:
-            return _json_no_store({"error": "No answer yet"}, status=404)
-        return _json_no_store(data)
+    # GET
+    data = cache.get(answer_key)
+    if not data:
+        return HttpResponseNotFound("No answer yet")
+    return _no_store(JsonResponse(data))
 
-    return HttpResponseBadRequest("Method not allowed")
-
+# ====== HANGUP (sprzątanie stanu) ======
 @csrf_exempt
 @never_cache
+@require_POST
 def webrtc_hangup(request, rez_id: int):
-    """Czyści offer i answer po rozłączeniu."""
-    if request.method != "POST":
-        return HttpResponseBadRequest("Method not allowed")
-    offer_key, answer_key = _keys(rez_id)["offer"], _keys(rez_id)["answer"]
-    cache.delete_many([offer_key, answer_key])
-    log.info("HANGUP rez=%s (state cleared)", rez_id)
-    return _json_no_store({"ok": True})
+    keys = _keys(rez_id)
+    cache.delete_many([keys["offer"], keys["answer"], keys["lock"]])
+    log.info("HANGUP rez=%s – cleared offer/answer/lock", rez_id)
+    return _no_store(JsonResponse({"ok": True}))
 
+# ====== DEBUG (podgląd kluczy) ======
 @csrf_exempt
 @never_cache
+@require_GET
 def webrtc_debug(request, rez_id: int):
-    """Podgląd stanu (do debugowania)."""
-    if request.method != "GET":
-        return HttpResponseBadRequest("Method not allowed")
-    offer_key, answer_key = _keys(rez_id)["offer"], _keys(rez_id)["answer"]
-    offer = cache.get(offer_key)
-    answer = cache.get(answer_key)
+    keys = _keys(rez_id)
+    offer = cache.get(keys["offer"])
+    answer = cache.get(keys["answer"])
+    locker = cache.get(keys["lock"])
+
+    def _sdp_len(x):
+        try:
+            return len((x or {}).get("sdp", "") or "")
+        except Exception:
+            return 0
+
     data = {
-        "offer": bool(offer), "answer": bool(answer),
-        "offer_len": len((offer or {}).get("sdp","") or ""),
-        "answer_len": len((answer or {}).get("sdp","") or ""),
-        "keys": {"offer": offer_key, "answer": answer_key},
+        "keys": keys,
+        "offer": bool(offer),
+        "answer": bool(answer),
+        "offer_len": _sdp_len(offer),
+        "answer_len": _sdp_len(answer),
+        "lock_holder": locker,
     }
-    return _json_no_store(data)
+    return _no_store(JsonResponse(data))
+
+# ====== Presence (jak u Ciebie – z lekkimi poprawkami cache) ======
+@login_required
+@never_cache
+@require_POST
+def ping_online_status(request):
+    rezerwacja_id = request.POST.get("rezerwacja_id")
+    if not rezerwacja_id:
+        return JsonResponse({"error": "Brak ID rezerwacji"}, status=400)
+
+    status, _ = OnlineStatus.objects.get_or_create(user=request.user, rezerwacja_id=rezerwacja_id)
+    status.last_ping = timezone.now()
+    status.save()
+    return _no_store(JsonResponse({"status": "ping zapisany"}))
+
+@login_required
+@never_cache
+@require_GET
+def check_online_status(request, rezerwacja_id):
+    try:
+        rezerwacja = Rezerwacja.objects.get(id=rezerwacja_id)
+    except Rezerwacja.DoesNotExist:
+        return JsonResponse({"error": "Nie znaleziono rezerwacji"}, status=404)
+
+    if request.user == rezerwacja.uczen:
+        other_user = rezerwacja.nauczyciel
+    elif request.user == rezerwacja.nauczyciel:
+        other_user = rezerwacja.uczen
+    else:
+        return HttpResponseForbidden("Brak dostępu do tej rezerwacji")
+
+    try:
+        online_status = OnlineStatus.objects.get(user=other_user, rezerwacja_id=rezerwacja_id)
+        is_online = (timezone.now() - online_status.last_ping).total_seconds() < 20
+    except OnlineStatus.DoesNotExist:
+        is_online = False
+
+    return _no_store(JsonResponse({"online": is_online}))
 
 
 # ==========================
@@ -383,37 +443,6 @@ def register_view(request):
 
     return render(request, "register.html")
 
-
-# ==========================
-#         PRESENCE
-# ==========================
-@login_required
-def ping_online_status(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Tylko POST"}, status=405)
-    rez_id = request.POST.get("rezerwacja_id")
-    if not rez_id:
-        return JsonResponse({"error": "Brak ID rezerwacji"}, status=400)
-    status, _ = OnlineStatus.objects.get_or_create(user=request.user, rezerwacja_id=rez_id)
-    status.last_ping = timezone.now(); status.save()
-    return _json_no_store({"status":"ok"})
-
-@login_required
-def check_online_status(request, rezerwacja_id):
-    try:
-      rez = Rezerwacja.objects.get(id=rezerwacja_id)
-    except Rezerwacja.DoesNotExist:
-      return JsonResponse({"error":"Nie znaleziono rezerwacji"}, status=404)
-    if request.user == rez.uczen: other = rez.nauczyciel
-    elif request.user == rez.nauczyciel: other = rez.uczen
-    else:
-      return JsonResponse({"error":"Brak dostępu"}, status=403)
-    try:
-      os = OnlineStatus.objects.get(user=other, rezerwacja_id=rezerwacja_id)
-      is_online = (timezone.now() - os.last_ping).total_seconds() < 20
-    except OnlineStatus.DoesNotExist:
-      is_online = False
-    return _json_no_store({"online": is_online})
 
 
 # ==========================
