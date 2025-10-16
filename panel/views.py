@@ -779,22 +779,28 @@ def _redirect_after_booking():
 @require_POST
 @transaction.atomic
 def zarezerwuj_zajecia(request):
-    # --- NOWE: pola edukacyjne (opcjonalne) ---
+    # --- EDU: pola opcjonalne ---
     typ_osoby    = (request.POST.get("typ_osoby") or "").strip() or None
     poziom_nauki = (request.POST.get("poziom_nauki") or "").strip() or None
 
-    # --- Dotychczasowe pola ---
+    # --- podstawowe pola ---
     termin_txt    = (request.POST.get("termin") or "").strip()        # "YYYY-MM-DD HH:MM"
     nauczyciel_id = request.POST.get("nauczyciel_id")
-    termin_id     = request.POST.get("termin_id")                     # (opcjonalnie) FK do WolnyTermin
+    termin_id     = request.POST.get("termin_id")
     temat         = (request.POST.get("temat") or "").strip()
     poziom        = (request.POST.get("poziom") or "").strip() or None
     plik          = request.FILES.get("plik")
+    # >>> NOWE <<<
+    przedmiot     = (request.POST.get("przedmiot") or "").strip() or None
 
     if not (termin_txt and nauczyciel_id and temat):
         return HttpResponseBadRequest("Brak danych")
 
-    # Parsowanie daty/godziny
+    # Wymuszenie wyboru poziom_nauki, jeśli typ_osoby jest ustawiony
+    if typ_osoby and not poziom_nauki:
+        return HttpResponseBadRequest("Wybierz klasę/rok studiów dla wybranego typu ucznia.")
+
+    # Parsowanie daty/godziny (bez zmian)
     try:
         data_str, godz_str = termin_txt.split(" ")
         data    = DT.strptime(data_str, "%Y-%m-%d").date()
@@ -802,7 +808,6 @@ def zarezerwuj_zajecia(request):
     except ValueError:
         return HttpResponseBadRequest("Zły format terminu")
 
-    # Przeszłość?
     now = timezone.localtime()
     if (data < now.date()) or (data == now.date() and godzina < now.time()):
         return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
@@ -822,6 +827,7 @@ def zarezerwuj_zajecia(request):
         pass
 
     # Dostępność pól
+    rezerwacja_has_przedmiot     = any(f.name == "przedmiot" for f in Rezerwacja._meta.get_fields())
     rezerwacja_has_poziom        = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
     rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby" for f in Rezerwacja._meta.get_fields())
     rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki" for f in Rezerwacja._meta.get_fields())
@@ -833,6 +839,8 @@ def zarezerwuj_zajecia(request):
     }
     if plik is not None:
         defaults["plik"] = plik
+    if rezerwacja_has_przedmiot:
+        defaults["przedmiot"] = przedmiot
     if rezerwacja_has_poziom:
         defaults["poziom"] = poziom
     if rezerwacja_has_typ_osoby:
@@ -840,13 +848,13 @@ def zarezerwuj_zajecia(request):
     if rezerwacja_has_poziom_nauki:
         defaults["poziom_nauki"] = poziom_nauki
 
-    # Aware datetime w TZ projektu
+    # Aware datetime
     naive_dt = DT.combine(data, godzina)
     when_dt = naive_dt if not timezone.is_naive(naive_dt) else timezone.make_aware(
         naive_dt, timezone.get_current_timezone()
     )
 
-    # Rezerwacja z podanym ID wolnego terminu
+    # Rezerwacja (jak było)
     if termin_id:
         try:
             slot = (
@@ -859,13 +867,11 @@ def zarezerwuj_zajecia(request):
             return HttpResponseBadRequest("Termin nie istnieje")
 
         if has_fk_slot:
-            # Rezerwacja.termin -> FK do WolnyTermin
             obj, created = Rezerwacja.objects.get_or_create(
                 termin=slot,
                 defaults={**defaults, "nauczyciel": slot.nauczyciel}
             )
         else:
-            # Rezerwacja.termin -> DateTimeField
             obj, created = Rezerwacja.objects.get_or_create(
                 nauczyciel=slot.nauczyciel,
                 termin=when_dt,
@@ -873,9 +879,7 @@ def zarezerwuj_zajecia(request):
             )
         if not created:
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
-
     else:
-        # Brak ID slotu – rezerwujemy po nauczycielu i dacie
         try:
             nauczyciel = User.objects.get(id=nauczyciel_id)
         except User.DoesNotExist:
@@ -889,7 +893,6 @@ def zarezerwuj_zajecia(request):
         if not created:
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
 
-    # Sukces → bezpieczny redirect
     return _redirect_after_booking()
 
 
@@ -1481,7 +1484,6 @@ def change_password_view(request):
         form = PasswordChangeForm(user=request.user)
 
     return render(request, "teacher_change_password.html", {"form": form})
-
 
 
 # --- Helpers ---

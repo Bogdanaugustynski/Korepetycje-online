@@ -34,14 +34,26 @@
     .btn-ghost:hover{background:#e1ecff}
 
     .table-wrap{overflow:auto}
-    table{border-collapse:collapse;width:100%}
+    table{border-collapse:collapse;width:100%; table-layout: fixed;}
     th,td{padding:12px 14px;text-align:left}
     thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
     tbody tr{border-bottom:1px solid var(--line)}
     tbody tr:hover{background:#fafcff}
+
+    /* Ali: kolumny mieszczą się + elipsy */
+    th:nth-child(1), td:nth-child(1){width:16ch}   /* Przedmiot */
+    th:nth-child(2), td:nth-child(2){width:16ch}   /* Poziom */
+    th:nth-child(3), td:nth-child(3){width:12ch; text-align:right} /* Cena */
+    th:nth-child(4), td:nth-child(4){width:20ch}   /* Nauczyciel */
+    th:nth-child(5), td:nth-child(5){width:12ch}   /* Data */
+    th:nth-child(6), td:nth-child(6){width:8ch}    /* Godz. */
+    th:nth-child(7), td:nth-child(7){width:16ch}   /* Akcja */
+
+    .ellipsis{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
     .teacher{font-weight:700}
     .when{white-space:nowrap}
-    .act{display:flex;gap:10px;flex-wrap:wrap}
+    .price{text-align:right}
+    .act{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start}
 
     .btn-book{
       background:var(--ok); color:#fff; border-radius:10px; padding:8px 12px; font-weight:700; border:none; cursor:pointer;
@@ -56,8 +68,8 @@
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .form-grid .full{grid-column:1/-1}
     label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
-    input[type="text"], input[type="file"]{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
-    input[type="text"]:focus, input[type="file"]:focus{border-color:var(--brand)}
+    input[type="text"], input[type="file"], select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
+    input[type="text"]:focus, input[type="file"]:focus, select:focus{border-color:var(--brand)}
     .hint{color:var(--muted);font-size:12px;margin-top:4px}
     .hidden{display:none}
     .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
@@ -97,8 +109,8 @@
     <section class="card">
       <div class="card-head">
         <div class="search">
-          <input class="input" type="text" id="filterTeacher" placeholder="Filtruj po nauczycielu…" oninput="filterRows()">
-          <input class="input" type="text" id="filterDate" placeholder="Filtruj po dacie (RRRR-MM-DD)…" oninput="filterRows()" autocomplete="off">
+          <input class="input" type="text" id="filterTeacher" placeholder="Filtruj nauczyciela…" oninput="filterRows()">
+          <input class="input" type="text" id="filterDate" placeholder="Filtruj datę (RRRR-MM-DD)…" oninput="filterRows()" autocomplete="off">
         </div>
         <button class="btn btn-ghost" type="button" onclick="scrollToForm()">Przejdź do formularza</button>
       </div>
@@ -109,10 +121,10 @@
             <tr>
               <th>Przedmiot</th>
               <th>Poziom</th>
-              <th>Cena [zł/h]</th>
+              <th>Cena</th>
               <th>Nauczyciel</th>
               <th><span translate="no">Data</span></th>
-              <th>Godzina</th>
+              <th>Godz.</th>
               <th>Akcja</th>
             </tr>
           </thead>
@@ -126,8 +138,9 @@
               data-key="{{ t.nauczyciel.id }}::{{ t.data|date:'Y-m-d' }}::{{ t.godzina|time:'H:i' }}"
               data-price-podstawowy="{{ info.prices.podstawowy|default:'—' }}"
               data-price-rozszerzony="{{ info.prices.rozszerzony|default:'—' }}"
+              title="{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }} • {{ t.data }} {{ t.godzina|time:'H:i' }}"
             >
-              <td class="subject" data-label="Przedmiot">
+              <td class="subject ellipsis" data-label="Przedmiot" title="{{ info.subjects|join:', ' }}">
                 {{ info.subjects|join:", " }}
               </td>
 
@@ -139,16 +152,15 @@
                 </select>
               </td>
 
-              <!-- CENA – reaguje na wybór poziomu -->
-              <td class="price" data-label="Cena [zł/h]">
+              <td class="price" data-label="Cena">
                 <span class="price-val">—</span>
               </td>
 
-              <td class="teacher" data-label="Nauczyciel">
+              <td class="teacher ellipsis" data-label="Nauczyciel" title="{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}">
                 {{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}
               </td>
               <td class="when" data-label="Data">{{ t.data }}</td>
-              <td class="when" data-label="Godzina">{{ t.godzina }}</td>
+              <td class="when" data-label="Godzina">{{ t.godzina|time:'H:i' }}</td>
               <td class="act" data-label="Akcja">
                 <button class="btn-book" type="button"
                         onclick="pickAndLock(this,'{{ t.id }}','{{ t.data|date:'Y-m-d' }} {{ t.godzina|time:'H:i' }}','{{ t.nauczyciel.id }}','{{ t.nauczyciel.first_name }} {{ t.nauczyciel.last_name }}')">
@@ -174,7 +186,8 @@
         <input type="hidden" name="termin" id="termin">
         <input type="hidden" name="nauczyciel_id" id="nauczyciel_id">
         <input type="hidden" name="termin_id" id="termin_id">
-        <input type="hidden" name="poziom" id="poziom"><!-- (Twoje pole do cen – bez zmian) -->
+        <input type="hidden" name="poziom" id="poziom">         <!-- poziom cenowy -->
+        <input type="hidden" name="przedmiot" id="przedmiot">   <!-- NOWE: z wiersza tabeli -->
 
         <div class="form-grid">
           <div class="full">
@@ -190,9 +203,9 @@
           </div>
         </div>
 
-        <!-- >>> DODANE: TYP + KLASA/ROK (EDUKACJA) — bez ruszania reszty formularza <<< -->
+        <!-- EDUKACJA: TYP + KLASA/ROK (wymuszenie wyboru dla wybranego typu) -->
         <div class="form-grid">
-          <div class="full">
+          <div>
             <label for="typ_osoby"><strong>Typ ucznia</strong></label>
             <select id="typ_osoby" name="typ_osoby">
               <option value="">-- wybierz --</option>
@@ -203,11 +216,11 @@
             <div class="hint">Wybierz grupę edukacyjną.</div>
           </div>
 
-          <div class="full" id="wrap_poziom_nauki" style="display:none;">
+          <div id="wrap_poziom_nauki">
             <!-- PODSTAWÓWKA -->
             <div id="poziom_podstawowa" class="level-select-edu" style="display:none;">
               <label for="klasa_podstawowa"><strong>Klasa (SP)</strong></label>
-              <select id="klasa_podstawowa" name="poziom_nauki">
+              <select id="klasa_podstawowa" name="poziom_nauki" disabled>
                 <option value="">-- wybierz klasę --</option>
                 <option value="1_podstawowa">I klasa SP</option>
                 <option value="2_podstawowa">II klasa SP</option>
@@ -223,7 +236,7 @@
             <!-- ŚREDNIA -->
             <div id="poziom_srednia" class="level-select-edu" style="display:none;">
               <label for="klasa_srednia"><strong>Klasa (średnia)</strong></label>
-              <select id="klasa_srednia" name="poziom_nauki">
+              <select id="klasa_srednia" name="poziom_nauki" disabled>
                 <option value="">-- wybierz klasę --</option>
                 <optgroup label="Liceum">
                   <option value="1_liceum">I liceum</option>
@@ -244,7 +257,7 @@
             <!-- STUDIA -->
             <div id="poziom_student" class="level-select-edu" style="display:none;">
               <label for="rok_studiow"><strong>Rok studiów</strong></label>
-              <select id="rok_studiow" name="poziom_nauki">
+              <select id="rok_studiow" name="poziom_nauki" disabled>
                 <option value="">-- wybierz rok --</option>
                 <option value="1_rok">I rok studiów</option>
                 <option value="2_rok">II rok studiów</option>
@@ -254,10 +267,10 @@
               </select>
             </div>
 
-            <div class="hint">Po wyborze typu pojawi się odpowiednia lista klas/roku.</div>
+            <div class="hint">Po wyborze typu pojawi się odpowiednia lista klas/roku (wymagana).</div>
           </div>
         </div>
-        <!-- <<< KONIEC DODATKU EDUKACYJNEGO >>> -->
+        <!-- KONIEC EDUKACJI -->
 
         <div class="form-actions">
           <button id="submitBtn" class="btn btn-primary" type="submit">Zarezerwuj</button>
@@ -278,15 +291,16 @@
       span.textContent = val || '—';
     }
 
-    // ------------- UX: wybór terminu, blokada klików -------------
+    // wybór terminu + wypełnienie hiddenów (w tym PRZEDMIOT)
     function pickAndLock(btn, terminId, iso, nauczycielId, nauczycielName){
       if (btn.dataset.locked === "1") return;
       btn.dataset.locked = "1";
       btn.disabled = true;
       btn.textContent = "Wybrano";
 
-      // poziom (cenowy) -> hidden
       const tr = btn.closest('tr');
+
+      // poziom cenowy -> hidden
       let selectedLevel = 'podstawowy';
       if (tr) {
         const sel = tr.querySelector('.level-select');
@@ -294,6 +308,15 @@
         const poziomInput = document.getElementById('poziom');
         if (poziomInput) poziomInput.value = selectedLevel;
       }
+
+      // NOWE: PRZEDMIOT -> hidden
+      try {
+        const subjCell = tr.querySelector('.subject');
+        let subj = (subjCell?.textContent || '').trim();
+        if (subj.includes(',')) subj = subj.split(',')[0].trim(); // pierwszy z listy
+        const subjInput = document.getElementById('przedmiot');
+        if (subjInput) subjInput.value = subj;
+      } catch(e){ /* no-op */ }
 
       showForm(terminId, iso, nauczycielId, nauczycielName);
     }
@@ -321,11 +344,26 @@
       document.getElementById('nauczyciel_id').value = '';
       document.getElementById('termin_id').value = '';
       document.getElementById('poziom').value = '';
+      document.getElementById('przedmiot').value = '';
       document.querySelectorAll('.btn-book[disabled]').forEach(b=>{ b.disabled=false; b.textContent='Zarezerwuj'; b.dataset.locked="0"; });
     }
 
+    // Wymuszenie: jeśli typ wybrany -> MUSI być wybrana klasa/rok (poziom_nauki)
     function lockSubmit(form){
       const btn = document.getElementById('submitBtn');
+
+      const typ = document.getElementById('typ_osoby')?.value || '';
+      if (typ) {
+        // widoczny i włączony select name="poziom_nauki"
+        const selects = Array.from(document.querySelectorAll('select[name="poziom_nauki"]'));
+        const visible = selects.find(s => s.offsetParent !== null && !s.disabled);
+        const val = visible?.value || '';
+        if (!val) {
+          alert("Wybierz klasę (lub rok studiów) dla wybranego typu ucznia.");
+          return false;
+        }
+      }
+
       if (btn.dataset.locked === "1") return false;
       btn.dataset.locked = "1";
       btn.disabled = true;
@@ -340,7 +378,7 @@
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
 
-    // ------------- Filtry -------------
+    // Filtry
     function filterRows(){
       const qTeacher = (document.getElementById('filterTeacher').value || '').toLowerCase().trim();
       const qDate = (document.getElementById('filterDate').value || '').toLowerCase().trim();
@@ -355,7 +393,7 @@
       });
     }
 
-    // ------------- Porządkowanie + inicjalizacja cen -------------
+    // Porządkowanie + inicjalizacja cen
     function cleanupTable(){
       const tbody = document.querySelector('#termsTable tbody');
       if(!tbody) return;
@@ -393,9 +431,7 @@
       tbody.innerHTML = '';
       sortable.forEach(i=>{
         tbody.appendChild(i.row);
-        // inicjalizacja ceny dla domyślnego poziomu w tym wierszu
         updatePriceForRow(i.row);
-        // nasłuch zmiany poziomu
         const sel = i.row.querySelector('.level-select');
         if(sel){
           sel.addEventListener('change', ()=>updatePriceForRow(i.row));
@@ -416,36 +452,34 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', cleanupTable);
+    document.addEventListener('DOMContentLoaded', ()=>{
+      cleanupTable();
 
-    // >>> DODANE: init pokazywania klas/roku dla wybranego typu ucznia <<<
-    (function initEdukacja(){
+      // EDUKACJA: pokazuj/ukrywaj listy i włączaj tylko widoczny select
       const typ = document.getElementById('typ_osoby');
-      const wrap = document.getElementById('wrap_poziom_nauki');
       const sPod = document.getElementById('poziom_podstawowa');
       const sSr  = document.getElementById('poziom_srednia');
       const sStu = document.getElementById('poziom_student');
-
-      if(!typ || !wrap) return;
 
       function hideAll(){
         [sPod, sSr, sStu].forEach(el=>{
           if(!el) return;
           el.style.display = 'none';
-          const sel = el.querySelector('select');
-          if(sel) sel.value = '';
+          const sel = el.querySelector('select[name="poziom_nauki"]');
+          if(sel){ sel.value=''; sel.disabled = true; sel.removeAttribute('required'); }
         });
       }
 
-      typ.addEventListener('change', ()=>{
-        hideAll();
-        wrap.style.display = typ.value ? 'block' : 'none';
-        if (typ.value === 'podstawowa') sPod.style.display = 'block';
-        if (typ.value === 'srednia')    sSr.style.display  = 'block';
-        if (typ.value === 'student')    sStu.style.display = 'block';
-      });
-    })();
-    // <<< KONIEC DODATKU >>>
+      if(typ){
+        typ.addEventListener('change', ()=>{
+          hideAll();
+          if (!typ.value) return; // typ pusty -> nic nie wymagamy
+          if (typ.value === 'podstawowa'){ sPod.style.display='block'; const sel=sPod.querySelector('select'); sel.disabled=false; sel.setAttribute('required','required'); }
+          if (typ.value === 'srednia'){    sSr.style.display='block';  const sel=sSr.querySelector('select');  sel.disabled=false; sel.setAttribute('required','required'); }
+          if (typ.value === 'student'){    sStu.style.display='block'; const sel=sStu.querySelector('select'); sel.disabled=false; sel.setAttribute('required','required'); }
+        });
+      }
+    });
   </script>
 </body>
 </html>
