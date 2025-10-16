@@ -35,56 +35,60 @@
     .btn-ghost:hover{background:#e1ecff}
 
     .table-wrap{overflow:auto}
-    table{border-collapse:collapse;width:100%;table-layout:fixed}
-    th,td{padding:10px 12px;text-align:left}
-    thead th{position:sticky;top:0;background:#f0f6ff;color:#0b3d91;border-bottom:1px solid var(--line);z-index:1;font-weight:700;letter-spacing:.2px}
+    /* ⏪ Revert kolumn: bez table-layout: fixed */
+    table{border-collapse:collapse;width:100%}
+    /* ⏪ Revert paddingów w komórkach */
+    th,td{padding:12px 14px;text-align:left}
+    thead th{position:sticky; top:0; background:#f0f6ff; color:#0b3d91; border-bottom:1px solid var(--line); z-index:1; font-weight:700; letter-spacing:.2px}
     tbody tr{border-bottom:1px solid var(--line)}
     tbody tr:hover{background:#fafcff}
 
-    th:nth-child(1),td:nth-child(1){width:15ch}
-    th:nth-child(2),td:nth-child(2){width:14ch}
-    th:nth-child(3),td:nth-child(3){width:11ch;text-align:right}
-    th:nth-child(4),td:nth-child(4){width:18ch}
-    th:nth-child(5),td:nth-child(5){width:12ch}
-    th:nth-child(6),td:nth-child(6){width:10ch}
-    th:nth-child(7),td:nth-child(7){width:14ch}
-
-    .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    /* ⏪ Usunięte stałe szerokości i elipsy na Data/Godz. */
     .teacher{font-weight:700}
-    .when{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .when{white-space:nowrap}
     .price{text-align:right}
     .act{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start}
 
     .btn-book{
-      background:var(--ok);color:#fff;border-radius:10px;padding:8px 12px;font-weight:700;border:none;cursor:pointer;
-      box-shadow:0 4px 12px rgba(34,197,94,.25);transition:transform .06s ease,filter .15s ease;
+      background:var(--ok); color:#fff; border-radius:10px; padding:8px 12px; font-weight:700; border:none; cursor:pointer;
+      box-shadow:0 4px 12px rgba(34,197,94,.25); transition:transform .06s ease, filter .15s ease;
     }
-    .btn-book:hover{background:#1ea34f;filter:brightness(1.02)}
-    .btn-book:active{transform:translateY(1px)}
+    .btn-book:hover{ background:#1ea34f; filter:brightness(1.02) }
+    .btn-book:active{ transform:translateY(1px) }
+
     .empty{padding:20px;text-align:center;color:var(--muted)}
 
-    .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .form-card{margin-top:20px;background:var(--card);border:1px solid var(--line); border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .form-grid .full{grid-column:1/-1}
     label{font-weight:700;font-size:14px;margin-bottom:6px;display:block}
-    input[type="text"],input[type="file"],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
-    input[type="text"]:focus,input[type="file"]:focus,select:focus{border-color:var(--brand)}
+    input[type="text"], input[type="file"], select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;outline:none}
+    input[type="text"]:focus, input[type="file"]:focus, select:focus{border-color:var(--brand)}
     .hint{color:var(--muted);font-size:12px;margin-top:4px}
     .hidden{display:none}
     .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
     .btn-cancel{background:#fee2e2;color:#991b1b;border-radius:10px;padding:10px 14px;font-weight:700;border:none;cursor:pointer}
     .btn-cancel:hover{background:#fecaca}
 
-    @media (max-width:720px){
+    .level-select{ min-width:0; max-width:100%; width:100%; }
+    td.level{ vertical-align:middle; }
+
+    @media (max-width: 720px){
       .form-grid{grid-template-columns:1fr}
       .card-head{align-items:stretch;flex-direction:column}
-      table thead{position:absolute;left:-9999px;top:-9999px;height:0;width:0;overflow:hidden;}
-      table,tbody,tr,td{display:block;width:100%}
-      tbody tr{border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);background:#fff;padding:10px 12px;margin:12px 0;}
-      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px 10px 120px;position:relative;min-height:42px;}
-      td:last-child{border-bottom:none;padding-bottom:6px}
-      td::before{content:attr(data-label);position:absolute;left:10px;top:10px;width:100px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.2px;line-height:1.2;}
-      .btn-book{width:100%;padding:12px}
+      .table-wrap{overflow:visible}
+      table thead{position:absolute; left:-9999px; top:-9999px; height:0; width:0; overflow:hidden;}
+      table, tbody, tr, td { display:block; width:100% }
+      tbody tr{border:1px solid var(--line);border-radius:12px;box-shadow: var(--shadow);background:#fff;padding:10px 12px;margin:12px 0;}
+      tbody tr:hover{ background:#fff }
+      td{border:none;border-bottom:1px solid var(--line);padding:10px 6px 10px 120px; position:relative; min-height:42px;}
+      td:last-child{ border-bottom:none; padding-bottom:6px }
+      td::before{content: attr(data-label); position:absolute; left:10px; top:10px; width:100px; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.2px; line-height:1.2;}
+      .teacher{ font-weight:800 }
+      .act{ display:block; margin-top:4px }
+      .btn-book{ width:100%; padding:12px }
+      td.level{ padding-right:12px; }
+      .level-select{ display:block; width:100%; min-width:0; font-size:14px; padding:10px 12px; }
     }
   </style>
 </head>
