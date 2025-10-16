@@ -768,7 +768,7 @@ def _redirect_after_booking():
     """
     Bezpieczne przekierowanie po rezerwacji.
     1) próbuje 'moje_rezerwacje' (jeśli masz taki widok),
-    2) w razie potrzeby fallback do 'panel_ucznia' (logach widać, że istnieje).
+    2) fallback do 'panel_ucznia'.
     """
     try:
         return HttpResponseRedirect(reverse("moje_rezerwacje"))
@@ -776,11 +776,9 @@ def _redirect_after_booking():
         return HttpResponseRedirect(reverse("panel_ucznia"))
 
 @login_required
+@require_POST
 @transaction.atomic
 def zarezerwuj_zajecia(request):
-    if request.method != "POST":
-        return HttpResponseBadRequest("Nieprawidłowa metoda")
-
     # --- NOWE: pola edukacyjne (opcjonalne) ---
     typ_osoby    = (request.POST.get("typ_osoby") or "").strip() or None
     poziom_nauki = (request.POST.get("poziom_nauki") or "").strip() or None
@@ -799,14 +797,10 @@ def zarezerwuj_zajecia(request):
     # Parsowanie daty/godziny
     try:
         data_str, godz_str = termin_txt.split(" ")
-    except ValueError:
-        return HttpResponseBadRequest("Zły format terminu")
-
-    try:
-        data = DT.strptime(data_str, "%Y-%m-%d").date()
+        data    = DT.strptime(data_str, "%Y-%m-%d").date()
         godzina = DT.strptime(godz_str, "%H:%M").time()
     except ValueError:
-        return HttpResponseBadRequest("Zły format daty/godziny")
+        return HttpResponseBadRequest("Zły format terminu")
 
     # Przeszłość?
     now = timezone.localtime()
@@ -828,9 +822,9 @@ def zarezerwuj_zajecia(request):
         pass
 
     # Dostępność pól
-    rezerwacja_has_poziom        = any(f.name == "poziom"        for f in Rezerwacja._meta.get_fields())
-    rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby"     for f in Rezerwacja._meta.get_fields())
-    rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki"  for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_poziom        = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby" for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki" for f in Rezerwacja._meta.get_fields())
 
     # Domyślne wartości do create()
     defaults = {
@@ -846,9 +840,11 @@ def zarezerwuj_zajecia(request):
     if rezerwacja_has_poziom_nauki:
         defaults["poziom_nauki"] = poziom_nauki
 
-    # Zbuduj termin jako aware datetime (TZ projektu)
+    # Aware datetime w TZ projektu
     naive_dt = DT.combine(data, godzina)
-    when_dt = naive_dt if not timezone.is_naive(naive_dt) else timezone.make_aware(naive_dt, timezone.get_current_timezone())
+    when_dt = naive_dt if not timezone.is_naive(naive_dt) else timezone.make_aware(
+        naive_dt, timezone.get_current_timezone()
+    )
 
     # Rezerwacja z podanym ID wolnego terminu
     if termin_id:
@@ -893,9 +889,8 @@ def zarezerwuj_zajecia(request):
         if not created:
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
 
-     # Sukces → bezpieczny redirect
+    # Sukces → bezpieczny redirect
     return _redirect_after_booking()
-
 
 
 @login_required
