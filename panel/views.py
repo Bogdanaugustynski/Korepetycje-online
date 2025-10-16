@@ -1483,32 +1483,6 @@ def change_password_view(request):
     return render(request, "teacher_change_password.html", {"form": form})
 
 
-@login_required
-def zarezerwuj_zajecia_view(request):
-    if request.method == "GET":
-        termin_id = request.GET.get("termin_id")
-        termin = get_object_or_404(WolnyTermin, id=termin_id)
-        return render(request, "zarezerwuj_formularz.html", {"termin": termin})
-
-    elif request.method == "POST":
-        termin_id = request.POST.get("termin_id")
-        temat = request.POST.get("temat")
-        plik = request.FILES.get("plik")
-        termin = get_object_or_404(WolnyTermin, id=termin_id)
-
-        termin_datetime = datetime.combine(termin.data, termin.godzina)
-
-        Rezerwacja.objects.create(
-            uczen=request.user,
-            nauczyciel=termin.nauczyciel,
-            termin=termin_datetime,
-            temat=temat,
-            plik=plik,
-        )
-        termin.delete()
-        return redirect("panel_ucznia")
-
-    return HttpResponseRedirect("/")
 
 # --- Helpers ---
 
