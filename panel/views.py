@@ -781,16 +781,16 @@ def zarezerwuj_zajecia(request):
     if request.method != "POST":
         return HttpResponseBadRequest("Nieprawidłowa metoda")
 
-    # --- NOWE: pola edukacyjne (bez wpływu na Twoje ceny/poziom) ---
-    typ_osoby    = (request.POST.get("typ_osoby") or "").strip() or None        # "podstawowa" | "srednia" | "student"
-    poziom_nauki = (request.POST.get("poziom_nauki") or "").strip() or None     # np. "3_podstawowa" | "1_liceum" | "2_rok"
+    # --- NOWE: pola edukacyjne (opcjonalne) ---
+    typ_osoby    = (request.POST.get("typ_osoby") or "").strip() or None
+    poziom_nauki = (request.POST.get("poziom_nauki") or "").strip() or None
 
     # --- Dotychczasowe pola ---
-    termin_txt    = (request.POST.get("termin") or "").strip()   # "YYYY-MM-DD HH:MM"
+    termin_txt    = (request.POST.get("termin") or "").strip()        # "YYYY-MM-DD HH:MM"
     nauczyciel_id = request.POST.get("nauczyciel_id")
-    termin_id     = request.POST.get("termin_id")                 # jeśli masz FK do WolnyTermin
+    termin_id     = request.POST.get("termin_id")                     # (opcjonalnie) FK do WolnyTermin
     temat         = (request.POST.get("temat") or "").strip()
-    poziom        = (request.POST.get("poziom") or "").strip() or None  # Twoje pole do cennika — zostaje bez zmian
+    poziom        = (request.POST.get("poziom") or "").strip() or None
     plik          = request.FILES.get("plik")
 
     if not (termin_txt and nauczyciel_id and temat):
@@ -803,8 +803,8 @@ def zarezerwuj_zajecia(request):
         return HttpResponseBadRequest("Zły format terminu")
 
     try:
-        data = datetime.strptime(data_str, "%Y-%m-%d").date()
-        godzina = datetime.strptime(godz_str, "%H:%M").time()
+        data = DT.strptime(data_str, "%Y-%m-%d").date()
+        godzina = DT.strptime(godz_str, "%H:%M").time()
     except ValueError:
         return HttpResponseBadRequest("Zły format daty/godziny")
 
@@ -818,7 +818,7 @@ def zarezerwuj_zajecia(request):
     Rezerwacja  = apps.get_model("panel", "Rezerwacja")
     WolnyTermin = apps.get_model("panel", "WolnyTermin")
 
-    # Czy model Rezerwacja ma pole 'termin' jako FK do WolnyTermin?
+    # Czy Rezerwacja.termin to FK do WolnyTermin?
     has_fk_slot = False
     try:
         pole = Rezerwacja._meta.get_field("termin")
@@ -827,33 +827,38 @@ def zarezerwuj_zajecia(request):
     except Exception:
         pass
 
-    # Czy model Rezerwacja ma dane pola?
-    rezerwacja_has_poziom        = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
-    rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby" for f in Rezerwacja._meta.get_fields())
-    rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki" for f in Rezerwacja._meta.get_fields())
+    # Dostępność pól
+    rezerwacja_has_poziom        = any(f.name == "poziom"        for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby"     for f in Rezerwacja._meta.get_fields())
+    rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki"  for f in Rezerwacja._meta.get_fields())
 
     # Domyślne wartości do create()
     defaults = {
         "uczen": request.user,
         "temat": temat,
-        "plik":  plik,
     }
+    if plik is not None:
+        defaults["plik"] = plik
     if rezerwacja_has_poziom:
-        defaults["poziom"] = poziom  # (Twoje pole cenowe – zostaje)
+        defaults["poziom"] = poziom
     if rezerwacja_has_typ_osoby:
         defaults["typ_osoby"] = typ_osoby
     if rezerwacja_has_poziom_nauki:
         defaults["poziom_nauki"] = poziom_nauki
 
-    when_dt = timezone.make_aware(datetime.combine(data, godzina))
+    # Zbuduj termin jako aware datetime (TZ projektu)
+    naive_dt = DT.combine(data, godzina)
+    when_dt = naive_dt if not timezone.is_naive(naive_dt) else timezone.make_aware(naive_dt, timezone.get_current_timezone())
 
-    # Wariant 1: mamy ID wolnego terminu i chcemy z niego korzystać
+    # Rezerwacja z podanym ID wolnego terminu
     if termin_id:
         try:
-            slot = (WolnyTermin.objects
-                    .select_for_update()
-                    .select_related("nauczyciel")
-                    .get(id=termin_id, nauczyciel_id=nauczyciel_id, data=data, godzina=godzina))
+            slot = (
+                WolnyTermin.objects
+                .select_for_update()
+                .select_related("nauczyciel")
+                .get(id=termin_id, nauczyciel_id=nauczyciel_id, data=data, godzina=godzina)
+            )
         except WolnyTermin.DoesNotExist:
             return HttpResponseBadRequest("Termin nie istnieje")
 
@@ -861,7 +866,7 @@ def zarezerwuj_zajecia(request):
             # Rezerwacja.termin -> FK do WolnyTermin
             obj, created = Rezerwacja.objects.get_or_create(
                 termin=slot,
-                defaults=defaults | {"nauczyciel": slot.nauczyciel, "termin": slot}  # 'termin' nadpisze się FK
+                defaults={**defaults, "nauczyciel": slot.nauczyciel}
             )
         else:
             # Rezerwacja.termin -> DateTimeField
@@ -874,7 +879,7 @@ def zarezerwuj_zajecia(request):
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
 
     else:
-        # Wariant 2: bez FK — pilnuj unikalności (nauczyciel, termin[DT])
+        # Brak ID slotu – rezerwujemy po nauczycielu i dacie
         try:
             nauczyciel = User.objects.get(id=nauczyciel_id)
         except User.DoesNotExist:
@@ -888,9 +893,8 @@ def zarezerwuj_zajecia(request):
         if not created:
             return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
 
-    # Sukces → bezpieczny redirect
+     # Sukces → bezpieczny redirect
     return _redirect_after_booking()
-
 
 
 
