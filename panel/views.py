@@ -1045,8 +1045,8 @@ def dodaj_wolny_termin(request):
 
     # parsowanie
     try:
-        data = datetime.strptime(data_str, "%Y-%m-%d").date()
-        godzina = datetime.strptime(godzina_str, "%H:%M").time()
+        data = DT.strptime(data_str, "%Y-%m-%d").date()
+        godzina = DT.strptime(godzina_str, "%H:%M").time()
     except ValueError:
         return HttpResponseBadRequest("Zły format daty/godziny")
 
@@ -1076,8 +1076,8 @@ def dodaj_wiele_wolnych_terminow(request):
     for d in datas:
         for g in godziny:
             try:
-                dt = datetime.strptime(d, "%Y-%m-%d").date()
-                tm = datetime.strptime(g, "%H:%M").time()
+                dt = DT.strptime(d, "%Y-%m-%d").date()
+                tm = DT.strptime(g, "%H:%M").time()
             except ValueError:
                 continue
             slots.add((dt, tm))
@@ -1125,8 +1125,8 @@ def zapisz_terminy_view(request):
         for godzina in godziny:
             WolnyTermin.objects.get_or_create(
                 nauczyciel=request.user,
-                data=datetime.strptime(date_str, "%Y-%m-%d").date(),
-                godzina=datetime.strptime(godzina, "%H:%M").time(),
+                data=DT.strptime(date_str, "%Y-%m-%d").date(),
+                godzina=DT.strptime(godzina, "%H:%M").time(),
             )
         return JsonResponse({"status": "ok"})
 
