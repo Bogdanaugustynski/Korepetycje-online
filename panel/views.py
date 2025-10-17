@@ -725,12 +725,56 @@ def edytuj_dane_platnosci_view(request):
 def edytuj_cene_view(request):
     return edytuj_dane_platnosci_view(request)
 
+# MOJE REZERWACJE UCZNIA
+
+def _range_for_scope(now, scope: str):
+    """
+    Zwraca (start_dt, end_dt) jako AWARE datetimes w TZ projektu.
+    Zakresy: 'day' (dziś), 'week' (bieżący tydzień pn-nd), 'month' (bieżący miesiąc),
+             'all' (brak ograniczeń -> (None, None)).
+    """
+    tz = timezone.get_current_timezone()
+
+    def at_start_of_day(d):
+        return timezone.make_aware(DT.combine(d, DT.min.time()), tz)
+
+    scope = (scope or "").lower()
+    today = now.date()
+
+    if scope == "day":
+        start = at_start_of_day(today)
+        end   = start + timedelta(days=1)
+        return start, end
+
+    if scope == "week":
+        monday = today - timedelta(days=today.weekday())  # poniedziałek
+        start  = at_start_of_day(monday)
+        end    = start + timedelta(days=7)                # do następnego poniedziałku
+        return start, end
+
+    if scope == "month":
+        first = today.replace(day=1)
+        # pierwszy dzień następnego miesiąca
+        if first.month == 12:
+            next_first = first.replace(year=first.year + 1, month=1, day=1)
+        else:
+            next_first = first.replace(month=first.month + 1, day=1)
+        start = at_start_of_day(first)
+        end   = at_start_of_day(next_first)
+        return start, end
+
+    # 'all'
+    return None, None
+
 @login_required
 def moje_rezerwacje_ucznia_view(request):
-    scope = request.GET.get("scope", "all")
-    if scope not in {"day", "week", "month", "all"}: scope = "all"
+    scope = (request.GET.get("scope") or "all").lower()
+    if scope not in {"day", "week", "month", "all"}:
+        scope = "all"
 
     now = timezone.localtime()
+
+    Rezerwacja = apps.get_model("panel", "Rezerwacja")
 
     base = (
         Rezerwacja.objects
@@ -742,7 +786,7 @@ def moje_rezerwacje_ucznia_view(request):
     if start is not None and end is not None:
         base = base.filter(termin__gte=start, termin__lt=end)
 
-    # Rozbicie jak w panelu: upcoming ↑, finished ↓
+    # Rozbicie: nadchodzące i zakończone względem 'now'
     upcoming = base.filter(termin__gte=now).order_by("termin")
     finished = base.filter(termin__lt=now).order_by("-termin")
 
@@ -750,7 +794,7 @@ def moje_rezerwacje_ucznia_view(request):
         "scope": scope,
         "upcoming": upcoming,
         "finished": finished,
-        # (opcjonalnie) zgodność wstecz:
+        # dla zgodności wstecz:
         "rezerwacje": base.order_by("termin"),
     })
 
