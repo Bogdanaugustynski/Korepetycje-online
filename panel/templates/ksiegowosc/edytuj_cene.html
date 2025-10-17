@@ -1,94 +1,85 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Edytuj dane płatności</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .form-box {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 500px;
-            text-align: left;
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            font-weight: bold;
-            margin-top: 12px;
-            margin-bottom: 4px;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 16px;
-            text-align: center;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .back-link {
-            display: inline-block;
-            margin-top: 16px;
-            text-align: center;
-            width: 100%;
-            background-color: #6c757d;
-        }
-        .back-link:hover {
-            background-color: #5a6268;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edytuj dane płatności — PolubiszTo.pl</title>
+  <style>
+    :root{
+      --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
+      --bg:#f7f9fe; --card:#fff; --line:#e6edff;
+      --shadow:0 12px 32px rgba(11,116,255,.12);
+      --radius:14px; --maxw:1100px
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    header{position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--line)}
+    .brand{max-width:var(--maxw);margin:0 auto;padding:10px 16px}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px}
+    h1{font-size:clamp(20px,4vw,28px);margin:16px 0 12px}
+    .card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:18px; margin:16px 0
+    }
+    label{display:block;font-weight:600;margin:10px 0 6px}
+    input{
+      width:100%; padding:12px 14px; border:1px solid var(--line);
+      border-radius:10px; background:#fff; color:var(--ink)
+    }
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+    @media (max-width:720px){ .row{grid-template-columns:1fr} }
+    .actions{display:flex; gap:12px; flex-wrap:wrap; margin-top:14px}
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:12px 16px; border-radius:999px; border:1px solid transparent;
+      background:var(--brand); color:#fff; font-weight:600; text-decoration:none; cursor:pointer
+    }
+    .btn:hover{filter:brightness(.96)}
+    .btn-secondary{background:#eef4ff; color:var(--ink); border-color:var(--line)}
+    .hint{color:var(--muted); font-size:14px; margin-top:6px}
+  </style>
 </head>
 <body>
 
-<div class="form-box">
-    <h2>Edytuj dane płatności</h2>
-    <form method="POST">
-        {% csrf_token %}
+<header>
+  <div class="brand">{% include "partials/brand.html" %}</div>
+</header>
 
-        <label for="cena">Cena za godzinę</label>
-        <input type="text" name="cena" id="cena" value="{{ ustawienia.cena_za_godzine }}" required>
+<main class="wrap">
+  <h1>Edytuj dane płatności</h1>
 
-        <label for="telefon">Numer telefonu (BLIK)</label>
-        <input type="text" name="telefon" id="telefon" value="{{ ustawienia.numer_telefonu }}">
+  <div class="card">
+    <form method="POST" novalidate>
+      {% csrf_token %}
 
-        <label for="konto">Numer konta bankowego</label>
-        <input type="text" name="konto" id="konto" value="{{ ustawienia.numer_konta }}">
+      <div class="row">
+        <div>
+          <label for="telefon">Numer telefonu (BLIK)</label>
+          <input type="text" name="telefon" id="telefon" value="{{ ustawienia.numer_telefonu|default_if_none:'' }}">
+          <div class="hint">Telefon przypisany do BLIK (bez spacji).</div>
+        </div>
 
-        <label for="wlasciciel">Imię i nazwisko właściciela konta</label>
-        <input type="text" name="wlasciciel" id="wlasciciel" value="{{ ustawienia.wlasciciel_konta }}">
+        <div>
+          <label for="wlasciciel">Imię i nazwisko właściciela konta</label>
+          <input type="text" name="wlasciciel" id="wlasciciel" value="{{ ustawienia.wlasciciel_konta|default_if_none:'' }}">
+          <div class="hint">Wyświetlane uczniowi przy płatności przelewem.</div>
+        </div>
+      </div>
 
+      <label for="konto">Numer konta bankowego</label>
+      <input type="text" name="konto" id="konto" value="{{ ustawienia.numer_konta|default_if_none:'' }}">
+      <div class="hint">W formacie IBAN/NRB (np. PL…)</div>
+
+      <div class="actions">
         <button class="btn" type="submit">Zapisz</button>
+        <a href="{% url 'panel_ksiegowosc' %}" class="btn btn-secondary">Powrót do panelu księgowości</a>
+      </div>
     </form>
-
-    <a href="{% url 'panel_ksiegowosc' %}" class="btn back-link">Powrót do panelu księgowości</a>
-</div>
+  </div>
+</main>
 
 </body>
 </html>

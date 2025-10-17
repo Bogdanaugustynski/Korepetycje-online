@@ -6,6 +6,7 @@ from django.views.generic.base import RedirectView
 urlpatterns = [
     path("ukryty_admin/", admin.site.urls),
     path('', include('panel.urls')),
+    path("favicon.ico", lambda request: HttpResponse(status=204)),
 ]
 from django.conf import settings
 from django.conf.urls.static import static

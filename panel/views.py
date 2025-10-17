@@ -71,6 +71,7 @@ from .models import (
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
 
 
 
@@ -676,38 +677,41 @@ def panel_nauczyciela_view(request):
         return redirect("login")
     return render(request, "panel_nauczyciela.html")
 
+# EDYTUJ CENĘ
+
+def _is_accounting(user):
+    return user.is_superuser or user.groups.filter(name="Księgowość").exists()
 
 @login_required
-def edytuj_cene_view(request):
-    try:
-        ustawienia = UstawieniaPlatnosci.objects.get(id=1)
-    except UstawieniaPlatnosci.DoesNotExist:
-        ustawienia = UstawieniaPlatnosci(id=1)
+@user_passes_test(_is_accounting)
+def edytuj_dane_platnosci_view(request):
+    from .models import UstawieniaPlatnosci
+    from django.shortcuts import render, redirect
+    from django.contrib import messages
+
+    ustawienia, _ = UstawieniaPlatnosci.objects.get_or_create(id=1)
 
     if request.method == "POST":
-        ustawienia.cena_za_godzine = request.POST.get("cena", "").replace(",", ".")
-        ustawienia.numer_telefonu = request.POST.get("telefon")
-        ustawienia.numer_konta = request.POST.get("konto")
-        ustawienia.wlasciciel_konta = request.POST.get("wlasciciel")
+        telefon = (request.POST.get("telefon") or "").strip()
+        konto = (request.POST.get("konto") or "").strip().replace(" ", "")
+        wlasciciel = (request.POST.get("wlasciciel") or "").strip()
+
+        ustawienia.numer_telefonu = telefon
+        ustawienia.numer_konta = konto
+        ustawienia.wlasciciel_konta = wlasciciel
+        ustawienia.dane_odbiorcy = wlasciciel
         ustawienia.save()
+
+        messages.success(request, "Dane płatności zapisane.")
         return redirect("panel_ksiegowosc")
 
-    return render(request, "ksiegowosc/edytuj_cene.html", {"ustawienia": ustawienia})
+    return render(request, "ksiegowosc/edytuj_dane_platnosci.html", {"ustawienia": ustawienia})
 
-
-def _range_for_scope(now, scope: str):
-    if scope == "day":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        return start, start + timedelta(days=1)
-    if scope == "week":
-        start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-        return start, start + timedelta(days=7)
-    if scope == "month":
-        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        tmp = (start.replace(day=28) + timedelta(days=4))
-        end = tmp.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        return start, end
-    return None, None  # all
+# ✅ Alias dla starych URL-i, żeby nic nie wybuchało
+@login_required
+@user_passes_test(_is_accounting)
+def edytuj_cene_view(request):
+    return edytuj_dane_platnosci_view(request)
 
 @login_required
 def moje_rezerwacje_ucznia_view(request):

@@ -5,6 +5,7 @@ import secrets
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxLengthValidator
 
 # --- upload paths ---
 def avatar_upload_path(instance, filename):
@@ -108,14 +109,19 @@ class StawkaNauczyciela(models.Model):
 
 
 class UstawieniaPlatnosci(models.Model):
-    cena_za_godzine = models.DecimalField(max_digits=6, decimal_places=2)
-    numer_telefonu = models.CharField(max_length=20)
-    numer_konta = models.CharField(max_length=50)
-    dane_odbiorcy = models.CharField(max_length=100, blank=True, null=True)
-    wlasciciel_konta = models.CharField(max_length=100, blank=True, null=True)
+    # Cena: zostaje w modelu (dla innych ekranów), ale nie edytujemy jej tutaj.
+    cena_za_godzine = models.DecimalField(
+        max_digits=8, decimal_places=2, default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))]
+    )
+    numer_telefonu = models.CharField(max_length=32, blank=True, default="")
+    numer_konta = models.CharField(max_length=64, blank=True, default="")  # IBAN/NRB
+    wlasciciel_konta = models.CharField(max_length=100, blank=True, default="")
+    # Pole historyczne/kompatybilność – jeśli gdzieś było używane:
+    dane_odbiorcy = models.CharField(max_length=100, blank=True, default="")
 
     def __str__(self):
-        return f"Ustawienia płatności: {self.cena_za_godzine} zł"
+        return f"Ustawienia płatności (cena: {self.cena_za_godzine} zł)"
 
 
 class Księgowość(models.Model):
