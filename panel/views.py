@@ -72,7 +72,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-
+from django.apps import apps
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
