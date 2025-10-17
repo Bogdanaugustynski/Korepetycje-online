@@ -83,6 +83,13 @@ urlpatterns = [
 
     path("test-pdf/", views.test_pdf, name="test_pdf"),
 
+ # Uczeń – płatności (informacyjne)
+    path("uczen/platnosci/", views.platnosci_lista_view, name="platnosci_lista"),
+    path("uczen/platnosci/<int:rez_id>/", views.platnosci_view, name="platnosci_view"),
 
+    # Księgowość – ręczna akceptacja
+    path("ksiegowosc/platnosci/", views.ksiegowosc_platnosci_lista, name="ksiegowosc_platnosci_lista"),
+    path("ksiegowosc/platnosci/<int:rez_id>/oplacona/", views.ksiegowosc_oznacz_oplacona, name="ksiegowosc_oznacz_oplacona"),
+    path("ksiegowosc/platnosci/<int:rez_id>/odrzucona/", views.ksiegowosc_oznacz_odrzucona, name="ksiegowosc_oznacz_odrzucona"),
 
 ]

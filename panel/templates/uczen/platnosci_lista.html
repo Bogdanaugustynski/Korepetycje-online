@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html><html lang="pl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moje płatności — PolubiszTo.pl</title>
+<style>
+:root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--radius:16px;--maxw:1100px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
+.wrap{max-width:var(--maxw);margin:32px auto;padding:0 16px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:700}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
+.card-h{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
+.card-b{padding:18px}
+table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+.btn{appearance:none;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-ghost{background:#fff;border:1px solid var(--line)}
+.muted{color:var(--muted)}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-logo">🎓</div>
+    <div><div style="font-weight:700">PolubiszTo.pl</div><div class="muted">korepetycje online</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">Rezerwacje do opłaty</div>
+    <div class="card-b">
+      {% if rezerwacje %}
+      <table>
+        <thead><tr><th>Termin</th><th>Nauczyciel</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for r in rezerwacje %}
+          <tr>
+            <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
+            <td>{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</td>
+            <td class="muted">{{ r.status }}</td>
+            <td><a class="btn btn-primary" href="{% url 'platnosci_view' r.id %}">Szczegóły / Instrukcja</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        Brak rezerwacji wymagających opłaty.
+      {% endif %}
+
+      <div style="margin-top:16px">
+        <a class="btn btn-ghost" href="{% url 'panel_ucznia' %}">Wróć do panelu</a>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

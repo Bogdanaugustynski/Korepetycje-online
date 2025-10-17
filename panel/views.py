@@ -1864,3 +1864,86 @@ def test_pdf(request):
     except Exception:
         # fallback na placeholder, żeby endpoint zawsze odpowiadał
         return HttpResponse(b"%PDF-1.4\n% placeholder\n", content_type="application/pdf")
+
+
+#PŁATNOŚCI
+def is_student(user):
+    return user.groups.filter(name__in=["Uczeń", "Uczen", "Student"]).exists()
+
+def is_accounting(user):
+    return user.is_superuser or user.groups.filter(name__in=["Księgowość","Ksiegowosc","Accounting"]).exists()
+
+# =======================
+# U C Z E Ń  —  P Ł A T N O Ś C I
+# =======================
+@login_required
+@user_passes_test(is_student)
+def platnosci_lista_view(request):
+    """
+    Lista rezerwacji wymagających opłaty dla zalogowanego ucznia.
+    Dostosuj statusy do swoich.
+    """
+    rezerwacje = (
+        Rezerwacja.objects
+        .filter(uczen=request.user, status__in=["oczekuje", "nieoplacona", "do_oplaty"])
+        .order_by("termin")
+    )
+    return render(request, "uczen/platnosci_lista.html", {"rezerwacje": rezerwacje})
+
+@login_required
+@user_passes_test(is_student)
+def platnosci_view(request, rez_id: int):
+    """
+    Szczegóły płatności: instrukcja BLIK/przelew (bez wprowadzania kodu).
+    Lekcja odbędzie się po zaksięgowaniu wpłaty i ręcznej akceptacji w księgowości.
+    """
+    rezerwacja = get_object_or_404(Rezerwacja, pk=rez_id, uczen=request.user)
+    ustawienia = UstawieniaPlatnosci.objects.first()
+    if not ustawienia:
+        messages.error(request, "Brak ustawień płatności. Skontaktuj się z administratorem.")
+        return redirect("panel_ucznia")
+
+    if getattr(rezerwacja, "status", "nieoplacona") == "oplacona":
+        messages.info(request, "Ta rezerwacja jest już opłacona.")
+        return redirect("platnosci_lista")
+
+    return render(request, "uczen/platnosci.html", {
+        "rezerwacja": rezerwacja,
+        "ustawienia": ustawienia,
+    })
+
+# =======================
+# K S I Ę G O W O Ś Ć  —  R Ę C Z N A  A K C E P T A C J A
+# =======================
+@login_required
+@user_passes_test(is_accounting)
+def ksiegowosc_platnosci_lista(request):
+    """
+    Rezerwacje oczekujące na zaksięgowanie (ręczna akceptacja).
+    """
+    oczekujace = (
+        Rezerwacja.objects
+        .filter(status__in=["nieoplacona", "do_oplaty", "oczekuje"])
+        .order_by("termin")
+    )
+    return render(request, "ksiegowosc/platnosci_lista.html", {"rezerwacje": oczekujace})
+
+@login_required
+@user_passes_test(is_accounting)
+@require_POST
+def ksiegowosc_oznacz_oplacona(request, rez_id: int):
+    r = get_object_or_404(Rezerwacja, pk=rez_id)
+    r.status = "oplacona"
+    r.save(update_fields=["status"])
+    messages.success(request, f"Rezerwacja #{r.id} oznaczona jako opłacona.")
+    return redirect("ksiegowosc_platnosci_lista")
+
+@login_required
+@user_passes_test(is_accounting)
+@require_POST
+def ksiegowosc_oznacz_odrzucona(request, rez_id: int):
+    r = get_object_or_404(Rezerwacja, pk=rez_id)
+    r.status = "odrzucona"
+    r.save(update_fields=["status"])
+    messages.warning(request, f"Rezerwacja #{r.id} oznaczona jako odrzucona.")
+    return redirect("ksiegowosc_platnosci_lista")

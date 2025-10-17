@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html><html lang="pl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Księgowość — Płatności do akceptacji</title>
+<style>
+:root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--ok:#16a34a;--err:#ef4444;--radius:16px;--maxw:1100px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
+.wrap{max-width:var(--maxw);margin:32px auto;padding:0 16px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:700}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
+.card-h{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
+.card-b{padding:18px}
+table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.btn{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+.btn-ghost{background:#fff;border:1px solid var(--line)}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-bad{background:var(--err);color:#fff}
+.muted{color:var(--muted)}
+form{display:inline}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-logo">🎓</div>
+    <div><div style="font-weight:700">PolubiszTo.pl</div><div class="muted">korepetycje online — Księgowość</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">Płatności oczekujące na akceptację</div>
+    <div class="card-b">
+      {% if rezerwacje %}
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Uczeń</th><th>Nauczyciel</th><th>Termin</th><th>Tytuł</th><th>Status</th><th>Akcje</th></tr>
+        </thead>
+        <tbody>
+        {% for r in rezerwacje %}
+          <tr>
+            <td>#{{ r.id }}</td>
+            <td>{{ r.uczen.get_full_name|default:r.uczen.username }}</td>
+            <td>{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</td>
+            <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
+            <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
+            <td><span class="badge">{{ r.status }}</span></td>
+            <td>
+              <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
+                {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>
+              </form>
+              <form method="post" action="{% url 'ksiegowosc_oznacz_odrzucona' r.id %}">
+                {% csrf_token %}<button class="btn btn-bad" type="submit">Odrzuć</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        Brak rezerwacji oczekujących na akceptację.
+      {% endif %}
+
+      <div style="margin-top:16px">
+        <a class="btn btn-ghost" href="{% url 'panel_ksiegowosc' %}">Wróć do panelu księgowości</a>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
