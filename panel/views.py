@@ -1907,15 +1907,20 @@ def is_accounting(user):
 # =======================
 @login_required
 def platnosci_lista_view(request):
-    rezerwacje = (
-        Rezerwacja.objects
-        .filter(uczen=request.user, oplacona=False, odrzucona=False)
-        .order_by("termin")
-    )
-    # dorzuć kwotę do każdego obiektu (będzie dostępna w szablonie jako r.kwota)
-    for r in rezerwacje:
+    filtr = request.GET.get("filtr", "wszystkie")  # 'oczekujace' lub 'wszystkie'
+    qs = Rezerwacja.objects.filter(uczen=request.user).order_by("-termin")
+
+    if filtr == "oczekujace":
+        qs = qs.filter(oplacona=False, odrzucona=False)
+
+    # policz kwoty z cennika
+    for r in qs:
         r.kwota = _resolve_cena_uczen(r)
-    return render(request, "uczen/platnosci_lista.html", {"rezerwacje": rezerwacje})
+
+    return render(request, "uczen/platnosci_lista.html", {
+        "rezerwacje": qs,
+        "filtr": filtr,
+    })
 
 @login_required
 def platnosci_view(request, rez_id: int):
