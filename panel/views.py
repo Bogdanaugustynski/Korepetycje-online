@@ -680,34 +680,46 @@ def panel_nauczyciela_view(request):
 # EDYTUJ CENĘ
 
 def _is_accounting(user):
+    """
+    Dostęp tylko dla admina lub grupy 'Księgowość'.
+    """
     return user.is_superuser or user.groups.filter(name="Księgowość").exists()
+
 
 @login_required
 @user_passes_test(_is_accounting)
 def edytuj_dane_platnosci_view(request):
-    from .models import UstawieniaPlatnosci
-    from django.shortcuts import render, redirect
-    from django.contrib import messages
-
+    """
+    Formularz EDYCJI DANYCH PŁATNOŚCI (bez edycji ceny):
+    - numer_telefonu (BLIK)
+    - numer_konta (IBAN/NRB)
+    - wlasciciel_konta (wyświetlany uczniowi)
+    """
+    # Pobierz lub załóż rekord ustawień (trzymamy go pod stałym id=1)
     ustawienia, _ = UstawieniaPlatnosci.objects.get_or_create(id=1)
 
     if request.method == "POST":
         telefon = (request.POST.get("telefon") or "").strip()
-        konto = (request.POST.get("konto") or "").strip().replace(" ", "")
+        # normalizacja konta: bez spacji i myślników, wielkie litery
+        konto = (request.POST.get("konto") or "").replace(" ", "").replace("-", "").upper().strip()
         wlasciciel = (request.POST.get("wlasciciel") or "").strip()
 
         ustawienia.numer_telefonu = telefon
         ustawienia.numer_konta = konto
         ustawienia.wlasciciel_konta = wlasciciel
+        # kompatybilność wstecz, jeśli gdzieś używane:
         ustawienia.dane_odbiorcy = wlasciciel
-        ustawienia.save()
 
-        messages.success(request, "Dane płatności zapisane.")
+        # WAŻNE: nie dotykamy pola cena_za_godzine
+        ustawienia.save()
+        messages.success(request, "Dane płatności zostały zapisane.")
         return redirect("panel_ksiegowosc")
 
-    return render(request, "ksiegowosc/edytuj_dane_platnosci.html", {"ustawienia": ustawienia})
+    # Używamy ISTNIEJĄCEGO pliku szablonu:
+    return render(request, "ksiegowosc/edytuj_cene.html", {"ustawienia": ustawienia})
 
-# ✅ Alias dla starych URL-i, żeby nic nie wybuchało
+
+# Alias do kompatybilności ze starym URL-em / nazwą.
 @login_required
 @user_passes_test(_is_accounting)
 def edytuj_cene_view(request):
