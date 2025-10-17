@@ -1877,7 +1877,6 @@ def is_accounting(user):
 # U C Z E Ń  —  P Ł A T N O Ś C I
 # =======================
 @login_required
-@user_passes_test(is_student)
 def platnosci_lista_view(request):
     """
     Lista rezerwacji wymagających opłaty dla zalogowanego ucznia.
@@ -1891,7 +1890,6 @@ def platnosci_lista_view(request):
     return render(request, "uczen/platnosci_lista.html", {"rezerwacje": rezerwacje})
 
 @login_required
-@user_passes_test(is_student)
 def platnosci_view(request, rez_id: int):
     """
     Szczegóły płatności: instrukcja BLIK/przelew (bez wprowadzania kodu).
