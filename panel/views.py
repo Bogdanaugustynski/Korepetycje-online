@@ -72,7 +72,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.apps import apps
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -801,25 +800,63 @@ def moje_rezerwacje_ucznia_view(request):
 
 @login_required
 def moje_konto_view(request):
-    profil = request.user.profil
+    # Modele dynamicznie (bez ryzyka NameError po sprzątaniu importów)
+    Profil = apps.get_model("panel", "Profil")
+    PrzedmiotCennik = apps.get_model("panel", "PrzedmiotCennik")
+
     user = request.user
 
-    if request.method == "POST":
-        user.first_name = request.POST.get("first_name", user.first_name)
-        user.last_name = request.POST.get("last_name", user.last_name)
-        profil.numer_telefonu = request.POST.get("numer_telefonu", profil.numer_telefonu)
+    # Weź albo utwórz profil użytkownika
+    profil = getattr(user, "profil", None)
+    if profil is None and Profil is not None:
+        profil, _ = Profil.objects.get_or_create(user=user)
 
-        profil.tytul_naukowy = ",".join(request.POST.getlist("tytul_naukowy"))
-        profil.poziom_nauczania = ",".join(request.POST.getlist("poziom_nauczania"))
-        profil.przedmioty = ",".join(request.POST.getlist("przedmioty"))
-        profil.opis = request.POST.get("opis", profil.opis)
+    if request.method == "POST":
+        # proste pola tekstowe (zostawiaj stare wartości, jeśli brak w POST)
+        first_name = request.POST.get("first_name")
+        last_name = request.POST.get("last_name")
+        numer_telefonu = request.POST.get("numer_telefonu")
+        opis = request.POST.get("opis")
+
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
+
+        if profil is not None:
+            if numer_telefonu is not None:
+                profil.numer_telefonu = numer_telefonu
+
+            # pola wielokrotnego wyboru
+            tytul_naukowy = request.POST.getlist("tytul_naukowy")
+            poziom_nauczania = request.POST.getlist("poziom_nauczania")
+            przedmioty = request.POST.getlist("przedmioty")
+
+            if tytul_naukowy:
+                profil.tytul_naukowy = ",".join(tytul_naukowy)
+            if poziom_nauczania:
+                profil.poziom_nauczania = ",".join(poziom_nauczania)
+            if przedmioty:
+                profil.przedmioty = ",".join(przedmioty)
+            if opis is not None:
+                profil.opis = opis
 
         user.save()
-        profil.save()
+        if profil is not None:
+            profil.save()
+
         return redirect("panel_nauczyciela")
 
-    cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
-    return render(request, "moje_konto.html", {"profil": profil, "user": user, "cennik": cennik})
+    # GET: lista cenników (jeśli model istnieje)
+    cennik = []
+    if PrzedmiotCennik is not None:
+        cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
+
+    return render(
+        request,
+        "moje_konto.html",
+        {"profil": profil, "user": user, "cennik": cennik},
+    )
 
 
 
