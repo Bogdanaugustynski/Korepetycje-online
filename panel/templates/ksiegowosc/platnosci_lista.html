@@ -6,8 +6,6 @@
 :root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--ok:#16a34a;--err:#ef4444;--radius:16px;--maxw:1100px}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
 .wrap{max-width:var(--maxw);margin:32px auto;padding:0 16px}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.brand-logo{width:36px;height:36px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:700}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
 .card-h{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
 .card-b{padding:18px}
@@ -22,15 +20,9 @@ form{display:inline}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
 </style>
 </head><body>
-<div class="wrap">
-  <div class="brand">
-    <div class="brand-logo">🎓</div>
-    <div>
-      <div style="font-weight:700">PolubiszTo.pl</div>
-      <div class="muted">korepetycje online — Księgowość</div>
-    </div>
-  </div>
 
+{% include "partials/brand.html" %}
+<div class="wrap">
   <div class="card">
     <div class="card-h">Płatności oczekujące na akceptację</div>
     <div class="card-b">
@@ -41,8 +33,11 @@ form{display:inline}
             <th>ID</th>
             <th>Uczeń</th>
             <th>Nauczyciel</th>
+            <th>Przedmiot</th>
+            <th>Poziom</th>
             <th>Termin</th>
             <th>Tytuł</th>
+            <th>Kwota</th>
             <th>Status</th>
             <th>Akcje</th>
           </tr>
@@ -53,8 +48,11 @@ form{display:inline}
             <td>#{{ r.id }}</td>
             <td>{{ r.uczen.get_full_name|default:r.uczen.username }}</td>
             <td>{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</td>
+            <td>{{ r.przedmiot|default:"—" }}</td>
+            <td>{{ r.poziom|default:r.poziom_nauki|default:"—" }}</td>
             <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
             <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
+            <td>{{ r.kwota|floatformat:2 }} zł</td>
             <td>
               {% if r.oplacona %}
                 <span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
@@ -66,12 +64,10 @@ form{display:inline}
             </td>
             <td>
               <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
-                {% csrf_token %}
-                <button class="btn btn-ok" type="submit">Opłacone</button>
+                {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>
               </form>
               <form method="post" action="{% url 'ksiegowosc_oznacz_odrzucona' r.id %}">
-                {% csrf_token %}
-                <button class="btn btn-bad" type="submit">Odrzuć</button>
+                {% csrf_token %}<button class="btn btn-bad" type="submit">Odrzuć</button>
               </form>
             </td>
           </tr>

@@ -67,11 +67,14 @@ from .models import (
     AuditLog,
     Payment,
     Invoice,
+    PrzedmiotCennik,
 )
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from decimal import Decimal
+from django.db.models.functions import Lower
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -1867,6 +1870,31 @@ def test_pdf(request):
 
 
 #PŁATNOŚCI
+
+def _resolve_cena_uczen(rezerwacja: Rezerwacja) -> Decimal:
+    """
+    Zwraca cenę dla ucznia z cennika (cena_uczen) dopasowaną po przedmiot + poziom.
+    Fallback: UstawieniaPlatnosci.cena_za_godzine, a jak nie ma – 0.
+    """
+    przedmiot = (getattr(rezerwacja, "przedmiot", "") or "").strip()
+    poziom = (getattr(rezerwacja, "poziom", "") or getattr(rezerwacja, "poziom_nauki", "") or "").strip()
+
+    qs = PrzedmiotCennik.objects.all()
+    if przedmiot:
+        qs = qs.annotate(n_l=Lower("nazwa")).filter(n_l=przedmiot.lower())
+    if poziom:
+        qs = qs.annotate(p_l=Lower("poziom")).filter(p_l=poziom.lower())
+
+    rec = qs.first()
+    if rec and getattr(rec, "cena_uczen", None) is not None:
+        return Decimal(rec.cena_uczen)
+
+    ustawienia = UstawieniaPlatnosci.objects.first()
+    if ustawienia and getattr(ustawienia, "cena_za_godzine", None) is not None:
+        return Decimal(ustawienia.cena_za_godzine)
+
+    return Decimal("0.00")
+
 def is_student(user):
     return user.groups.filter(name__in=["Uczeń", "Uczen", "Student"]).exists()
 
@@ -1883,6 +1911,9 @@ def platnosci_lista_view(request):
         .filter(uczen=request.user, oplacona=False, odrzucona=False)
         .order_by("termin")
     )
+    # dorzuć kwotę do każdego obiektu (będzie dostępna w szablonie jako r.kwota)
+    for r in rezerwacje:
+        r.kwota = _resolve_cena_uczen(r)
     return render(request, "uczen/platnosci_lista.html", {"rezerwacje": rezerwacje})
 
 @login_required
@@ -1891,13 +1922,14 @@ def platnosci_view(request, rez_id: int):
     if rezerwacja.oplacona:
         messages.info(request, "Ta rezerwacja jest już opłacona.")
         return redirect("platnosci_lista")
+
     ustawienia = UstawieniaPlatnosci.objects.first()
-    if not ustawienia:
-        messages.error(request, "Brak ustawień płatności. Skontaktuj się z administratorem.")
-        return redirect("panel_ucznia")
+    kwota = _resolve_cena_uczen(rezerwacja)
+
     return render(request, "uczen/platnosci.html", {
         "rezerwacja": rezerwacja,
-        "ustawienia": ustawienia,
+        "ustawienia": ustawienia,  # telefon BLIK, numer konta
+        "kwota": kwota,            # cena z cennika dla ucznia
     })
 
 # =======================
@@ -1914,6 +1946,9 @@ def ksiegowosc_platnosci_lista(request):
         .filter(oplacona=False, odrzucona=False)
         .order_by("termin")
     )
+    # dorzuć wyliczoną kwotę do każdej rezerwacji
+    for r in oczekujace:
+        r.kwota = _resolve_cena_uczen(r)
     return render(request, "ksiegowosc/platnosci_lista.html", {"rezerwacje": oczekujace})
 
 @login_required

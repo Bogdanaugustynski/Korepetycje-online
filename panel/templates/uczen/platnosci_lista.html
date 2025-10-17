@@ -6,8 +6,6 @@
 :root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--radius:16px;--maxw:1100px}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
 .wrap{max-width:var(--maxw);margin:32px auto;padding:0 16px}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.brand-logo{width:36px;height:36px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:700}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
 .card-h{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
 .card-b{padding:18px}
@@ -20,15 +18,9 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
 </style>
 </head><body>
-<div class="wrap">
-  <div class="brand">
-    <div class="brand-logo">🎓</div>
-    <div>
-      <div style="font-weight:700">PolubiszTo.pl</div>
-      <div class="muted">korepetycje online</div>
-    </div>
-  </div>
 
+{% include "partials/brand.html" %}
+<div class="wrap">
   <div class="card">
     <div class="card-h">Rezerwacje do opłaty</div>
     <div class="card-b">
@@ -38,6 +30,7 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
           <tr>
             <th>Termin</th>
             <th>Nauczyciel</th>
+            <th>Kwota</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -47,6 +40,7 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
           <tr>
             <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
             <td>{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</td>
+            <td>{{ r.kwota|floatformat:2 }} zł</td>
             <td class="muted">
               {% if r.oplacona %}<span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
               {% elif r.odrzucona %}<span class="badge" style="border-color:#ef4444;color:#ef4444">odrzucona</span>
