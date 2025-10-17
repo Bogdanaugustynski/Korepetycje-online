@@ -586,59 +586,85 @@ def dodaj_material_po_zajeciach(request, rezerwacja_id):
 
     return redirect("moj_plan_zajec")
 
+#CENNIK
 
 log = logging.getLogger(__name__)
 
+def _is_accounting(user):
+    """Fallback, jeśli nie masz (albo nie zaimportowałeś) is_accounting()."""
+    try:
+        # jeśli masz util is_accounting(user) – użyje go
+        return is_accounting(user)  # type: ignore[name-defined]
+    except NameError:
+        # sensowny domyślny warunek: staff lub grupa 'ksiegowosc'/'księgowość'
+        return user.is_staff or user.groups.filter(name__in=["ksiegowosc", "księgowość"]).exists()
+
 @login_required
 def cennik_view(request):
-    if not is_accounting(request.user):
+    if not _is_accounting(request.user):
         raise PermissionDenied
 
+    PrzedmiotCennik = apps.get_model("panel", "PrzedmiotCennik")
+
     if request.method == "POST":
-        # 1) Zmiana ceny nauczyciela
-        if "zapisz_id" in request.POST:
-            try:
-                przedmiot_id = int(request.POST.get("zapisz_id"))
-                cena_raw = request.POST.get("cena")
-                cena = Decimal(cena_raw).quantize(Decimal("0.01"))
-                przedmiot = PrzedmiotCennik.objects.get(pk=przedmiot_id)
-                przedmiot.cena = cena
-                przedmiot.save(update_fields=["cena"])
-            except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
-                log.exception("Błąd zapisu cennika (nauczyciel) %s", e)
+        with transaction.atomic():
+            # 1) Zmiana ceny nauczyciela
+            if "zapisz_id" in request.POST:
+                try:
+                    przedmiot_id = int(request.POST.get("zapisz_id"))
+                    cena_raw = (request.POST.get("cena") or "").strip()
+                    if not cena_raw:
+                        raise InvalidOperation("Pusta cena")
+                    cena = Decimal(cena_raw).quantize(Decimal("0.01"))
+                    przedmiot = PrzedmiotCennik.objects.select_for_update().get(pk=przedmiot_id)
+                    przedmiot.cena = cena
+                    przedmiot.save(update_fields=["cena"])
+                except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
+                    log.exception("Błąd zapisu cennika (nauczyciel): %s", e)
 
-        # 2) Zmiana ceny dla ucznia
-        elif "zapisz_uczen_id" in request.POST:
-            try:
-                przedmiot_id = int(request.POST.get("zapisz_uczen_id"))
-                cena_raw = request.POST.get("cena_uczen")
-                cena_uczen = Decimal(cena_raw).quantize(Decimal("0.01"))
-                przedmiot = PrzedmiotCennik.objects.get(pk=przedmiot_id)
-                przedmiot.cena_uczen = cena_uczen
-                przedmiot.save(update_fields=["cena_uczen"])
-            except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
-                log.exception("Błąd zapisu cennika (uczeń) %s", e)
+            # 2) Zmiana ceny dla ucznia
+            elif "zapisz_uczen_id" in request.POST:
+                try:
+                    przedmiot_id = int(request.POST.get("zapisz_uczen_id"))
+                    cena_uczen_raw = (request.POST.get("cena_uczen") or "").strip()
+                    if not cena_uczen_raw:
+                        raise InvalidOperation("Pusta cena_uczen")
+                    cena_uczen = Decimal(cena_uczen_raw).quantize(Decimal("0.01"))
+                    przedmiot = PrzedmiotCennik.objects.select_for_update().get(pk=przedmiot_id)
+                    przedmiot.cena_uczen = cena_uczen
+                    przedmiot.save(update_fields=["cena_uczen"])
+                except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
+                    log.exception("Błąd zapisu cennika (uczeń): %s", e)
 
-        # 3) Usunięcie pozycji
-        elif "usun_id" in request.POST:
-            try:
-                przedmiot_id = int(request.POST.get("usun_id"))
-                PrzedmiotCennik.objects.get(pk=przedmiot_id).delete()
-            except (PrzedmiotCennik.DoesNotExist, ValueError) as e:
-                log.exception("Błąd usuwania pozycji cennika %s", e)
+            # 3) Usunięcie pozycji
+            elif "usun_id" in request.POST:
+                try:
+                    przedmiot_id = int(request.POST.get("usun_id"))
+                    PrzedmiotCennik.objects.select_for_update().get(pk=przedmiot_id).delete()
+                except (PrzedmiotCennik.DoesNotExist, ValueError) as e:
+                    log.exception("Błąd usuwania pozycji cennika: %s", e)
 
-        # 4) Dodanie nowej pozycji
-        elif "dodaj_przedmiot" in request.POST:
-            try:
-                nazwa = (request.POST.get("nazwa") or "").strip()
-                poziom = (request.POST.get("poziom") or "").strip()
-                cena = Decimal(request.POST.get("nowa_cena")).quantize(Decimal("0.01"))
-                cena_uczen = Decimal(request.POST.get("nowa_cena_uczen")).quantize(Decimal("0.01"))
-                PrzedmiotCennik.objects.create(
-                    nazwa=nazwa, poziom=poziom, cena=cena, cena_uczen=cena_uczen
-                )
-            except (InvalidOperation, ValueError) as e:
-                log.exception("Błąd dodawania pozycji cennika %s", e)
+            # 4) Dodanie nowej pozycji
+            elif "dodaj_przedmiot" in request.POST:
+                try:
+                    nazwa  = (request.POST.get("nazwa") or "").strip()
+                    poziom = (request.POST.get("poziom") or "").strip()
+                    nowa_cena_raw        = (request.POST.get("nowa_cena") or "").strip()
+                    nowa_cena_uczen_raw  = (request.POST.get("nowa_cena_uczen") or "").strip()
+
+                    if not nazwa or not poziom:
+                        raise ValueError("Puste nazwa/poziom")
+                    if not nowa_cena_raw or not nowa_cena_uczen_raw:
+                        raise InvalidOperation("Puste ceny")
+
+                    cena       = Decimal(nowa_cena_raw).quantize(Decimal("0.01"))
+                    cena_uczen = Decimal(nowa_cena_uczen_raw).quantize(Decimal("0.01"))
+
+                    PrzedmiotCennik.objects.create(
+                        nazwa=nazwa, poziom=poziom, cena=cena, cena_uczen=cena_uczen
+                    )
+                except (InvalidOperation, ValueError) as e:
+                    log.exception("Błąd dodawania pozycji cennika: %s", e)
 
     przedmioty = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
     return render(request, "ksiegowosc/cennik.html", {"przedmioty": przedmioty})
