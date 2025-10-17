@@ -9,78 +9,86 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Seg
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
 .card-h{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
 .card-b{padding:18px}
-table{width:100%;border-collapse:collapse}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:980px}
 th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .btn{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
 .btn-ghost{background:#fff;border:1px solid var(--line)}
 .btn-ok{background:var(--ok);color:#fff}
 .btn-bad{background:var(--err);color:#fff}
-.muted{color:var(--muted)}
-form{display:inline}
+.btn-tab{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.btn-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.muted{color:var(--muted)} form{display:inline}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
+tr.just-updated{animation: flash 2s ease}
+@keyframes flash{0%{background:#ecffec}100%{background:transparent}}
 </style>
 </head><body>
 
 {% include "partials/brand.html" %}
 <div class="wrap">
   <div class="card">
-    <div class="card-h">Płatności oczekujące na akceptację</div>
+    <div class="card-h">Płatności — przegląd</div>
     <div class="card-b">
-      {% if rezerwacje %}
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Uczeń</th>
-            <th>Nauczyciel</th>
-            <th>Przedmiot</th>
-            <th>Poziom</th>
-            <th>Termin</th>
-            <th>Tytuł</th>
-            <th>Kwota</th>
-            <th>Status</th>
-            <th>Akcje</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for r in rezerwacje %}
-          <tr>
-            <td>#{{ r.id }}</td>
-            <td>{{ r.uczen.get_full_name|default:r.uczen.username }}</td>
-            <td>{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</td>
-            <td>{{ r.przedmiot|default:"—" }}</td>
-            <td>{{ r.poziom|default:r.poziom_nauki|default:"—" }}</td>
-            <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
-            <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
-            <td>{{ r.kwota|floatformat:2 }} zł</td>
-            <td>
-              {% if r.oplacona %}
-                <span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
-              {% elif r.odrzucona %}
-                <span class="badge" style="border-color:#ef4444;color:#ef4444">odrzucona</span>
-              {% else %}
-                <span class="badge">do opłaty</span>
-              {% endif %}
-            </td>
-            <td>
-              <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
-                {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>
-              </form>
-              <form method="post" action="{% url 'ksiegowosc_oznacz_odrzucona' r.id %}">
-                {% csrf_token %}<button class="btn btn-bad" type="submit">Odrzuć</button>
-              </form>
-            </td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-        Brak rezerwacji oczekujących na akceptację.
-      {% endif %}
-
-      <div style="margin-top:16px">
-        <a class="btn btn-ghost" href="{% url 'panel_ksiegowosc' %}">Wróć do panelu księgowości</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <a href="?filtr=wszystkie" class="btn-tab {% if filtr != 'oczekujace' %}active{% endif %}">Wszystkie</a>
+        <a href="?filtr=oczekujace" class="btn-tab {% if filtr == 'oczekujace' %}active{% endif %}">Oczekujące</a>
+        <a class="btn-ghost" href="{% url 'panel_ksiegowosc' %}" style="margin-left:auto">Wróć do panelu księgowości</a>
       </div>
+
+      {% if rezerwacje %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Uczeń</th>
+              <th>Nauczyciel</th>
+              <th>Przedmiot</th>
+              <th>Poziom</th>
+              <th>Termin</th>
+              <th>Tytuł</th>
+              <th>Kwota</th>
+              <th>Status</th>
+              <th>Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for r in rezerwacje %}
+            <tr id="row-{{ r.id }}" class="{% if just|default:'' == r.id|stringformat:'s' %}just-updated{% endif %}">
+              <td>#{{ r.id }}</td>
+              <td>{{ r.uczen.get_full_name|default:r.uczen.username }}</td>
+              <td>{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</td>
+              <td>{{ r.przedmiot|default:"—" }}</td>
+              <td>{{ r.poziom|default:r.poziom_nauki|default:"—" }}</td>
+              <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
+              <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
+              <td>{{ r.kwota|floatformat:2 }} zł</td>
+              <td>
+                {% if r.oplacona %}
+                  <span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
+                {% elif r.odrzucona %}
+                  <span class="badge" style="border-color:#ef4444;color:#ef4444">odrzucona</span>
+                {% else %}
+                  <span class="badge">do opłaty</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
+                  {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>
+                </form>
+                <form method="post" action="{% url 'ksiegowosc_oznacz_odrzucona' r.id %}">
+                  {% csrf_token %}<button class="btn btn-bad" type="submit">Odrzuć</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        Brak rezerwacji dla wybranego filtra.
+      {% endif %}
     </div>
   </div>
 </div>

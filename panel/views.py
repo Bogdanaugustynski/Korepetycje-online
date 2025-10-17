@@ -75,6 +75,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.db.models.functions import Lower
+from django.utils.http import urlencode
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -1941,15 +1942,21 @@ def is_accounting(user):
 @login_required
 @user_passes_test(is_accounting)
 def ksiegowosc_platnosci_lista(request):
-    oczekujace = (
-        Rezerwacja.objects
-        .filter(oplacona=False, odrzucona=False)
-        .order_by("termin")
-    )
-    # dorzuć wyliczoną kwotę do każdej rezerwacji
-    for r in oczekujace:
+    filtr = request.GET.get("filtr", "wszystkie")  # 'oczekujace' albo 'wszystkie'
+    qs = Rezerwacja.objects.all().order_by("-termin")
+
+    if filtr == "oczekujace":
+        qs = qs.filter(oplacona=False, odrzucona=False)
+
+    # wylicz kwoty z cennika
+    for r in qs:
         r.kwota = _resolve_cena_uczen(r)
-    return render(request, "ksiegowosc/platnosci_lista.html", {"rezerwacje": oczekujace})
+
+    return render(request, "ksiegowosc/platnosci_lista.html", {
+        "rezerwacje": qs,
+        "filtr": filtr,
+        "just": request.GET.get("just"),  # ID właśnie zmienionej rezerwacji (opcjonalny highlight)
+    })
 
 @login_required
 @user_passes_test(is_accounting)
@@ -1957,9 +1964,11 @@ def ksiegowosc_platnosci_lista(request):
 def ksiegowosc_oznacz_oplacona(request, rez_id: int):
     r = get_object_or_404(Rezerwacja, pk=rez_id)
     r.oplacona = True
-    r.save(update_fields=["oplacona"])
+    r.odrzucona = False
+    r.save(update_fields=["oplacona", "odrzucona"])
     messages.success(request, f"Rezerwacja #{r.id} oznaczona jako opłacona.")
-    return redirect("ksiegowosc_platnosci_lista")
+    # wróć do listy i podświetl wiersz
+    return redirect(f"{reverse('ksiegowosc_platnosci_lista')}?{urlencode({'filtr':'wszystkie','just':r.id})}")
 
 @login_required
 @user_passes_test(is_accounting)
@@ -1967,6 +1976,7 @@ def ksiegowosc_oznacz_oplacona(request, rez_id: int):
 def ksiegowosc_oznacz_odrzucona(request, rez_id: int):
     r = get_object_or_404(Rezerwacja, pk=rez_id)
     r.odrzucona = True
-    r.save(update_fields=["odrzucona"])
+    r.oplacona = False
+    r.save(update_fields=["oplacona", "odrzucona"])
     messages.warning(request, f"Rezerwacja #{r.id} oznaczona jako odrzucona.")
-    return redirect("ksiegowosc_platnosci_lista")
+    return redirect(f"{reverse('ksiegowosc_platnosci_lista')}?{urlencode({'filtr':'wszystkie','just':r.id})}")
