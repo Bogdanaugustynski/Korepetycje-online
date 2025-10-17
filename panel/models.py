@@ -187,6 +187,8 @@ class Rezerwacja(models.Model):
     material_po_zajeciach = models.FileField(upload_to='materialy/', blank=True, null=True)
     przedmiot = models.CharField(max_length=80, blank=True, null=True)
     poziom    = models.CharField(max_length=20, blank=True, null=True)
+    oplacona = models.BooleanField(default=False)
+    odrzucona = models.BooleanField(default=False)
     # --- EDUKACJA (NOWE) ---
     TYP_OSOBY_CHOICES = [
         ("podstawowa", "Uczeń szkoły podstawowej"),
