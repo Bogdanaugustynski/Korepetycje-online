@@ -10,7 +10,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Seg
 .card-h{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:700}
 .card-b{padding:18px}
 .table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:980px}
+table{width:100%;border-collapse:collapse;min-width:1080px}
 th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .btn{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
 .btn-ghost{background:#fff;border:1px solid var(--line)}
@@ -49,6 +49,7 @@ tr.just-updated{animation: flash 2s ease}
               <th>Termin</th>
               <th>Tytuł</th>
               <th>Kwota</th>
+              <th>Potwierdzenia</th>
               <th>Status</th>
               <th>Akcje</th>
             </tr>
@@ -64,6 +65,20 @@ tr.just-updated{animation: flash 2s ease}
               <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
               <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
               <td>{{ r.kwota|floatformat:2 }} zł</td>
+
+              <td>
+                {% if r.potwierdzenia.all %}
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    {% for p in r.potwierdzenia.all %}
+                      <a href="{{ p.file.url }}" target="_blank" rel="noopener">Pobierz #{{ p.id }}</a>
+                      {% if p.note %}<span class="muted" style="margin-left:4px">— {{ p.note }}</span>{% endif %}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span class="muted">brak</span>
+                {% endif %}
+              </td>
+
               <td>
                 {% if r.oplacona %}
                   <span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
@@ -73,6 +88,7 @@ tr.just-updated{animation: flash 2s ease}
                   <span class="badge">do opłaty</span>
                 {% endif %}
               </td>
+
               <td>
                 <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
                   {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>

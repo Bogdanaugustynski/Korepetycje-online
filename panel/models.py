@@ -294,3 +294,18 @@ class Invoice(models.Model):
 
     def __str__(self):
         return self.number
+    
+
+
+class PaymentConfirmation(models.Model):
+    rezerwacja = models.ForeignKey("Rezerwacja", on_delete=models.CASCADE, related_name="potwierdzenia")
+    file = models.FileField(upload_to="potwierdzenia/%Y/%m/")
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"Potwierdzenie #{self.id} rezerwacja {self.rezerwacja_id}"

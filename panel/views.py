@@ -76,6 +76,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.db.models.functions import Lower
 from django.utils.http import urlencode
+import os
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -1922,20 +1923,49 @@ def platnosci_lista_view(request):
         "filtr": filtr,
     })
 
+ALLOWED_EXTS = {"pdf","jpg","jpeg","png","webp","heic"}
+MAX_UPLOAD_MB = 10
+
+def _validate_confirmation_file(f):
+    ext = os.path.splitext(f.name)[1].lower().replace(".", "")
+    if ext not in ALLOWED_EXTS:
+        raise ValidationError(f"Dozwolone formaty: {', '.join(sorted(ALLOWED_EXTS))}")
+    if f.size > MAX_UPLOAD_MB * 1024 * 1024:
+        raise ValidationError(f"Maksymalny rozmiar pliku to {MAX_UPLOAD_MB} MB.")
+
 @login_required
 def platnosci_view(request, rez_id: int):
-    rezerwacja = get_object_or_404(Rezerwacja, pk=rez_id, uczen=request.user)
-    if rezerwacja.oplacona:
-        messages.info(request, "Ta rezerwacja jest już opłacona.")
-        return redirect("platnosci_lista")
-
+    """
+    Szczegóły płatności (instrukcja) + upload potwierdzenia przelewu przez ucznia.
+    Uczeń NIE dostaje linków do plików — to widoczne tylko w panelu księgowości.
+    """
+    rezerwacja = get_object_or_404(Rezerwacja.objects.select_related("nauczyciel").prefetch_related(), pk=rez_id, uczen=request.user)
     ustawienia = UstawieniaPlatnosci.objects.first()
     kwota = _resolve_cena_uczen(rezerwacja)
 
+    if request.method == "POST" and request.POST.get("akcja") == "upload_potwierdzenie":
+        f = request.FILES.get("potwierdzenie")
+        note = (request.POST.get("note") or "").strip()[:255]
+        if not f:
+            messages.error(request, "Nie wybrano pliku.")
+            return redirect("platnosci_view", rez_id=rezerwacja.id)
+        try:
+            _validate_confirmation_file(f)
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return redirect("platnosci_view", rez_id=rezerwacja.id)
+
+        PaymentConfirmation.objects.create(
+            rezerwacja=rezerwacja, file=f, uploaded_by=request.user, note=note
+        )
+        messages.success(request, "Potwierdzenie zostało przesłane. Zobaczysz status płatności w swoim panelu po akceptacji przez księgowość.")
+        return redirect("platnosci_view", rez_id=rezerwacja.id)
+
+    # Nie przesyłamy listy plików do szablonu — widoczne tylko dla księgowości.
     return render(request, "uczen/platnosci.html", {
         "rezerwacja": rezerwacja,
-        "ustawienia": ustawienia,  # telefon BLIK, numer konta
-        "kwota": kwota,            # cena z cennika dla ucznia
+        "ustawienia": ustawienia,
+        "kwota": kwota,
     })
 
 # =======================
