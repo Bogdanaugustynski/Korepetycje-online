@@ -66,12 +66,17 @@ tr.just-updated{animation: flash 2s ease}
               <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
               <td>{{ r.kwota|floatformat:2 }} zł</td>
 
+              <!-- POTWIERDZENIA: podgląd/pobierz przez widok Django -->
               <td>
                 {% if r.potwierdzenia.all %}
                   <div style="display:flex;flex-direction:column;gap:4px">
                     {% for p in r.potwierdzenia.all %}
-                      <a href="{{ p.file.url }}" target="_blank" rel="noopener">Pobierz #{{ p.id }}</a>
-                      {% if p.note %}<span class="muted" style="margin-left:4px">— {{ p.note }}</span>{% endif %}
+                      <div>
+                        <a href="{% url 'confirmation_download' p.id %}" target="_blank" rel="noopener">Podgląd #{{ p.id }}</a>
+                        &nbsp;·&nbsp;
+                        <a href="{% url 'confirmation_download' p.id %}?dl=1">Pobierz</a>
+                        {% if p.note %}<span class="muted" style="margin-left:4px">— {{ p.note }}</span>{% endif %}
+                      </div>
                     {% endfor %}
                   </div>
                 {% else %}

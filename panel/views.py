@@ -77,7 +77,9 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.db.models.functions import Lower
 from django.utils.http import urlencode
-import os
+import mimetypes, os, pathlib
+from django.urls import reverse
+from django.http import FileResponse, Http404
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2016,3 +2018,29 @@ def ksiegowosc_oznacz_odrzucona(request, rez_id: int):
     r.save(update_fields=["oplacona", "odrzucona"])
     messages.warning(request, f"Rezerwacja #{r.id} oznaczona jako odrzucona.")
     return redirect(f"{reverse('ksiegowosc_platnosci_lista')}?{urlencode({'filtr':'wszystkie','just':r.id})}")
+
+@login_required
+@user_passes_test(is_accounting)
+def confirmation_download(request, pk: int):
+    """
+    Chroniony podgląd/pobranie potwierdzenia przelewu.
+    Działa przy DEBUG=False i nie zależy od serwowania MEDIA przez serwer www.
+    """
+    p = get_object_or_404(PaymentConfirmation, pk=pk)
+    f = p.file
+    if not f or not f.name:
+        raise Http404("Brak pliku.")
+    try:
+        fh = f.open("rb")
+    except FileNotFoundError:
+        # plik nie istnieje fizycznie (np. po deployu bez trwałego dysku)
+        raise Http404("Plik nie istnieje na serwerze.")
+
+    filename = pathlib.Path(f.name).name
+    content_type, _ = mimetypes.guess_type(filename)
+    as_attachment = request.GET.get("dl") == "1"  # ?dl=1 => pobierz; domyślnie podgląd
+
+    resp = FileResponse(fh, as_attachment=as_attachment, filename=filename)
+    if content_type:
+        resp["Content-Type"] = content_type
+    return resp
