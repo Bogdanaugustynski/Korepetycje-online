@@ -4,6 +4,7 @@
 <title>Księgowość — Płatności do akceptacji</title>
 <style>
 :root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--ok:#16a34a;--err:#ef4444;--radius:16px;--maxw:1100px}
+*{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
 .wrap{max-width:var(--maxw);margin:32px auto;padding:0 16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
@@ -20,8 +21,23 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vert
 .btn-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
 .muted{color:var(--muted)} form{display:inline}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
-tr.just-updated{animation: flash 2s ease}
-@keyframes flash{0%{background:#ecffec}100%{background:transparent}}
+
+/* MOBILE CARDS */
+.cards-mobile{display:none;gap:12px}
+.kafelek{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;
+  box-shadow:0 8px 24px rgba(11,116,255,.06);display:flex;flex-direction:column;gap:10px
+}
+.k-row{display:flex;justify-content:space-between;gap:12px}
+.k-col{display:flex;flex-direction:column;gap:4px;min-width:0}
+.k-label{color:var(--muted);font-size:.9rem}
+.k-value{font-weight:600;word-break:break-word}
+.k-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.k-files{display:flex;flex-direction:column;gap:6px}
+@media (max-width: 900px){
+  .table-wrap{display:none}
+  .cards-mobile{display:grid;grid-template-columns:1fr}
+}
 </style>
 </head><body>
 
@@ -37,6 +53,7 @@ tr.just-updated{animation: flash 2s ease}
       </div>
 
       {% if rezerwacje %}
+      <!-- DESKTOP: tabela -->
       <div class="table-wrap">
         <table>
           <thead>
@@ -65,8 +82,6 @@ tr.just-updated{animation: flash 2s ease}
               <td>{{ r.termin|date:"Y-m-d H:i" }}</td>
               <td>Zajęcia {{ r.id }} — {{ r.uczen.username }}</td>
               <td>{{ r.kwota|floatformat:2 }} zł</td>
-
-              <!-- POTWIERDZENIA: podgląd/pobierz przez widok Django -->
               <td>
                 {% if r.potwierdzenia.all %}
                   <div style="display:flex;flex-direction:column;gap:4px">
@@ -83,7 +98,6 @@ tr.just-updated{animation: flash 2s ease}
                   <span class="muted">brak</span>
                 {% endif %}
               </td>
-
               <td>
                 {% if r.oplacona %}
                   <span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
@@ -93,7 +107,6 @@ tr.just-updated{animation: flash 2s ease}
                   <span class="badge">do opłaty</span>
                 {% endif %}
               </td>
-
               <td>
                 <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
                   {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>
@@ -106,6 +119,88 @@ tr.just-updated{animation: flash 2s ease}
           {% endfor %}
           </tbody>
         </table>
+      </div>
+
+      <!-- MOBILE: kafelki -->
+      <div class="cards-mobile">
+        {% for r in rezerwacje %}
+        <div class="kafelek">
+          <div class="k-row">
+            <div class="k-col">
+              <div class="k-label">ID</div>
+              <div class="k-value">#{{ r.id }}</div>
+            </div>
+            <div class="k-col" style="text-align:right">
+              <div class="k-label">Kwota</div>
+              <div class="k-value">{{ r.kwota|floatformat:2 }} zł</div>
+            </div>
+          </div>
+
+          <div class="k-row">
+            <div class="k-col">
+              <div class="k-label">Uczeń</div>
+              <div class="k-value">{{ r.uczen.get_full_name|default:r.uczen.username }}</div>
+            </div>
+            <div class="k-col">
+              <div class="k-label">Nauczyciel</div>
+              <div class="k-value">{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</div>
+            </div>
+          </div>
+
+          <div class="k-row">
+            <div class="k-col">
+              <div class="k-label">Przedmiot</div>
+              <div class="k-value">{{ r.przedmiot|default:"—" }}</div>
+            </div>
+            <div class="k-col">
+              <div class="k-label">Poziom</div>
+              <div class="k-value">{{ r.poziom|default:r.poziom_nauki|default:"—" }}</div>
+            </div>
+          </div>
+
+          <div class="k-row">
+            <div class="k-col">
+              <div class="k-label">Termin</div>
+              <div class="k-value">{{ r.termin|date:"Y-m-d H:i" }}</div>
+            </div>
+            <div class="k-col">
+              <div class="k-label">Status</div>
+              <div class="k-value">
+                {% if r.oplacona %}<span class="badge" style="border-color:#16a34a;color:#16a34a">opłacona</span>
+                {% elif r.odrzucona %}<span class="badge" style="border-color:#ef4444;color:#ef4444">odrzucona</span>
+                {% else %}<span class="badge">do opłaty</span>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="k-col">
+            <div class="k-label">Potwierdzenia</div>
+            <div class="k-files">
+              {% if r.potwierdzenia.all %}
+                {% for p in r.potwierdzenia.all %}
+                  <div>
+                    <a href="{% url 'confirmation_download' p.id %}" target="_blank" rel="noopener">Podgląd #{{ p.id }}</a>
+                    &nbsp;·&nbsp;
+                    <a href="{% url 'confirmation_download' p.id %}?dl=1">Pobierz</a>
+                    {% if p.note %}<span class="muted">— {{ p.note }}</span>{% endif %}
+                  </div>
+                {% endfor %}
+              {% else %}
+                <span class="muted">brak</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="k-actions">
+            <form method="post" action="{% url 'ksiegowosc_oznacz_oplacona' r.id %}">
+              {% csrf_token %}<button class="btn btn-ok" type="submit">Opłacone</button>
+            </form>
+            <form method="post" action="{% url 'ksiegowosc_oznacz_odrzucona' r.id %}">
+              {% csrf_token %}<button class="btn btn-bad" type="submit">Odrzuć</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
       </div>
       {% else %}
         Brak rezerwacji dla wybranego filtra.

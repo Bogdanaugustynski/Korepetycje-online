@@ -3,7 +3,8 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Moje płatności — PolubiszTo.pl</title>
 <style>
-:root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--radius:16px;--maxw:1100px}
+:root{--brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;--bg:#f7f9fe;--line:#e6edff;--ok:#16a34a;--err:#ef4444;--radius:16px;--maxw:1100px}
+*{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
 .wrap{max-width:var(--maxw);margin:32px auto;padding:0 16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
@@ -11,7 +12,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Seg
 .card-b{padding:18px}
 .table-wrap{overflow:auto}
 table{width:100%;border-collapse:collapse;min-width:820px}
-th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .btn{appearance:none;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
 .btn-primary{background:var(--brand);color:#fff}
 .btn-ghost{background:#fff;border:1px solid var(--line)}
@@ -19,8 +20,23 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
 .btn-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
 .muted{color:var(--muted)}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
-.badge-ok{border-color:#16a34a;color:#16a34a}
-.badge-bad{border-color:#ef4444;color:#ef4444}
+.badge-ok{border-color:var(--ok);color:var(--ok)}
+.badge-bad{border-color:var(--err);color:var(--err)}
+
+/* MOBILE CARDS */
+.cards-mobile{display:none;gap:12px}
+.kafelek{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;
+  box-shadow:0 8px 24px rgba(11,116,255,.06);display:flex;flex-direction:column;gap:10px
+}
+.k-row{display:flex;justify-content:space-between;gap:12px}
+.k-label{color:var(--muted);font-size:.92rem}
+.k-value{font-weight:600}
+.k-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+@media (max-width: 900px){
+  .table-wrap{display:none}
+  .cards-mobile{display:grid;grid-template-columns:1fr}
+}
 </style>
 </head><body>
 
@@ -36,6 +52,7 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
       </div>
 
       {% if rezerwacje %}
+      <!-- DESKTOP: tabela -->
       <div class="table-wrap">
         <table>
           <thead>
@@ -57,14 +74,10 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
               <td>{{ r.przedmiot|default:"—" }}</td>
               <td>{{ r.poziom|default:r.poziom_nauki|default:"—" }}</td>
               <td>{{ r.kwota|floatformat:2 }} zł</td>
-              <td class="muted">
-                {% if r.oplacona %}
-                  <span class="badge badge-ok">opłacona</span>
-                {% elif r.odrzucona %}
-                  <span class="badge badge-bad">odrzucona</span>
-                {% else %}
-                  <span class="badge">do opłaty</span>
-                {% endif %}
+              <td>
+                {% if r.oplacona %}<span class="badge badge-ok">opłacona</span>
+                {% elif r.odrzucona %}<span class="badge badge-bad">odrzucona</span>
+                {% else %}<span class="badge">do opłaty</span>{% endif %}
               </td>
               <td>
                 {% if not r.oplacona and not r.odrzucona %}
@@ -77,6 +90,58 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
           {% endfor %}
           </tbody>
         </table>
+      </div>
+
+      <!-- MOBILE: kafelki -->
+      <div class="cards-mobile">
+        {% for r in rezerwacje %}
+        <div class="kafelek">
+          <div class="k-row">
+            <div>
+              <div class="k-label">Termin</div>
+              <div class="k-value">{{ r.termin|date:"Y-m-d H:i" }}</div>
+            </div>
+            <div>
+              <div class="k-label">Kwota</div>
+              <div class="k-value">{{ r.kwota|floatformat:2 }} zł</div>
+            </div>
+          </div>
+
+          <div class="k-row">
+            <div>
+              <div class="k-label">Nauczyciel</div>
+              <div class="k-value">{{ r.nauczyciel.get_full_name|default:r.nauczyciel.username }}</div>
+            </div>
+            <div>
+              <div class="k-label">Status</div>
+              <div class="k-value">
+                {% if r.oplacona %}<span class="badge badge-ok">opłacona</span>
+                {% elif r.odrzucona %}<span class="badge badge-bad">odrzucona</span>
+                {% else %}<span class="badge">do opłaty</span>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="k-row">
+            <div>
+              <div class="k-label">Przedmiot</div>
+              <div class="k-value">{{ r.przedmiot|default:"—" }}</div>
+            </div>
+            <div>
+              <div class="k-label">Poziom</div>
+              <div class="k-value">{{ r.poziom|default:r.poziom_nauki|default:"—" }}</div>
+            </div>
+          </div>
+
+          <div class="k-actions">
+            {% if not r.oplacona and not r.odrzucona %}
+              <a class="btn btn-primary" href="{% url 'platnosci_view' r.id %}">Szczegóły</a>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
       </div>
       {% else %}
         Brak rezerwacji dla wybranego filtra.
