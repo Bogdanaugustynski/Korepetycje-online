@@ -40,7 +40,7 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vert
 </style>
 </head><body>
 
-{% include "partials/brand.html" %}
+{% include "partials/panel_header.html" with panel_url_name='panel_ucznia' panel_label='Panel Ucznia' %}
 <div class="wrap">
   <div class="card">
     <div class="card-h">Moje płatności</div>
@@ -48,7 +48,6 @@ th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vert
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <a href="?filtr=wszystkie" class="btn-tab {% if filtr != 'oczekujace' %}active{% endif %}">Wszystkie</a>
         <a href="?filtr=oczekujace" class="btn-tab {% if filtr == 'oczekujace' %}active{% endif %}">Oczekujące</a>
-        <a class="btn-ghost" href="{% url 'panel_ucznia' %}" style="margin-left:auto">Wróć do panelu</a>
       </div>
 
       {% if rezerwacje %}
