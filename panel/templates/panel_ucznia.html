@@ -89,7 +89,22 @@
       </div>
     </a>
 
-    <a href="{% url 'platnosci_lista' %}" class="btn btn-primary">💳 Płatności</a>
+    <a href="{% url 'platnosci_lista' %}" class="tile" title="Moje płatności">
+      <span class="ico">
+        <!-- credit-card -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2" ry="2"/>
+          <line x1="2" y1="10" x2="22" y2="10"/>
+          <path d="M8 15h2m4 0h2"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Moje płatności</h3>
+        <p>Sprawdź status i instrukcje opłat</p>
+      </div>
+    </a>
+
 
     <a href="{% url 'student_invoices' %}" class="tile" title="Moje rachunki">
       <span class="ico">

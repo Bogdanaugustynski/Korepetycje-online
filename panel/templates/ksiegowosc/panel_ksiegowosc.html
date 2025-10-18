@@ -99,7 +99,22 @@
       </div>
     </a>
 
-    <a href="{% url 'ksiegowosc_platnosci_lista' %}" class="btn btn-primary">💼 Płatności do akceptacji</a>
+    <a href="{% url 'ksiegowosc_platnosci_lista' %}" class="tile" title="Płatności do akceptacji">
+      <span class="ico">
+        <!-- wallet-check -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7h18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H3V7z"/>
+          <path d="M16 3v4H3V5a2 2 0 0 1 2-2h11z"/>
+          <path d="M17 14l2 2 4-4"/>
+        </svg>
+      </span>
+      <div>
+        <h3>Płatności do akceptacji</h3>
+        <p>Sprawdź i zatwierdź wpłaty uczniów</p>
+      </div>
+    </a>
+
 
 
     <a href="{% url 'podwyzki_nauczyciele' %}" class="tile" title="Podwyżki nauczyciele">
