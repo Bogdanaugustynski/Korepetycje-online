@@ -5,6 +5,7 @@ from panel.views import strona_glowna_view
 from .views import login_view
 from .views import moje_konto_uczen_view
 from django.contrib.auth.views import LogoutView
+from .views import legal_edit_config_view, regulamin_view, polityka_view
 from .views import webrtc_offer, webrtc_answer, webrtc_hangup, webrtc_debug, ping_online_status, check_online_status
 from .views import (
     podwyzki_nauczyciele_view,
@@ -92,6 +93,9 @@ urlpatterns = [
     path("ksiegowosc/platnosci/<int:rez_id>/oplacona/", views.ksiegowosc_oznacz_oplacona, name="ksiegowosc_oznacz_oplacona"),
     path("ksiegowosc/platnosci/<int:rez_id>/odrzucona/", views.ksiegowosc_oznacz_odrzucona, name="ksiegowosc_oznacz_odrzucona"),
     path("ksiegowosc/potwierdzenie/<int:pk>/", views.confirmation_download, name="confirmation_download"),
-
+    path("regulamin/", regulamin_view, name="regulamin"),
+    path("polityka-prywatnosci/", polityka_view, name="polityka_prywatnosci"),
+    # Panel Księgowości – edycja
+    path("ksiegowosc/legal/", legal_edit_config_view, name="legal_edit_config"),
 
 ]

@@ -6,6 +6,8 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime as DT, date, time, timedelta  # używamy KLASY DT, bez importu modułu 'datetime'
 import calendar
 import hmac, hashlib
+from .models import SiteLegalConfig
+from .forms import SiteLegalConfigForm
 
 # --- Third-party
 import pdfkit
@@ -2044,3 +2046,50 @@ def confirmation_download(request, pk: int):
     if content_type:
         resp["Content-Type"] = content_type
     return resp
+
+#REGULAMIN I POLITYKA PRYWATNOŚCI
+
+def _ctx_from_config(cfg: SiteLegalConfig):
+    return {
+        "SITE_OWNER": cfg.site_owner,
+        "SITE_ADDRESS": cfg.site_address,
+        "SITE_EMAIL": cfg.site_email,
+        "SITE_URL": cfg.site_url,
+        "PAYMENT_OPERATOR": cfg.payment_operator,
+        "PROCESSORS": cfg.processors,
+        "COOKIES_DESC": cfg.cookies_desc,
+        "VIDEO_TOOLS": cfg.video_tools,
+        "UPDATED_AT": timezone.localtime(cfg.updated_at).strftime("%d.%m.%Y, %H:%M"),
+    }
+
+def is_accounting(user):
+    return user.is_authenticated and user.groups.filter(name="Księgowość").exists()
+
+@login_required
+@user_passes_test(is_accounting)
+def legal_edit_config_view(request):
+    cfg = SiteLegalConfig.get_solo()
+    if request.method == "POST":
+        form = SiteLegalConfigForm(request.POST, instance=cfg)
+        if form.is_valid():
+            cfg = form.save(commit=False)
+            cfg.updated_by = request.user
+            cfg.save()
+            messages.success(request, "Zapisano zmiany.")
+            return redirect("legal_edit_config")
+        messages.error(request, "Sprawdź pola formularza.")
+    else:
+        form = SiteLegalConfigForm(instance=cfg)
+
+    return render(request, "legal/legal_edit_config.html", {
+        "form": form,
+        **_ctx_from_config(cfg),
+    })
+
+def regulamin_view(request):
+    cfg = SiteLegalConfig.get_solo()
+    return render(request, "legal/regulamin.html", _ctx_from_config(cfg))
+
+def polityka_view(request):
+    cfg = SiteLegalConfig.get_solo()
+    return render(request, "legal/polityka_prywatnosci.html", _ctx_from_config(cfg))

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxLengthValidator
+from django.contrib.auth import get_user_model
 
 # --- upload paths ---
 def avatar_upload_path(instance, filename):
@@ -309,3 +310,49 @@ class PaymentConfirmation(models.Model):
 
     def __str__(self):
         return f"Potwierdzenie #{self.id} rezerwacja {self.rezerwacja_id}"
+
+class SiteLegalConfig(models.Model):
+    site_owner = models.CharField(max_length=255, default="Bogdan Auguściński")
+    site_address = models.CharField(max_length=255, default="Polska (miasto)")
+    site_email = models.EmailField(default="polubiszto.pl@gmail.com")
+    site_url = models.CharField(max_length=255, default="https://polubiszto.pl")
+
+    # Regulamin
+    payment_operator = models.CharField(
+        max_length=255,
+        default="Autopay oraz płatności BLIK/przelew"
+    )
+
+    # Polityka prywatności
+    processors = models.CharField(
+        max_length=500,
+        default="hosting Render/OVH, poczta, Autopay, narzędzia analityczne bez profilowania"
+    )
+    cookies_desc = models.CharField(
+        max_length=500,
+        default="techniczne (sesja), analityczne zagregowane, preferencje interfejsu"
+    )
+    video_tools = models.CharField(
+        max_length=500,
+        default="Jitsi (audio/wideo), Excalidraw (tablica współdzielona)"
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        get_user_model(), null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        verbose_name = "Konfiguracja dokumentów prawnych"
+        verbose_name_plural = "Konfiguracje dokumentów prawnych"
+
+    def __str__(self):
+        return f"SiteLegalConfig #{self.pk or '∅'}"
+
+    @classmethod
+    def get_solo(cls):
+        obj = cls.objects.first()
+        if not obj:
+            obj = cls.objects.create()
+        return obj

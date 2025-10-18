@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polityka prywatności — PolubiszTo.pl</title>
+  <style>
+    :root{
+      --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
+      --bg:#f7f9fe; --line:#e6edff; --card:#fff;
+      --radius:18px; --maxw:1100px;
+      --shadow:0 12px 36px rgba(11,116,255,.14);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    a{color:var(--brand);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px}
+    header.site{position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--line)}
+    .card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
+      border-radius:var(--radius);padding:24px}
+    h1{font-size:clamp(22px,5vw,32px);margin:16px 0}
+    h2{font-size:clamp(18px,3.5vw,22px);margin:24px 0 8px}
+    .toc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin:8px 0}
+    .meta{font-size:14px;color:var(--muted)}
+    .chip{display:inline-block;padding:4px 8px;border-radius:999px;background:linear-gradient(135deg,#0b74ff,#095cd1);color:#fff;font-size:12px}
+    .section{padding-top:8px;margin-top:8px}
+    .footer-note{margin-top:24px;font-size:13px;color:var(--muted)}
+  </style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    {% include "partials/brand.html" %}
+  </div>
+</header>
+
+<main class="wrap">
+  {% with
+    SITE_OWNER=SITE_OWNER|default:"Bogdan Auguściński"
+    SITE_ADDRESS=SITE_ADDRESS|default:"Polska (miasto)"
+    SITE_EMAIL=SITE_EMAIL|default:"polubiszto.pl@gmail.com"
+    SITE_URL=SITE_URL|default:"https://polubiszto.pl"
+    PROCESSORS=PROCESSORS|default:"dostawca hostingu, dostawca poczty, operator płatności (Autopay), narzędzia statystyczne bez profilowania"
+    COOKIES_DESC=COOKIES_DESC|default:"techniczne (utrzymanie sesji), analityczne zagregowane, preferencje interfejsu"
+    VIDEO_TOOLS=VIDEO_TOOLS|default:"Jitsi (rozmowa głosowa/wideo), Excalidraw (współpraca na tablicy)"
+  %}
+
+  <article class="card">
+    <div class="meta">
+      Dokument: <span class="chip">Polityka prywatności</span> • Ostatnia aktualizacja: {{ UPDATED_AT|default:"13.10.2025, 00:00" }}
+    </div>
+    <h1>Polityka prywatności — {{ SITE_URL|default:"PolubiszTo.pl" }}</h1>
+
+    <div class="toc">
+      <strong>Spis treści</strong>
+      <ol>
+        <li><a href="#p1">§1. Administrator danych</a></li>
+        <li><a href="#p2">§2. Zakres i cele przetwarzania</a></li>
+        <li><a href="#p3">§3. Podstawy prawne (RODO)</a></li>
+        <li><a href="#p4">§4. Odbiorcy i przetwarzający</a></li>
+        <li><a href="#p5">§5. Okres przechowywania</a></li>
+        <li><a href="#p6">§6. Prawa osoby, której dane dotyczą</a></li>
+        <li><a href="#p7">§7. Pliki cookies</a></li>
+        <li><a href="#p8">§8. Wideorozmowy i współpraca online</a></li>
+        <li><a href="#p9">§9. Zmiany dokumentu</a></li>
+      </ol>
+    </div>
+
+    <section id="p1" class="section">
+      <h2>§1. Administrator danych</h2>
+      <p>Administratorem danych osobowych jest <strong>{{ SITE_OWNER }}</strong>, {{ SITE_ADDRESS }}.
+        Kontakt: <a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>.</p>
+    </section>
+
+    <section id="p2" class="section">
+      <h2>§2. Zakres i cele przetwarzania</h2>
+      <ol>
+        <li><strong>Zakres:</strong> imię, nazwisko, e-mail, telefon, identyfikatory kont, historia rezerwacji, dane płatności (bez przechowywania danych kart).</li>
+        <li><strong>Cele:</strong> założenie konta, realizacja rezerwacji, obsługa płatności, kontakt z Użytkownikami, bezpieczeństwo i rozliczalność systemu.</li>
+      </ol>
+    </section>
+
+    <section id="p3" class="section">
+      <h2>§3. Podstawy prawne (RODO)</h2>
+      <ul>
+        <li>art. 6 ust. 1 lit. b RODO – wykonanie umowy (rezerwacje i zajęcia),</li>
+        <li>art. 6 ust. 1 lit. f RODO – prawnie uzasadniony interes (bezpieczeństwo serwisu, dochodzenie roszczeń),</li>
+        <li>art. 6 ust. 1 lit. c RODO – obowiązki prawne (np. księgowość),</li>
+        <li>art. 6 ust. 1 lit. a RODO – zgody (jeżeli będą stosowane na dodatkowe funkcje).</li>
+      </ul>
+    </section>
+
+    <section id="p4" class="section">
+      <h2>§4. Odbiorcy i przetwarzający</h2>
+      <p>Dane mogą być powierzane/udostępniane podmiotom wspierającym świadczenie usług: {{ PROCESSORS }}.
+         Dane mogą być udostępnione organom państwowym w zakresie wymaganym przepisami.</p>
+    </section>
+
+    <section id="p5" class="section">
+      <h2>§5. Okres przechowywania</h2>
+      <ul>
+        <li>Dane konta i rezerwacji – przez czas świadczenia usług, a po zakończeniu – przez okres wynikający z przepisów (np. księgowość).</li>
+        <li>Dane z logów bezpieczeństwa – do 12 miesięcy, chyba że dłuższy okres jest wymagany dla dochodzenia roszczeń.</li>
+      </ul>
+    </section>
+
+    <section id="p6" class="section">
+      <h2>§6. Prawa Użytkownika</h2>
+      <p>Użytkownik ma prawo do dostępu, sprostowania, usunięcia, ograniczenia, przenoszenia oraz sprzeciwu.
+         Przysługuje mu prawo wniesienia skargi do Prezesa UODO.</p>
+    </section>
+
+    <section id="p7" class="section">
+      <h2>§7. Pliki cookies</h2>
+      <p>Serwis stosuje pliki cookies: {{ COOKIES_DESC }}.
+         Użytkownik może zarządzać cookies w ustawieniach przeglądarki. Wyłączenie niektórych cookies może ograniczyć funkcjonalności (np. logowanie).</p>
+    </section>
+
+    <section id="p8" class="section">
+      <h2>§8. Wideorozmowy i współpraca online</h2>
+      <p>W ramach zajęć korzystamy z narzędzi: {{ VIDEO_TOOLS }}. Przesył audio/wideo i zawartość tablic nie są wykorzystywane do celów marketingowych.
+         Serwis nie nagrywa lekcji. Nagrywanie po stronie Użytkownika jest niedozwolone bez wyraźnej zgody obu stron.</p>
+    </section>
+
+    <section id="p9" class="section">
+      <h2>§9. Zmiany dokumentu</h2>
+      <p>Administrator może aktualizować niniejszą Politykę. O zmianach poinformujemy w Serwisie.
+         Aktualna wersja jest publikowana na tej stronie.</p>
+    </section>
+
+    <p class="footer-note">
+      Wersja publiczna (read-only). Aktualne dane podstawia backend z konfiguracji serwisu.
+    </p>
+  </article>
+  {% endwith %}
+</main>
+</body>
+</html>

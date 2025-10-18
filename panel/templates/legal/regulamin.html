@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Regulamin — PolubiszTo.pl</title>
+  <style>
+    :root{
+      --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
+      --bg:#f7f9fe; --line:#e6edff; --card:#fff;
+      --radius:18px; --maxw:1100px;
+      --shadow:0 12px 36px rgba(11,116,255,.14);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    a{color:var(--brand);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px}
+    header.site{position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--line)}
+    .card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
+      border-radius:var(--radius);padding:24px}
+    h1{font-size:clamp(22px,5vw,32px);margin:16px 0}
+    h2{font-size:clamp(18px,3.5vw,22px);margin:24px 0 8px}
+    .toc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin:8px 0}
+    .meta{font-size:14px;color:var(--muted)}
+    .chip{display:inline-block;padding:4px 8px;border-radius:999px;background:linear-gradient(135deg,#0b74ff,#095cd1);color:#fff;font-size:12px}
+    .section{padding-top:8px;margin-top:8px}
+    .footer-note{margin-top:24px;font-size:13px;color:var(--muted)}
+  </style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    {% include "partials/brand.html" %}
+  </div>
+</header>
+
+<main class="wrap">
+  {% with
+    SITE_OWNER=SITE_OWNER|default:"Bogdan Auguściński"
+    SITE_ADDRESS=SITE_ADDRESS|default:"Polska (miasto)"
+    SITE_EMAIL=SITE_EMAIL|default:"polubiszto.pl@gmail.com"
+    SITE_URL=SITE_URL|default:"https://polubiszto.pl"
+    PAYMENT_OPERATOR=PAYMENT_OPERATOR|default:"Autopay oraz płatności BLIK/przelew"
+  %}
+
+  <article class="card">
+    <div class="meta">
+      Dokument: <span class="chip">Regulamin</span> • Ostatnia aktualizacja: {{ UPDATED_AT|default:"13.10.2025, 00:00" }}
+    </div>
+    <h1>Regulamin serwisu {{ SITE_URL|default:"PolubiszTo.pl" }}</h1>
+
+    <div class="toc">
+      <strong>Spis treści</strong>
+      <ol>
+        <li><a href="#p1">§1. Postanowienia ogólne</a></li>
+        <li><a href="#p2">§2. Definicje</a></li>
+        <li><a href="#p3">§3. Warunki korzystania</a></li>
+        <li><a href="#p4">§4. Rezerwacja zajęć</a></li>
+        <li><a href="#p5">§5. Płatności</a></li>
+        <li><a href="#p6">§6. Odwołanie zajęć</a></li>
+        <li><a href="#p7">§7. Odpowiedzialność</a></li>
+        <li><a href="#p8">§8. Reklamacje</a></li>
+        <li><a href="#p9">§9. Postanowienia końcowe</a></li>
+      </ol>
+    </div>
+
+    <section id="p1" class="section">
+      <h2>§1. Postanowienia ogólne</h2>
+      <ol>
+        <li>Serwis <strong>{{ SITE_URL }}</strong> prowadzony jest przez <strong>{{ SITE_OWNER }}</strong>, z siedzibą: {{ SITE_ADDRESS }}, kontakt: <a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>.</li>
+        <li>Serwis umożliwia organizację i prowadzenie korepetycji online dla Uczniów i Nauczycieli.</li>
+        <li>Niniejszy Regulamin określa zasady korzystania z Serwisu, prawa i obowiązki Użytkowników.</li>
+      </ol>
+    </section>
+
+    <section id="p2" class="section">
+      <h2>§2. Definicje</h2>
+      <p><strong>Użytkownik</strong> – osoba korzystająca z Serwisu; <strong>Uczeń</strong> – rezerwuje zajęcia; <strong>Nauczyciel</strong> – prowadzi zajęcia; <strong>Administrator</strong> – zarządza Serwisem.</p>
+    </section>
+
+    <section id="p3" class="section">
+      <h2>§3. Warunki korzystania</h2>
+      <ol>
+        <li>Korzystając z Serwisu, Użytkownik przestrzega prawa i dobrych obyczajów.</li>
+        <li>Zakazane jest: publikowanie treści bezprawnych, próby nieuprawnionego dostępu, nadużycia funkcji Serwisu.</li>
+        <li>Administrator może czasowo ograniczyć dostęp w celu utrzymania lub bezpieczeństwa.</li>
+      </ol>
+    </section>
+
+    <section id="p4" class="section">
+      <h2>§4. Rezerwacja zajęć</h2>
+      <ol>
+        <li>Rezerwacji dokonuje zalogowany Uczeń z poziomu konta.</li>
+        <li>Rezerwacja staje się wiążąca po zaksięgowaniu płatności.</li>
+        <li>Po potwierdzeniu płatności termin trafia do planu zajęć Ucznia i Nauczyciela.</li>
+      </ol>
+    </section>
+
+    <section id="p5" class="section">
+      <h2>§5. Płatności</h2>
+      <ol>
+        <li>Płatności realizowane są przez: {{ PAYMENT_OPERATOR }}. Serwis nie przechowuje danych kart.</li>
+        <li>Brak płatności w terminie może skutkować anulowaniem rezerwacji.</li>
+      </ol>
+    </section>
+
+    <section id="p6" class="section">
+      <h2>§6. Odwołanie zajęć</h2>
+      <ol>
+        <li>Uczeń może odwołać zajęcia najpóźniej 24 godziny przed ich rozpoczęciem.</li>
+        <li>W przypadku braku odwołania w terminie – opłata nie podlega zwrotowi.</li>
+      </ol>
+    </section>
+
+    <section id="p7" class="section">
+      <h2>§7. Odpowiedzialność</h2>
+      <ol>
+        <li>Administrator nie odpowiada za treści przekazywane przez Użytkowników ani jakość łącza.</li>
+        <li>Nauczyciel odpowiada za przebieg zajęć i materiały dydaktyczne.</li>
+      </ol>
+    </section>
+
+    <section id="p8" class="section">
+      <h2>§8. Reklamacje</h2>
+      <ol>
+        <li>Reklamacje: <a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>.</li>
+        <li>Termin rozpatrzenia: do 14 dni roboczych.</li>
+      </ol>
+    </section>
+
+    <section id="p9" class="section">
+      <h2>§9. Postanowienia końcowe</h2>
+      <ol>
+        <li>Administrator może zmienić Regulamin. O zmianach poinformuje w Serwisie.</li>
+        <li>W sprawach nieuregulowanych stosuje się przepisy prawa polskiego.</li>
+      </ol>
+    </section>
+
+    <p class="footer-note">
+      Wersja publiczna (read-only). Aktualne dane podstawia backend z konfiguracji serwisu.
+    </p>
+  </article>
+  {% endwith %}
+</main>
+</body>
+</html>

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Profil, WolnyTermin, Rezerwacja
 from .models import Payment, Invoice
+from .models import SiteLegalConfig
 
 @admin.register(Profil)
 class ProfilAdmin(admin.ModelAdmin):
@@ -26,3 +27,8 @@ class InvoiceAdmin(admin.ModelAdmin):
     list_display = ("number","student","issue_date","total_grosz","payment")
     search_fields = ("number","student__username","student__email")
     date_hierarchy = "issue_date"
+
+@admin.register(SiteLegalConfig)
+class SiteLegalConfigAdmin(admin.ModelAdmin):
+    list_display = ("site_owner", "site_email", "updated_at", "updated_by")
+    readonly_fields = ("updated_at", "updated_by")

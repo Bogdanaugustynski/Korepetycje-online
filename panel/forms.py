@@ -4,6 +4,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from .models import SiteLegalConfig
 
 class UserBasicForm(forms.ModelForm):
     class Meta:
@@ -138,3 +139,20 @@ class StudentPasswordChangeForm(PasswordChangeForm):
     new_password1 = forms.CharField(label="Nowe hasło", widget=forms.PasswordInput)
     new_password2 = forms.CharField(label="Powtórz nowe hasło", widget=forms.PasswordInput)
 
+class SiteLegalConfigForm(forms.ModelForm):
+    class Meta:
+        model = SiteLegalConfig
+        fields = [
+            "site_owner", "site_address", "site_email", "site_url",
+            "payment_operator", "processors", "cookies_desc", "video_tools",
+        ]
+        widgets = {
+            "site_owner": forms.TextInput(attrs={"class": "inp"}),
+            "site_address": forms.TextInput(attrs={"class": "inp"}),
+            "site_email": forms.EmailInput(attrs={"class": "inp"}),
+            "site_url": forms.TextInput(attrs={"class": "inp"}),
+            "payment_operator": forms.TextInput(attrs={"class": "inp"}),
+            "processors": forms.Textarea(attrs={"class": "inp", "rows": 2}),
+            "cookies_desc": forms.Textarea(attrs={"class": "inp", "rows": 2}),
+            "video_tools": forms.Textarea(attrs={"class": "inp", "rows": 2}),
+        }
