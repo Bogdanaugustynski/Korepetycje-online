@@ -6,134 +6,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rejestracja Ucznia — PolubiszTo.pl</title>
   <style>
-    :root{
-      --brand:#0b74ff;
-      --brand-700:#095cd1;
-      --ink:#0b1320;
-      --muted:#5b6777;
-      --line:#e6edff;
-      --bg:#f5f9ff;
-      --card:#ffffff;
-      --shadow:0 20px 60px rgba(11,116,255,.15);
-      --radius:16px;
-      --maxw:460px;
-    }
+    :root{ --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --bg:#f7f9fe; --line:#e6edff; }
     *{box-sizing:border-box}
-    html,body{
-      height:100%; margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
-      color:var(--ink);
-      background:linear-gradient(180deg,#f3f8ff,#eef4ff);
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg); color:var(--ink);
+      min-height:100svh; display:flex; flex-direction:column;
     }
-    .wrap{min-height:100%; display:grid; place-items:center; padding:20px}
+    main{ flex:1; display:flex; align-items:center; justify-content:center; padding:30px 16px; }
     .card{
-      width:min(var(--maxw),92vw);
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:22px;
+      background:#fff; border:1px solid var(--line); border-radius:16px;
+      box-shadow:0 6px 20px rgba(11,20,36,.06);
+      padding:26px 22px; width:100%; max-width:420px;
     }
-    .brand{display:flex; justify-content:center; margin-bottom:16px}
-    h1{margin:0 0 8px; text-align:center; font-size:22px}
-    p.sub{margin:0 0 18px; text-align:center; color:var(--muted); font-size:14px}
-
+    h1{font-size:22px; margin:0 0 6px}
+    p.lead{font-size:14px; color:var(--muted); margin:0 0 18px}
     .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
     .field{margin-bottom:12px}
-    .label{display:block; font-weight:800; font-size:13px; margin:0 0 6px 6px; color:#2b3c55}
-    input{
-      width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line);
-      background:#fbfdff; font-size:16px; outline:none;
+    .label{display:block; font-size:13px; color:#364152; margin:0 0 6px}
+    .input{
+      width:100%; padding:12px; border:1px solid #d8e1f0; border-radius:12px; font-size:14px; background:#fff;
+      outline:none;
     }
-    input:focus{border-color:#cfe0ff; box-shadow:0 0 0 3px rgba(11,116,255,.15)}
-
-    .legal{display:flex; align-items:flex-start; gap:8px; font-size:14px; color:#2b3c55; margin-top:10px}
+    .input:focus{border-color:var(--brand); box-shadow:0 0 0 3px rgba(11,116,255,.12)}
+    .legal{display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#2c3443; margin-top:6px}
     .legal a{color:var(--brand); text-decoration:none}
     .legal a:hover{text-decoration:underline}
-
     .btn{
-      width:100%; margin-top:12px;
-      background:var(--brand); color:#fff; border:none;
-      border-radius:12px; padding:12px 16px;
-      font-weight:900; cursor:pointer;
+      width:100%; padding:12px 14px; border:none; border-radius:12px; cursor:pointer;
+      background:var(--brand); color:#fff; font-weight:700; font-size:15px; margin-top:12px;
     }
-    .btn:hover{background:var(--brand-700)}
-
-    .note{margin-top:12px; text-align:center; font-size:14px; color:var(--muted)}
-    .note a{color:var(--brand); font-weight:800; text-decoration:none}
-    .note a:hover{text-decoration:underline}
-
-    .error{
-      margin-bottom:12px; padding:10px 12px;
-      border:1px solid #ffd7d7; background:#fff5f5;
-      color:#8a1f1f; border-radius:10px; font-size:14px;
-      text-align:center;
-    }
-    footer{margin-top:14px; text-align:center; color:#6a7a93; font-size:12px}
+    .btn:hover{filter:brightness(.97)}
+    .error{background:#fff1f1; border:1px solid #ffd2d2; color:#8a1c1c; padding:10px 12px; border-radius:10px; font-size:13px; margin-top:8px}
+    .note{font-size:12px; color:#6b7280; margin-top:12px; text-align:center}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <main class="card" role="dialog" aria-labelledby="t">
-      <div class="brand">
-        {% include "partials/brand.html" %}
+
+{# 👉 Użyj Twojego brandowego partiala nagłówka #}
+{% include "partials/brand.html" %}
+{# jeśli u Ciebie plik nazywa się inaczej, np. 'partials/panel_header.html', podmień nazwę w include #}
+
+<main>
+  <div class="card">
+    <h1>Rejestracja ucznia</h1>
+    <p class="lead">Utwórz konto, by móc zapisać się na zajęcia.</p>
+
+    <form method="POST" novalidate>
+      {% csrf_token %}
+
+      <div class="row">
+        <div class="field">
+          <label class="label" for="first_name">Imię</label>
+          <input id="first_name" class="input" type="text" name="first_name" required />
+        </div>
+        <div class="field">
+          <label class="label" for="last_name">Nazwisko</label>
+          <input id="last_name" class="input" type="text" name="last_name" required />
+        </div>
       </div>
 
-      <h1 id="t">Rejestracja ucznia</h1>
-      <p class="sub">Utwórz konto i dołącz do zajęć online</p>
+      <div class="field">
+        <label class="label" for="city">Miejscowość</label>
+        <input id="city" class="input" type="text" name="city" placeholder="np. Kraków" required />
+      </div>
 
-      {% if error %}
-        <div class="error">{{ error }}</div>
-      {% endif %}
+      <div class="field">
+        <label class="label" for="email">E-mail</label>
+        <input id="email" class="input" type="email" name="email" required />
+      </div>
 
-      <form method="POST" novalidate>
-        {% csrf_token %}
+      <div class="field">
+        <label class="label" for="phone">Numer telefonu</label>
+        <input id="phone" class="input" type="tel" name="phone" placeholder="np. 500 600 700" required />
+      </div>
 
-        <div class="row">
-          <div class="field">
-            <label class="label" for="first_name">Imię</label>
-            <input id="first_name" type="text" name="first_name" required />
-          </div>
-          <div class="field">
-            <label class="label" for="last_name">Nazwisko</label>
-            <input id="last_name" type="text" name="last_name" required />
-          </div>
-        </div>
+      <div class="field">
+        <label class="label" for="password">Hasło</label>
+        <input id="password" class="input" type="password" name="password" required minlength="8" />
+      </div>
 
-        <div class="field">
-          <label class="label" for="city">Miejscowość</label>
-          <input id="city" type="text" name="city" placeholder="np. Kraków" required />
-        </div>
+      <div class="field legal">
+        <input id="accept_legal" type="checkbox" name="accept_legal" required />
+        <label for="accept_legal">
+          Oświadczam, że zapoznałem/am się i akceptuję
+          <a href="{% url 'regulamin' %}">Regulamin</a> oraz
+          <a href="{% url 'polityka_prywatnosci' %}">Politykę Prywatności</a>.
+        </label>
+      </div>
 
-        <div class="field">
-          <label class="label" for="email">E-mail</label>
-          <input id="email" type="email" name="email" required />
-        </div>
+      {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
-        <div class="field">
-          <label class="label" for="phone">Numer telefonu</label>
-          <input id="phone" type="tel" name="phone" placeholder="np. 500 600 700" required />
-        </div>
-
-        <div class="field">
-          <label class="label" for="password">Hasło</label>
-          <input id="password" type="password" name="password" required minlength="8" />
-        </div>
-
-        <div class="field legal">
-          <input id="accept_legal" type="checkbox" name="accept_legal" required />
-          <label for="accept_legal">
-            Oświadczam, że zapoznałem/am się i akceptuję
-            <a href="{% url 'regulamin' %}">Regulamin</a> oraz
-            <a href="{% url 'polityka_prywatnosci' %}">Politykę Prywatności</a>.
-          </label>
-        </div>
-
-        <button class="btn" type="submit">Zarejestruj się</button>
-        <p class="note">Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a></p>
-        <footer>© 2025 PolubiszTo.pl</footer>
-      </form>
-    </main>
+      <button class="btn" type="submit">Zarejestruj się</button>
+      <p class="note">Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a></p>
+    </form>
   </div>
+</main>
+
 </body>
 </html>
