@@ -76,6 +76,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from decimal import Decimal
 from django.db.models.functions import Lower
 from django.utils.http import urlencode
@@ -437,26 +438,52 @@ def login_view(request):
     # GET
     return render(request, "login.html")
 
+# REJESTRACJA
 
 def register_view(request):
     if request.method == "POST":
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-        first_name = request.POST.get("first_name")
-        last_name = request.POST.get("last_name")
-        phone = request.POST.get("phone")
+        email = (request.POST.get("email") or "").strip().lower()
+        password = (request.POST.get("password") or "").strip()
+        first_name = (request.POST.get("first_name") or "").strip()
+        last_name = (request.POST.get("last_name") or "").strip()
+        phone = (request.POST.get("phone") or "").strip()
+        city = (request.POST.get("city") or "").strip()
+        accepted = request.POST.get("accept_legal") == "on"
+
+        # 1) Walidacje podstawowe
+        if not accepted:
+            return render(request, "register.html", {"error": "Musisz zaakceptować Regulamin i Politykę Prywatności."})
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            return render(request, "register.html", {"error": "Podaj poprawny adres e-mail."})
+
+        if len(password) < 8:
+            return render(request, "register.html", {"error": "Hasło musi mieć co najmniej 8 znaków."})
 
         if User.objects.filter(email=email).exists():
-            return render(request, "register.html", {"error": "Ten e-mail już istnieje."})
+            return render(request, "register.html", {"error": "Ten e-mail jest już zarejestrowany."})
 
-        user = User.objects.create_user(
-            username=email, email=email, password=password, first_name=first_name, last_name=last_name
-        )
-        Profil.objects.create(user=user, is_teacher=False, numer_telefonu=phone)
+        # 2) Tworzenie użytkownika i profilu
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=email, email=email, password=password,
+                first_name=first_name, last_name=last_name
+            )
+            profil = Profil.objects.create(user=user, is_teacher=False, numer_telefonu=phone)
+            # Opcjonalnie zapisz miejscowość, jeśli model Profil ma takie pole:
+            try:
+                setattr(profil, "miejscowosc", city)
+                profil.save(update_fields=["miejscowosc"])
+            except Exception:
+                # jeśli Profil nie ma pola 'miejscowosc', pomiń
+                pass
+
+        messages.success(request, "Konto zostało utworzone. Zaloguj się, aby kontynuować.")
         return redirect("login")
 
     return render(request, "register.html")
-
 
 
 # ==========================
