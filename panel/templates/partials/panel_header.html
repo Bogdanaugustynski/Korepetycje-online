@@ -1,6 +1,17 @@
 {# panel/templates/partials/panel_header.html #}
 {% load static %}
 
+<!--
+This header component provides a consistent sticky/fixed brand bar across
+all panels (student, teacher, accounting, etc.).  The brand is aligned
+left and shares the same horizontal padding as the main content,
+controlled by the CSS custom property `--page-pad-x`.  A single action
+button on the right links back to the appropriate panel.  The header
+has a semi‑transparent backdrop and a subtle shadow.  A spacer div
+underneath ensures page content does not shift underneath the fixed
+header.  You can override the padding per page by redefining
+`--page-pad-x` in that page’s template.
+-->
 <header class="main-header">
   <div class="brand-wrap">
     <div class="brand-left">
@@ -8,66 +19,105 @@
     </div>
 
     <nav class="header-actions">
+      {# Link back to the appropriate panel.  Use panel_url_name for named URLs #}
       {% if panel_url_name %}
-        <a href="{% url panel_url_name %}" class="btn-panel">↩ {{ panel_label|default:"Panel główny" }}</a>
+        <a href="{% url panel_url_name %}" class="btn-panel">
+          ↩ {{ panel_label|default:"Panel główny" }}
+        </a>
       {% elif panel_href %}
-        <a href="{{ panel_href }}" class="btn-panel">↩ {{ panel_label|default:"Panel główny" }}</a>
+        <a href="{{ panel_href }}" class="btn-panel">
+          ↩ {{ panel_label|default:"Panel główny" }}
+        </a>
       {% endif %}
     </nav>
   </div>
 </header>
 
+{# Spacer to offset the fixed header.  Its height is set via JS below. #}
 <div class="header-spacer" aria-hidden="true"></div>
 
 <style>
-/* ---- USTAWIENIA GLOBALNE DLA SPÓJNOŚCI ---- */
-/* Domyślne marginesy boczne jak w Twoich panelach */
+/*
+ * Global horizontal padding.  These values mirror the paddings used in
+ * your panel layouts: 16px on mobile and 24px from 768px upwards.
+ * If you need the brand to sit flush against the left edge on a
+ * particular page, redefine --page-pad-x in that template:
+ * <style>:root{ --page-pad-x:0; }</style>
+ */
 :root{
-  --page-pad-x:0px;            /* telefon */
+  --page-pad-x:16px;  /* mobile */
 }
 @media (min-width:768px){
-  :root{ --page-pad-x:24px; }   /* desktop/tablet */
+  :root{ --page-pad-x:24px; }
 }
 
-/* ---- NAGŁÓWEK ---- */
+/* Fixed header with semi‑transparent background and subtle shadow */
 .main-header{
-  position:fixed; top:0; left:0; right:0; z-index:1000;
-  background: rgba(247,249,254,.85);     /* półprzezroczyste var(--bg) */
-  -webkit-backdrop-filter: saturate(120%) blur(6px);
-  backdrop-filter: saturate(120%) blur(6px);
-  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  z-index:1000;
+  background:rgba(247,249,254,0.85);
+  -webkit-backdrop-filter:saturate(120%) blur(6px);
+  backdrop-filter:saturate(120%) blur(6px);
+  box-shadow:0 6px 20px rgba(0,0,0,.08);
 }
 
-/* Spacer = wysokość headera (JS poniżej) */
-.header-spacer{ height: var(--header-h, 64px); }
+/* Spacer takes the current header height to prevent content from jumping */
+.header-spacer{
+  height:var(--header-h,64px);
+}
 
-/* Wnętrze: ten sam max-width co panele + identyczne paddingi boczne */
+/* Layout: same max‑width and horizontal padding as other panels */
 .brand-wrap{
-  max-width:1100px;             /* spójnie z panelami */
+  max-width:1100px;
   margin:0 auto;
   padding:8px var(--page-pad-x);
-  display:flex; align-items:center; gap:16px;
+  display:flex;
+  align-items:center;
+  gap:16px;
 }
 
-/* Brand sztywno po LEWEJ (nawet jeśli brand.html centruje coś u siebie) */
-.brand-left{ display:flex; align-items:center; margin-right:auto; }
+/* Brand always aligned left, regardless of inner markup */
+.brand-left{
+  display:flex;
+  align-items:center;
+  margin-right:auto;
+}
 .brand-left :where(h1,.brand,.logo,.site-brand,.brand-root){
-  margin-left:0 !important; margin-right:auto !important; text-align:left !important;
+  margin-left:0 !important;
+  margin-right:auto !important;
+  text-align:left !important;
 }
 
-/* Prawa strona */
-.header-actions{ display:flex; gap:10px; align-items:center; margin-left:auto; }
+/* Action area on the right */
+.header-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-left:auto;
+}
 
-/* Jeden przycisk do panelu */
+/* Panel return button */
 .btn-panel{
-  display:inline-flex; align-items:center; justify-content:center;
-  height:40px; padding:0 14px;
-  border-radius:12px; text-decoration:none; font-weight:600;
-  background: var(--brand,#0b74ff); color:#fff;
-  box-shadow: 0 3px 12px rgba(11,116,255,.28);
-  transition: background .2s, transform .15s, box-shadow .2s;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:40px;
+  padding:0 14px;
+  border-radius:12px;
+  text-decoration:none;
+  font-weight:600;
+  background:var(--brand,#0b74ff);
+  color:#fff;
+  box-shadow:0 3px 12px rgba(11,116,255,.28);
+  transition:background .2s, transform .15s, box-shadow .2s;
 }
-.btn-panel:hover{ background: var(--brand-700,#095cd1); transform: translateY(-1px); }
+.btn-panel:hover{
+  background:var(--brand-700,#095cd1);
+  transform:translateY(-1px);
+}
 
 @media (max-width:640px){
   .btn-panel{ height:36px; padding:0 12px; }
@@ -75,16 +125,16 @@
 </style>
 
 <script>
-  // Dynamiczny spacer = realna wysokość headera
-  (function(){
-    function setHeaderSpacer(){
-      var header = document.querySelector('.main-header');
-      var spacer = document.querySelector('.header-spacer');
-      if(!header || !spacer) return;
-      spacer.style.setProperty('--header-h', (header.offsetHeight || 64) + 'px');
-    }
-    window.addEventListener('load', setHeaderSpacer);
-    window.addEventListener('resize', setHeaderSpacer);
-    setTimeout(setHeaderSpacer, 150);
-  })();
+// Adjust the spacer’s height to match the header’s rendered height.
+(function(){
+  function setHeaderSpacer(){
+    var header=document.querySelector('.main-header');
+    var spacer=document.querySelector('.header-spacer');
+    if(!header||!spacer) return;
+    spacer.style.setProperty('--header-h',(header.offsetHeight||64)+'px');
+  }
+  window.addEventListener('load', setHeaderSpacer);
+  window.addEventListener('resize', setHeaderSpacer);
+  setTimeout(setHeaderSpacer, 150);
+})();
 </script>
