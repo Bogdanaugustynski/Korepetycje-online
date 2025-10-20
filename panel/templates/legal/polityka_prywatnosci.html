@@ -9,8 +9,7 @@
     :root{
       --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
       --bg:#f7f9fe; --line:#e6edff; --card:#fff;
-      --radius:18px; --maxw:1100px;
-      --shadow:0 12px 36px rgba(11,116,255,.14);
+      --radius:18px; --maxw:1100px; --shadow:0 12px 36px rgba(11,116,255,.14);
     }
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -31,29 +30,19 @@
   </style>
 </head>
 <body>
-
 <header class="site">
   <div class="wrap">
-    {% include "partials/brand.html" %}
+    {% include "partials/brand.html" only %}
+    <noscript><strong>PolubiszTo.pl</strong></noscript>
   </div>
 </header>
 
 <main class="wrap">
-  {% with
-    SITE_OWNER=SITE_OWNER|default:"Bogdan Auguściński"
-    SITE_ADDRESS=SITE_ADDRESS|default:"Polska (miasto)"
-    SITE_EMAIL=SITE_EMAIL|default:"polubiszto.pl@gmail.com"
-    SITE_URL=SITE_URL|default:"https://polubiszto.pl"
-    PROCESSORS=PROCESSORS|default:"dostawca hostingu, dostawca poczty, operator płatności (Autopay), narzędzia statystyczne bez profilowania"
-    COOKIES_DESC=COOKIES_DESC|default:"techniczne (utrzymanie sesji), analityczne zagregowane, preferencje interfejsu"
-    VIDEO_TOOLS=VIDEO_TOOLS|default:"Jitsi (rozmowa głosowa/wideo), Excalidraw (współpraca na tablicy)"
-  %}
-
   <article class="card">
     <div class="meta">
       Dokument: <span class="chip">Polityka prywatności</span> • Ostatnia aktualizacja: {{ UPDATED_AT|default:"13.10.2025, 00:00" }}
     </div>
-    <h1>Polityka prywatności — {{ SITE_URL|default:"PolubiszTo.pl" }}</h1>
+    <h1>Polityka prywatności — {{ SITE_URL|default:"https://polubiszto.pl" }}</h1>
 
     <div class="toc">
       <strong>Spis treści</strong>
@@ -72,8 +61,8 @@
 
     <section id="p1" class="section">
       <h2>§1. Administrator danych</h2>
-      <p>Administratorem danych osobowych jest <strong>{{ SITE_OWNER }}</strong>, {{ SITE_ADDRESS }}.
-        Kontakt: <a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>.</p>
+      <p>Administratorem danych osobowych jest <strong>{{ SITE_OWNER|default:"Bogdan Auguściński" }}</strong>, {{ SITE_ADDRESS|default:"Polska (miasto)" }}.
+        Kontakt: <a href="mailto:{{ SITE_EMAIL|default:'polubiszto.pl@gmail.com' }}">{{ SITE_EMAIL|default:"polubiszto.pl@gmail.com" }}</a>.</p>
     </section>
 
     <section id="p2" class="section">
@@ -96,7 +85,7 @@
 
     <section id="p4" class="section">
       <h2>§4. Odbiorcy i przetwarzający</h2>
-      <p>Dane mogą być powierzane/udostępniane podmiotom wspierającym świadczenie usług: {{ PROCESSORS }}.
+      <p>Dane mogą być powierzane/udostępniane podmiotom wspierającym świadczenie usług: {{ PROCESSORS|default:"dostawca hostingu, dostawca poczty, operator płatności (Autopay), narzędzia statystyczne bez profilowania" }}.
          Dane mogą być udostępnione organom państwowym w zakresie wymaganym przepisami.</p>
     </section>
 
@@ -116,13 +105,13 @@
 
     <section id="p7" class="section">
       <h2>§7. Pliki cookies</h2>
-      <p>Serwis stosuje pliki cookies: {{ COOKIES_DESC }}.
+      <p>Serwis stosuje pliki cookies: {{ COOKIES_DESC|default:"techniczne (utrzymanie sesji), analityczne zagregowane, preferencje interfejsu" }}.
          Użytkownik może zarządzać cookies w ustawieniach przeglądarki. Wyłączenie niektórych cookies może ograniczyć funkcjonalności (np. logowanie).</p>
     </section>
 
     <section id="p8" class="section">
       <h2>§8. Wideorozmowy i współpraca online</h2>
-      <p>W ramach zajęć korzystamy z narzędzi: {{ VIDEO_TOOLS }}. Przesył audio/wideo i zawartość tablic nie są wykorzystywane do celów marketingowych.
+      <p>W ramach zajęć korzystamy z narzędzi: {{ VIDEO_TOOLS|default:"Jitsi (rozmowa głosowa/wideo), Excalidraw (współpraca na tablicy)" }}. Przesył audio/wideo i zawartość tablic nie są wykorzystywane do celów marketingowych.
          Serwis nie nagrywa lekcji. Nagrywanie po stronie Użytkownika jest niedozwolone bez wyraźnej zgody obu stron.</p>
     </section>
 
@@ -133,10 +122,9 @@
     </section>
 
     <p class="footer-note">
-      Wersja publiczna (read-only). Aktualne dane podstawia backend z konfiguracji serwisu.
+      Wersja publiczna (read-only). Dane podstawia backend z konfiguracji serwisu.
     </p>
   </article>
-  {% endwith %}
 </main>
 </body>
 </html>

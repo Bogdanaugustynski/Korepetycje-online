@@ -9,8 +9,7 @@
     :root{
       --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
       --bg:#f7f9fe; --line:#e6edff; --card:#fff;
-      --radius:18px; --maxw:1100px;
-      --shadow:0 12px 36px rgba(11,116,255,.14);
+      --radius:18px; --maxw:1100px; --shadow:0 12px 36px rgba(11,116,255,.14);
     }
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -31,27 +30,20 @@
   </style>
 </head>
 <body>
-
 <header class="site">
   <div class="wrap">
-    {% include "partials/brand.html" %}
+    {# Bezpieczny fallback nagłówka, gdy partial nie istnieje #}
+    {% include "partials/brand.html" only %}
+    <noscript><strong>PolubiszTo.pl</strong></noscript>
   </div>
 </header>
 
 <main class="wrap">
-  {% with
-    SITE_OWNER=SITE_OWNER|default:"Bogdan Auguściński"
-    SITE_ADDRESS=SITE_ADDRESS|default:"Polska (miasto)"
-    SITE_EMAIL=SITE_EMAIL|default:"polubiszto.pl@gmail.com"
-    SITE_URL=SITE_URL|default:"https://polubiszto.pl"
-    PAYMENT_OPERATOR=PAYMENT_OPERATOR|default:"Autopay oraz płatności BLIK/przelew"
-  %}
-
   <article class="card">
     <div class="meta">
       Dokument: <span class="chip">Regulamin</span> • Ostatnia aktualizacja: {{ UPDATED_AT|default:"13.10.2025, 00:00" }}
     </div>
-    <h1>Regulamin serwisu {{ SITE_URL|default:"PolubiszTo.pl" }}</h1>
+    <h1>Regulamin serwisu {{ SITE_URL|default:"https://polubiszto.pl" }}</h1>
 
     <div class="toc">
       <strong>Spis treści</strong>
@@ -71,7 +63,7 @@
     <section id="p1" class="section">
       <h2>§1. Postanowienia ogólne</h2>
       <ol>
-        <li>Serwis <strong>{{ SITE_URL }}</strong> prowadzony jest przez <strong>{{ SITE_OWNER }}</strong>, z siedzibą: {{ SITE_ADDRESS }}, kontakt: <a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>.</li>
+        <li>Serwis <strong>{{ SITE_URL|default:"https://polubiszto.pl" }}</strong> prowadzony jest przez <strong>{{ SITE_OWNER|default:"Bogdan Auguściński" }}</strong>, z siedzibą: {{ SITE_ADDRESS|default:"Polska (miasto)" }}, kontakt: <a href="mailto:{{ SITE_EMAIL|default:'polubiszto.pl@gmail.com' }}">{{ SITE_EMAIL|default:"polubiszto.pl@gmail.com" }}</a>.</li>
         <li>Serwis umożliwia organizację i prowadzenie korepetycji online dla Uczniów i Nauczycieli.</li>
         <li>Niniejszy Regulamin określa zasady korzystania z Serwisu, prawa i obowiązki Użytkowników.</li>
       </ol>
@@ -103,7 +95,7 @@
     <section id="p5" class="section">
       <h2>§5. Płatności</h2>
       <ol>
-        <li>Płatności realizowane są przez: {{ PAYMENT_OPERATOR }}. Serwis nie przechowuje danych kart.</li>
+        <li>Płatności realizowane są przez: {{ PAYMENT_OPERATOR|default:"Autopay oraz płatności BLIK/przelew" }}. Serwis nie przechowuje danych kart.</li>
         <li>Brak płatności w terminie może skutkować anulowaniem rezerwacji.</li>
       </ol>
     </section>
@@ -127,7 +119,7 @@
     <section id="p8" class="section">
       <h2>§8. Reklamacje</h2>
       <ol>
-        <li>Reklamacje: <a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>.</li>
+        <li>Reklamacje: <a href="mailto:{{ SITE_EMAIL|default:'polubiszto.pl@gmail.com' }}">{{ SITE_EMAIL|default:"polubiszto.pl@gmail.com" }}</a>.</li>
         <li>Termin rozpatrzenia: do 14 dni roboczych.</li>
       </ol>
     </section>
@@ -141,10 +133,9 @@
     </section>
 
     <p class="footer-note">
-      Wersja publiczna (read-only). Aktualne dane podstawia backend z konfiguracji serwisu.
+      Wersja publiczna (read-only). Dane podstawia backend z konfiguracji serwisu.
     </p>
   </article>
-  {% endwith %}
 </main>
 </body>
 </html>
