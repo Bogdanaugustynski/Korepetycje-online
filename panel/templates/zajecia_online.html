@@ -17,15 +17,12 @@
     body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:#1c2533}
 
     header{background:var(--grad);color:#fff;padding:14px 18px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow-md);flex-wrap:wrap}
-    h1{font-size:18px;margin:0;font-weight:800;margin-right:auto}
+    h1{font-size:18px;margin:0;font-weight:800}
+    .push{flex:1 1 auto} /* elastyczny odstęp do wypchnięcia treści na prawo */
+    .who{font-weight:700;opacity:.95}
+
     main{max-width:900px;margin:22px auto;padding:0 16px}
     .card{background:var(--card);border:1px solid #e6ecfb;border-radius:16px;box-shadow:var(--shadow-sm);padding:18px;display:grid;gap:14px}
-
-    .pill{background:var(--card);border:1px solid #dfe6f5;border-radius:12px;padding:8px 12px;display:inline-flex;gap:8px;align-items:center;box-shadow:var(--shadow-sm);font-weight:600}
-    .status-dot{width:12px;height:12px;border-radius:999px}
-    .on{background:var(--ok);box-shadow:0 0 0 0 rgba(45,214,111,.35);animation:breath 1.8s ease-in-out infinite}
-    .off{background:var(--muted)}
-    @keyframes breath{0%{box-shadow:0 0 0 0 rgba(45,214,111,.35)}70%{box-shadow:0 0 0 12px rgba(45,214,111,0)}100%{box-shadow:0 0 0 0 rgba(45,214,111,0)}}
 
     .cta{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;border:none;background:var(--cta);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 6px 14px rgba(40,167,69,.22);text-decoration:none}
     input[type=url]{padding:12px;border-radius:12px;border:1px solid #cfd6e4;min-width:280px;width:420px;max-width:100%}
@@ -38,11 +35,12 @@
     .history h2{margin:0 0 8px 0; font-size:17px}
     .list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
     .item{display:flex;gap:12px;align-items:center;justify-content:space-between;border:1px solid #e6ecfb;background:#fff;border-radius:12px;padding:10px 12px}
-    .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .dt{font-weight:700}
-    .teacher{opacity:.9}
+    .tag{padding:4px 8px;border-radius:999px;background:#f3f6ff;border:1px solid #e1e8ff;font-size:12px}
     .go{font-weight:700;text-decoration:none}
     .empty{padding:8px 12px;border:1px dashed #cfd6e4;border-radius:12px;background:#fff}
+
     .pill:focus-visible, input:focus-visible, .cta:focus-visible, a.go:focus-visible{outline:0;box-shadow:0 0 0 3px var(--focus)}
     @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
   </style>
@@ -53,6 +51,11 @@
 
 <header>
   <h1>Zajęcia online</h1>
+  <div class="push"></div>
+  <div class="who">
+    Uczeń:
+    {{ rezerwacja.uczen.get_full_name|default:rezerwacja.uczen.username }}
+  </div>
 </header>
 
 <main>
@@ -84,7 +87,17 @@
           <li class="item">
             <div class="meta">
               <span class="dt">{{ z.termin|date:"d.m.Y H:i" }}</span>
-              <span class="teacher">👨‍🏫 {{ z.nauczyciel.get_full_name|default:z.nauczyciel.username }}</span>
+              <span class="tag">👤 {{ z.uczen.get_full_name|default:z.uczen.username }}</span>
+              <span class="tag">
+                📌
+                {% if z.temat %}
+                  {{ z.temat }}
+                {% elif z.temat_zajec %}
+                  {{ z.temat_zajec }}
+                {% else %}
+                  (bez tematu)
+                {% endif %}
+              </span>
               <span class="muted">ID: {{ z.id }}</span>
             </div>
             {% if z.excalidraw_link %}
@@ -92,7 +105,6 @@
             {% else %}
               <span class="muted">Brak linku do tablicy</span>
             {% endif %}
-
           </li>
         {% endfor %}
       </ul>
@@ -112,12 +124,6 @@ function pingPresence(){
     headers:{'X-CSRFToken':csrfToken,'Content-Type':'application/x-www-form-urlencoded'},
     body:'rezerwacja_id='+encodeURIComponent(rezerwacjaId)
   }).catch(()=>{});
-}
-function checkPresence(){
-  // (obecnie nie wyświetlamy statusu na pasku, więc pingi zostają, ale UI nie pokazuje kropek)
-}
-function initTimer(){
-  // jeśli chcesz timer, dodaj elementy w headerze i tu logikę
 }
 document.addEventListener('DOMContentLoaded', ()=>{
   setInterval(pingPresence,10_000);
