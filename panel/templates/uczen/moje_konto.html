@@ -21,28 +21,23 @@
     .grid{display:grid;grid-template-columns:1fr;gap:16px}
     @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-    .card-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+    .card-head{padding:16px 20px;border-bottom:1px solid var(--line)}
     .card-title{font-size:clamp(18px,2.4vw,20px);margin:0}
     .card-body{padding:18px 20px}
     label{display:block;margin:12px 0 6px;font-weight:600}
-    input, select, textarea{width:100%;padding:12px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+    input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px}
     .row{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:600px){.row-2{grid-template-columns:1fr 1fr}}
-    @media(min-width:900px){.row-3{grid-template-columns:1fr 1fr 1fr}}
     .btnbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    button,.btn{appearance:none;border:0;border-radius:12px;padding:12px 16px;cursor:pointer;
+    button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;
       background:var(--brand);color:#fff;font-weight:700}
-    button:hover,.btn:hover{background:var(--brand-700)}
+    button:hover{background:var(--brand-700)}
     .muted{color:var(--muted);font-size:14px}
     .messages{margin:12px 0}
     .msg{padding:10px 12px;border-radius:10px;margin-bottom:8px;font-size:14px}
     .msg-success{background:#e6f9ed;border:1px solid #b6edc8}
     .msg-error{background:#ffecec;border:1px solid #ffc4c4}
-    .hint{font-size:12px;color:var(--muted);margin-top:4px}
-    .avatar-wrap{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    .avatar{width:72px;height:72px;border-radius:50%;overflow:hidden;border:1px solid var(--line);background:#eef4ff}
-    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
-    .section-divider{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+    h3{margin-top:24px;font-size:17px;color:var(--ink)}
   </style>
 </head>
 <body>
@@ -61,154 +56,76 @@
     </div>
 
     <div class="grid">
-      <!-- Dane konta + Dane ucznia + Opiekun + Zgody -->
+
+      <!-- Dane konta -->
       <section class="card">
         <div class="card-head">
-          <h2 class="card-title">Dane konta i profilu</h2>
+          <h2 class="card-title">Dane konta</h2>
         </div>
         <div class="card-body">
-          {# Uwaga: enctype dla avatara #}
-          <form method="post" enctype="multipart/form-data" novalidate>
+          <form method="post" novalidate>
             {% csrf_token %}
             <input type="hidden" name="account_submit" value="1" />
-
-            <!-- Użytkownik -->
             <div class="row row-2">
               <div>
-                <label for="id_first_name">Imię</label>
+                <label>Imię</label>
                 {{ account_form.first_name }}
               </div>
               <div>
-                <label for="id_last_name">Nazwisko</label>
+                <label>Nazwisko</label>
                 {{ account_form.last_name }}
               </div>
             </div>
             <div class="row">
               <div>
-                <label for="id_email">E-mail</label>
+                <label>E-mail</label>
                 {{ account_form.email }}
               </div>
             </div>
-
-            <!-- Telefon (ze starej wersji) -->
             <div class="row">
               <div>
-                <label for="id_telefon">Telefon</label>
-                {{ account_form.telefon }}
-                <div class="muted">Opcjonalnie. Ułatwia szybki kontakt przed zajęciami.</div>
+                <label>Telefon</label>
+                {{ profile_form.numer_telefonu }}
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Opis</label>
+                {{ profile_form.opis }}
               </div>
             </div>
 
-            {% if profile_form %}
-              <!-- Avatar -->
-              <div class="section-divider"></div>
-              <div class="row">
-                <div>
-                  <label>Avatar</label>
-                  <div class="avatar-wrap">
-                    <div class="avatar">
-                      {% if request.user.profil.avatar %}
-                        <img src="{{ request.user.profil.avatar.url }}" alt="avatar">
-                      {% endif %}
-                    </div>
-                    <div class="muted">Maks. 2 MB, tylko obrazy (JPG/PNG).</div>
-                  </div>
-                  {{ profile_form.avatar }}
-                </div>
+            <h3>Dane rodzica/opiekuna</h3>
+            <div class="row row-2">
+              <div>
+                <label>Imię i nazwisko</label>
+                {{ profile_form.guardian_name }}
               </div>
+              <div>
+                <label>E-mail</label>
+                {{ profile_form.guardian_email }}
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Telefon</label>
+                {{ profile_form.guardian_phone }}
+              </div>
+            </div>
 
-              <!-- Dane ucznia -->
-              <div class="section-divider"></div>
-              <h3 class="card-title" style="margin:0 0 8px">Dane ucznia</h3>
-              <div class="row row-2">
-                <div>
-                  <label>Drugi numer telefonu (opcjonalnie)</label>
-                  {{ profile_form.extra_phone }}
-                </div>
-                <div>
-                  <label>Miasto</label>
-                  {{ profile_form.city }}
-                </div>
-              </div>
-              <div class="row">
-                <div>
-                  <label>Adres</label>
-                  {{ profile_form.address_line }}
-                </div>
-              </div>
-              <div class="row row-2">
-                <div>
-                  <label>Data urodzenia</label>
-                  {{ profile_form.birth_date }}
-                  <div class="hint">Jeśli data wskazuje, że uczeń jest niepełnoletni, poniższe dane opiekuna będą wymagane.</div>
-                </div>
-              </div>
+            <h3>Zgody i prywatność</h3>
+            <div class="row">
+              <label>{{ profile_form.marketing_email }} Kontakt e-mail</label>
+              <label>{{ profile_form.marketing_sms }} Kontakt SMS</label>
+              <label>{{ profile_form.gdpr_edu_consent }} Zgoda na przetwarzanie danych edukacyjnych</label>
+            </div>
 
-              <!-- Opiekun -->
-              <div class="section-divider"></div>
-              <h3 class="card-title" style="margin:0 0 8px">Dane opiekuna</h3>
-              <div class="row row-2">
-                <div>
-                  <label>Imię i nazwisko opiekuna</label>
-                  {{ profile_form.guardian_name }}
-                </div>
-                <div>
-                  <label>E-mail opiekuna</label>
-                  {{ profile_form.guardian_email }}
-                </div>
+            <div class="row">
+              <div>
+                <label>Uwagi o potrzebach edukacyjnych</label>
+                {{ profile_form.accessibility_notes }}
               </div>
-              <div class="row">
-                <div>
-                  <label>Telefon opiekuna</label>
-                  {{ profile_form.guardian_phone }}
-                </div>
-              </div>
-
-              <!-- Zgody i prywatność -->
-              <div class="section-divider"></div>
-              <h3 class="card-title" style="margin:0 0 8px">Zgody i prywatność</h3>
-              <div class="row row-3">
-                <div>
-                  <label class="muted" style="font-weight:500;">Kontakt e-mail</label>
-                  {{ profile_form.marketing_email }}
-                </div>
-                <div>
-                  <label class="muted" style="font-weight:500;">Kontakt SMS</label>
-                  {{ profile_form.marketing_sms }}
-                </div>
-                <div>
-                  <label class="muted" style="font-weight:500;">Zgoda na przetwarzanie danych edukacyjnych</label>
-                  {{ profile_form.gdpr_edu_consent }}
-                </div>
-              </div>
-              <div class="row">
-                <div>
-                  <label class="muted" style="font-weight:500;">Zgoda na nagrywanie lekcji</label>
-                  {{ profile_form.recording_consent }}
-                </div>
-              </div>
-
-              <!-- Uwagi -->
-              <div class="section-divider"></div>
-              <h3 class="card-title" style="margin:0 0 8px">Uwagi o potrzebach edukacyjnych</h3>
-              <div class="row">
-                <div>
-                  {{ profile_form.accessibility_notes }}
-                </div>
-              </div>
-
-              {% if profile_form.errors %}
-                <div class="msg msg-error" style="margin-top:10px">
-                  Sprawdź pola w sekcji profilu — niektóre wartości są niepoprawne.
-                </div>
-              {% endif %}
-            {% endif %}
-
-            {% if account_form.errors %}
-              <div class="msg msg-error" style="margin-top:10px">
-                Sprawdź pola — niektóre wartości są niepoprawne.
-              </div>
-            {% endif %}
+            </div>
 
             <div class="btnbar">
               <button type="submit">Zapisz zmiany</button>
@@ -227,27 +144,19 @@
             {% csrf_token %}
             <input type="hidden" name="password_submit" value="1" />
             <div class="row">
-              <div>
-                <label for="id_old_password">Obecne hasło</label>
-                {{ password_form.old_password }}
-              </div>
+              <label>Obecne hasło</label>
+              {{ password_form.old_password }}
             </div>
             <div class="row row-2">
               <div>
-                <label for="id_new_password1">Nowe hasło</label>
+                <label>Nowe hasło</label>
                 {{ password_form.new_password1 }}
               </div>
               <div>
-                <label for="id_new_password2">Powtórz nowe hasło</label>
+                <label>Powtórz nowe hasło</label>
                 {{ password_form.new_password2 }}
               </div>
             </div>
-
-            {% if password_form.errors %}
-              <div class="msg msg-error" style="margin-top:10px">
-                Nie udało się zmienić hasła. Upewnij się, że obecne hasło jest poprawne i pola „nowe hasło” są zgodne.
-              </div>
-            {% endif %}
 
             <div class="btnbar">
               <button type="submit">Zmień hasło</button>

@@ -24,14 +24,11 @@ class ProfilForm(forms.ModelForm):
             'guardian_name', 'guardian_email', 'guardian_phone',
             # zgody i prywatność
             'marketing_email', 'marketing_sms', 'gdpr_edu_consent', 'recording_consent',
-            # inne
-            'accessibility_notes', 'avatar',
         ]
         widgets = {
             'opis': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Krótki opis lub informacje dodatkowe...'}),
             'address_line': forms.TextInput(attrs={'placeholder': 'Ulica, numer domu/mieszkania'}),
             'city': forms.TextInput(attrs={'placeholder': 'Miasto'}),
-            'birth_date': forms.DateInput(attrs={'type': 'date'}),
             'accessibility_notes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Uwagi dotyczące nauki, potrzeb edukacyjnych itp.'}),
         }
         labels = {
@@ -39,50 +36,15 @@ class ProfilForm(forms.ModelForm):
             'extra_phone': 'Drugi numer telefonu (opcjonalnie)',
             'city': 'Miasto',
             'address_line': 'Adres zamieszkania',
-            'birth_date': 'Data urodzenia',
             'guardian_name': 'Imię i nazwisko opiekuna',
             'guardian_email': 'E-mail opiekuna',
             'guardian_phone': 'Telefon opiekuna',
             'marketing_email': 'Zgoda na kontakt e-mail',
             'marketing_sms': 'Zgoda na kontakt SMS',
             'gdpr_edu_consent': 'Zgoda na przetwarzanie danych edukacyjnych',
-            'recording_consent': 'Zgoda na nagrywanie lekcji',
             'accessibility_notes': 'Uwagi o potrzebach edukacyjnych',
-            'avatar': 'Avatar (max 2 MB, format JPG/PNG)',
         }
 
-    def clean_birth_date(self):
-        birth = self.cleaned_data.get('birth_date')
-        if birth and birth > timezone.localdate():
-            raise ValidationError("Data urodzenia nie może być z przyszłości.")
-        return birth
-
-    def clean_avatar(self):
-        avatar = self.cleaned_data.get("avatar")
-        if avatar:
-            if avatar.size > 2 * 1024 * 1024:  # 2 MB
-                raise ValidationError("Avatar może mieć maksymalnie 2 MB.")
-            if not avatar.content_type.startswith("image/"):
-                raise ValidationError("Dozwolone są tylko pliki graficzne (JPG/PNG).")
-        return avatar
-
-    def clean(self):
-        cleaned = super().clean()
-        birth = cleaned.get("birth_date")
-        guardian_name = cleaned.get("guardian_name")
-        guardian_email = cleaned.get("guardian_email")
-        guardian_phone = cleaned.get("guardian_phone")
-
-        # Walidacja wieku – wymagane dane opiekuna jeśli niepełnoletni
-        if birth:
-            today = timezone.localdate()
-            age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
-            if age < 18:
-                if not guardian_name or not guardian_email:
-                    raise ValidationError("Uczeń jest niepełnoletni — podaj imię i e-mail opiekuna.")
-                if not guardian_phone:
-                    raise ValidationError("Podaj również numer telefonu opiekuna.")
-        return cleaned
 
 
 from .models import Profil  # dopasuj, jeśli Profil jest w innej appce

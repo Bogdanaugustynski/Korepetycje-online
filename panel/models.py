@@ -37,7 +37,6 @@ class Profil(models.Model):
     extra_phone = models.CharField("Drugi numer telefonu", max_length=32, blank=True)
     city = models.CharField("Miasto", max_length=80, blank=True)
     address_line = models.CharField("Adres", max_length=160, blank=True)
-    birth_date = models.DateField("Data urodzenia", null=True, blank=True)
 
     # ----- dane opiekuna -----
     guardian_name = models.CharField("Imię i nazwisko opiekuna", max_length=120, blank=True)
@@ -48,12 +47,8 @@ class Profil(models.Model):
     marketing_email = models.BooleanField("Zgoda na kontakt e-mail", default=False)
     marketing_sms = models.BooleanField("Zgoda na kontakt SMS", default=False)
     gdpr_edu_consent = models.BooleanField("Zgoda na przetwarzanie danych edukacyjnych", default=False)
-    recording_consent = models.BooleanField("Zgoda na nagrywanie lekcji", default=False)
 
     accessibility_notes = models.TextField("Uwagi o potrzebach edukacyjnych", blank=True)
-
-    # ----- plik / avatar -----
-    avatar = models.ImageField("Avatar", upload_to=avatar_upload_path, blank=True, null=True)
 
     # ----- meta -----
     updated_at = models.DateTimeField(auto_now=True)
