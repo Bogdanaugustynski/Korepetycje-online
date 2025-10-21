@@ -503,7 +503,7 @@ def zajecia_online_view(request, rezerwacja_id):
             rezerwacja.save()
             return redirect("zajecia_online", rezerwacja_id=rezerwacja.id)
 
-    # Dostęp poza pokojem testowym (np. ID=1) – tylko w okienku czasu
+    # Dostęp jak dotąd...
     if rezerwacja.id != 1:
         if user == rezerwacja.uczen:
             start = rezerwacja.termin
@@ -517,6 +517,14 @@ def zajecia_online_view(request, rezerwacja_id):
         if user not in (rezerwacja.uczen, rezerwacja.nauczyciel):
             return HttpResponseForbidden("Brak dostępu do tej tablicy.")
 
+    # 🔹 HISTORIA: wszystkie zakończone zajęcia tego ucznia (najnowsze na górze)
+    uczen = rezerwacja.uczen
+    past_lessons = (
+        Rezerwacja.objects
+        .filter(uczen=uczen, termin__lt=teraz)
+        .order_by('-termin')[:30]  # np. ostatnie 30
+    )
+
     return render(
         request,
         "zajecia_online.html",
@@ -524,6 +532,7 @@ def zajecia_online_view(request, rezerwacja_id):
             "rezerwacja": rezerwacja,
             "is_teacher": user == rezerwacja.nauczyciel,
             "room_id": f"room-{rezerwacja.id}",
+            "past_lessons": past_lessons,  # ⬅ przekazanie do szablonu
         },
     )
 

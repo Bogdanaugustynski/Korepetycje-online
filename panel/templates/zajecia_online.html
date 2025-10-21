@@ -18,19 +18,32 @@
 
     header{background:var(--grad);color:#fff;padding:14px 18px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow-md);flex-wrap:wrap}
     h1{font-size:18px;margin:0;font-weight:800;margin-right:auto}
-    .pill{background:var(--card);border:1px solid #dfe6f5;border-radius:12px;padding:8px 12px;display:flex;gap:8px;align-items:center;box-shadow:var(--shadow-sm);font-weight:600}
+    main{max-width:900px;margin:22px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid #e6ecfb;border-radius:16px;box-shadow:var(--shadow-sm);padding:18px;display:grid;gap:14px}
+
+    .pill{background:var(--card);border:1px solid #dfe6f5;border-radius:12px;padding:8px 12px;display:inline-flex;gap:8px;align-items:center;box-shadow:var(--shadow-sm);font-weight:600}
     .status-dot{width:12px;height:12px;border-radius:999px}
     .on{background:var(--ok);box-shadow:0 0 0 0 rgba(45,214,111,.35);animation:breath 1.8s ease-in-out infinite}
     .off{background:var(--muted)}
     @keyframes breath{0%{box-shadow:0 0 0 0 rgba(45,214,111,.35)}70%{box-shadow:0 0 0 12px rgba(45,214,111,0)}100%{box-shadow:0 0 0 0 rgba(45,214,111,0)}}
-    main{max-width:900px;margin:22px auto;padding:0 16px}
-    .card{background:var(--card);border:1px solid #e6ecfb;border-radius:16px;box-shadow:var(--shadow-sm);padding:18px;display:grid;gap:14px}
+
     .cta{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;border:none;background:var(--cta);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 6px 14px rgba(40,167,69,.22);text-decoration:none}
     input[type=url]{padding:12px;border-radius:12px;border:1px solid #cfd6e4;min-width:280px;width:420px;max-width:100%}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .hint{font-size:14px;color:#334;opacity:.85}
     .muted{opacity:.85}
-    .pill:focus-visible, input:focus-visible, .cta:focus-visible{outline:0;box-shadow:0 0 0 3px var(--focus)}
+
+    /* Historia zajęć */
+    .history{margin-top:18px}
+    .history h2{margin:0 0 8px 0; font-size:17px}
+    .list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+    .item{display:flex;gap:12px;align-items:center;justify-content:space-between;border:1px solid #e6ecfb;background:#fff;border-radius:12px;padding:10px 12px}
+    .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .dt{font-weight:700}
+    .teacher{opacity:.9}
+    .go{font-weight:700;text-decoration:none}
+    .empty{padding:8px 12px;border:1px dashed #cfd6e4;border-radius:12px;background:#fff}
+    .pill:focus-visible, input:focus-visible, .cta:focus-visible, a.go:focus-visible{outline:0;box-shadow:0 0 0 3px var(--focus)}
     @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
   </style>
 </head>
@@ -43,6 +56,7 @@
 </header>
 
 <main>
+  <!-- Karta główna -->
   <div class="card">
     <div class="row">
       <a class="cta" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
@@ -59,6 +73,28 @@
 
     <div class="muted">ID zajęć: {{ rezerwacja.id }} • Termin: {{ rezerwacja.termin }}</div>
   </div>
+
+  <!-- Historia zajęć ucznia (najnowsze na górze) -->
+  <div class="card history">
+    <h2>Historia zajęć ucznia</h2>
+
+    {% if past_lessons %}
+      <ul class="list">
+        {% for z in past_lessons %}
+          <li class="item">
+            <div class="meta">
+              <span class="dt">{{ z.termin|date:"d.m.Y H:i" }}</span>
+              <span class="teacher">👨‍🏫 {{ z.nauczyciel.get_full_name|default:z.nauczyciel.username }}</span>
+              <span class="muted">ID: {{ z.id }}</span>
+            </div>
+            <a class="go" href="{% url 'zajecia_online' rezerwacja_id=z.id %}">Otwórz ▶</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">Brak wcześniejszych zajęć do wyświetlenia.</div>
+    {% endif %}
+  </div>
 </main>
 
 <script>
@@ -73,31 +109,14 @@ function pingPresence(){
   }).catch(()=>{});
 }
 function checkPresence(){
-  fetch(`/check-online-status/${rezerwacjaId}/`)
-    .then(r=>r.ok?r.json():Promise.reject(r.status))
-    .then(d=>{
-      const on = !!(d&&d.online);
-      document.getElementById('dot').className = 'status-dot ' + (on?'on':'off');
-      document.getElementById('presence').textContent = on ? 'Dostępny' : 'Niedostępny';
-      document.getElementById('participants').textContent = on ? '2' : '1';
-    }).catch(()=>{});
+  // (obecnie nie wyświetlamy statusu na pasku, więc pingi zostają, ale UI nie pokazuje kropek)
 }
 function initTimer(){
-  const el=document.getElementById('timer');
-  const start=new Date("{{ rezerwacja.termin|date:'Y-m-d H:i:s' }}").getTime();
-  const end=start+55*60*1000;
-  const tick=()=>{
-    const d=end-Date.now(); if(d<=0){ el.textContent='Zakończone'; return; }
-    const m=Math.floor(d/60000), s=Math.floor((d%60000)/1000);
-    el.textContent=`${m}:${String(s).padStart(2,'0')}`;
-  };
-  tick(); setInterval(tick,1000);
+  // jeśli chcesz timer, dodaj elementy w headerze i tu logikę
 }
 document.addEventListener('DOMContentLoaded', ()=>{
-  initTimer();
   setInterval(pingPresence,10_000);
-  setInterval(checkPresence,10_000);
-  checkPresence();
+  pingPresence();
 });
 </script>
 </body>
