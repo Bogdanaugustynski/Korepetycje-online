@@ -1493,14 +1493,13 @@ def is_student(user):
         return True
 
 
+
 @login_required
 @user_passes_test(is_student)
 def moje_konto_uczen_view(request):
-    # ZAWSZE miej Profil
     profil, _ = Profil.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
-        # --- zapis danych konta/profilu ---
         if "account_submit" in request.POST:
             account_form = StudentAccountForm(request.POST, user=request.user, instance=request.user)
             profile_form = ProfilForm(request.POST, request.FILES, instance=profil)
@@ -1509,59 +1508,21 @@ def moje_konto_uczen_view(request):
             if account_form.is_valid() and profile_form.is_valid():
                 with transaction.atomic():
                     account_form.save()
+                    profile_form.save()
 
-                    # Zapis profilu — commit=False, potem eksplicytny set pól
-                    p = profile_form.save(commit=False)
-
-                    cd = profile_form.cleaned_data
-
-                    # Najważniejsze: data urodzenia (wyciągnięta z cleaned_data lub – awaryjnie – z POST)
-                    p.birth_date = cd.get("birth_date", None)
-                    if p.birth_date is None:
-                        # Fallback, gdyby formularz nie niósł pola (stara wersja formu)
-                        birth_str = request.POST.get("birth_date", "").strip()
-                        if birth_str:
-                            try:
-                                p.birth_date = datetime.date.fromisoformat(birth_str)
-                            except ValueError:
-                                # zostaw None – walidację załatwia formularz
-                                pass
-
-                    # Reszta pól profilu (na wypadek „wyciętego” fields w formie)
-                    for fname in [
-                        "numer_telefonu", "tytul_naukowy", "poziom_nauczania", "przedmioty", "opis",
-                        "extra_phone", "city", "address_line",
-                        "guardian_name", "guardian_email", "guardian_phone",
-                        "marketing_email", "marketing_sms",
-                        "gdpr_edu_consent", "recording_consent",
-                        "accessibility_notes",
-                    ]:
-                        if fname in cd:
-                            setattr(p, fname, cd[fname])
-
-                    # Avatar zapisujemy, jeśli przyszedł w plikach (formularz ma enctype)
-                    if "avatar" in cd:
-                        p.avatar = cd["avatar"]
-
-                    p.save()
-
-                # --- Audyt (Aron) ---
-                ip = request.META.get("REMOTE_ADDR")
                 AuditLog.objects.create(
                     actor=str(request.user.username),
                     action="manual_update_profile",
                     obj_type="profil",
-                    obj_id=str(p.pk),
+                    obj_id=str(profil.pk),
                     details={"note": "profile updated via MyAccountView"},
-                    created_by_ip=ip,
+                    created_by_ip=request.META.get("REMOTE_ADDR"),
                 )
 
                 messages.success(request, "Zapisano zmiany w profilu.")
                 return redirect("moje_konto_uczen")
-
             messages.error(request, "Sprawdź poprawność pól formularza.")
 
-        # --- zmiana hasła ---
         elif "password_submit" in request.POST:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
             profile_form = ProfilForm(instance=profil)
@@ -1572,17 +1533,12 @@ def moje_konto_uczen_view(request):
                 update_session_auth_hash(request, user)
                 messages.success(request, "Hasło zostało zmienione.")
                 return redirect("moje_konto_uczen")
-
             messages.error(request, "Nie udało się zmienić hasła. Sprawdź wprowadzone dane.")
-
-        # fallback
         else:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
             profile_form = ProfilForm(instance=profil)
             password_form = StudentPasswordChangeForm(user=request.user)
-
     else:
-        # GET
         account_form = StudentAccountForm(user=request.user, instance=request.user)
         profile_form = ProfilForm(instance=profil)
         password_form = StudentPasswordChangeForm(user=request.user)
@@ -1590,11 +1546,7 @@ def moje_konto_uczen_view(request):
     return render(
         request,
         "uczen/moje_konto.html",
-        {
-            "account_form": account_form,
-            "profile_form": profile_form,
-            "password_form": password_form,
-        },
+        {"account_form": account_form, "profile_form": profile_form, "password_form": password_form},
     )
 
 @method_decorator(csrf_protect, name='dispatch')

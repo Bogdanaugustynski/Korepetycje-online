@@ -16,33 +16,37 @@ class ProfilForm(forms.ModelForm):
     class Meta:
         model = Profil
         fields = [
-            # stare pola
-            'numer_telefonu', 'tytul_naukowy', 'poziom_nauczania', 'opis',
-            # nowe dane ucznia
-            'extra_phone', 'city', 'address_line', 'birth_date',
-            # dane opiekuna
-            'guardian_name', 'guardian_email', 'guardian_phone',
-            # zgody i prywatność
-            'marketing_email', 'marketing_sms', 'gdpr_edu_consent', 'recording_consent',
+            # dane kontaktowe i opis
+            "numer_telefonu", "tytul_naukowy", "poziom_nauczania", "opis",
+            # dane ucznia
+            "extra_phone", "city", "address_line",
+            # dane rodzica/opiekuna
+            "guardian_name", "guardian_email", "guardian_phone",
+            # zgody (bez recording_consent)
+            "marketing_email", "marketing_sms", "gdpr_edu_consent",
+            # inne
+            "accessibility_notes",
         ]
         widgets = {
-            'opis': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Krótki opis lub informacje dodatkowe...'}),
-            'address_line': forms.TextInput(attrs={'placeholder': 'Ulica, numer domu/mieszkania'}),
-            'city': forms.TextInput(attrs={'placeholder': 'Miasto'}),
-            'accessibility_notes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Uwagi dotyczące nauki, potrzeb edukacyjnych itp.'}),
+            "opis": forms.Textarea(attrs={"rows": 4}),
+            "accessibility_notes": forms.Textarea(attrs={"rows": 3}),
         }
         labels = {
-            'numer_telefonu': 'Numer telefonu',
-            'extra_phone': 'Drugi numer telefonu (opcjonalnie)',
-            'city': 'Miasto',
-            'address_line': 'Adres zamieszkania',
-            'guardian_name': 'Imię i nazwisko opiekuna',
-            'guardian_email': 'E-mail opiekuna',
-            'guardian_phone': 'Telefon opiekuna',
-            'marketing_email': 'Zgoda na kontakt e-mail',
-            'marketing_sms': 'Zgoda na kontakt SMS',
-            'gdpr_edu_consent': 'Zgoda na przetwarzanie danych edukacyjnych',
-            'accessibility_notes': 'Uwagi o potrzebach edukacyjnych',
+            "numer_telefonu": "Numer telefonu",
+            "tytul_naukowy": "Tytuł naukowy",
+            "poziom_nauczania": "Poziom nauczania",
+            "przedmioty": "Przedmioty",
+            "opis": "Opis",
+            "extra_phone": "Drugi numer telefonu (opcjonalnie)",
+            "city": "Miasto",
+            "address_line": "Adres zamieszkania",
+            "guardian_name": "Imię i nazwisko rodzica/opiekuna",
+            "guardian_email": "E-mail rodzica/opiekuna",
+            "guardian_phone": "Telefon rodzica/opiekuna",
+            "marketing_email": "Zgoda na kontakt e-mail",
+            "marketing_sms": "Zgoda na kontakt SMS",
+            "gdpr_edu_consent": "Zgoda na przetwarzanie danych edukacyjnych",
+            "accessibility_notes": "Uwagi o potrzebach edukacyjnych",
         }
 
 
