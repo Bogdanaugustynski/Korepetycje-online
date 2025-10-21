@@ -87,7 +87,12 @@
               <span class="teacher">👨‍🏫 {{ z.nauczyciel.get_full_name|default:z.nauczyciel.username }}</span>
               <span class="muted">ID: {{ z.id }}</span>
             </div>
-            <a class="go" href="{% url 'zajecia_online' rezerwacja_id=z.id %}">Otwórz ▶</a>
+            {% if z.excalidraw_link %}
+              <a class="go" href="{{ z.excalidraw_link }}" target="_blank" rel="noopener">Otwórz ▶</a>
+            {% else %}
+              <span class="muted">Brak linku do tablicy</span>
+            {% endif %}
+
           </li>
         {% endfor %}
       </ul>
