@@ -46,7 +46,7 @@
     .hero-in{display:grid;grid-template-columns:1fr;gap:22px;align-items:center;padding:32px 0}
     .h1{font-size:clamp(24px,4.8vw,42px);line-height:1.08;margin:0}
 
-    /* TABLICA + POSTURA */
+    /* TABLICA + MENTORKA */
     .hero-visual{position:relative}
     .board-preview{
       background:#eaf1ff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:var(--shadow), var(--glow);
@@ -56,15 +56,24 @@
     .spark{position:absolute;inset:auto -20% -40% auto;width:60%;height:60%;
       background:radial-gradient(closest-side, rgba(123,167,255,.25), transparent 70%); transform:rotate(-12deg);filter:blur(12px);pointer-events:none}
 
-    /* Postura (inline SVG) */
+    /* Mentorka: realne zdjęcie, odbite w stronę środka + delikatny „float” */
     .mentor{
-      position:absolute; right:-6%; bottom:-6%; width:min(36%, 280px); pointer-events:none;
+      position:absolute;
+      right:-6%;
+      bottom:-6%;
+      width:min(36%, 280px);
+      pointer-events:none;
       filter:drop-shadow(0 18px 24px rgba(15,23,42,.18));
-      animation:float 6s ease-in-out infinite;
+      transform:scaleX(-1);                 /* obrót w drugą stronę */
+      transform-origin:center;
+      animation:floatMentor 6s ease-in-out infinite;
+      border-radius:16px;                    /* ładniejsze krawędzie dla zdjęcia */
     }
-    @keyframes float { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-6px) } }
-    .mentor .glow{filter:blur(22px); opacity:.35}
-    @media (max-width: 900px){ .mentor{display:none} } /* chowamy na małych ekranach dla czytelności */
+    @keyframes floatMentor{
+      0%,100%{ transform:scaleX(-1) translateY(0) }
+      50%{     transform:scaleX(-1) translateY(-6px) }
+    }
+    @media (max-width: 900px){ .mentor{display:none} } /* chowamy na małych ekranach */
 
     /* Kroki */
     .steps{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
@@ -132,41 +141,16 @@
         </div>
 
         <div class="hero-visual">
+          <!-- TABLICA -->
           <div class="board-preview">
             <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd tablicy wirtualnego pokoju">
             <div class="spark" aria-hidden="true"></div>
           </div>
 
-          <!-- POSTURA: elegancki, intelgentny mentor (inline SVG, zero praw autorskich) -->
-          <svg class="mentor" viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <!-- glow -->
-            <ellipse class="glow" cx="220" cy="500" rx="120" ry="28" fill="#94b7ff"/>
-            <!-- torso -->
-            <path d="M90 300c0-70 60-110 130-110s130 40 130 110v130H90V300z" fill="url(#g1)"/>
-            <!-- head -->
-            <circle cx="220" cy="180" r="54" fill="#ffe6cc"/>
-            <!-- hair -->
-            <path d="M174 176c8-28 30-44 56-44 28 0 50 18 54 46-22-10-42-14-60-14-20 0-36 4-50 12z" fill="#243b6b"/>
-            <!-- glasses -->
-            <g stroke="#1f2d4d" stroke-width="4" fill="none" opacity=".9">
-              <circle cx="202" cy="190" r="14"/><circle cx="240" cy="190" r="14"/>
-              <path d="M216 190h10"/>
-            </g>
-            <!-- smile -->
-            <path d="M205 206c10 10 22 10 32 0" stroke="#cc6e55" stroke-width="4" fill="none" stroke-linecap="round"/>
-            <!-- laptop/book -->
-            <rect x="120" y="340" rx="10" ry="10" width="220" height="120" fill="#ffffff" stroke="#c7d2fe" stroke-width="4"/>
-            <path d="M120 380h220" stroke="#e5e7eb" stroke-width="2"/>
-            <!-- arm -->
-            <path d="M120 370c30-14 50-26 70-50 20-22 38-18 48 0" fill="none" stroke="#ffc9a6" stroke-width="16" stroke-linecap="round"/>
-            <!-- badge -->
-            <circle cx="330" cy="320" r="10" fill="#0b74ff"/>
-            <defs>
-              <linearGradient id="g1" x1="90" y1="190" x2="350" y2="520" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stop-color="#6aa6ff"/><stop offset="1" stop-color="#0b74ff"/>
-              </linearGradient>
-            </defs>
-          </svg>
+          <!-- MENTORKA: realne zdjęcie (odwrócone w stronę środka) -->
+          <img class="mentor"
+               src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}"
+               alt="Młoda nauczycielka — Twoja mentorka online">
         </div>
       </div>
     </section>
