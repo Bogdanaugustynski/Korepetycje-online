@@ -16,10 +16,9 @@
     body{margin:0;min-height:100%;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
     img{max-width:100%;height:auto;display:block}
     a{color:var(--primary);text-decoration:none}
-
     .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--edge)}
 
-    /* header: sticky + blur */
+    /* header */
     header{position:sticky;top:0;z-index:50;border-bottom:1px solid #e5e7eb;
       backdrop-filter:saturate(140%) blur(8px); background:rgba(255,255,255,.78)}
     @supports not (backdrop-filter: blur(8px)){ header{background:#ffffff} }
@@ -171,7 +170,8 @@
 
         <div>
           <div class="board-preview">
-            <img src="{% static 'img/podglad_tablicy.png' %}" alt="Podgląd tablicy wirtualnego pokoju">
+            <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}"
+                 alt="Podgląd tablicy wirtualnego pokoju">
             <div class="spark" aria-hidden="true"></div>
           </div>
         </div>
