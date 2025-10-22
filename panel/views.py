@@ -102,8 +102,7 @@ def test_publiczny(request):
 
 
 # --- STRONA GŁÓWNA (lista tylko nauczycieli: profil.is_teacher=True) ---
-from django.contrib.auth.models import User
-from django.shortcuts import render
+
 
 def strona_glowna_view(request):
     # Pobierz aktywnych użytkowników z ustawionym profilem nauczyciela
