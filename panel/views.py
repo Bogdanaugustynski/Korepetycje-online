@@ -104,7 +104,6 @@ def test_publiczny(request):
 # --- STRONA GŁÓWNA (lista tylko nauczycieli: profil.is_teacher=True) ---
 
 def strona_glowna_view(request):
-    # Bierzemy wprost profile oznaczone jako nauczyciele i z aktywnym użytkownikiem
     profs = (
         Profil.objects
         .select_related("user")
@@ -115,34 +114,28 @@ def strona_glowna_view(request):
     nauczyciele = []
     for p in profs:
         u = p.user
-
-        # Zdjęcie (obsługa FileField/URL/str + różne nazwy pól)
+        # foto
         photo_url = ""
         for field_name in ("zdjecie", "photo", "avatar", "photo_url", "image"):
             val = getattr(p, field_name, "")
             if val:
                 try:
-                    photo_url = val.url  # FileField/ImageField
+                    photo_url = val.url
                 except Exception:
-                    photo_url = str(val)  # zwykły string/URL
+                    photo_url = str(val)
                 if photo_url:
                     break
-
-        # Tagowanie (przedmioty/poziomy/tytuły)
-        raw_tags = []
+        # tagi
+        raw = []
         for src in ("przedmioty", "poziom_nauczania", "tytul_naukowy"):
             s = getattr(p, src, "") or ""
             if s:
-                raw_tags.extend([t.strip() for t in s.split(",") if t.strip()])
-
-        # Unikalne tagi (max 6)
+                raw.extend([t.strip() for t in s.split(",") if t.strip()])
         seen, tag_list = set(), []
-        for t in raw_tags:
+        for t in raw:
             if t not in seen:
-                seen.add(t)
-                tag_list.append(t)
-            if len(tag_list) >= 6:
-                break
+                seen.add(t); tag_list.append(t)
+            if len(tag_list) >= 6: break
 
         nauczyciele.append({
             "full_name": (f"{u.first_name} {u.last_name}".strip() or u.username).strip(),

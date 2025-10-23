@@ -16,7 +16,7 @@ from .views import (
 
 urlpatterns = [
     # Strona główna (jeśli chcesz, możesz ją mieć też w projekcie)
-    path("", TemplateView.as_view(template_name="index.html"), name="strona_glowna"),
+    path("", strona_glowna_view, name="strona_glowna"),
 
     # Logowanie / rejestracja / konta
     path("login/", views.login_view, name="login"),
