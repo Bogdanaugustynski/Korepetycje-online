@@ -106,62 +106,47 @@ def test_publiczny(request):
 def strona_glowna_view(request):
     User = get_user_model()
 
-    # Bierzemy aktywnych użytkowników + potencjalnie powiązany profil + grupy
+    # Używamy OR: (profil.is_teacher=True) LUB (grupa "Nauczyciel")
     qs = (
         User.objects
         .filter(is_active=True)
-        .select_related("profil")       # jeśli relacja nazywa się "profil"
-        .prefetch_related("groups")     # do sprawdzania grupy "Nauczyciel"
+        .filter(
+            Q(profil__is_teacher=True) |
+            Q(groups__name__iexact="Nauczyciel")
+        )
+        .select_related("profil")    # reverse accessor: user.profil (OK dla Twojej klasy Profil)
+        .prefetch_related("groups")
         .order_by("last_name", "first_name")
+        .distinct()                  # WAŻNE przy łączeniu przez groups
     )
 
     nauczyciele = []
-
     for u in qs:
-        # Dopuszczamy obie nazwy relacji: "profil" i "profile"
-        profil = getattr(u, "profil", None) or getattr(u, "profile", None)
+        profil = getattr(u, "profil", None)
 
-        # Heurystyka: kto jest nauczycielem?
-        is_teacher = False
-        if profil:
-            # różne możliwe pola w profilu
-            for flag_name in ("is_teacher", "czy_nauczyciel", "is_nauczyciel"):
-                if getattr(profil, flag_name, False):
-                    is_teacher = True
-                    break
-
-        # awaryjnie: grupa "Nauczyciel"
-        if not is_teacher and hasattr(u, "groups"):
-            if u.groups.filter(name__iexact="Nauczyciel").exists():
-                is_teacher = True
-
-        if not is_teacher:
-            continue  # pomiń użytkownika, który nie jest nauczycielem
-
-        # ---- Zdjęcie (obsługa FileField/URL/str, różne nazwy pól) ----
+        # Zdjęcie (obsługa FileField/URL/str + różne nazwy)
         photo_url = ""
         if profil:
             for field_name in ("zdjecie", "photo", "avatar", "photo_url", "image"):
                 val = getattr(profil, field_name, "")
                 if val:
                     try:
-                        photo_url = val.url  # FileField/ImageField
+                        photo_url = val.url
                     except Exception:
-                        photo_url = str(val)  # zwykły string/URL
+                        photo_url = str(val)
                     if photo_url:
                         break
 
-        # ---- Tagowanie (przedmioty/poziomy/tytuły) ----
+        # Tagowanie (przedmioty/poziomy/tytuły)
         raw_tags = []
         if profil:
-            for src in ("przedmioty", "poziom_nauczania", "tytul_naukowy", "tagi"):
+            for src in ("przedmioty", "poziom_nauczania", "tytul_naukowy"):
                 s = getattr(profil, src, "") or ""
                 if s:
                     raw_tags.extend([t.strip() for t in s.split(",") if t.strip()])
 
-        # Unikalne tagi z zachowaniem kolejności (max 6)
-        seen = set()
-        tag_list = []
+        # Unikalne tagi (max 6)
+        seen, tag_list = set(), []
         for t in raw_tags:
             if t not in seen:
                 seen.add(t)
@@ -177,12 +162,7 @@ def strona_glowna_view(request):
             "default_avatar": "https://placehold.co/72x72",
         })
 
-    # Opcjonalnie: ogranicz do np. 24 pozycji (siatka ładniej wygląda)
-    # nauczyciele = nauczyciele[:24]
-
-    return render(request, "index.html", {
-        "nauczyciele": nauczyciele
-    })
+    return render(request, "index.html", {"nauczyciele": nauczyciele})
 
 
 
