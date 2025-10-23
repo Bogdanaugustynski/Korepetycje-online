@@ -1,17 +1,6 @@
 {# panel/templates/partials/panel_header.html #}
 {% load static %}
 
-<!--
-This header component provides a consistent sticky/fixed brand bar across
-all panels (student, teacher, accounting, etc.).  The brand is aligned
-left and shares the same horizontal padding as the main content,
-controlled by the CSS custom property `--page-pad-x`.  A single action
-button on the right links back to the appropriate panel.  The header
-has a semi‑transparent backdrop and a subtle shadow.  A spacer div
-underneath ensures page content does not shift underneath the fixed
-header.  You can override the padding per page by redefining
-`--page-pad-x` in that page’s template.
--->
 <header class="main-header">
   <div class="brand-wrap">
     <div class="brand-left">
