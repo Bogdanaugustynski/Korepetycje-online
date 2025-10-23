@@ -104,46 +104,36 @@ def test_publiczny(request):
 # --- STRONA GŁÓWNA (lista tylko nauczycieli: profil.is_teacher=True) ---
 
 def strona_glowna_view(request):
-    User = get_user_model()
-
-    # Używamy OR: (profil.is_teacher=True) LUB (grupa "Nauczyciel")
-    qs = (
-        User.objects
-        .filter(is_active=True)
-        .filter(
-            Q(profil__is_teacher=True) |
-            Q(groups__name__iexact="Nauczyciel")
-        )
-        .select_related("profil")    # reverse accessor: user.profil (OK dla Twojej klasy Profil)
-        .prefetch_related("groups")
-        .order_by("last_name", "first_name")
-        .distinct()                  # WAŻNE przy łączeniu przez groups
+    # Bierzemy wprost profile oznaczone jako nauczyciele i z aktywnym użytkownikiem
+    profs = (
+        Profil.objects
+        .select_related("user")
+        .filter(is_teacher=True, user__is_active=True)
+        .order_by("user__last_name", "user__first_name")
     )
 
     nauczyciele = []
-    for u in qs:
-        profil = getattr(u, "profil", None)
+    for p in profs:
+        u = p.user
 
-        # Zdjęcie (obsługa FileField/URL/str + różne nazwy)
+        # Zdjęcie (obsługa FileField/URL/str + różne nazwy pól)
         photo_url = ""
-        if profil:
-            for field_name in ("zdjecie", "photo", "avatar", "photo_url", "image"):
-                val = getattr(profil, field_name, "")
-                if val:
-                    try:
-                        photo_url = val.url
-                    except Exception:
-                        photo_url = str(val)
-                    if photo_url:
-                        break
+        for field_name in ("zdjecie", "photo", "avatar", "photo_url", "image"):
+            val = getattr(p, field_name, "")
+            if val:
+                try:
+                    photo_url = val.url  # FileField/ImageField
+                except Exception:
+                    photo_url = str(val)  # zwykły string/URL
+                if photo_url:
+                    break
 
         # Tagowanie (przedmioty/poziomy/tytuły)
         raw_tags = []
-        if profil:
-            for src in ("przedmioty", "poziom_nauczania", "tytul_naukowy"):
-                s = getattr(profil, src, "") or ""
-                if s:
-                    raw_tags.extend([t.strip() for t in s.split(",") if t.strip()])
+        for src in ("przedmioty", "poziom_nauczania", "tytul_naukowy"):
+            s = getattr(p, src, "") or ""
+            if s:
+                raw_tags.extend([t.strip() for t in s.split(",") if t.strip()])
 
         # Unikalne tagi (max 6)
         seen, tag_list = set(), []
@@ -156,14 +146,13 @@ def strona_glowna_view(request):
 
         nauczyciele.append({
             "full_name": (f"{u.first_name} {u.last_name}".strip() or u.username).strip(),
-            "bio": getattr(profil, "opis", "") if profil else "",
+            "bio": p.opis or "",
             "photo_url": photo_url,
             "tag_list": tag_list,
             "default_avatar": "https://placehold.co/72x72",
         })
 
     return render(request, "index.html", {"nauczyciele": nauczyciele})
-
 
 
 
