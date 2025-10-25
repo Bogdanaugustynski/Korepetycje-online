@@ -5,12 +5,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PolubiszTo.pl — Korepetycje online</title>
+  <meta name="description" content="PolubiszTo.pl — korepetycje online z wirtualną tablicą i rozmową głosową. Zarejestruj się, wybierz nauczyciela, zarezerwuj termin i dołącz do pokoju zajęć." />
+
+  <!-- (Ali) Preload grafik hero dla szybszego LCP -->
+  <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}" imagesrcset="{% static 'panel/podglad_tablicy.png' %} 1x" />
+  <link rel="preload" as="image" href="{% static 'panel/mentor_kobieta.png' %}" imagesrcset="{% static 'panel/mentor_kobieta.png' %} 1x" />
+
   <style>
     :root{
       --primary:#0b74ff; --ink:#0f172a; --bg:#f7f9ff; --card:#ffffff; --muted:#6b7280;
       --shadow:0 10px 30px rgba(11,116,255,.12);
       --radius:16px; --gap:16px; --edge:16px; --max:1140px;
-      --glow: 0 20px 60px rgba(11,116,255,.18);
+      --glow:0 20px 60px rgba(11,116,255,.18);
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
@@ -18,6 +24,10 @@
     img{max-width:100%;height:auto;display:block}
     a{color:var(--primary);text-decoration:none}
     .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--edge)}
+
+    /* Skip link (Lyra: dostępność) */
+    .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+    .skip-link:focus{left:12px;top:12px;width:auto;height:auto;background:#fff;border:2px solid var(--primary);padding:8px 12px;border-radius:10px;z-index:1000}
 
     /* header */
     header{position:sticky;top:0;z-index:50;border-bottom:1px solid #e5e7eb;
@@ -56,24 +66,18 @@
     .spark{position:absolute;inset:auto -20% -40% auto;width:60%;height:60%;
       background:radial-gradient(closest-side, rgba(123,167,255,.25), transparent 70%); transform:rotate(-12deg);filter:blur(12px);pointer-events:none}
 
-    /* Mentorka: realne zdjęcie, odbite w stronę środka + delikatny „float” */
-    .mentor{
-      position:absolute;
-      right:-6%;
-      bottom:-6%;
-      width:min(36%, 280px);
-      pointer-events:none;
-      filter:drop-shadow(0 18px 24px rgba(15,23,42,.18));
-      transform-origin:center;
-      animation:floatMentor 6s ease-in-out infinite;
-      border-radius:16px;                    /* ładniejsze krawędzie dla zdjęcia */
+    .board-caption{
+      position:absolute;bottom:10px;left:12px;right:12px;background:rgba(255,255,255,.86);
+      color:#0f172a;font-size:14px;font-weight:600;text-align:center;padding:6px 10px;border-radius:10px;
+      box-shadow:0 2px 6px rgba(0,0,0,.08);backdrop-filter:blur(4px)
     }
-    @keyframes floatMentor{
-      0%,100%{ transform:translateY(0) }     /* usunięte scaleX(-1) */
-      50%{     transform:translateY(-6px) }  /* lekki „float” bez odbicia */
 
+    .mentor{
+      position:absolute;right:-6%;bottom:-6%;width:min(36%, 280px);pointer-events:none;
+      filter:drop-shadow(0 18px 24px rgba(15,23,42,.18));transform-origin:center;animation:floatMentor 6s ease-in-out infinite;border-radius:16px
     }
-    @media (max-width: 900px){ .mentor{display:none} } /* chowamy na małych ekranach */
+    @keyframes floatMentor{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-6px) } }
+    @media (max-width: 900px){ .mentor{display:none} }
 
     /* Kroki */
     .steps{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
@@ -106,13 +110,27 @@
       .btn.primary.pulse, .mentor{animation:none}
     }
   </style>
+
+  <!-- (Noa) Strukturalne dane SEO -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Organization",
+    "name":"PolubiszTo.pl",
+    "url":"https://polubiszto.pl",
+    "email":"polubiszto.pl@gmail.com",
+    "logo":"{% static 'panel/logo_polubiszto.png' %}"
+  }
+  </script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Przejdź do treści</a>
+
   <header>
     <div class="wrap bar">
       {% include "partials/brand.html" %}
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="site-nav" aria-expanded="false"><i></i></button>
-      <nav class="nav" id="site-nav">
+      <nav class="nav" id="site-nav" aria-label="Główne">
         <a class="btn" href="/o-nas">O nas</a>
         <a class="btn" href="/kontakt">Kontakt</a>
         <a class="btn" href="{% url 'login' %}">Zaloguj</a>
@@ -120,8 +138,8 @@
     </div>
   </header>
 
-  <main>
-    <section class="hero">
+  <main id="main">
+    <section class="hero" aria-label="Wprowadzenie">
       <div class="wrap hero-in">
         <div>
           <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
@@ -141,22 +159,27 @@
         </div>
 
         <div class="hero-visual">
-          <!-- TABLICA -->
-          <div class="board-preview">
-            <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd tablicy wirtualnego pokoju">
+          <!-- TABLICA (figure + figcaption semantics) -->
+          <figure class="board-preview">
+            <img
+              src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}"
+              alt="Podgląd wirtualnej tablicy w pokoju zajęć PolubiszTo.pl"
+              loading="eager" decoding="async" />
             <div class="spark" aria-hidden="true"></div>
-          </div>
+            <figcaption class="board-caption">Podgląd wirtualnej tablicy PolubiszTo.pl</figcaption>
+          </figure>
 
-          <!-- MENTORKA: realne zdjęcie (odwrócone w stronę środka) -->
+          <!-- MENTORKA -->
           <img class="mentor"
                src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}"
-               alt="Młoda nauczycielka — Twoja mentorka online">
+               alt="Twoja mentorka online"
+               loading="lazy" decoding="async" />
         </div>
       </div>
     </section>
 
-    <section class="wrap section" id="dlaczego-my">
-      <h2>Dlaczego warto nas wybrać?</h2>
+    <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
+      <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
       <div class="grid">
         <div class="card"><h4>✔ Doświadczeni nauczyciele</h4><p>Zweryfikowane profile z jasno opisanym doświadczeniem.</p></div>
         <div class="card"><h4>✔ Dogodne godziny</h4><p>Elastyczny grafik dopasowany do Twojego planu dnia.</p></div>
@@ -164,17 +187,22 @@
       </div>
     </section>
 
-    <section class="wrap section" id="nauczyciele">
-      <h2>Polecani nauczyciele</h2>
+    <section class="wrap section" id="nauczyciele" aria-labelledby="teachers-title">
+      <h2 id="teachers-title">Polecani nauczyciele</h2>
       <div class="grid" id="teachersGrid">
         {% for n in nauczyciele %}
           <article class="card teacher">
-            <img class="avatar" src="{{ n.photo_url|default:n.default_avatar }}" alt="{{ n.full_name }}" onerror="this.src='https://placehold.co/72x72'"/>
+            <img class="avatar"
+                 src="{{ n.photo_url|default:n.default_avatar }}"
+                 alt="{{ n.full_name }}"
+                 width="72" height="72"
+                 loading="lazy" decoding="async"
+                 onerror="this.src='https://placehold.co/72x72'"/>
             <div style="flex:1">
               <h3 class="name">{{ n.full_name }}</h3>
               <p class="desc clamp-2">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
               {% if n.tag_list %}
-                <div class="tags">
+                <div class="tags" aria-label="Specjalizacje">
                   {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
                 </div>
               {% endif %}
@@ -186,7 +214,7 @@
       </div>
     </section>
 
-    <section class="wrap section" id="cta" style="text-align:center">
+    <section class="wrap section" id="cta" style="text-align:center" aria-label="Wezwanie do działania">
       <h2>🚀 Zacznij już dziś!</h2>
       <p>Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
       <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
@@ -198,6 +226,7 @@
   </footer>
 
   <script>
+    // (Noa) Aktualizacja roku + nawigacja + header shadow
     document.getElementById('y').textContent = new Date().getFullYear();
     (function(){var btn=document.getElementById('hamb'), nav=document.getElementById('site-nav');
       if(btn&&nav){ btn.addEventListener('click', function(){ var open=nav.classList.toggle('open'); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); });}})();
@@ -205,5 +234,6 @@
       function onScroll(){ var y = window.scrollY || document.documentElement.scrollTop; if (y>4) hdr.classList.add('scrolled'); else hdr.classList.remove('scrolled');}
       onScroll(); window.addEventListener('scroll', onScroll, {passive:true});})();
   </script>
+  <noscript>Włącz JavaScript, by w pełni korzystać ze strony PolubiszTo.pl.</noscript>
 </body>
 </html>
