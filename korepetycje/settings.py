@@ -158,21 +158,23 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")  # np. https://s3.waw.io.cloud.ovh.net
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "WAW")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "gra")   # <— UŻYJ 'gra' (Warszawa)
 
 USE_S3 = all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME, AWS_S3_ENDPOINT_URL])
 
 if USE_S3:
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
     AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = False
     AWS_S3_FILE_OVERWRITE = False
-    # przy virtual-hosted style Media URL ma postać:
-    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.waw.io.cloud.ovh.net/"
-    MEDIA_ROOT = ""  # nieużywane przy S3
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_S3_ADDRESSING_STYLE = "virtual"   # <— lepsza kompatybilność URL
+    AWS_QUERYSTRING_AUTH = True           # <— prywatny bucket => podpisane URL-e
+    MEDIA_URL = None                      # <— pozwól backendowi generować .url
+    MEDIA_ROOT = ""                       # nieużywane przy S3
 else:
     MEDIA_URL = "/media/"
-    MEDIA_ROOT = BASE_DIR / "media"  # efemeryczne na darmowym Render – OK w dev
+    MEDIA_ROOT = BASE_DIR / "media"
+
 
 # === SECURITY (hardening) ===
 SECURE_SSL_REDIRECT = not DEBUG
