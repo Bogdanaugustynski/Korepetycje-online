@@ -53,20 +53,6 @@ class Profil(models.Model):
     # ----- meta -----
     updated_at = models.DateTimeField(auto_now=True)
 
-    # ----- helper -----
-    @property
-    def is_minor(self):
-        """Zwraca True, jeśli uczeń ma mniej niż 18 lat."""
-        if not self.birth_date:
-            return None
-        today = timezone.localdate()
-        try:
-            age = today.year - self.birth_date.year - (
-                (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
-            )
-            return age < 18
-        except Exception:
-            return None
 
     def __str__(self):
         return f"{self.user.username} - profil"

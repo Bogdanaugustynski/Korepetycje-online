@@ -427,50 +427,77 @@ def login_view(request):
 
 # REJESTRACJA
 
+User = get_user_model()
+
 def register_view(request):
-    if request.method == "POST":
-        email = (request.POST.get("email") or "").strip().lower()
-        password = (request.POST.get("password") or "").strip()
-        first_name = (request.POST.get("first_name") or "").strip()
-        last_name = (request.POST.get("last_name") or "").strip()
-        phone = (request.POST.get("phone") or "").strip()
-        city = (request.POST.get("city") or "").strip()
-        accepted = request.POST.get("accept_legal") == "on"
+    if request.method == "GET":
+        return render(request, "register.html")
 
-        # 1) Walidacje podstawowe
-        if not accepted:
-            return render(request, "register.html", {"error": "Musisz zaakceptować Regulamin i Politykę Prywatności."})
+    # --- dane z formularza ---
+    first_name = (request.POST.get("first_name") or "").strip()
+    last_name  = (request.POST.get("last_name") or "").strip()
+    city       = (request.POST.get("city") or "").strip()
+    email      = (request.POST.get("email") or "").strip().lower()
+    phone      = (request.POST.get("phone") or "").strip()
+    password   = (request.POST.get("password") or "")
+    accepted   = (request.POST.get("accept_legal") == "on")
 
-        try:
-            validate_email(email)
-        except ValidationError:
-            return render(request, "register.html", {"error": "Podaj poprawny adres e-mail."})
+    # --- walidacje ---
+    if not accepted:
+        return render(request, "register.html", {
+            "error": "Musisz zaakceptować Regulamin i Politykę Prywatności.",
+            "form": request.POST,
+        })
 
-        if len(password) < 8:
-            return render(request, "register.html", {"error": "Hasło musi mieć co najmniej 8 znaków."})
+    try:
+        validate_email(email)
+    except ValidationError:
+        return render(request, "register.html", {"error": "Podaj poprawny adres e-mail.", "form": request.POST})
 
-        if User.objects.filter(email=email).exists():
-            return render(request, "register.html", {"error": "Ten e-mail jest już zarejestrowany."})
+    if len(password) < 8:
+        return render(request, "register.html", {"error": "Hasło musi mieć co najmniej 8 znaków.", "form": request.POST})
 
-        # 2) Tworzenie użytkownika i profilu
+    if User.objects.filter(email__iexact=email).exists():
+        return render(request, "register.html", {"error": "Ten e-mail jest już zarejestrowany.", "form": request.POST})
+
+    # --- utworzenie usera + profilu atomowo, bez duplikatu ---
+    try:
         with transaction.atomic():
             user = User.objects.create_user(
-                username=email, email=email, password=password,
-                first_name=first_name, last_name=last_name
+                username=email,  # jeśli używasz emaila jako username
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
             )
-            profil = Profil.objects.create(user=user, is_teacher=False, numer_telefonu=phone)
-            # Opcjonalnie zapisz miejscowość, jeśli model Profil ma takie pole:
-            try:
-                setattr(profil, "miejscowosc", city)
-                profil.save(update_fields=["miejscowosc"])
-            except Exception:
-                # jeśli Profil nie ma pola 'miejscowosc', pomiń
-                pass
 
-        messages.success(request, "Konto zostało utworzone. Zaloguj się, aby kontynuować.")
-        return redirect("login")
+            # PROFIL: używamy get_or_create (gasi UniqueViolation, gdy działa sygnał post_save)
+            profil, created = Profil.objects.get_or_create(
+                user=user,
+                defaults={
+                    "is_teacher": False,
+                    "numer_telefonu": phone,
+                    "city": city,  # << Twoje pole w modelu
+                },
+            )
+            if not created:
+                # jeżeli profil powstał z sygnału – aktualizujemy brakujące pola
+                changed = False
+                if profil.numer_telefonu != phone:
+                    profil.numer_telefonu = phone; changed = True
+                if getattr(profil, "city", "") != city:
+                    profil.city = city; changed = True
+                if changed:
+                    profil.save()
 
-    return render(request, "register.html")
+    except IntegrityError:
+        return render(request, "register.html", {
+            "error": "Wystąpił błąd rejestracji. Spróbuj ponownie.",
+            "form": request.POST,
+        })
+
+    messages.success(request, "Konto zostało utworzone. Zaloguj się, aby kontynuować.")
+    return redirect("login")
 
 
 # ==========================

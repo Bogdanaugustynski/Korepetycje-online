@@ -6,46 +6,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rejestracja Ucznia — PolubiszTo.pl</title>
   <style>
-    :root{ --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --bg:#f7f9fe; --line:#e6edff; }
+    :root{
+      --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
+      --bg:#f7f9fe; --line:#e6edff;
+    }
     *{box-sizing:border-box}
     body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg); color:var(--ink);
-      min-height:100svh; display:flex; flex-direction:column;
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
     }
-    main{ flex:1; display:flex; align-items:center; justify-content:center; padding:30px 16px; }
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:30px 16px;}
     .card{
-      background:#fff; border:1px solid var(--line); border-radius:16px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:16px;
       box-shadow:0 6px 20px rgba(11,20,36,.06);
-      padding:26px 22px; width:100%; max-width:420px;
+      padding:26px 22px;
+      width:100%;
+      max-width:420px;
     }
-    h1{font-size:22px; margin:0 0 6px}
-    p.lead{font-size:14px; color:var(--muted); margin:0 0 18px}
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    h1{font-size:22px;margin:0 0 6px}
+    p.lead{font-size:14px;color:var(--muted);margin:0 0 18px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .field{margin-bottom:12px}
-    .label{display:block; font-size:13px; color:#364152; margin:0 0 6px}
+    .label{display:block;font-size:13px;color:#364152;margin:0 0 6px}
     .input{
-      width:100%; padding:12px; border:1px solid #d8e1f0; border-radius:12px; font-size:14px; background:#fff;
+      width:100%;
+      padding:12px;
+      border:1px solid #d8e1f0;
+      border-radius:12px;
+      font-size:14px;
+      background:#fff;
       outline:none;
     }
-    .input:focus{border-color:var(--brand); box-shadow:0 0 0 3px rgba(11,116,255,.12)}
-    .legal{display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#2c3443; margin-top:6px}
-    .legal a{color:var(--brand); text-decoration:none}
+    .input:focus{
+      border-color:var(--brand);
+      box-shadow:0 0 0 3px rgba(11,116,255,.12);
+    }
+    .legal{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      font-size:13px;
+      color:#2c3443;
+      margin-top:6px;
+    }
+    .legal a{color:var(--brand);text-decoration:none}
     .legal a:hover{text-decoration:underline}
     .btn{
-      width:100%; padding:12px 14px; border:none; border-radius:12px; cursor:pointer;
-      background:var(--brand); color:#fff; font-weight:700; font-size:15px; margin-top:12px;
+      width:100%;
+      padding:12px 14px;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+      background:var(--brand);
+      color:#fff;
+      font-weight:700;
+      font-size:15px;
+      margin-top:12px;
+      transition:filter .2s;
     }
     .btn:hover{filter:brightness(.97)}
-    .error{background:#fff1f1; border:1px solid #ffd2d2; color:#8a1c1c; padding:10px 12px; border-radius:10px; font-size:13px; margin-top:8px}
-    .note{font-size:12px; color:#6b7280; margin-top:12px; text-align:center}
+    .error{
+      background:#fff1f1;
+      border:1px solid #ffd2d2;
+      color:#8a1c1c;
+      padding:10px 12px;
+      border-radius:10px;
+      font-size:13px;
+      margin-top:8px;
+    }
+    .note{font-size:12px;color:#6b7280;margin-top:12px;text-align:center}
   </style>
 </head>
 <body>
 
-{# 👉 Użyj Twojego brandowego partiala nagłówka #}
 {% include "partials/brand.html" %}
-{# jeśli u Ciebie plik nazywa się inaczej, np. 'partials/panel_header.html', podmień nazwę w include #}
 
 <main>
   <div class="card">
@@ -58,36 +99,43 @@
       <div class="row">
         <div class="field">
           <label class="label" for="first_name">Imię</label>
-          <input id="first_name" class="input" type="text" name="first_name" required />
+          <input id="first_name" class="input" type="text" name="first_name"
+                 value="{{ form.first_name|default:'' }}" required />
         </div>
         <div class="field">
           <label class="label" for="last_name">Nazwisko</label>
-          <input id="last_name" class="input" type="text" name="last_name" required />
+          <input id="last_name" class="input" type="text" name="last_name"
+                 value="{{ form.last_name|default:'' }}" required />
         </div>
       </div>
 
       <div class="field">
         <label class="label" for="city">Miejscowość</label>
-        <input id="city" class="input" type="text" name="city" placeholder="np. Kraków" required />
+        <input id="city" class="input" type="text" name="city"
+               placeholder="np. Kraków" value="{{ form.city|default:'' }}" required />
       </div>
 
       <div class="field">
         <label class="label" for="email">E-mail</label>
-        <input id="email" class="input" type="email" name="email" required />
+        <input id="email" class="input" type="email" name="email"
+               value="{{ form.email|default:'' }}" required />
       </div>
 
       <div class="field">
         <label class="label" for="phone">Numer telefonu</label>
-        <input id="phone" class="input" type="tel" name="phone" placeholder="np. 500 600 700" required />
+        <input id="phone" class="input" type="tel" name="phone"
+               placeholder="np. 500 600 700" value="{{ form.phone|default:'' }}" required />
       </div>
 
       <div class="field">
         <label class="label" for="password">Hasło</label>
-        <input id="password" class="input" type="password" name="password" required minlength="8" />
+        <input id="password" class="input" type="password" name="password"
+               minlength="8" required />
       </div>
 
       <div class="field legal">
-        <input id="accept_legal" type="checkbox" name="accept_legal" required />
+        <input id="accept_legal" type="checkbox" name="accept_legal"
+               {% if form.accept_legal %}checked{% endif %} required />
         <label for="accept_legal">
           Oświadczam, że zapoznałem/am się i akceptuję
           <a href="{% url 'regulamin' %}">Regulamin</a> oraz
@@ -95,10 +143,15 @@
         </label>
       </div>
 
-      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
 
       <button class="btn" type="submit">Zarejestruj się</button>
-      <p class="note">Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a></p>
+      <p class="note">
+        Masz już konto?
+        <a href="{% url 'login' %}" style="color:var(--brand);text-decoration:none;">Zaloguj się</a>
+      </p>
     </form>
   </div>
 </main>
