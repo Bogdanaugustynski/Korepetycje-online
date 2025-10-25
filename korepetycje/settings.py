@@ -154,23 +154,24 @@ if (BASE_DIR / "static").exists():
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # === MEDIA: S3 (OVH) jeśli ENV ustawione, inaczej lokalnie ===
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")  # np. https://s3.waw.io.cloud.ovh.net
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "gra")   # <— UŻYJ 'gra' (Warszawa)
-
-USE_S3 = all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME, AWS_S3_ENDPOINT_URL])
+USE_S3 = os.getenv("USE_S3", "0") == "1"
 
 if USE_S3:
+    INSTALLED_APPS += ["storages"]
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    AWS_DEFAULT_ACL = None
-    AWS_S3_FILE_OVERWRITE = False
+
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "WAW")
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+
     AWS_S3_SIGNATURE_VERSION = "s3v4"
-    AWS_S3_ADDRESSING_STYLE = "virtual"   # <— lepsza kompatybilność URL
-    AWS_QUERYSTRING_AUTH = True           # <— prywatny bucket => podpisane URL-e
-    MEDIA_URL = None                      # <— pozwól backendowi generować .url
-    MEDIA_ROOT = ""                       # nieużywane przy S3
+    AWS_S3_ADDRESSING_STYLE = "virtual"
+    AWS_QUERYSTRING_AUTH = True
+
+    MEDIA_URL = None
+    MEDIA_ROOT = ""
 else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
