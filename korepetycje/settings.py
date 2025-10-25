@@ -156,8 +156,12 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # === MEDIA: S3 (OVH) jeśli ENV ustawione, inaczej lokalnie ===
 USE_S3 = os.getenv("USE_S3", "0") == "1"
 
+# …INSTALLED_APPS z Twoimi appkami…
+
 if USE_S3:
-    INSTALLED_APPS += ["storages"]
+    if "storages" not in INSTALLED_APPS:      # ⬅️ bezpiecznik przed duplikatem
+        INSTALLED_APPS += ["storages"]
+
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
