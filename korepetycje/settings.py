@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "panel",
     "channels",
+    # pliki S3
+    "storages",
 ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -106,7 +108,6 @@ def _valid_redis_url(u: str | None) -> bool:
     if not u:
         return False
     u = u.strip().lower()
-    # akceptuj tylko prawidłowe schematy Redis
     return u.startswith(("redis://", "rediss://", "unix://"))
 
 REDIS_URL = os.getenv("REDIS_URL")
@@ -131,7 +132,6 @@ if _valid_redis_url(REDIS_URL):
         }
     }
 else:
-    # Bezpieczny fallback: jeden proces => wspólny cache plikowy
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
@@ -146,22 +146,38 @@ TIME_ZONE = "Europe/Warsaw"
 USE_I18N = True
 USE_TZ = True
 
-# === STATIC / MEDIA ===
+# === STATIC ===
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"  # (na darmowym Render pliki efemeryczne)
+# === MEDIA: S3 (OVH) jeśli ENV ustawione, inaczej lokalnie ===
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")  # np. https://s3.waw.io.cloud.ovh.net
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "WAW")
+
+USE_S3 = all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME, AWS_S3_ENDPOINT_URL])
+
+if USE_S3:
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+    # przy virtual-hosted style Media URL ma postać:
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.waw.io.cloud.ovh.net/"
+    MEDIA_ROOT = ""  # nieużywane przy S3
+else:
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"  # efemeryczne na darmowym Render – OK w dev
 
 # === SECURITY (hardening) ===
-# HTTPS / proxy
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Cookies
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
@@ -169,14 +185,12 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
-# HSTS (tylko w prod)
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 
-# Nagłówki bezpieczeństwa
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True  # legacy, ale nie szkodzi
+SECURE_BROWSER_XSS_FILTER = True  # legacy
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
@@ -184,18 +198,15 @@ SECURE_REFERRER_POLICY = "same-origin"
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/uczen/moje-konto/"
 
-# Walidatory haseł (na razie wyłączone - jak w Twojej bazie)
+# Walidatory haseł (na razie wyłączone)
 AUTH_PASSWORD_VALIDATORS = []
 
 # === UPLOAD LIMITS / AVATAR ===
-# Maksymalny rozmiar pojedynczego pliku upload (np. avatar) – 2 MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
-# Limit całego requestu multipart (np. formularz z plikami) – 5 MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
-# Uprawnienia zapisanych plików: rw-r-----
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024      # 2 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024      # 5 MB
 FILE_UPLOAD_PERMISSIONS = 0o640
 
-# === LOGI (diagnostyka WebRTC i Django) ===
+# === LOGI ===
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -203,9 +214,16 @@ LOGGING = {
     "loggers": {
         "django": {"handlers": ["console"], "level": "INFO"},
         "webrtc": {"handlers": ["console"], "level": "INFO"},
+        # boto3/s3 debug (włączyć doraźnie gdy trzeba):
+        # "boto3": {"handlers": ["console"], "level": "WARNING"},
+        # "botocore": {"handlers": ["console"], "level": "WARNING"},
     },
 }
 
+# === PŁATNOŚCI / FAKTURY ===
+AUTOPAY_WEBHOOK_SECRET = os.getenv("AUTOPAY_WEBHOOK_SECRET", "change-me")
+INVOICE_PLACE_DEFAULT = os.getenv("INVOICE_PLACE_DEFAULT", "Warszawa")
+DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "PLN")
 
-AUTOPAY_WEBHOOK_SECRET = "change-me"   # tu Twój sekret z Autopay
-INVOICE_PLACE_DEFAULT = "Warszawa"
+# (opcjonalnie) e-mail nadawcy
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "PolubiszTo.pl <no-reply@polubiszto.pl>")
