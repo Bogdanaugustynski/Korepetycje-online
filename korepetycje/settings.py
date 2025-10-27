@@ -146,48 +146,45 @@ TIME_ZONE = "Europe/Warsaw"
 USE_I18N = True
 USE_TZ = True
 
-# === STATIC ===
+# === STATIC (WhiteNoise) ===
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Django 5.2: używamy STORAGES['staticfiles'] zamiast STATICFILES_STORAGE
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+    # "default" (MEDIA) dopiszemy niżej warunkowo przy USE_S3
+}
 
 # === MEDIA: S3 (OVH) jeśli ENV ustawione, inaczej lokalnie ===
 USE_S3 = os.getenv("USE_S3", "0") == "1"
 
-# Pakiety (upewnij się, że masz je w requirements.txt: django-storages, boto3)
 if USE_S3:
-    # Bezpiecznik przed duplikatem
-    if "storages" not in INSTALLED_APPS:
-        INSTALLED_APPS += ["storages"]
+    # (masz w INSTALLED_APPS 'storages')
+    STORAGES["default"] = {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"}
 
-    # Nowoczesny sposób (Django 4.2+): STORAGES
-    STORAGES = {
-        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
-        # "staticfiles": {"BACKEND": "storages.backends.s3boto3.S3StaticStorage"},  # opcjonalnie
-    }
-
-    # Klucze czytane przez django-storages
+    # Klucze dla django-storages
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")            # np. polubiszto-media
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")  # np. polubiszto-media
     AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "waw")               # ⬅️ małymi literami!
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "waw")    # małymi literami
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_S3_ADDRESSING_STYLE = "virtual"
 
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
 
-    # Nie potrzebujemy lokalnych MEDIA_* przy S3
-    MEDIA_URL = "/media/"   # może być placeholder – nie używamy .url na front-endzie
-    MEDIA_ROOT = ""         # bez znaczenia przy S3
+    # Placeholdery — front i tak nie używa .url do mediów
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = ""
 else:
-    # Lokalny dysk dla DEV
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
-
 
 # === SECURITY (hardening) ===
 SECURE_SSL_REDIRECT = not DEBUG
@@ -205,7 +202,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True  # legacy
+SECURE_BROWSER_XSS_FILTER = True  # legacy/no-op w nowych przeglądarkach
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
@@ -229,7 +226,6 @@ LOGGING = {
     "loggers": {
         "django": {"handlers": ["console"], "level": "INFO"},
         "webrtc": {"handlers": ["console"], "level": "INFO"},
-        # boto3/s3 debug (włączyć doraźnie gdy trzeba):
         # "boto3": {"handlers": ["console"], "level": "WARNING"},
         # "botocore": {"handlers": ["console"], "level": "WARNING"},
     },
