@@ -156,27 +156,35 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # === MEDIA: S3 (OVH) jeśli ENV ustawione, inaczej lokalnie ===
 USE_S3 = os.getenv("USE_S3", "0") == "1"
 
-# …INSTALLED_APPS z Twoimi appkami…
-
+# Pakiety (upewnij się, że masz je w requirements.txt: django-storages, boto3)
 if USE_S3:
-    if "storages" not in INSTALLED_APPS:      # ⬅️ bezpiecznik przed duplikatem
+    # Bezpiecznik przed duplikatem
+    if "storages" not in INSTALLED_APPS:
         INSTALLED_APPS += ["storages"]
 
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    # Nowoczesny sposób (Django 4.2+): STORAGES
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+        # "staticfiles": {"BACKEND": "storages.backends.s3boto3.S3StaticStorage"},  # opcjonalnie
+    }
 
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "WAW")
+    # Klucze czytane przez django-storages
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")            # np. polubiszto-media
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "waw")               # ⬅️ małymi literami!
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_S3_ADDRESSING_STYLE = "virtual"
+
+    AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
 
-    MEDIA_URL = None
-    MEDIA_ROOT = ""
+    # Nie potrzebujemy lokalnych MEDIA_* przy S3
+    MEDIA_URL = "/media/"   # może być placeholder – nie używamy .url na front-endzie
+    MEDIA_ROOT = ""         # bez znaczenia przy S3
 else:
+    # Lokalny dysk dla DEV
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
 
