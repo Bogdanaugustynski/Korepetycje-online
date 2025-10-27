@@ -345,32 +345,29 @@ def check_online_status(request, rezerwacja_id):
 @login_required
 def pobierz_plik(request, id):
     """
-    Bezpieczne pobieranie materiałów lekcyjnych.
-    Plik otrzyma tylko nauczyciel lub uczeń przypisany do danej rezerwacji.
+    Pobieranie pliku dołączonego przy rezerwacji (uczeń -> nauczyciel).
+    Dostęp: tylko nauczyciel lub uczeń z tej rezerwacji.
     """
-    rezerwacja = get_object_or_404(Rezerwacja, id=id)
-
-    # Dostęp wyłącznie dla właściwych użytkowników
-    if request.user != rezerwacja.nauczyciel and request.user != rezerwacja.uczen:
+    r = get_object_or_404(Rezerwacja, id=id)
+    if request.user != r.nauczyciel and request.user != r.uczen:
         raise Http404("Brak dostępu")
-
-    if not rezerwacja.plik:
+    if not r.plik:
         raise Http404("Plik nie istnieje")
-
-    return FileResponse(rezerwacja.plik.open("rb"), as_attachment=True)
+    return FileResponse(r.plik.open("rb"), as_attachment=True)
 
 
 @login_required
-def pobierz_material_po_zajeciach(request, id):
-    rez = get_object_or_404(Rezerwacja, id=id)
-
-    if request.user not in (rez.nauczyciel, rez.uczen):
+def pobierz_material(request, id):
+    """
+    Pobieranie materiału dodanego po zajęciach (nauczyciel -> uczeń).
+    Dostęp: tylko nauczyciel lub uczeń z tej rezerwacji.
+    """
+    r = get_object_or_404(Rezerwacja, id=id)
+    if request.user != r.nauczyciel and request.user != r.uczen:
         raise Http404("Brak dostępu")
-
-    if not rez.material_po_zajeciach:
+    if not r.material_po_zajeciach:
         raise Http404("Plik nie istnieje")
-
-    return FileResponse(rez.material_po_zajeciach.open("rb"), as_attachment=True)
+    return FileResponse(r.material_po_zajeciach.open("rb"), as_attachment=True)
 
 
 # ==========================

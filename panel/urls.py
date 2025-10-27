@@ -58,7 +58,7 @@ urlpatterns = [
 
     # Presence + pobieranie materiałów
     path("pobierz-plik/<int:id>/", views.pobierz_plik, name="pobierz_plik"),
-    path("pobierz-material/<int:id>/", views.pobierz_material_po_zajeciach, name="pobierz_material"),
+    path("pobierz-material/<int:id>/", views.pobierz_material, name="pobierz_material"),
 
     # Zmiana hasła (uwaga: zostaw TYLKO jedną trasę do zmiany hasła)
     path("zmien_haslo/", views.change_password_view, name="zmien_haslo"),

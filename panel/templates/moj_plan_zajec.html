@@ -113,9 +113,14 @@
           <td>{{ r.poziom_nauki|default:"—" }}</td>
 
           <td>{{ r.temat|default:"—" }}</td>
-          <td>{% if r.plik %}<a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}<span style="color:var(--muted)">Brak</span>{% endif %}</td>
+          <td>
+            {% if r.plik %}
+              <a class="file-link" href="{% url 'pobierz_plik' r.id %}">Pobierz</a>
+            {% else %}
+              <span style="color:var(--muted)">Brak</span>
+            {% endif %}
+          </td>
 
-          <!-- NOWA KOLUMNA: PŁATNOŚĆ -->
           <td>
             {% if r.oplacona %}
               <span class="badge badge-ok">opłacona</span>
@@ -132,10 +137,13 @@
           </td>
           <td>
             {% if r.material_po_zajeciach %}
-              <div style="margin-bottom:6px"><a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener" class="btn small ghost">Zobacz</a></div>
+              <div style="margin-bottom:6px">
+                <a href="{% url 'pobierz_material' r.id %}" class="btn small ghost">Zobacz</a>
+              </div>
             {% endif %}
             <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
-              {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+              {% csrf_token %}
+              <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
               <button type="submit" class="btn small ghost">Dodaj plik</button>
             </form>
           </td>
@@ -169,14 +177,15 @@
           <div><strong>Poziom:</strong> {{ r.poziom|default:"—" }}</div>
           <div><strong>Typ:</strong> {{ r.typ_osoby|default:"—" }}</div>
           <div><strong>Klasa/Rok:</strong> {{ r.poziom_nauki|default:"—" }}</div>
-          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
-          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{% url 'pobierz_plik' r.id %}">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{% url 'pobierz_material' r.id %}">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
         <div class="r-actions">
           <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
           {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
           <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
-            {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+            {% csrf_token %}
+            <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
             <button type="submit" class="btn small ghost">Dodaj plik</button>
           </form>
         </div>
@@ -211,9 +220,14 @@
           <td>{{ r.poziom_nauki|default:"—" }}</td>
 
           <td>{{ r.temat|default:"—" }}</td>
-          <td>{% if r.plik %}<a class="file-link" href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}<span style="color:var(--muted)">Brak</span>{% endif %}</td>
+          <td>
+            {% if r.plik %}
+              <a class="file-link" href="{% url 'pobierz_plik' r.id %}">Pobierz</a>
+            {% else %}
+              <span style="color:var(--muted)">Brak</span>
+            {% endif %}
+          </td>
 
-          <!-- NOWA KOLUMNA: PŁATNOŚĆ -->
           <td>
             {% if r.oplacona %}
               <span class="badge badge-ok">opłacona</span>
@@ -230,10 +244,13 @@
           </td>
           <td>
             {% if r.material_po_zajeciach %}
-              <div style="margin-bottom:6px"><a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener" class="btn small ghost">Zobacz</a></div>
+              <div style="margin-bottom:6px">
+                <a href="{% url 'pobierz_material' r.id %}" class="btn small ghost">Zobacz</a>
+              </div>
             {% endif %}
             <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
-              {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+              {% csrf_token %}
+              <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
               <button type="submit" class="btn small ghost">Dodaj plik</button>
             </form>
           </td>
@@ -267,14 +284,15 @@
           <div><strong>Poziom:</strong> {{ r.poziom|default:"—" }}</div>
           <div><strong>Typ:</strong> {{ r.typ_osoby|default:"—" }}</div>
           <div><strong>Klasa/Rok:</strong> {{ r.poziom_nauki|default:"—" }}</div>
-          <div><strong>Plik:</strong> {% if r.plik %}<a href="{{ r.plik.url }}" target="_blank" rel="noopener">Pobierz</a>{% else %}Brak{% endif %}</div>
-          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{{ r.material_po_zajeciach.url }}" target="_blank" rel="noopener">Zobacz</a>{% else %}—{% endif %}</div>
+          <div><strong>Plik:</strong> {% if r.plik %}<a href="{% url 'pobierz_plik' r.id %}">Pobierz</a>{% else %}Brak{% endif %}</div>
+          <div><strong>Materiały:</strong> {% if r.material_po_zajeciach %}<a href="{% url 'pobierz_material' r.id %}">Zobacz</a>{% else %}—{% endif %}</div>
         </div>
         <div class="r-actions">
           <a class="btn small" href="{% url 'zajecia_online' r.id %}">Wejdź do pokoju</a>
           {% if r.excalidraw_link %}<a class="btn small ghost" target="_blank" rel="noopener" href="{{ r.excalidraw_link }}">Tablica</a>{% endif %}
           <form action="{% url 'dodaj_material' r.id %}" method="post" enctype="multipart/form-data">
-            {% csrf_token %}<input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
+            {% csrf_token %}
+            <input type="file" name="material" accept=".pdf,.jpg,.jpeg,.png" required>
             <button type="submit" class="btn small ghost">Dodaj plik</button>
           </form>
         </div>
