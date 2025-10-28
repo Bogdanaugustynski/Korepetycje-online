@@ -171,35 +171,37 @@ if USE_S3:
     if "storages" not in INSTALLED_APPS:
         INSTALLED_APPS += ["storages"]
 
-    # Django 4.2+/5.x: STORAGES (default = S3), staty zostają na WhiteNoise lokalnie
+    # Django 5.x: jeśli używasz STORAGES, muszą być oba klucze: default i staticfiles
     STORAGES = {
-        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
-        # Jeśli kiedyś chcesz przenieść STATIC na S3, dodasz tu "staticfiles"
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            # staty dalej serwujemy przez WhiteNoise (lokalny build + collectstatic)
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
     }
 
     AWS_ACCESS_KEY_ID = _env("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = _env("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = _env("AWS_STORAGE_BUCKET_NAME")          # np. polubiszto-media
+    AWS_STORAGE_BUCKET_NAME = _env("AWS_STORAGE_BUCKET_NAME")
     AWS_S3_ENDPOINT_URL = _env("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
 
-    # ⬅︎ KLUCZOWE: OVH oczekuje regionu wielkimi literami (WAW/GRA/SBG)
-    AWS_S3_REGION_NAME = _env("AWS_S3_REGION_NAME", "WAW")             # UPPERCASE
-
+    # OVH chce region wielkimi literami
+    AWS_S3_REGION_NAME = _env("AWS_S3_REGION_NAME", "WAW")
     AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_S3_ADDRESSING_STYLE = "path"   # OVH + custom endpoint zwykle działa lepiej w 'path'
 
-    # ⬅︎ OVH + custom endpoint zazwyczaj działa lepiej w trybie PATH
-    AWS_S3_ADDRESSING_STYLE = "path"
-
-    # Bez publicznych ACL; podpisane linki generujemy po stronie serwera
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
 
-    # Te wartości przy S3 i tak nie są używane przez nasze widoki (nie wywołujemy .url)
+    # Przy S3 nie używamy .url po stronie frontu, więc te pola są obojętne
     MEDIA_URL = "/media/"
     MEDIA_ROOT = ""
 else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
 
 # === SECURITY (hardening) ===
 SECURE_SSL_REDIRECT = not DEBUG
