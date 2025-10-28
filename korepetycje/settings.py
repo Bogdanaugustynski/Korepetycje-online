@@ -161,25 +161,40 @@ STORAGES = {
 }
 
 # === MEDIA: S3 (OVH) jeśli ENV ustawione, inaczej lokalnie ===
-USE_S3 = os.getenv("USE_S3", "0") == "1"
+USE_S3 = os.getenv("USE_S3", "0").strip() == "1"
+
+def _env(name: str, default: str | None = None):
+    v = os.getenv(name, default if default is not None else "")
+    return v.strip() if isinstance(v, str) else v
 
 if USE_S3:
-    # (masz w INSTALLED_APPS 'storages')
-    STORAGES["default"] = {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"}
+    if "storages" not in INSTALLED_APPS:
+        INSTALLED_APPS += ["storages"]
 
-    # Klucze dla django-storages
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")  # np. polubiszto-media
-    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "waw")    # małymi literami
+    # Django 4.2+/5.x: STORAGES (default = S3), staty zostają na WhiteNoise lokalnie
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+        # Jeśli kiedyś chcesz przenieść STATIC na S3, dodasz tu "staticfiles"
+    }
+
+    AWS_ACCESS_KEY_ID = _env("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = _env("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = _env("AWS_STORAGE_BUCKET_NAME")          # np. polubiszto-media
+    AWS_S3_ENDPOINT_URL = _env("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
+
+    # ⬅︎ KLUCZOWE: OVH oczekuje regionu wielkimi literami (WAW/GRA/SBG)
+    AWS_S3_REGION_NAME = _env("AWS_S3_REGION_NAME", "WAW")             # UPPERCASE
+
     AWS_S3_SIGNATURE_VERSION = "s3v4"
-    AWS_S3_ADDRESSING_STYLE = "virtual"
 
+    # ⬅︎ OVH + custom endpoint zazwyczaj działa lepiej w trybie PATH
+    AWS_S3_ADDRESSING_STYLE = "path"
+
+    # Bez publicznych ACL; podpisane linki generujemy po stronie serwera
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
 
-    # Placeholdery — front i tak nie używa .url do mediów
+    # Te wartości przy S3 i tak nie są używane przez nasze widoki (nie wywołujemy .url)
     MEDIA_URL = "/media/"
     MEDIA_ROOT = ""
 else:
