@@ -188,7 +188,7 @@ if USE_S3:
     AWS_S3_ENDPOINT_URL = _env("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
 
     # Region dla OVH — może być "WAW" (działa), ważniejsze jest poprawne endpoint URL i podpis
-    AWS_S3_REGION_NAME = _env("AWS_S3_REGION_NAME", "WAW")
+    AWS_S3_REGION_NAME = _env("AWS_S3_REGION_NAME", "waw")
     AWS_S3_SIGNATURE_VERSION = "s3v4"
 
     # Przy OVH zwykle najstabilniej działa adresowanie path-style:
