@@ -60,7 +60,11 @@
       .cards{display:grid;gap:10px}
     }
   </style>
-  <link rel="icon" href="{% static 'img/favicon.ico' %}">
+
+  <!-- Inline favicon (bez static/manifest) -->
+  <link rel="icon" type="image/svg+xml"
+        href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><linearGradient id="b" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="%230b74ff"/><stop offset="1" stop-color="%23095cd1"/></linearGradient><path d="M4 16 24 7l20 9-20 9-20-9z" fill="url(%23b)"/></svg>'>
+  <link rel="alternate icon" href="data:,">
 </head>
 <body>
 
@@ -112,7 +116,6 @@
                 const boardUrl = {% if r.excalidraw_link %}"{{ r.excalidraw_link|escapejs }}"{% else %}null{% endif %};
 
                 if (diff >= activeFrom && diff <= activeTo) {
-                  // PRIORYTET: TABLICA; fallback do pokoju
                   if (boardUrl) {
                     el.innerHTML = `<a class="btn small" target="_blank" rel="noopener" href="${boardUrl}">Otwórz tablicę</a>`;
                   } else {
