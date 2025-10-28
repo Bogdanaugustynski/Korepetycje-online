@@ -346,28 +346,43 @@ def check_online_status(request, rezerwacja_id):
 def pobierz_plik(request, id):
     """
     Pobieranie pliku dołączonego przy rezerwacji (uczeń -> nauczyciel).
-    Dostęp: tylko nauczyciel lub uczeń z tej rezerwacji.
+    Zamiast streamować z Django, przekierowujemy na podpisany URL storage.
     """
     r = get_object_or_404(Rezerwacja, id=id)
-    if request.user != r.nauczyciel and request.user != r.uczen:
+
+    # Dostęp: tylko nauczyciel lub uczeń z tej rezerwacji
+    if request.user != r.nauczyciel and request.user != r.uczen and not request.user.is_staff:
         raise Http404("Brak dostępu")
+
     if not r.plik:
         raise Http404("Plik nie istnieje")
-    return FileResponse(r.plik.open("rb"), as_attachment=True)
+
+    # django-storages wygeneruje podpisany URL (AWS_QUERYSTRING_AUTH=True)
+    try:
+        return redirect(r.plik.url)
+    except Exception:
+        # np. gdy obiekt został usunięty w koszu OVH lub błąd endpointu
+        raise Http404("Nie można pobrać pliku (brak obiektu w storage)")
 
 
 @login_required
 def pobierz_material(request, id):
     """
     Pobieranie materiału dodanego po zajęciach (nauczyciel -> uczeń).
-    Dostęp: tylko nauczyciel lub uczeń z tej rezerwacji.
+    Również przekierowanie na podpisany URL.
     """
     r = get_object_or_404(Rezerwacja, id=id)
-    if request.user != r.nauczyciel and request.user != r.uczen:
+
+    if request.user != r.nauczyciel and request.user != r.uczen and not request.user.is_staff:
         raise Http404("Brak dostępu")
+
     if not r.material_po_zajeciach:
         raise Http404("Plik nie istnieje")
-    return FileResponse(r.material_po_zajeciach.open("rb"), as_attachment=True)
+
+    try:
+        return redirect(r.material_po_zajeciach.url)
+    except Exception:
+        raise Http404("Nie można pobrać materiału (brak obiektu w storage)")
 
 
 # ==========================

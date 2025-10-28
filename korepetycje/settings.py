@@ -177,7 +177,7 @@ if USE_S3:
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            # staty dalej serwujemy przez WhiteNoise (lokalny build + collectstatic)
+            # staty serwuje WhiteNoise (lokalny build + collectstatic)
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
@@ -187,15 +187,18 @@ if USE_S3:
     AWS_STORAGE_BUCKET_NAME = _env("AWS_STORAGE_BUCKET_NAME")
     AWS_S3_ENDPOINT_URL = _env("AWS_S3_ENDPOINT_URL", "https://s3.waw.io.cloud.ovh.net")
 
-    # OVH chce region wielkimi literami
+    # Region dla OVH — może być "WAW" (działa), ważniejsze jest poprawne endpoint URL i podpis
     AWS_S3_REGION_NAME = _env("AWS_S3_REGION_NAME", "WAW")
     AWS_S3_SIGNATURE_VERSION = "s3v4"
-    AWS_S3_ADDRESSING_STYLE = "path"   # OVH + custom endpoint zwykle działa lepiej w 'path'
+
+    # Przy OVH zwykle najstabilniej działa adresowanie path-style:
+    AWS_S3_ADDRESSING_STYLE = "path"
 
     AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = True
+    AWS_QUERYSTRING_AUTH = True  # generuj podpisane URL-e dla prywatnych obiektów
 
-    # Przy S3 nie używamy .url po stronie frontu, więc te pola są obojętne
+    # Front nie bazuje już na .url dla MEDIA (linkujemy przez nasze URL patterns),
+    # więc to i tak nie ma znaczenia przy S3:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = ""
 else:
