@@ -9,48 +9,68 @@
   <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}">
   <link rel="preload" as="image" href="{% static 'panel/mentor_kobieta.png' %}">
   <style>
-    :root{ --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
-      --line:rgba(188,214,255,.16); --bg0:#07132a; --bg1:#0a2a66; --glassA:rgba(14,29,55,.66); --glassB:rgba(10,24,48,.56);
+    :root{
+      --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
+      --line:rgba(188,214,255,.16); --bg0:#07132a; --bg1:#0a2a66;
       --shadow-lg:0 40px 120px rgba(5,20,60,.55); --shadow-sm:0 10px 30px rgba(9,95,224,.35);
-      --radius:18px; --radius-lg:26px; --max:1140px }
+      --radius:18px; --radius-lg:26px; --max:1140px
+    }
     *{box-sizing:border-box} html{scroll-behavior:smooth} html,body{height:100%}
     body{ margin:0; font-family:system-ui,-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
-          background:radial-gradient(1200px 800px at 65% 10%, var(--bg1), var(--bg0)); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden }
-    a{color:#bcd6ff;text-decoration:none} img{max-width:100%;height:auto;display:block} .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
-    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}} @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 18px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
+          background:radial-gradient(1200px 800px at 65% 10%, var(--bg1), var(--bg0));
+          -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden }
+    a{color:#bcd6ff;text-decoration:none} img{max-width:100%;height:auto;display:block}
+    .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 18px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
     @media (prefers-reduced-motion:reduce){ .float,.pulse{animation:none!important} }
-    .morph{position:fixed; inset:-20%; z-index:-3; background:conic-gradient(from 0deg at 50% 50%, #0b223f, #0f2a59, #13418f, #0b223f); filter:blur(80px) saturate(120%); opacity:.55; animation:spin 55s linear infinite}
+    .morph{position:fixed; inset:-20%; z-index:-3;
+      background:conic-gradient(from 0deg at 50% 50%, #0b223f, #0f2a59, #13418f, #0b223f);
+      filter:blur(80px) saturate(120%); opacity:.55; animation:spin 55s linear infinite}
     @keyframes spin{to{transform:rotate(1turn)}} canvas#fx{position:fixed; inset:0; z-index:-1}
-    header{ position:sticky; top:0; z-index:50; background:linear-gradient(180deg,rgba(7,19,42,.92),rgba(7,19,42,.66)); backdrop-filter:saturate(160%) blur(10px); border-bottom:1px solid var(--line); transition:box-shadow .2s ease }
-    header.scrolled{ box-shadow:0 16px 50px rgba(9,30,66,.45) } .bar{display:flex;align-items:center;gap:12px;min-height:72px}
-    .brand{display:flex;align-items:center;gap:10px} .brand svg{width:34px;height:34px;color:#7fb1ff;filter:drop-shadow(0 8px 14px rgba(11,116,255,.45))}
-    .brand b{color:#fff} .brand small{color:#9eb5da}
+    header{ position:sticky; top:0; z-index:50;
+      background:linear-gradient(180deg,rgba(7,19,42,.92),rgba(7,19,42,.66));
+      backdrop-filter:saturate(160%) blur(10px); border-bottom:1px solid var(--line);
+      transition:box-shadow .2s ease }
+    header.scrolled{ box-shadow:0 16px 50px rgba(9,30,66,.45) }
+    .bar{display:flex;align-items:center;gap:12px;min-height:72px}
+    header .pt-brand-title .pt-name{color:#eaf1ff !important}
+    header .pt-brand-title .pt-tag{color:#9eb5da !important}
     .hamb{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px;display:flex;gap:8px;cursor:pointer}
     .hamb i{width:18px;height:2px;background:#eaf1ff;box-shadow:0 6px 0 #eaf1ff, 0 -6px 0 #eaf1ff;display:inline-block}
     .nav{display:none;gap:8px;margin-left:auto;align-items:center} .nav.open{display:flex}
     @media (min-width:860px){ .hamb{display:none} .nav{display:flex !important} }
     .btn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px 14px;font-weight:700}
-    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)} .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent} .btn.pulse{animation:pulse 2.4s infinite}
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+    .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent}
+    .btn.pulse{animation:pulse 2.4s infinite}
     header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
     .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
     .logoBox{display:grid;place-items:center;width:82px;height:82px;border-radius:20px;background:linear-gradient(180deg,#0b74ff,#0a63da);box-shadow:0 18px 50px rgba(11,116,255,.45);transform:rotate(6deg)}
     .logoBox svg{width:46px;height:46px;color:#fff}
     .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 40px rgba(131,180,255,.25);margin:0}
-    .sub{color:#bcd3ff;max-width:760px;font-size:clamp(16px,1.9vw,18px)} .tw{display:inline-block;border-right:3px solid #cfe2ff;padding-right:6px;animation:blink 1s step-end infinite}
+    .sub{color:#bcd3ff;max-width:760px;font-size:clamp(16px,1.9vw,18px)}
+    .tw{display:inline-block;border-right:3px solid #cfe2ff;padding-right:6px;animation:blink 1s step-end infinite}
     @keyframes blink{50%{border-color:transparent}}
-    .tilt{width:min(980px,96vw);aspect-ratio:16/9;border-radius:24px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));border:1px solid var(--line);box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);transform-style:preserve-3d;position:relative}
-    .gridlines{position:absolute;inset:0;background:linear-gradient(rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px,linear-gradient(90deg, rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px;opacity:.35}
+    .tilt{width:min(980px,96vw);aspect-ratio:16/9;border-radius:24px;overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      border:1px solid var(--line);box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);
+      transform-style:preserve-3d;position:relative}
+    .gridlines{position:absolute;inset:0;background:
+      linear-gradient(rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px,
+      linear-gradient(90deg, rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px;opacity:.35}
     .tilt-in{position:absolute;inset:0;display:grid;grid-template-columns:1.15fr .85fr}
     .tilt-left{display:grid;place-items:center;padding:18px}
     .tilt-right{display:grid;place-items:center;padding:18px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45))}
     .board{position:relative;aspect-ratio:4/3;width:100%;max-width:520px;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow-lg)}
     .board img{width:100%;height:100%;object-fit:cover;background:#0b1d52}
-    .cap{position:absolute;inset:auto 12px 12px 12px;background:rgba(9,18,42,.72);border:1px solid var(--line);border-radius:12px;padding:6px 10px;text-align:center}
-    .mentor{position:absolute;right:-5%;bottom:-6%;width:min(30%,260px);filter:drop-shadow(0 18px 24px rgba(9,30,66,.55));animation:float 6s ease-in-out infinite;border-radius:16px}
+    .cap{position:absolute;top:12px;left:12px;right:12px;background:rgba(9,18,42,.72);border:1px solid var(--line);border-radius:12px;padding:6px 10px;text-align:center}
+    .mentor{position:absolute;right:-5%;bottom:-6%;width:min(30%,260px);filter:drop-shadow(0 18px 24px rgba(9,30,66,.55));animation:float 6s ease-in-out infinite;border-radius:16px;z-index:0}
     @media(max-width:900px){ .tilt-in{grid-template-columns:1fr} .tilt-right{border-left:0;border-top:1px solid var(--line)} .mentor{display:none} }
     .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
     .pill{font-size:.9rem;padding:8px 12px;border-radius:999px;color:#eaf1ff;background:rgba(255,255,255,.08);border:1px solid var(--line)}
-    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px} .actions .btn.secondary{background:rgba(255,255,255,.08)}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .actions .btn.secondary{background:rgba(255,255,255,.08)}
     main .steps{max-width:var(--max);margin:70px auto;padding:0 16px;display:grid;gap:16px}
     @media(min-width:860px){ main .steps{grid-template-columns:repeat(3,1fr)} }
     .stepG{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease}
@@ -106,11 +126,11 @@
           <div class="tilt-right">
             <img class="mentor" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Twoja mentorka online" loading="lazy" decoding="async">
             <div>
-              <h2 style="margin:0 0 10px">Pokój zajęć • Excalidraw / AliBoard • Jitsi/Audio</h2>
+              <h2 style="margin:0 0 10px">Pokój zajęć • Excalidraw</h2>
               <div class="pills">
                 <span class="pill">✍️ Rysowanie & tekst</span>
-                <span class="pill">🖼️ PDF/obrazy</span>
                 <span class="pill">🔗 Udostępnianie</span>
+                <span class="pill">🖼️ Obrazy</span>
                 <span class="pill">🎧 Czat głosowy</span>
               </div>
               <div class="actions">
@@ -165,13 +185,13 @@
   </section>
 
   <section class="wrap section" id="cta" style="text-align:center" aria-label="Wezwanie do działania">
-    <h2 style="color:#eaf1ff">🚀 Zacznij już dziś!</h2>
+    <h2 style="color:#eaf1ff">Zacznij już dziś!</h2>
     <p style="color:#b8c6dd">Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
     <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
   </section>
 
   <footer>
-    <div class="wrap" style="text-align:center;color:#9eb5da;padding:18px 0;border-top:1px solid var(--line)">
+    <div class="wrap" style="text-align:center;color:#9eb5da;padding:22px 0;border-top:1px solid var(--line)">
       © <span id="y"></span> PolubiszTo.pl — korepetycje online
     </div>
   </footer>
@@ -184,7 +204,6 @@
       function onScroll(){ var y = window.scrollY || document.documentElement.scrollTop; if (y>4) hdr.classList.add('scrolled'); else hdr.classList.remove('scrolled');}
       onScroll(); window.addEventListener('scroll', onScroll, {passive:true});})();
 
-    // Typewriter
     (function(){
       const el=document.getElementById('tw');
       const texts=["matematyka • fizyka • języki","rysuj, pisz i mów w jednym miejscu","ucz się wygodnie — gdziekolwiek jesteś"];
@@ -200,7 +219,6 @@
       tick();
     })();
 
-    // Tilt
     (function(){
       const c=document.getElementById('tilt'); if(!c) return;
       const rect=()=>c.getBoundingClientRect();
@@ -212,7 +230,6 @@
       c.addEventListener('mousemove', move); c.addEventListener('mouseleave', reset);
     })();
 
-    // Particles
     (function(){
       const cv=document.getElementById('fx'); const ctx=cv.getContext('2d');
       let w,h,px=0,py=0; const P=[]; const N=70;
@@ -236,11 +253,12 @@
       })();
     })();
 
-    // Reveal steps
     (function(){
       const items=document.querySelectorAll('.stepG');
       if(!('IntersectionObserver' in window)){ items.forEach(s=>s.classList.add('revealed')); return; }
-      const io=new IntersectionObserver((entries)=>{ entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('revealed'); io.unobserve(e.target);} }); },{threshold:.2});
+      const io=new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('revealed'); io.unobserve(e.target);} });
+      },{threshold:.2});
       items.forEach(s=>io.observe(s));
     })();
   </script>
