@@ -22,13 +22,13 @@
   a{color:#bcd6ff;text-decoration:none}
   a:hover{text-decoration:underline}
 
-  /* tło animowane (jak na stronie głównej) */
+  /* Tło animowane */
   .morph{position:fixed; inset:-20%; z-index:-3;
     background:conic-gradient(from 0deg at 50% 50%, #0b223f, #0f2a59, #13418f, #0b223f);
     filter:blur(80px) saturate(120%); opacity:.55; animation:spin 55s linear infinite}
   @keyframes spin{to{transform:rotate(1turn)}}
 
-  /* HEADER spójny ze stroną główną: lewa pusta, linki po prawej */
+  /* HEADER */
   header{position:sticky;top:0;z-index:5;
     background:linear-gradient(180deg,rgba(7,19,42,.92),rgba(7,19,42,.66));
     border-bottom:1px solid var(--line); backdrop-filter:saturate(160%) blur(10px)}
@@ -39,7 +39,7 @@
   .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
   .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent}
 
-  /* KARTA (glass) */
+  /* Karta logowania */
   main{min-height:calc(100svh - 72px);display:grid;place-items:center;padding:32px 16px}
   .card{
     width:min(var(--maxw),92vw);
@@ -47,15 +47,15 @@
     background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
     border:1px solid var(--line);
     box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);
-    padding:24px;
+    padding:26px;
   }
-  .brand{display:flex;justify-content:center;margin-bottom:16px}
-  h1{margin:0 0 8px 0;text-align:center;font-size:clamp(22px,3.6vw,28px)}
-  p.sub{margin:0 0 18px 0;text-align:center;color:var(--muted);font-size:14px}
+
+  h1{margin:0 0 8px;text-align:center;font-size:clamp(22px,3.6vw,28px)}
+  p.sub{margin:0 0 18px;text-align:center;color:var(--muted);font-size:14px}
 
   /* alert błędu */
-  .alert{margin:0 0 12px 0;padding:10px 12px;border:1px solid rgba(255,183,183,.35);
-    background:rgba(255,245,245,.06); color:#ffd3d3; border-radius:10px; font-size:14px; display:none}
+  .alert{margin:0 0 12px;padding:10px 12px;border:1px solid rgba(255,183,183,.35);
+    background:rgba(255,245,245,.06);color:#ffd3d3;border-radius:10px;font-size:14px;display:none}
   .alert.show{display:block}
 
   /* pola */
@@ -63,21 +63,20 @@
   label{display:block;font-weight:800;font-size:13px;margin:0 0 6px 6px;color:#cfe2ff}
   .field{position:relative}
   input[type="email"], input[type="password"]{
-    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--field-bd);
-    background:var(--field); color:#eaf1ff; font-size:16px; outline:none;
+    width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--field-bd);
+    background:var(--field);color:#eaf1ff;font-size:16px;outline:none;
   }
-  input:focus{border-color:#3b82f6; box-shadow:0 0 0 4px rgba(59,130,246,.2)}
+  input:focus{border-color:#3b82f6;box-shadow:0 0 0 4px rgba(59,130,246,.2)}
   .toggle{
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    background:transparent; border:1px solid var(--line); border-radius:10px; padding:6px 8px; cursor:pointer;
-    font-size:12px; color:#cfe2ff;
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    background:transparent;border:1px solid var(--line);border-radius:10px;padding:6px 8px;cursor:pointer;
+    font-size:12px;color:#cfe2ff;
   }
 
   .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
   .row a{font-weight:700;font-size:14px}
-
-  .btn-block{width:100%; margin-top:12px}
-  .note{margin-top:12px; text-align:center; font-size:14px; color:var(--muted)}
+  .btn-block{width:100%;margin-top:12px}
+  .note{margin-top:12px;text-align:center;font-size:14px;color:var(--muted)}
   .note a{font-weight:800}
 
   footer{margin-top:18px;text-align:center;color:#9eb5da;font-size:12px}
@@ -100,9 +99,6 @@
 
   <main>
     <section class="card" role="dialog" aria-labelledby="t">
-      <div class="brand">
-        {% include "partials/brand.html" %}
-      </div>
 
       <h1 id="t">Logowanie</h1>
       <p class="sub">Miło Cię znowu widzieć 👋</p>
@@ -137,7 +133,6 @@
         </div>
 
         <button class="btn btn-block primary" type="submit">Zaloguj się</button>
-
         <p class="note">Nie masz konta? <a href="/register/">Zarejestruj się</a></p>
       </form>
 

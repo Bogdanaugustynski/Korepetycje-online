@@ -4,157 +4,166 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rejestracja Ucznia — PolubiszTo.pl</title>
+  <title>Rejestracja ucznia — PolubiszTo.pl</title>
   <style>
     :root{
-      --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
-      --bg:#f7f9fe; --line:#e6edff;
+      --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
+      --line:rgba(188,214,255,.16); --bg0:#07132a; --bg1:#0a2a66;
+      --shadow-lg:0 40px 120px rgba(5,20,60,.55); --shadow-sm:0 10px 30px rgba(9,95,224,.35);
+      --radius:18px; --radius-lg:24px; --field:#0b193a; --field-bd:#1b2d55;
     }
     *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
     body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--ink);
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
+      background:radial-gradient(1200px 800px at 65% 10%, var(--bg1), var(--bg0));
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden;
     }
-    main{flex:1;display:flex;align-items:center;justify-content:center;padding:30px 16px;}
+    a{color:#bcd6ff;text-decoration:none} a:hover{text-decoration:underline}
+
+    /* tło animowane */
+    .morph{position:fixed;inset:-20%;z-index:-3;
+      background:conic-gradient(from 0deg at 50% 50%,#0b223f,#0f2a59,#13418f,#0b223f);
+      filter:blur(80px) saturate(120%);opacity:.55;animation:spin 55s linear infinite}
+    @keyframes spin{to{transform:rotate(1turn)}}
+
+    /* HEADER spójny */
+    header{position:sticky;top:0;z-index:5;
+      background:linear-gradient(180deg,rgba(7,19,42,.92),rgba(7,19,42,.66));
+      border-bottom:1px solid var(--line);backdrop-filter:saturate(160%) blur(10px)}
+    .wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+    .bar{display:flex;align-items:center;gap:12px;min-height:72px}
+    .nav{display:flex;gap:8px;margin-left:auto;align-items:center}
+    .btn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;
+      border-radius:12px;padding:10px 14px;font-weight:700}
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+    .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent}
+
+    /* karta formularza */
+    main{min-height:calc(100svh - 72px);display:grid;place-items:center;padding:32px 16px}
     .card{
-      background:#fff;
+      width:min(500px,94vw);
+      border-radius:var(--radius-lg);
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
       border:1px solid var(--line);
-      border-radius:16px;
-      box-shadow:0 6px 20px rgba(11,20,36,.06);
-      padding:26px 22px;
-      width:100%;
-      max-width:420px;
+      box-shadow:0 30px 90px rgba(9,30,66,.6),inset 0 0 80px rgba(131,180,255,.08);
+      padding:26px;
     }
-    h1{font-size:22px;margin:0 0 6px}
-    p.lead{font-size:14px;color:var(--muted);margin:0 0 18px}
+    h1{margin:0 0 6px;text-align:center;font-size:clamp(22px,3.6vw,28px)}
+    p.lead{font-size:14px;color:var(--muted);margin:0 0 18px;text-align:center}
+
     .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .field{margin-bottom:12px}
-    .label{display:block;font-size:13px;color:#364152;margin:0 0 6px}
+    .label{display:block;font-size:13px;color:#cfe2ff;margin:0 0 6px}
     .input{
-      width:100%;
-      padding:12px;
-      border:1px solid #d8e1f0;
-      border-radius:12px;
-      font-size:14px;
-      background:#fff;
-      outline:none;
+      width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--field-bd);
+      background:var(--field);color:#eaf1ff;font-size:15px;outline:none;
     }
-    .input:focus{
-      border-color:var(--brand);
-      box-shadow:0 0 0 3px rgba(11,116,255,.12);
-    }
+    .input:focus{border-color:#3b82f6;box-shadow:0 0 0 4px rgba(59,130,246,.2)}
+
     .legal{
-      display:flex;
-      align-items:flex-start;
-      gap:10px;
-      font-size:13px;
-      color:#2c3443;
-      margin-top:6px;
+      display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#cfe2ff;margin-top:6px;
     }
-    .legal a{color:var(--brand);text-decoration:none}
-    .legal a:hover{text-decoration:underline}
-    .btn{
-      width:100%;
-      padding:12px 14px;
-      border:none;
-      border-radius:12px;
-      cursor:pointer;
-      background:var(--brand);
-      color:#fff;
-      font-weight:700;
-      font-size:15px;
-      margin-top:12px;
-      transition:filter .2s;
+    .legal a{color:#bcd6ff} .legal a:hover{text-decoration:underline}
+    .btn-submit{
+      width:100%;padding:12px 14px;border:none;border-radius:12px;cursor:pointer;
+      background:linear-gradient(135deg,#0b74ff,#00a2ff);color:#fff;font-weight:700;
+      font-size:15px;margin-top:14px;transition:filter .2s;
     }
-    .btn:hover{filter:brightness(.97)}
+    .btn-submit:hover{filter:brightness(.97)}
     .error{
-      background:#fff1f1;
-      border:1px solid #ffd2d2;
-      color:#8a1c1c;
-      padding:10px 12px;
-      border-radius:10px;
-      font-size:13px;
-      margin-top:8px;
+      background:rgba(255,245,245,.06);
+      border:1px solid rgba(255,183,183,.35);
+      color:#ffd3d3;padding:10px 12px;border-radius:10px;
+      font-size:13px;margin-top:8px;
     }
-    .note{font-size:12px;color:#6b7280;margin-top:12px;text-align:center}
+    .note{font-size:13px;color:#b8c6dd;margin-top:12px;text-align:center}
+    .note a{color:#bcd6ff;font-weight:700}
+    footer{margin-top:18px;text-align:center;color:#9eb5da;font-size:12px}
   </style>
 </head>
 <body>
+  <div class="morph" aria-hidden="true"></div>
 
-{% include "partials/brand.html" %}
+  <!-- HEADER -->
+  <header>
+    <div class="wrap bar">
+      <!-- lewa pusta -->
+      <nav class="nav" aria-label="Główne">
+        <a class="btn" href="/">Strona główna</a>
+        <a class="btn" href="/" onclick="event.preventDefault();location.href='/'+'#o-nas'">O nas</a>
+        <a class="btn" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
+      </nav>
+    </div>
+  </header>
 
-<main>
-  <div class="card">
-    <h1>Rejestracja ucznia</h1>
-    <p class="lead">Utwórz konto, by móc zapisać się na zajęcia.</p>
+  <main>
+    <div class="card">
+      <h1>Rejestracja ucznia</h1>
+      <p class="lead">Utwórz konto, by móc zapisać się na zajęcia.</p>
 
-    <form method="POST" novalidate>
-      {% csrf_token %}
+      <form method="POST" novalidate>
+        {% csrf_token %}
 
-      <div class="row">
-        <div class="field">
-          <label class="label" for="first_name">Imię</label>
-          <input id="first_name" class="input" type="text" name="first_name"
-                 value="{{ form.first_name|default:'' }}" required />
+        <div class="row">
+          <div class="field">
+            <label class="label" for="first_name">Imię</label>
+            <input id="first_name" class="input" type="text" name="first_name"
+                   value="{{ form.first_name|default:'' }}" required />
+          </div>
+          <div class="field">
+            <label class="label" for="last_name">Nazwisko</label>
+            <input id="last_name" class="input" type="text" name="last_name"
+                   value="{{ form.last_name|default:'' }}" required />
+          </div>
         </div>
+
         <div class="field">
-          <label class="label" for="last_name">Nazwisko</label>
-          <input id="last_name" class="input" type="text" name="last_name"
-                 value="{{ form.last_name|default:'' }}" required />
+          <label class="label" for="city">Miejscowość</label>
+          <input id="city" class="input" type="text" name="city"
+                 placeholder="np. Kraków" value="{{ form.city|default:'' }}" required />
         </div>
-      </div>
 
-      <div class="field">
-        <label class="label" for="city">Miejscowość</label>
-        <input id="city" class="input" type="text" name="city"
-               placeholder="np. Kraków" value="{{ form.city|default:'' }}" required />
-      </div>
+        <div class="field">
+          <label class="label" for="email">E-mail</label>
+          <input id="email" class="input" type="email" name="email"
+                 value="{{ form.email|default:'' }}" required />
+        </div>
 
-      <div class="field">
-        <label class="label" for="email">E-mail</label>
-        <input id="email" class="input" type="email" name="email"
-               value="{{ form.email|default:'' }}" required />
-      </div>
+        <div class="field">
+          <label class="label" for="phone">Numer telefonu</label>
+          <input id="phone" class="input" type="tel" name="phone"
+                 placeholder="np. 500 600 700" value="{{ form.phone|default:'' }}" required />
+        </div>
 
-      <div class="field">
-        <label class="label" for="phone">Numer telefonu</label>
-        <input id="phone" class="input" type="tel" name="phone"
-               placeholder="np. 500 600 700" value="{{ form.phone|default:'' }}" required />
-      </div>
+        <div class="field">
+          <label class="label" for="password">Hasło</label>
+          <input id="password" class="input" type="password" name="password" minlength="8" required />
+        </div>
 
-      <div class="field">
-        <label class="label" for="password">Hasło</label>
-        <input id="password" class="input" type="password" name="password"
-               minlength="8" required />
-      </div>
+        <div class="field legal">
+          <input id="accept_legal" type="checkbox" name="accept_legal"
+                 {% if form.accept_legal %}checked{% endif %} required />
+          <label for="accept_legal">
+            Oświadczam, że zapoznałem/am się i akceptuję
+            <a href="{% url 'regulamin' %}">Regulamin</a> oraz
+            <a href="{% url 'polityka_prywatnosci' %}">Politykę Prywatności</a>.
+          </label>
+        </div>
 
-      <div class="field legal">
-        <input id="accept_legal" type="checkbox" name="accept_legal"
-               {% if form.accept_legal %}checked{% endif %} required />
-        <label for="accept_legal">
-          Oświadczam, że zapoznałem/am się i akceptuję
-          <a href="{% url 'regulamin' %}">Regulamin</a> oraz
-          <a href="{% url 'polityka_prywatnosci' %}">Politykę Prywatności</a>.
-        </label>
-      </div>
+        {% if error %}
+          <div class="error">{{ error }}</div>
+        {% endif %}
 
-      {% if error %}
-        <div class="error">{{ error }}</div>
-      {% endif %}
+        <button class="btn-submit" type="submit">Zarejestruj się</button>
+        <p class="note">
+          Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a>
+        </p>
+      </form>
 
-      <button class="btn" type="submit">Zarejestruj się</button>
-      <p class="note">
-        Masz już konto?
-        <a href="{% url 'login' %}" style="color:var(--brand);text-decoration:none;">Zaloguj się</a>
-      </p>
-    </form>
-  </div>
-</main>
+      <footer>© <span id="y"></span> PolubiszTo.pl</footer>
+    </div>
+  </main>
 
+  <script>document.getElementById('y').textContent=new Date().getFullYear();</script>
 </body>
 </html>
