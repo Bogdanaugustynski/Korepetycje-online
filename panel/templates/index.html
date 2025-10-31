@@ -45,12 +45,12 @@
     header.scrolled{ box-shadow:0 16px 50px rgba(9,30,66,.45) }
     .bar{display:flex;align-items:center;gap:12px;min-height:72px}
 
-    /* Po LEWEJ — desktop pusto; mobile hamburger */
+    /* Lewe miejsce puste (desktop); na mobile hamburger */
     .hamb{display:none;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;
           border-radius:12px;padding:10px;align-items:center;gap:8px;cursor:pointer}
     .hamb i{width:18px;height:2px;background:#eaf1ff;box-shadow:0 6px 0 #eaf1ff, 0 -6px 0 #eaf1ff;display:inline-block;border-radius:2px}
 
-    /* Po PRAWEJ — na mobile zawsze widać „Zaloguj” */
+    /* Prawa strona — „Zaloguj” zawsze widoczny */
     .nav{display:flex;gap:8px;margin-left:auto;align-items:center}
     .nav .only-desktop{display:flex}
     .nav .mobile-login{display:none}
@@ -65,7 +65,7 @@
     .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent}
     .btn.pulse{animation:pulse 2.4s infinite}
 
-    /* Drawer */
+    /* Drawer (mobile) */
     .scrim{position:fixed;inset:0;background:rgba(2,8,23,.55);backdrop-filter:blur(2px);display:none;z-index:60}
     .drawer{position:fixed;inset:0 auto 0 0;width:min(82vw,320px);background:#0b172f;border-right:1px solid var(--line);
             transform:translateX(-100%);transition:transform .25s ease;z-index:61;display:flex;flex-direction:column;padding:16px}
@@ -76,9 +76,9 @@
     /* ===== HERO ===== */
     header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
     .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
-    .logoBox{display:grid;place-items:center;width:82px;height:82px;border-radius:20px;background:linear-gradient(180deg,#0b74ff,#0a63da);box-shadow:0 18px 50px rgba(11,116,255,.45);transform:rotate(6deg)}
-    .logoBox svg{width:46px;height:46px;color:#fff}
-    .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 40px rgba(131,180,255,.25);margin:0}
+
+    .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);
+        -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 40px rgba(131,180,255,.25);margin:0}
     .sub{color:#bcd3ff;max-width:760px;font-size:clamp(16px,1.9vw,18px)}
     .tw{display:inline-block;border-right:3px solid #cfe2ff;padding-right:6px;animation:blink 1s step-end infinite}
     @keyframes blink{50%{border-color:transparent}}
@@ -92,17 +92,28 @@
       linear-gradient(90deg, rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px;opacity:.35}
     .tilt-in{position:absolute;inset:0;display:grid;grid-template-columns:1.15fr .85fr}
     .tilt-left{display:grid;place-items:center;padding:18px}
-    .tilt-right{display:grid;place-items:center;padding:18px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45))}
-    .board{position:relative;width:100%;max-width:520px;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow-lg);background:#0b1d52}
+    .tilt-right{display:grid;place-items:center;padding:18px;border-left:1px solid var(--line);
+               background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45))}
+
+    .board{position:relative;width:100%;max-width:520px;border-radius:18px;overflow:hidden;border:1px solid var(--line);
+           box-shadow:var(--shadow-lg);background:#0b1d52}
     .board img{width:100%;height:auto;display:block}
 
-    /* Podpis PRZED obrazem (już nic go nie zasłoni) */
+    /* Podpis nad obrazem (nic go nie zasłoni) */
     .capOutside{margin:0 0 8px 0;background:rgba(9,18,42,.72);border:1px solid var(--line);
       border-radius:12px;padding:6px 10px;text-align:center}
 
-    .mentor{position:absolute;right:-5%;bottom:-6%;width:min(30%,260px);
-      filter:drop-shadow(0 18px 24px rgba(9,30,66,.55));animation:float 6s ease-in-out infinite;border-radius:16px;z-index:0}
-    @media(max-width:900px){ .tilt-in{grid-template-columns:1fr} .tilt-right{border-left:0;border-top:1px solid var(--line)} .mentor{display:none} }
+    /* Mentorka NA tablicy (prawy-dolny róg) */
+    .mentor-onboard{
+      position:absolute; right:10px; bottom:10px; width:min(32%,220px);
+      border-radius:16px; filter:drop-shadow(0 8px 18px rgba(9,30,66,.45));
+      animation:float 6s ease-in-out infinite; z-index:2;
+    }
+
+    @media(max-width:900px){
+      .tilt-in{grid-template-columns:1fr}
+      .tilt-right{border-left:0;border-top:1px solid var(--line)}
+    }
 
     .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
     .pill{font-size:.9rem;padding:8px 12px;border-radius:999px;color:#eaf1ff;background:rgba(255,255,255,.08);border:1px solid var(--line)}
@@ -112,7 +123,9 @@
     /* Karty kroków */
     main .steps{max-width:var(--max);margin:70px auto;padding:0 16px;display:grid;gap:16px}
     @media(min-width:860px){ main .steps{grid-template-columns:repeat(3,1fr)} }
-    .stepG{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease}
+    .stepG{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);
+           border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);opacity:0;transform:translateY(16px);
+           transition:opacity .6s ease, transform .6s ease}
     .stepG.revealed{opacity:1;transform:translateY(0)} .stepG h3{margin:0 0 6px;color:#eaf1ff} .stepG p{margin:0;color:var(--muted)}
 
     .section{padding:36px 0} .section h2{margin:0 0 14px;color:#eaf1ff;font-size:clamp(20px,3.2vw,26px)}
@@ -122,26 +135,36 @@
     .teacher{display:flex;gap:12px;align-items:flex-start}
     .avatar{width:72px;height:72px;border-radius:14px;background:#0f2c63;object-fit:cover;border:1px solid var(--line);flex:0 0 72px}
     .name{font-weight:800;font-size:16px;margin:0 0 6px;color:#eaf1ff}
-    .desc{color:var(--muted);font-size:14px;margin:0 0 10px}
+    .desc{color:#b8c6dd;font-size:14px;margin:0 0 10px}
     .tags{display:flex;flex-wrap:wrap;gap:6px} .tag{font-size:12px;color:#d8e6ff;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
 
     footer{border-top:1px solid var(--line);color:#9eb5da;padding:22px 0;text-align:center;margin-top:30px}
   </style>
+
+  <!-- SEO schema -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Organization",
+    "name":"PolubiszTo.pl",
+    "url":"https://polubiszto.pl",
+    "email":"polubiszto.pl@gmail.com"
+  }
+  </script>
 </head>
 <body>
   <div class="morph"></div>
   <canvas id="fx"></canvas>
 
-  <!-- HEADER: desktop lewa strona pusta; mobile hamburger + zawsze „Zaloguj” po prawej -->
+  <!-- HEADER (desktop: lewa pusta; mobile: hamburger; „Zaloguj” zawsze po prawej) -->
   <header>
     <div class="wrap bar">
-      <!-- lewa strona pusta (desktop); na mobile hamburger -->
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="drawer" aria-expanded="false"><i></i></button>
 
       <nav class="nav" id="site-nav" aria-label="Główne">
         <a class="btn only-desktop" href="/o-nas">O nas</a>
         <a class="btn only-desktop" href="/kontakt">Kontakt</a>
-        <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
+      <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
         <a class="btn only-desktop" href="{% url 'login' %}">Zaloguj</a>
         <a class="btn only-desktop primary" href="{% url 'register' %}">Zacznij teraz</a>
       </nav>
@@ -159,13 +182,7 @@
   <!-- HERO -->
   <header class="hero" id="top">
     <div class="stack">
-      <div class="logoBox" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M21 7v6"/><path d="M3 7v6"/>
-          <path d="M3 13l9 4 9-4"/><path d="M9 10v6"/><path d="M15 10v6"/>
-        </svg>
-      </div>
-
+      <!-- (logo nad tytułem usunięte) -->
       <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
       <p class="sub">Platforma z interaktywną tablicą i rozmową na żywo — <span class="tw" id="tw"></span></p>
 
@@ -176,10 +193,11 @@
             <figure class="board" aria-labelledby="board-cap">
               <figcaption class="capOutside" id="board-cap">Podgląd wirtualnej tablicy PolubiszTo.pl</figcaption>
               <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd wirtualnej tablicy" loading="eager" decoding="async">
+              <!-- mentorka NA tablicy -->
+              <img class="mentor-onboard" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Mentorka online" loading="lazy" decoding="async">
             </figure>
           </div>
           <div class="tilt-right">
-            <img class="mentor" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Twoja mentorka online" loading="lazy" decoding="async">
             <div>
               <h2 style="margin:0 0 10px">Pokój zajęć • Excalidraw</h2>
               <div class="pills">
@@ -260,7 +278,7 @@
       function onScroll(){ var y = window.scrollY || document.documentElement.scrollTop; if (y>4) hdr.classList.add('scrolled'); else hdr.classList.remove('scrolled');}
       onScroll(); window.addEventListener('scroll', onScroll, {passive:true});})();
 
-    // Drawer
+    // Drawer (mobile)
     (function(){
       const hamb=document.getElementById('hamb'), drawer=document.getElementById('drawer'), scrim=document.getElementById('scrim');
       if(!hamb||!drawer||!scrim) return;
