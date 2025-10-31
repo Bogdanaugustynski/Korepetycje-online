@@ -7,8 +7,8 @@
   <title>PolubiszTo.pl — Korepetycje online</title>
   <meta name="description" content="PolubiszTo.pl — korepetycje online z wirtualną tablicą i rozmową głosową. Zarejestruj się, wybierz nauczyciela, zarezerwuj termin i dołącz do pokoju zajęć." />
 
+  <!-- preload: tylko tablica -->
   <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}">
-  <link rel="preload" as="image" href="{% static 'panel/mentor_kobieta.png' %}">
 
   <style>
     :root{
@@ -26,10 +26,9 @@
     a{color:#bcd6ff;text-decoration:none} img{max-width:100%;height:auto;display:block}
     .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
 
-    /* Animacje */
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
     @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 18px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
-    @media (prefers-reduced-motion:reduce){ .float,.pulse{animation:none!important} }
+    @media (prefers-reduced-motion:reduce){ .pulse{animation:none!important} }
 
     /* Tło + cząsteczki */
     .morph{position:fixed; inset:-20%; z-index:-3;
@@ -45,12 +44,11 @@
     header.scrolled{ box-shadow:0 16px 50px rgba(9,30,66,.45) }
     .bar{display:flex;align-items:center;gap:12px;min-height:72px}
 
-    /* Lewe miejsce puste (desktop); na mobile hamburger */
+    /* desktop: lewa pusta; mobile: hamburger */
     .hamb{display:none;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;
           border-radius:12px;padding:10px;align-items:center;gap:8px;cursor:pointer}
     .hamb i{width:18px;height:2px;background:#eaf1ff;box-shadow:0 6px 0 #eaf1ff, 0 -6px 0 #eaf1ff;display:inline-block;border-radius:2px}
 
-    /* Prawa strona — „Zaloguj” zawsze widoczny */
     .nav{display:flex;gap:8px;margin-left:auto;align-items:center}
     .nav .only-desktop{display:flex}
     .nav .mobile-login{display:none}
@@ -99,29 +97,13 @@
            box-shadow:var(--shadow-lg);background:#0b1d52}
     .board img{width:100%;height:auto;display:block}
 
-    /* Podpis nad obrazem (nic go nie zasłoni) */
+    /* Podpis nad obrazem */
     .capOutside{margin:0 0 8px 0;background:rgba(9,18,42,.72);border:1px solid var(--line);
       border-radius:12px;padding:6px 10px;text-align:center}
 
-    /* Mentorka NA tablicy (prawy-dolny róg) */
-    .mentor-onboard{
-      position:absolute;
-      right:30%;           /* odsuwa od krawędzi tablicy */
-      bottom:-20%;          /* lekko wyżej, by nie przycinało */
-      width:min(5%,170px); /* zmniejszona szerokość */
-      border-radius:14px;
-      filter:drop-shadow(0 6px 14px rgba(9,30,66,.4));
-      animation:float 6s ease-in-out infinite;
-      z-index:2;
-      transform:translateX(10%) rotate(-1deg); /* lekki efekt naturalnego pochylenia */
-    }
-
     @media(max-width:900px){
-      .mentor-onboard{
-        width:min(34%,150px);
-        right:3%;
-        bottom:4%;
-      }
+      .tilt-in{grid-template-columns:1fr}
+      .tilt-right{border-left:0;border-top:1px solid var(--line)}
     }
 
     .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
@@ -165,15 +147,14 @@
   <div class="morph"></div>
   <canvas id="fx"></canvas>
 
-  <!-- HEADER (desktop: lewa pusta; mobile: hamburger; „Zaloguj” zawsze po prawej) -->
+  <!-- HEADER -->
   <header>
     <div class="wrap bar">
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="drawer" aria-expanded="false"><i></i></button>
-
       <nav class="nav" id="site-nav" aria-label="Główne">
         <a class="btn only-desktop" href="/o-nas">O nas</a>
         <a class="btn only-desktop" href="/kontakt">Kontakt</a>
-      <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
+        <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
         <a class="btn only-desktop" href="{% url 'login' %}">Zaloguj</a>
         <a class="btn only-desktop primary" href="{% url 'register' %}">Zacznij teraz</a>
       </nav>
@@ -191,7 +172,6 @@
   <!-- HERO -->
   <header class="hero" id="top">
     <div class="stack">
-      <!-- (logo nad tytułem usunięte) -->
       <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
       <p class="sub">Platforma z interaktywną tablicą i rozmową na żywo — <span class="tw" id="tw"></span></p>
 
@@ -202,8 +182,6 @@
             <figure class="board" aria-labelledby="board-cap">
               <figcaption class="capOutside" id="board-cap">Podgląd wirtualnej tablicy PolubiszTo.pl</figcaption>
               <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd wirtualnej tablicy" loading="eager" decoding="async">
-              <!-- mentorka NA tablicy -->
-              <img class="mentor-onboard" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Mentorka online" loading="lazy" decoding="async">
             </figure>
           </div>
           <div class="tilt-right">
