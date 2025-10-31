@@ -7,9 +7,8 @@
   <title>PolubiszTo.pl — Korepetycje online</title>
   <meta name="description" content="PolubiszTo.pl — korepetycje online z wirtualną tablicą i rozmową głosową. Zarejestruj się, wybierz nauczyciela, zarezerwuj termin i dołącz do pokoju zajęć." />
 
-  <!-- preload: tablica + logo -->
+  <!-- preload: tylko tablica -->
   <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}">
-  <link rel="preload" as="image" href="{% static 'brand/logo_head.png' %}">
 
   <style>
     :root{
@@ -75,16 +74,6 @@
     header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
     .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
 
-    /* HERO LOGO NAD NAGŁÓWKIEM */
-    .hero-logo{
-      width:clamp(72px, 12vw, 128px);
-      height:auto;
-      filter: drop-shadow(0 10px 30px rgba(11,116,255,.35));
-      margin-bottom:6px;
-      user-select:none;
-      pointer-events:none;
-    }
-
     .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);
         -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 40px rgba(131,180,255,.25);margin:0}
     .sub{color:#bcd3ff;max-width:760px;font-size:clamp(16px,1.9vw,18px)}
@@ -117,12 +106,25 @@
     .capOutside{margin:0 0 8px 0;background:rgba(9,18,42,.72);border:1px solid var(--line);
       border-radius:12px;padding:6px 10px;text-align:center}
 
-    /* ── MOBILE FIX ───────────────────── */
+    /* ── MOBILE FIX: pełna, nieucięta karta i tablica ───────────────────── */
     @media(max-width:900px){
-      .tilt{ aspect-ratio:auto; height:auto; overflow:visible; }
-      .tilt-in{ position:relative; display:block; }
-      .tilt-left, .tilt-right{ padding:16px; border:0; }
-      .board{ margin:0 auto; max-width:680px; }
+      .tilt{
+        aspect-ratio:auto;       /* bez sztywnego 16/9 */
+        height:auto;
+        overflow:visible;        /* nic nie przycinamy */
+      }
+      .tilt-in{
+        position:relative;
+        display:block;           /* układ w kolumnie */
+      }
+      .tilt-left, .tilt-right{
+        padding:16px;
+        border:0;
+      }
+      .board{
+        margin:0 auto;           /* ładne wycentrowanie */
+        max-width:680px;         /* pozwala zdjęciu oddychać */
+      }
       .gridlines{border-radius:var(--radius-lg)}
     }
 
@@ -172,6 +174,7 @@
     <div class="wrap bar">
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="drawer" aria-expanded="false"><i></i></button>
       <nav class="nav" id="site-nav" aria-label="Główne">
+        <!-- zmiana: O nas -> sekcja na stronie, Kontakt -> mailto -->
         <a class="btn only-desktop" href="#o-nas">O nas</a>
         <a class="btn only-desktop" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
         <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
@@ -192,11 +195,6 @@
   <!-- HERO -->
   <header class="hero" id="top">
     <div class="stack">
-      <!-- LOGO PNG NAD H1 -->
-      <img class="hero-logo"
-           src="{% static 'brand/logo_head.png' %}"
-           alt="PolubiszTo.pl — logo">
-
       <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
       <p class="sub">Platforma z interaktywną tablicą i rozmową na żywo — <span class="tw" id="tw"></span></p>
 
@@ -218,6 +216,7 @@
                 <span class="pill">🖼️ Obrazy</span>
                 <span class="pill">🎧 Czat głosowy</span>
               </div>
+              <!-- zmiana: usunięty drugi przycisk "Zaloguj się" + przeniesiony CTA -->
               <div class="actions"></div>
             </div>
           </div>
@@ -226,7 +225,7 @@
     </div>
   </header>
 
-  <!-- NAGŁÓWEK SEKCJI: Jak to działa -->
+  <!-- NAGŁÓWEK SEKCJI: Jak to działa (zamiast przycisku) -->
   <section id="jak-to-dziala" style="text-align:center;padding:60px 20px 30px">
     <h2 style="color:#eaf1ff;font-size:clamp(22px,3.4vw,30px);margin-bottom:20px;">Jak to działa</h2>
   </section>
@@ -241,7 +240,7 @@
     <section class="stepG"><h3>6️⃣ Korzystaj z notatek</h3><p>Materiały z lekcji dostępne są na Twoim koncie.</p></section>
   </main>
 
-  <!-- DLACZEGO + NAUCZYCIELE + CTA -->
+  <!-- DLACZEGO + NAUCZYCIELE + CTA (bez zmian) -->
   <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
     <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
     <div class="grid">
@@ -279,7 +278,7 @@
     <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
   </section>
 
-  <!-- O NAS -->
+  <!-- O NAS (prosta sekcja do linku #o-nas) -->
   <section class="wrap section" id="o-nas" aria-label="O nas" style="text-align:center">
     <h2 style="color:#eaf1ff">O nas</h2>
     <p style="color:#b8c6dd;max-width:720px;margin:0 auto">
