@@ -15,7 +15,7 @@
       --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
       --line:rgba(188,214,255,.16); --bg0:#07132a; --bg1:#0a2a66;
       --shadow-lg:0 40px 120px rgba(5,20,60,.55); --shadow-sm:0 10px 30px rgba(9,95,224,.35);
-      --radius:18px; --radius-lg:26px; --max:1140px
+      --radius:18px; --radius-lg:24px; --max:1140px
     }
     *{box-sizing:border-box} html{scroll-behavior:smooth} html,body{height:100%}
     body{
@@ -26,7 +26,6 @@
     a{color:#bcd6ff;text-decoration:none} img{max-width:100%;height:auto;display:block}
     .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
 
-    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
     @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 18px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
     @media (prefers-reduced-motion:reduce){ .pulse{animation:none!important} }
 
@@ -81,10 +80,17 @@
     .tw{display:inline-block;border-right:3px solid #cfe2ff;padding-right:6px;animation:blink 1s step-end infinite}
     @keyframes blink{50%{border-color:transparent}}
 
-    .tilt{width:min(980px,96vw);aspect-ratio:16/9;border-radius:24px;overflow:hidden;
+    /* Karta hero */
+    .tilt{
+      width:min(980px,96vw);
+      aspect-ratio:16/9;                 /* desktop */
+      border-radius:var(--radius-lg);
+      overflow:hidden;
       background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-      border:1px solid var(--line);box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);
-      transform-style:preserve-3d;position:relative}
+      border:1px solid var(--line);
+      box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);
+      transform-style:preserve-3d;position:relative
+    }
     .gridlines{position:absolute;inset:0;background:
       linear-gradient(rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px,
       linear-gradient(90deg, rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px;opacity:.35}
@@ -93,17 +99,33 @@
     .tilt-right{display:grid;place-items:center;padding:18px;border-left:1px solid var(--line);
                background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45))}
 
-    .board{position:relative;width:100%;max-width:520px;border-radius:18px;overflow:hidden;border:1px solid var(--line);
+    /* Podgląd tablicy */
+    .board{position:relative;width:100%;max-width:540px;border-radius:18px;overflow:hidden;border:1px solid var(--line);
            box-shadow:var(--shadow-lg);background:#0b1d52}
     .board img{width:100%;height:auto;display:block}
-
-    /* Podpis nad obrazem */
     .capOutside{margin:0 0 8px 0;background:rgba(9,18,42,.72);border:1px solid var(--line);
       border-radius:12px;padding:6px 10px;text-align:center}
 
+    /* ── MOBILE FIX: pełna, nieucięta karta i tablica ───────────────────── */
     @media(max-width:900px){
-      .tilt-in{grid-template-columns:1fr}
-      .tilt-right{border-left:0;border-top:1px solid var(--line)}
+      .tilt{
+        aspect-ratio:auto;       /* bez sztywnego 16/9 */
+        height:auto;
+        overflow:visible;        /* nic nie przycinamy */
+      }
+      .tilt-in{
+        position:relative;
+        display:block;           /* układ w kolumnie */
+      }
+      .tilt-left, .tilt-right{
+        padding:16px;
+        border:0;
+      }
+      .board{
+        margin:0 auto;           /* ładne wycentrowanie */
+        max-width:680px;         /* pozwala zdjęciu oddychać */
+      }
+      .gridlines{border-radius:var(--radius-lg)}
     }
 
     .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
