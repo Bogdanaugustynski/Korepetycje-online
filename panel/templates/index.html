@@ -139,7 +139,7 @@
     .stepG{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);
            border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);opacity:0;transform:translateY(16px);
            transition:opacity .6s ease, transform .6s ease}
-    .stepG.revealed{opacity:1;transform:translateY(0)} .stepG h3{margin:0 0 6px;color:#eaf1ff} .stepG p{margin:0;color:var(--muted)}
+    .stepG.revealed{opacity:1;transform:translateY(0)} .stepG h3{margin:0 0 6px;color:#eaf1ff} .stepG p{margin:0;color:#b8c6dd}
 
     .section{padding:36px 0} .section h2{margin:0 0 14px;color:#eaf1ff;font-size:clamp(20px,3.2vw,26px)}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
@@ -174,8 +174,9 @@
     <div class="wrap bar">
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="drawer" aria-expanded="false"><i></i></button>
       <nav class="nav" id="site-nav" aria-label="Główne">
-        <a class="btn only-desktop" href="/o-nas">O nas</a>
-        <a class="btn only-desktop" href="/kontakt">Kontakt</a>
+        <!-- zmiana: O nas -> sekcja na stronie, Kontakt -> mailto -->
+        <a class="btn only-desktop" href="#o-nas">O nas</a>
+        <a class="btn only-desktop" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
         <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
         <a class="btn only-desktop" href="{% url 'login' %}">Zaloguj</a>
         <a class="btn only-desktop primary" href="{% url 'register' %}">Zacznij teraz</a>
@@ -186,8 +187,8 @@
   <!-- Drawer (mobile) -->
   <div class="scrim" id="scrim" hidden></div>
   <aside class="drawer" id="drawer" aria-hidden="true">
-    <a class="btn" href="/o-nas">O nas</a>
-    <a class="btn" href="/kontakt">Kontakt</a>
+    <a class="btn" href="#o-nas">O nas</a>
+    <a class="btn" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
     <a class="btn" href="{% url 'register' %}">Zarejestruj się</a>
   </aside>
 
@@ -215,10 +216,8 @@
                 <span class="pill">🖼️ Obrazy</span>
                 <span class="pill">🎧 Czat głosowy</span>
               </div>
-              <div class="actions">
-                <a class="btn primary pulse" href="#jak-to-dziala" title="Sprawdź kroki">Zobacz, jak to działa</a>
-                <a class="btn" href="{% url 'login' %}" title="Zaloguj się">Zaloguj się</a>
-              </div>
+              <!-- zmiana: usunięty drugi przycisk "Zaloguj się" + przeniesiony CTA -->
+              <div class="actions"></div>
             </div>
           </div>
         </div>
@@ -226,8 +225,13 @@
     </div>
   </header>
 
+  <!-- NAGŁÓWEK SEKCJI: Jak to działa (zamiast przycisku) -->
+  <section id="jak-to-dziala" style="text-align:center;padding:60px 20px 30px">
+    <h2 style="color:#eaf1ff;font-size:clamp(22px,3.4vw,30px);margin-bottom:20px;">Jak to działa</h2>
+  </section>
+
   <!-- KROKI -->
-  <main id="jak-to-dziala" class="steps">
+  <main class="steps">
     <section class="stepG"><h3>1️⃣ Dołącz do nas</h3><p>Zarejestruj się i utwórz swoje konto.</p></section>
     <section class="stepG"><h3>2️⃣ Wybierz nauczyciela i przedmiot</h3><p>Przeglądaj profil i bio nauczyciela (aktualnie matematyka, wkrótce także inne).</p></section>
     <section class="stepG"><h3>3️⃣ Zarezerwuj termin</h3><p>Podaj temat lekcji i dodaj potrzebne pliki lub zdjęcia.</p></section>
@@ -236,7 +240,7 @@
     <section class="stepG"><h3>6️⃣ Korzystaj z notatek</h3><p>Materiały z lekcji dostępne są na Twoim koncie.</p></section>
   </main>
 
-  <!-- DLACZEGO + NAUCZYCIELE + CTA -->
+  <!-- DLACZEGO + NAUCZYCIELE + CTA (bez zmian) -->
   <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
     <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
     <div class="grid">
@@ -272,6 +276,15 @@
     <h2 style="color:#eaf1ff">Zacznij już dziś!</h2>
     <p style="color:#b8c6dd">Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
     <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
+  </section>
+
+  <!-- O NAS (prosta sekcja do linku #o-nas) -->
+  <section class="wrap section" id="o-nas" aria-label="O nas" style="text-align:center">
+    <h2 style="color:#eaf1ff">O nas</h2>
+    <p style="color:#b8c6dd;max-width:720px;margin:0 auto">
+      PolubiszTo.pl to nowoczesna platforma do korepetycji online z interaktywną tablicą i rozmową głosową.
+      Ułatwiamy naukę w przyjaznej atmosferze — gdziekolwiek jesteś.
+    </p>
   </section>
 
   <footer>
