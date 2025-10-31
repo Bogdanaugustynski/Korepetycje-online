@@ -7,63 +7,99 @@
 <title>Logowanie — PolubiszTo.pl</title>
 <style>
   :root{
-    --brand:#0b74ff;
-    --brand-700:#095cd1;
-    --ink:#0b1320;
-    --muted:#5b6777;
-    --line:#e6edff;
-    --bg:#f5f9ff;
-    --card:#ffffff;
-    --shadow:0 20px 60px rgba(11,116,255,.15);
-    --radius:16px;
-    --maxw:460px;
+    --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
+    --line:rgba(188,214,255,.16); --bg0:#07132a; --bg1:#0a2a66;
+    --shadow-lg:0 40px 120px rgba(5,20,60,.55); --shadow-sm:0 10px 30px rgba(9,95,224,.35);
+    --radius:18px; --radius-lg:24px; --maxw:560px;
+    --field:#0b193a; --field-bd:#1b2d55;
   }
   *{box-sizing:border-box}
-  html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif; color:var(--ink); background:linear-gradient(180deg,#f3f8ff,#eef4ff)}
-  .wrap{min-height:100%; display:grid; place-items:center; padding:20px}
-  .card{width:min(var(--maxw),92vw); background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px}
-  /* kontener pod logo */
-  .brand{display:flex; justify-content:center; margin-bottom:16px}
-  h1{margin:0 0 8px 0; text-align:center; font-size:22px}
-  p.sub{margin:0 0 18px 0; text-align:center; color:var(--muted); font-size:14px}
-
-  .group{margin-bottom:12px}
-  label{display:block; font-weight:800; font-size:13px; margin:0 0 6px 6px; color:#2b3c55}
-  .field{position:relative}
-  input[type="email"], input[type="password"]{
-    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:#fbfdff;
-    font-size:16px; outline:none;
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
+  body{
+    background:radial-gradient(1200px 800px at 65% 10%, var(--bg1), var(--bg0));
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden;
   }
-  input:focus{border-color:#cfe0ff; box-shadow:0 0 0 3px rgba(11,116,255,.15)}
-  .toggle{
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px 8px; cursor:pointer;
-    font-size:12px; color:#274564;
+  a{color:#bcd6ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* tło animowane (jak na stronie głównej) */
+  .morph{position:fixed; inset:-20%; z-index:-3;
+    background:conic-gradient(from 0deg at 50% 50%, #0b223f, #0f2a59, #13418f, #0b223f);
+    filter:blur(80px) saturate(120%); opacity:.55; animation:spin 55s linear infinite}
+  @keyframes spin{to{transform:rotate(1turn)}}
+
+  /* HEADER spójny ze stroną główną: lewa pusta, linki po prawej */
+  header{position:sticky;top:0;z-index:5;
+    background:linear-gradient(180deg,rgba(7,19,42,.92),rgba(7,19,42,.66));
+    border-bottom:1px solid var(--line); backdrop-filter:saturate(160%) blur(10px)}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+  .bar{display:flex;align-items:center;gap:12px;min-height:72px}
+  .nav{display:flex;gap:8px;margin-left:auto;align-items:center}
+  .btn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px 14px;font-weight:700}
+  .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+  .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent}
+
+  /* KARTA (glass) */
+  main{min-height:calc(100svh - 72px);display:grid;place-items:center;padding:32px 16px}
+  .card{
+    width:min(var(--maxw),92vw);
+    border-radius:var(--radius-lg);
+    background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
+    border:1px solid var(--line);
+    box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);
+    padding:24px;
   }
+  .brand{display:flex;justify-content:center;margin-bottom:16px}
+  h1{margin:0 0 8px 0;text-align:center;font-size:clamp(22px,3.6vw,28px)}
+  p.sub{margin:0 0 18px 0;text-align:center;color:var(--muted);font-size:14px}
 
-  .row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px}
-  .row a{color:var(--brand); text-decoration:none; font-weight:700; font-size:14px}
-  .row a:hover{text-decoration:underline}
-
-  .btn{width:100%; margin-top:12px; background:var(--brand); color:#fff; border:none; border-radius:12px; padding:12px 16px; font-weight:900; cursor:pointer}
-  .btn:hover{background:var(--brand-700)}
-  .note{margin-top:12px; text-align:center; font-size:14px; color:var(--muted)}
-  .note a{color:var(--brand); font-weight:800; text-decoration:none}
-  .note a:hover{text-decoration:underline}
-
-  .alert{margin-bottom:12px; padding:10px 12px; border:1px solid #ffd7d7; background:#fff5f5; color:#8a1f1f; border-radius:10px; font-size:14px; display:none}
+  /* alert błędu */
+  .alert{margin:0 0 12px 0;padding:10px 12px;border:1px solid rgba(255,183,183,.35);
+    background:rgba(255,245,245,.06); color:#ffd3d3; border-radius:10px; font-size:14px; display:none}
   .alert.show{display:block}
 
-  .chk{display:inline-flex; align-items:center; gap:8px; font-size:14px; color:#2b3c55}
-  .chk input{width:16px; height:16px}
+  /* pola */
+  .group{margin-bottom:12px}
+  label{display:block;font-weight:800;font-size:13px;margin:0 0 6px 6px;color:#cfe2ff}
+  .field{position:relative}
+  input[type="email"], input[type="password"]{
+    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--field-bd);
+    background:var(--field); color:#eaf1ff; font-size:16px; outline:none;
+  }
+  input:focus{border-color:#3b82f6; box-shadow:0 0 0 4px rgba(59,130,246,.2)}
+  .toggle{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:transparent; border:1px solid var(--line); border-radius:10px; padding:6px 8px; cursor:pointer;
+    font-size:12px; color:#cfe2ff;
+  }
 
-  footer{margin-top:14px; text-align:center; color:#6a7a93; font-size:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
+  .row a{font-weight:700;font-size:14px}
+
+  .btn-block{width:100%; margin-top:12px}
+  .note{margin-top:12px; text-align:center; font-size:14px; color:var(--muted)}
+  .note a{font-weight:800}
+
+  footer{margin-top:18px;text-align:center;color:#9eb5da;font-size:12px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <main class="card" role="dialog" aria-labelledby="t">
-      <!-- TU: wspólny nagłówek -->
+  <div class="morph" aria-hidden="true"></div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="wrap bar">
+      <!-- lewa pusta -->
+      <nav class="nav" aria-label="Główne">
+        <a class="btn" href="/">Strona główna</a>
+        <a class="btn" href="/" onclick="event.preventDefault();location.href='/'+'#o-nas'">O nas</a>
+        <a class="btn" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" role="dialog" aria-labelledby="t">
       <div class="brand">
         {% include "partials/brand.html" %}
       </div>
@@ -93,18 +129,24 @@
         </div>
 
         <div class="row">
-          <label class="chk"><input type="checkbox" name="remember" {% if request.POST.remember %}checked{% endif %}/> Zapamiętaj mnie</label>
+          <label class="chk" style="display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#cfe2ff">
+            <input type="checkbox" name="remember" {% if request.POST.remember %}checked{% endif %} style="width:16px;height:16px" />
+            Zapamiętaj mnie
+          </label>
           <a href="/password-reset/">Nie pamiętasz hasła?</a>
         </div>
 
-        <button class="btn" type="submit">Zaloguj się</button>
-        <a href="/register/">Zarejestruj się</a>
-        <footer>© 2025 PolubiszTo.pl</footer>
+        <button class="btn btn-block primary" type="submit">Zaloguj się</button>
+
+        <p class="note">Nie masz konta? <a href="/register/">Zarejestruj się</a></p>
       </form>
-    </main>
-  </div>
+
+      <footer>© <span id="y"></span> PolubiszTo.pl</footer>
+    </section>
+  </main>
 
 <script>
+  document.getElementById('y').textContent = new Date().getFullYear();
   function togglePass(ev){
     const i = document.getElementById('password');
     const b = ev.currentTarget;
