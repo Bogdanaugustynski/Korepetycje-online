@@ -152,6 +152,17 @@
     .tags{display:flex;flex-wrap:wrap;gap:6px} .tag{font-size:12px;color:#d8e6ff;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
 
     footer{border-top:1px solid var(--line);color:#9eb5da;padding:22px 0;text-align:center;margin-top:30px}
+
+    /* === DODANE: Linki prawne + Modale === */
+    .legal-links{margin-top:8px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+    .legal-links a{color:#bcd6ff;font-size:.9rem;transition:color .2s}
+    .legal-links a:hover{color:#fff}
+
+    .modal{position:fixed;inset:0;background:rgba(2,8,23,.72);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:999}
+    .modal.active{display:flex}
+    .modal-content{background:#0b1d52;color:#eaf1ff;border:1px solid var(--line);border-radius:18px;max-width:900px;width:92%;
+      max-height:80vh;overflow:auto;padding:22px;box-shadow:var(--shadow-sm)}
+    .modal-close{float:right;border:0;background:none;color:#eaf1ff;font-size:20px;cursor:pointer}
   </style>
 
   <!-- SEO schema -->
@@ -290,8 +301,28 @@
   <footer>
     <div class="wrap" style="text-align:center;color:#9eb5da;padding:22px 0;border-top:1px solid var(--line)">
       © <span id="y"></span> PolubiszTo.pl — korepetycje online
+      <!-- DODANE: linki do modali -->
+      <div class="legal-links" role="navigation" aria-label="Dokumenty prawne">
+        <a href="#" onclick="openModal('regulamin');return false;">Regulamin</a>
+        <a href="#" onclick="openModal('polityka');return false;">Polityka prywatności</a>
+      </div>
     </div>
   </footer>
+
+  <!-- DODANE: MODALE (przed </body>) -->
+  <div id="modal-regulamin" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-label="Regulamin">
+      <button class="modal-close" onclick="closeModal('regulamin')" aria-label="Zamknij">✖</button>
+      {% include 'regulamin.html' %}
+    </div>
+  </div>
+
+  <div id="modal-polityka" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-label="Polityka prywatności">
+      <button class="modal-close" onclick="closeModal('polityka')" aria-label="Zamknij">✖</button>
+      {% include 'polityka_prywatnosci.html' %}
+    </div>
+  </div>
 
   <script>
     // Rok + cień headera
@@ -372,6 +403,26 @@
       },{threshold:.2});
       items.forEach(s=>io.observe(s));
     })();
+
+    // DODANE: Modale (otwieranie/zamykanie, klik w tło, ESC)
+    function openModal(id){
+      const m=document.getElementById('modal-'+id);
+      if(m){ m.classList.add('active'); m.setAttribute('aria-hidden','false'); }
+    }
+    function closeModal(id){
+      const m=document.getElementById('modal-'+id);
+      if(m){ m.classList.remove('active'); m.setAttribute('aria-hidden','true'); }
+    }
+    document.addEventListener('click', (e)=>{
+      document.querySelectorAll('.modal.active').forEach(m=>{
+        if(e.target===m){ m.classList.remove('active'); m.setAttribute('aria-hidden','true'); }
+      });
+    });
+    document.addEventListener('keydown',(e)=>{
+      if(e.key==='Escape'){
+        document.querySelectorAll('.modal.active').forEach(m=>{ m.classList.remove('active'); m.setAttribute('aria-hidden','true'); });
+      }
+    });
   </script>
 </body>
 </html>
