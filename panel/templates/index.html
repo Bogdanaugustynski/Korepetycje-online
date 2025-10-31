@@ -105,14 +105,23 @@
 
     /* Mentorka NA tablicy (prawy-dolny róg) */
     .mentor-onboard{
-      position:absolute; right:10px; bottom:10px; width:min(32%,220px);
-      border-radius:16px; filter:drop-shadow(0 8px 18px rgba(9,30,66,.45));
-      animation:float 6s ease-in-out infinite; z-index:2;
+      position:absolute;
+      right:4%;           /* odsuwa od krawędzi tablicy */
+      bottom:6%;          /* lekko wyżej, by nie przycinało */
+      width:min(26%,170px); /* zmniejszona szerokość */
+      border-radius:14px;
+      filter:drop-shadow(0 6px 14px rgba(9,30,66,.4));
+      animation:float 6s ease-in-out infinite;
+      z-index:2;
+      transform:translateX(10%) rotate(-1deg); /* lekki efekt naturalnego pochylenia */
     }
 
     @media(max-width:900px){
-      .tilt-in{grid-template-columns:1fr}
-      .tilt-right{border-left:0;border-top:1px solid var(--line)}
+      .mentor-onboard{
+        width:min(34%,150px);
+        right:3%;
+        bottom:4%;
+      }
     }
 
     .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
