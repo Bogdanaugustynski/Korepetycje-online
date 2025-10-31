@@ -6,129 +6,69 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PolubiszTo.pl — Korepetycje online</title>
   <meta name="description" content="PolubiszTo.pl — korepetycje online z wirtualną tablicą i rozmową głosową. Zarejestruj się, wybierz nauczyciela, zarezerwuj termin i dołącz do pokoju zajęć." />
-
-  <!-- Preload (LCP) -->
   <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}">
   <link rel="preload" as="image" href="{% static 'panel/mentor_kobieta.png' %}">
-
   <style>
-    :root{
-      --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
-      --line:rgba(188,214,255,.16);
-      --bg0:#07132a; --bg1:#0a2a66;
-      --glassA:rgba(14,29,55,.66); --glassB:rgba(10,24,48,.56);
-      --shadow-lg:0 40px 120px rgba(5,20,60,.55);
-      --shadow-sm:0 10px 30px rgba(9,95,224,.35);
-      --radius:18px; --radius-lg:24px; --max:1140px;
-    }
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--ink);
-      background:radial-gradient(1200px 800px at 60% -10%, var(--bg1) 0%, #081a3e 40%, var(--bg0) 80%);
-      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    }
-    img{max-width:100%;height:auto;display:block}
-    a{color:#bcd6ff;text-decoration:none}
-
-    .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
-
-    /* Skip link */
-    .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
-    .skip-link:focus{left:12px;top:12px;width:auto;height:auto;background:#0b1d52;color:#fff;border:2px solid #bcd6ff;padding:8px 12px;border-radius:10px;z-index:1000}
-
-    /* Header */
-    header{
-      position:sticky; top:0; z-index:50;
-      background:linear-gradient(180deg,rgba(7,19,42,.9),rgba(7,19,42,.65));
-      backdrop-filter:saturate(160%) blur(8px);
-      border-bottom:1px solid var(--line);
-    }
-    header.scrolled{ box-shadow:0 10px 30px rgba(5,20,60,.35) }
-    .bar{display:flex;align-items:center;gap:12px;min-height:70px}
+    :root{ --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
+      --line:rgba(188,214,255,.16); --bg0:#07132a; --bg1:#0a2a66; --glassA:rgba(14,29,55,.66); --glassB:rgba(10,24,48,.56);
+      --shadow-lg:0 40px 120px rgba(5,20,60,.55); --shadow-sm:0 10px 30px rgba(9,95,224,.35);
+      --radius:18px; --radius-lg:26px; --max:1140px }
+    *{box-sizing:border-box} html{scroll-behavior:smooth} html,body{height:100%}
+    body{ margin:0; font-family:system-ui,-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
+          background:radial-gradient(1200px 800px at 65% 10%, var(--bg1), var(--bg0)); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow-x:hidden }
+    a{color:#bcd6ff;text-decoration:none} img{max-width:100%;height:auto;display:block} .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}} @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 18px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
+    @media (prefers-reduced-motion:reduce){ .float,.pulse{animation:none!important} }
+    .morph{position:fixed; inset:-20%; z-index:-3; background:conic-gradient(from 0deg at 50% 50%, #0b223f, #0f2a59, #13418f, #0b223f); filter:blur(80px) saturate(120%); opacity:.55; animation:spin 55s linear infinite}
+    @keyframes spin{to{transform:rotate(1turn)}} canvas#fx{position:fixed; inset:0; z-index:-1}
+    header{ position:sticky; top:0; z-index:50; background:linear-gradient(180deg,rgba(7,19,42,.92),rgba(7,19,42,.66)); backdrop-filter:saturate(160%) blur(10px); border-bottom:1px solid var(--line); transition:box-shadow .2s ease }
+    header.scrolled{ box-shadow:0 16px 50px rgba(9,30,66,.45) } .bar{display:flex;align-items:center;gap:12px;min-height:72px}
+    .brand{display:flex;align-items:center;gap:10px} .brand svg{width:34px;height:34px;color:#7fb1ff;filter:drop-shadow(0 8px 14px rgba(11,116,255,.45))}
+    .brand b{color:#fff} .brand small{color:#9eb5da}
     .hamb{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px;display:flex;gap:8px;cursor:pointer}
     .hamb i{width:18px;height:2px;background:#eaf1ff;box-shadow:0 6px 0 #eaf1ff, 0 -6px 0 #eaf1ff;display:inline-block}
-    .nav{display:none;flex-wrap:wrap;gap:8px;margin-left:auto}
-    .nav.open{display:flex}
-    @media (min-width: 860px){ .hamb{display:none} .nav{display:flex !important} }
-
-    .btn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px 14px;font-weight:600;line-height:1;transition:transform .12s ease, box-shadow .12s ease}
-    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
-    .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent;color:#fff}
-    .btn.primary.pulse{animation:pulse 2.4s infinite}
-    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 16px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
-
-    /* HERO */
-    .hero{position:relative;overflow:hidden}
-    .hero-in{display:grid;grid-template-columns:1fr;gap:22px;align-items:center;padding:34px 0}
-    .h1{font-size:clamp(24px,4.8vw,42px);line-height:1.08;margin:0;color:#eaf1ff;text-shadow:0 10px 40px rgba(11,116,255,.35)}
-
-    /* Network bg */
-    .net{position:absolute;inset:0;pointer-events:none;opacity:.45}
-
-    /* Visual */
-    .hero-visual{position:relative}
-    .board-preview{
-      background:linear-gradient(180deg,var(--glassA),var(--glassB));
-      border:1px solid var(--line); border-radius:var(--radius-lg);
-      box-shadow:var(--shadow-lg); position:relative; overflow:hidden;
-      aspect-ratio:4/3; max-width:100%; max-height:min(60vh,520px);
-    }
-    .board-preview img{width:100%;height:100%;object-fit:contain;background:#0b1d52;border-radius:var(--radius-lg)}
-    .spark{position:absolute;inset:auto -20% -35% auto;width:55%;height:70%;
-      background:radial-gradient(closest-side, rgba(123,167,255,.25), transparent 70%); filter:blur(10px);transform:rotate(-12deg)}
-    .board-caption{
-      position:absolute;bottom:10px;left:12px;right:12px;background:rgba(9,18,42,.72);
-      color:#eaf1ff;font-size:13px;font-weight:600;text-align:center;padding:6px 10px;border-radius:10px;
-      border:1px solid var(--line);backdrop-filter:blur(4px)
-    }
-    .mentor{
-      position:absolute;right:-6%;bottom:-6%;width:min(36%, 280px);pointer-events:none;
-      filter:drop-shadow(0 18px 24px rgba(9,30,66,.45));transform-origin:center;animation:floatMentor 6s ease-in-out infinite;border-radius:16px
-    }
-    @keyframes floatMentor{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-    @media (max-width: 900px){ .mentor{display:none} }
-
-    /* Kroki (zachowane treści) */
-    .steps{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
-    .step{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
-    .i{width:36px;height:36px;border-radius:10px;background:#163a82;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:#cfe1ff;flex:0 0 36px}
-    .step h4{margin:2px 0 4px;font-size:16px;color:#eaf1ff}
-    .step p{margin:0;color:var(--muted);font-size:14px}
-
-    .section{padding:28px 0}
-    .section h2{margin:0 0 12px;font-size:clamp(18px,3.6vw,22px);color:#eaf1ff}
-
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-    .card{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:14px;transition:transform .18s ease, box-shadow .18s ease}
-    .card:hover{transform:translateY(-2px);box-shadow:0 20px 50px rgba(9,30,66,.45)}
-
+    .nav{display:none;gap:8px;margin-left:auto;align-items:center} .nav.open{display:flex}
+    @media (min-width:860px){ .hamb{display:none} .nav{display:flex !important} }
+    .btn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px 14px;font-weight:700}
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)} .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent} .btn.pulse{animation:pulse 2.4s infinite}
+    header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
+    .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
+    .logoBox{display:grid;place-items:center;width:82px;height:82px;border-radius:20px;background:linear-gradient(180deg,#0b74ff,#0a63da);box-shadow:0 18px 50px rgba(11,116,255,.45);transform:rotate(6deg)}
+    .logoBox svg{width:46px;height:46px;color:#fff}
+    .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 40px rgba(131,180,255,.25);margin:0}
+    .sub{color:#bcd3ff;max-width:760px;font-size:clamp(16px,1.9vw,18px)} .tw{display:inline-block;border-right:3px solid #cfe2ff;padding-right:6px;animation:blink 1s step-end infinite}
+    @keyframes blink{50%{border-color:transparent}}
+    .tilt{width:min(980px,96vw);aspect-ratio:16/9;border-radius:24px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));border:1px solid var(--line);box-shadow:0 30px 90px rgba(9,30,66,.6), inset 0 0 80px rgba(131,180,255,.08);transform-style:preserve-3d;position:relative}
+    .gridlines{position:absolute;inset:0;background:linear-gradient(rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px,linear-gradient(90deg, rgba(131,180,255,.12) 1px, transparent 1px) 0 0/ 24px 24px;opacity:.35}
+    .tilt-in{position:absolute;inset:0;display:grid;grid-template-columns:1.15fr .85fr}
+    .tilt-left{display:grid;place-items:center;padding:18px}
+    .tilt-right{display:grid;place-items:center;padding:18px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45))}
+    .board{position:relative;aspect-ratio:4/3;width:100%;max-width:520px;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow-lg)}
+    .board img{width:100%;height:100%;object-fit:cover;background:#0b1d52}
+    .cap{position:absolute;inset:auto 12px 12px 12px;background:rgba(9,18,42,.72);border:1px solid var(--line);border-radius:12px;padding:6px 10px;text-align:center}
+    .mentor{position:absolute;right:-5%;bottom:-6%;width:min(30%,260px);filter:drop-shadow(0 18px 24px rgba(9,30,66,.55));animation:float 6s ease-in-out infinite;border-radius:16px}
+    @media(max-width:900px){ .tilt-in{grid-template-columns:1fr} .tilt-right{border-left:0;border-top:1px solid var(--line)} .mentor{display:none} }
+    .pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .pill{font-size:.9rem;padding:8px 12px;border-radius:999px;color:#eaf1ff;background:rgba(255,255,255,.08);border:1px solid var(--line)}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px} .actions .btn.secondary{background:rgba(255,255,255,.08)}
+    main .steps{max-width:var(--max);margin:70px auto;padding:0 16px;display:grid;gap:16px}
+    @media(min-width:860px){ main .steps{grid-template-columns:repeat(3,1fr)} }
+    .stepG{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease}
+    .stepG.revealed{opacity:1;transform:translateY(0)} .stepG h3{margin:0 0 6px;color:#eaf1ff} .stepG p{margin:0;color:var(--muted)}
+    .section{padding:36px 0} .section h2{margin:0 0 14px;color:#eaf1ff;font-size:clamp(20px,3.2vw,26px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+    .card{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm)}
     .teacher{display:flex;gap:12px;align-items:flex-start}
     .avatar{width:72px;height:72px;border-radius:14px;background:#0f2c63;object-fit:cover;border:1px solid var(--line);flex:0 0 72px}
     .name{font-weight:800;font-size:16px;margin:0 0 6px;color:#eaf1ff}
     .desc{color:var(--muted);font-size:14px;margin:0 0 10px}
-    .tags{display:flex;flex-wrap:wrap;gap:6px}
-    .tag{font-size:12px;color:#d8e6ff;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
-
-    @media (min-width: 900px){ .hero-in{grid-template-columns:1.1fr .9fr; padding:48px 0} .steps{grid-template-columns:1fr 1fr} }
-    @media (max-width: 480px){ .board-preview{ max-height: 42vh } }
-
-    footer{border-top:1px solid var(--line);color:#9eb5da;padding:18px 0;margin-top:22px;text-align:center}
-
-    @media (prefers-reduced-motion: reduce){
-      .btn.primary.pulse, .mentor{animation:none}
-    }
+    .tags{display:flex;flex-wrap:wrap;gap:6px} .tag{font-size:12px;color:#d8e6ff;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
+    footer{border-top:1px solid var(--line);color:#9eb5da;padding:22px 0;text-align:center;margin-top:30px}
   </style>
-
-  <!-- Structured data -->
-  <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"Organization","name":"PolubiszTo.pl","url":"https://polubiszto.pl","email":"polubiszto.pl@gmail.com","logo":"https://polubiszto.pl/static/panel/podglad_tablicy.png"}
-  </script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Przejdź do treści</a>
+  <div class="morph"></div>
+  <canvas id="fx"></canvas>
 
   <header>
     <div class="wrap bar">
@@ -138,99 +78,97 @@
         <a class="btn" href="/o-nas">O nas</a>
         <a class="btn" href="/kontakt">Kontakt</a>
         <a class="btn" href="{% url 'login' %}">Zaloguj</a>
+        <a class="btn primary" href="{% url 'register' %}">Zacznij teraz</a>
       </nav>
     </div>
   </header>
 
-  <!-- animowane tło siatki (lekki, bez JS) -->
-  <svg class="net" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true">
-    <defs><linearGradient id="glow" x1="0" x2="1"><stop offset="0" stop-color="#1b4db3"/><stop offset="1" stop-color="#0b74ff"/></linearGradient></defs>
-    <g stroke="url(#glow)" stroke-width="1">
-      <circle cx="120" cy="160" r="2" fill="#8ab6ff"/><circle cx="420" cy="120" r="2" fill="#8ab6ff"/>
-      <circle cx="760" cy="220" r="2" fill="#8ab6ff"/><circle cx="1080" cy="140" r="2" fill="#8ab6ff"/>
-      <circle cx="1360" cy="200" r="2" fill="#8ab6ff"/>
-      <path d="M120 160 L420 120 L760 220 L1080 140 L1360 200" opacity=".6"/>
-      <path d="M120 160 L480 340 L820 300 L1160 360 L1520 300" opacity=".35"/>
-      <path d="M260 500 L540 420 L900 520 L1280 460" opacity=".28"/>
-      <path d="M80 700 L460 640 L840 700 L1240 660 L1520 740" opacity=".22"/>
-    </g>
-  </svg>
-
-  <main id="main">
-    <section class="hero" aria-label="Wprowadzenie">
-      <div class="wrap hero-in">
-        <div>
-          <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
-
-          <!-- (Noa) zachowane kroki i treści -->
-          <div class="steps" aria-label="Jak to działa">
-            <div class="step"><div class="i">1</div><div><h4>Dołącz do nas</h4><p>Zarejestruj się i utwórz swoje konto.</p></div></div>
-            <div class="step"><div class="i">2</div><div><h4>Wybierz nauczyciela i przedmiot</h4><p>Przeglądaj profil i bio nauczyciela (aktualnie matematyka, wkrótce także inne).</p></div></div>
-            <div class="step"><div class="i">3</div><div><h4>Zarezerwuj termin</h4><p>Podaj temat lekcji i dodaj potrzebne pliki lub zdjęcia.</p></div></div>
-            <div class="step"><div class="i">4</div><div><h4>Opłać lekcję</h4><p>Zapłać BLIKIEM lub przelewem tradycyjnym.</p></div></div>
-            <div class="step"><div class="i">5</div><div><h4>Ucz się online</h4><p>Dołącz do pokoju z tablicą i rozmową głosową — bez instalacji.</p></div></div>
-            <div class="step"><div class="i">6</div><div><h4>Korzystaj z notatek, kiedy chcesz</h4><p>Materiały z lekcji dostępne są na Twoim koncie.</p></div></div>
-          </div>
-
-          <div style="margin-top:14px">
-            <a class="btn primary pulse" href="{% url 'register' %}">Zacznij teraz</a>
-          </div>
-        </div>
-
-        <div class="hero-visual">
-          <figure class="board-preview">
-            <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd wirtualnej tablicy w pokoju zajęć PolubiszTo.pl" loading="eager" decoding="async" />
-            <div class="spark" aria-hidden="true"></div>
-            <figcaption class="board-caption">Podgląd wirtualnej tablicy PolubiszTo.pl</figcaption>
-          </figure>
-
-          <img class="mentor" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Twoja mentorka online" loading="lazy" decoding="async" />
-        </div>
+  <header class="hero" id="top">
+    <div class="stack">
+      <div class="logoBox" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M21 7v6"/><path d="M3 7v6"/>
+          <path d="M3 13l9 4 9-4"/><path d="M9 10v6"/><path d="M15 10v6"/>
+        </svg>
       </div>
-    </section>
+      <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
+      <p class="sub">Platforma z interaktywną tablicą i rozmową na żywo — <span class="tw" id="tw"></span></p>
 
-    <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
-      <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
-      <div class="grid">
-        <div class="card"><h4 style="margin:0 0 6px;color:#eaf1ff">✔ Doświadczeni nauczyciele</h4><p class="desc">Zweryfikowane profile z jasno opisanym doświadczeniem.</p></div>
-        <div class="card"><h4 style="margin:0 0 6px;color:#eaf1ff">✔ Dogodne godziny</h4><p class="desc">Elastyczny grafik dopasowany do Twojego planu dnia.</p></div>
-        <div class="card"><h4 style="margin:0 0 6px;color:#eaf1ff">✔ Materiały do lekcji</h4><p class="desc">Dodawanie plików oraz notatki po zajęciach.</p></div>
-      </div>
-    </section>
-
-    <section class="wrap section" id="nauczyciele" aria-labelledby="teachers-title">
-      <h2 id="teachers-title">Polecani nauczyciele</h2>
-      <div class="grid" id="teachersGrid">
-        {% for n in nauczyciele %}
-          <article class="card teacher">
-            <img class="avatar"
-                 src="{{ n.photo_url|default:n.default_avatar }}"
-                 alt="{{ n.full_name }}"
-                 width="72" height="72"
-                 loading="lazy" decoding="async"
-                 onerror="this.src='https://placehold.co/72x72'"/>
-            <div style="flex:1">
-              <h3 class="name">{{ n.full_name }}</h3>
-              <p class="desc">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
-              {% if n.tag_list %}
-                <div class="tags" aria-label="Specjalizacje">
-                  {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
-                </div>
-              {% endif %}
+      <div class="tilt" id="tilt">
+        <div class="gridlines" aria-hidden="true"></div>
+        <div class="tilt-in">
+          <div class="tilt-left">
+            <figure class="board">
+              <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd wirtualnej tablicy" loading="eager" decoding="async">
+              <figcaption class="cap">Podgląd wirtualnej tablicy PolubiszTo.pl</figcaption>
+            </figure>
+          </div>
+          <div class="tilt-right">
+            <img class="mentor" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Twoja mentorka online" loading="lazy" decoding="async">
+            <div>
+              <h2 style="margin:0 0 10px">Pokój zajęć • Excalidraw / AliBoard • Jitsi/Audio</h2>
+              <div class="pills">
+                <span class="pill">✍️ Rysowanie & tekst</span>
+                <span class="pill">🖼️ PDF/obrazy</span>
+                <span class="pill">🔗 Udostępnianie</span>
+                <span class="pill">🎧 Czat głosowy</span>
+              </div>
+              <div class="actions">
+                <a class="btn primary pulse" href="#jak-to-dziala" title="Sprawdź kroki">Zobacz, jak to działa</a>
+                <a class="btn" href="{% url 'login' %}" title="Zaloguj się">Zaloguj się</a>
+              </div>
             </div>
-          </article>
-        {% empty %}
-          <p style="color:#b8c6dd">Wkrótce pojawią się nauczyciele.</p>
-        {% endfor %}
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
+  </header>
 
-    <section class="wrap section" id="cta" style="text-align:center" aria-label="Wezwanie do działania">
-      <h2 style="color:#eaf1ff">🚀 Zacznij już dziś!</h2>
-      <p style="color:#b8c6dd">Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
-      <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
-    </section>
+  <main id="jak-to-dziala" class="steps">
+    <section class="stepG"><h3>1️⃣ Dołącz do nas</h3><p>Zarejestruj się i utwórz swoje konto.</p></section>
+    <section class="stepG"><h3>2️⃣ Wybierz nauczyciela i przedmiot</h3><p>Przeglądaj profil i bio nauczyciela (aktualnie matematyka, wkrótce także inne).</p></section>
+    <section class="stepG"><h3>3️⃣ Zarezerwuj termin</h3><p>Podaj temat lekcji i dodaj potrzebne pliki lub zdjęcia.</p></section>
+    <section class="stepG"><h3>4️⃣ Opłać lekcję</h3><p>Zapłać BLIKIEM lub przelewem tradycyjnym.</p></section>
+    <section class="stepG"><h3>5️⃣ Ucz się online</h3><p>Dołącz do pokoju z tablicą i rozmową głosową — bez instalacji.</p></section>
+    <section class="stepG"><h3>6️⃣ Korzystaj z notatek</h3><p>Materiały z lekcji dostępne są na Twoim koncie.</p></section>
   </main>
+
+  <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
+    <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
+    <div class="grid">
+      <div class="card"><h3 style="margin:0 0 6px;color:#eaf1ff">✔ Doświadczeni nauczyciele</h3><p class="desc">Zweryfikowane profile z jasno opisanym doświadczeniem.</p></div>
+      <div class="card"><h3 style="margin:0 0 6px;color:#eaf1ff">✔ Dogodne godziny</h3><p class="desc">Elastyczny grafik dopasowany do Twojego planu dnia.</p></div>
+      <div class="card"><h3 style="margin:0 0 6px;color:#eaf1ff">✔ Materiały do lekcji</h3><p class="desc">Dodawanie plików oraz notatki po zajęciach.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap section" id="nauczyciele" aria-labelledby="teachers-title">
+    <h2 id="teachers-title">Polecani nauczyciele</h2>
+    <div class="grid" id="teachersGrid">
+      {% for n in nauczyciele %}
+        <article class="card teacher">
+          <img class="avatar" src="{{ n.photo_url|default:n.default_avatar }}" alt="{{ n.full_name }}" width="72" height="72" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/72x72'"/>
+          <div style="flex:1">
+            <h3 class="name">{{ n.full_name }}</h3>
+            <p class="desc">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
+            {% if n.tag_list %}
+              <div class="tags" aria-label="Specjalizacje">
+                {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </article>
+      {% empty %}
+        <p style="color:#b8c6dd">Wkrótce pojawią się nauczyciele.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="wrap section" id="cta" style="text-align:center" aria-label="Wezwanie do działania">
+    <h2 style="color:#eaf1ff">🚀 Zacznij już dziś!</h2>
+    <p style="color:#b8c6dd">Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
+    <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
+  </section>
 
   <footer>
     <div class="wrap" style="text-align:center;color:#9eb5da;padding:18px 0;border-top:1px solid var(--line)">
@@ -239,14 +177,72 @@
   </footer>
 
   <script>
-    // (Noa) Rok + hamburger + cień headera
     document.getElementById('y').textContent = new Date().getFullYear();
     (function(){var btn=document.getElementById('hamb'), nav=document.getElementById('site-nav');
       if(btn&&nav){ btn.addEventListener('click', function(){ var open=nav.classList.toggle('open'); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); });}})();
     (function(){var hdr=document.querySelector('header'); if(!hdr) return;
       function onScroll(){ var y = window.scrollY || document.documentElement.scrollTop; if (y>4) hdr.classList.add('scrolled'); else hdr.classList.remove('scrolled');}
       onScroll(); window.addEventListener('scroll', onScroll, {passive:true});})();
+
+    // Typewriter
+    (function(){
+      const el=document.getElementById('tw');
+      const texts=["matematyka • fizyka • języki","rysuj, pisz i mów w jednym miejscu","ucz się wygodnie — gdziekolwiek jesteś"];
+      let i=0, j=0, del=false;
+      function tick(){
+        const t=texts[i];
+        el.textContent=t.slice(0, j);
+        if(!del && j < t.length){ j++; }
+        else if(del && j>0){ j--; }
+        else{ del=!del; if(!del){ i=(i+1)%texts.length; } }
+        setTimeout(tick, del?40:70);
+      }
+      tick();
+    })();
+
+    // Tilt
+    (function(){
+      const c=document.getElementById('tilt'); if(!c) return;
+      const rect=()=>c.getBoundingClientRect();
+      function move(e){
+        const r=rect(), x=(e.clientX - r.left)/r.width - .5, y=(e.clientY - r.top)/r.height - .5;
+        c.style.transform=`rotateX(${(-y*10).toFixed(2)}deg) rotateY(${(x*12).toFixed(2)}deg)`;
+      }
+      function reset(){ c.style.transform='rotateX(0) rotateY(0)'; }
+      c.addEventListener('mousemove', move); c.addEventListener('mouseleave', reset);
+    })();
+
+    // Particles
+    (function(){
+      const cv=document.getElementById('fx'); const ctx=cv.getContext('2d');
+      let w,h,px=0,py=0; const P=[]; const N=70;
+      function size(){ w=cv.width=innerWidth; h=cv.height=innerHeight; }
+      addEventListener('resize', size); size();
+      for(let i=0;i<N;i++){ P.push({x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-.5)*.6, vy:(Math.random()-.5)*.6, r:Math.random()*1.8+0.6}); }
+      addEventListener('mousemove', e=>{ px=e.clientX; py=e.clientY; });
+      (function step(){
+        ctx.clearRect(0,0,w,h);
+        for(const p of P){
+          p.x+=p.vx; p.y+=p.vy;
+          if(p.x<0||p.x>w) p.vx*=-1;
+          if(p.y<0||p.y>h) p.vy*=-1;
+          ctx.beginPath();
+          ctx.arc(p.x+(px-w/2)*0.0008, p.y+(py-h/2)*0.0008, p.r, 0, Math.PI*2);
+          ctx.fillStyle='rgba(131,180,255,0.9)'; ctx.fill();
+        }
+        for(let i=0;i<N;i++){ for(let j=i+1;j<N;j++){ const a=P[i], b=P[j], dx=a.x-b.x, dy=a.y-b.y, d=Math.hypot(dx,dy);
+          if(d<120){ ctx.globalAlpha=(120-d)/120*.35; ctx.strokeStyle='#83b4ff'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha=1; } } }
+        requestAnimationFrame(step);
+      })();
+    })();
+
+    // Reveal steps
+    (function(){
+      const items=document.querySelectorAll('.stepG');
+      if(!('IntersectionObserver' in window)){ items.forEach(s=>s.classList.add('revealed')); return; }
+      const io=new IntersectionObserver((entries)=>{ entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('revealed'); io.unobserve(e.target);} }); },{threshold:.2});
+      items.forEach(s=>io.observe(s));
+    })();
   </script>
-  <noscript>Włącz JavaScript, by w pełni korzystać ze strony PolubiszTo.pl.</noscript>
 </body>
 </html>
