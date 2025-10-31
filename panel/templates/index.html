@@ -7,120 +7,124 @@
   <title>PolubiszTo.pl — Korepetycje online</title>
   <meta name="description" content="PolubiszTo.pl — korepetycje online z wirtualną tablicą i rozmową głosową. Zarejestruj się, wybierz nauczyciela, zarezerwuj termin i dołącz do pokoju zajęć." />
 
-  <!-- (Ali) Preload grafik hero dla szybszego LCP -->
-  <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}" imagesrcset="{% static 'panel/podglad_tablicy.png' %} 1x" />
-  <link rel="preload" as="image" href="{% static 'panel/mentor_kobieta.png' %}" imagesrcset="{% static 'panel/mentor_kobieta.png' %} 1x" />
+  <!-- Preload (LCP) -->
+  <link rel="preload" as="image" href="{% static 'panel/podglad_tablicy.png' %}">
+  <link rel="preload" as="image" href="{% static 'panel/mentor_kobieta.png' %}">
 
   <style>
     :root{
-      --primary:#0b74ff; --ink:#0f172a; --bg:#f7f9ff; --card:#ffffff; --muted:#6b7280;
-      --shadow:0 10px 30px rgba(11,116,255,.12);
-      --radius:16px; --gap:16px; --edge:16px; --max:1140px;
-      --glow:0 20px 60px rgba(11,116,255,.18);
+      --brand:#0b74ff; --brand-700:#0a5fe0; --ink:#eaf1ff; --muted:#b8c6dd;
+      --line:rgba(188,214,255,.16);
+      --bg0:#07132a; --bg1:#0a2a66;
+      --glassA:rgba(14,29,55,.66); --glassB:rgba(10,24,48,.56);
+      --shadow-lg:0 40px 120px rgba(5,20,60,.55);
+      --shadow-sm:0 10px 30px rgba(9,95,224,.35);
+      --radius:18px; --radius-lg:24px; --max:1140px;
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;min-height:100%;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--ink);
+      background:radial-gradient(1200px 800px at 60% -10%, var(--bg1) 0%, #081a3e 40%, var(--bg0) 80%);
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    }
     img{max-width:100%;height:auto;display:block}
-    a{color:var(--primary);text-decoration:none}
-    .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--edge)}
+    a{color:#bcd6ff;text-decoration:none}
 
-    /* Skip link (Lyra: dostępność) */
+    .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+
+    /* Skip link */
     .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
-    .skip-link:focus{left:12px;top:12px;width:auto;height:auto;background:#fff;border:2px solid var(--primary);padding:8px 12px;border-radius:10px;z-index:1000}
+    .skip-link:focus{left:12px;top:12px;width:auto;height:auto;background:#0b1d52;color:#fff;border:2px solid #bcd6ff;padding:8px 12px;border-radius:10px;z-index:1000}
 
-    /* header */
-    header{position:sticky;top:0;z-index:50;border-bottom:1px solid #e5e7eb;
-      backdrop-filter:saturate(140%) blur(8px); background:rgba(255,255,255,.78)}
-    @supports not (backdrop-filter: blur(8px)){ header{background:#ffffff} }
-    header.scrolled{box-shadow:0 6px 24px rgba(15, 23, 42, .06)}
-    .bar{display:flex;align-items:center;gap:10px;padding:12px 0}
-    .hamb{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px;display:flex;align-items:center;gap:8px;cursor:pointer}
-    .hamb i{width:18px;height:2px;background:#0f172a;box-shadow:0 6px 0 #0f172a, 0 -6px 0 #0f172a;display:inline-block}
+    /* Header */
+    header{
+      position:sticky; top:0; z-index:50;
+      background:linear-gradient(180deg,rgba(7,19,42,.9),rgba(7,19,42,.65));
+      backdrop-filter:saturate(160%) blur(8px);
+      border-bottom:1px solid var(--line);
+    }
+    header.scrolled{ box-shadow:0 10px 30px rgba(5,20,60,.35) }
+    .bar{display:flex;align-items:center;gap:12px;min-height:70px}
+    .hamb{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px;display:flex;gap:8px;cursor:pointer}
+    .hamb i{width:18px;height:2px;background:#eaf1ff;box-shadow:0 6px 0 #eaf1ff, 0 -6px 0 #eaf1ff;display:inline-block}
     .nav{display:none;flex-wrap:wrap;gap:8px;margin-left:auto}
     .nav.open{display:flex}
     @media (min-width: 860px){ .hamb{display:none} .nav{display:flex !important} }
 
-    .btn{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;font-weight:600;line-height:1;transition:transform .12s ease, box-shadow .12s ease}
-    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.06)}
-    .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:var(--shadow)}
+    .btn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;border-radius:12px;padding:10px 14px;font-weight:600;line-height:1;transition:transform .12s ease, box-shadow .12s ease}
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+    .btn.primary{background:linear-gradient(135deg,#0b74ff,#00a2ff);border-color:transparent;color:#fff}
     .btn.primary.pulse{animation:pulse 2.4s infinite}
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(11,116,255,.35)} 70%{box-shadow:0 0 0 16px rgba(11,116,255,0)} 100%{box-shadow:0 0 0 0 rgba(11,116,255,0)} }
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,116,255,.45)}70%{box-shadow:0 0 0 16px rgba(11,116,255,0)}100%{box-shadow:0 0 0 0 rgba(11,116,255,0)}}
 
     /* HERO */
-    .hero{
-      background:
-        radial-gradient(900px 520px at 75% -60%, #dbe7ff 0%, transparent 60%),
-        linear-gradient(180deg,#f7f9ff 0%, #f1f6ff 100%);
-    }
-    .hero-in{display:grid;grid-template-columns:1fr;gap:22px;align-items:center;padding:32px 0}
-    .h1{font-size:clamp(24px,4.8vw,42px);line-height:1.08;margin:0}
+    .hero{position:relative;overflow:hidden}
+    .hero-in{display:grid;grid-template-columns:1fr;gap:22px;align-items:center;padding:34px 0}
+    .h1{font-size:clamp(24px,4.8vw,42px);line-height:1.08;margin:0;color:#eaf1ff;text-shadow:0 10px 40px rgba(11,116,255,.35)}
 
-    /* TABLICA + MENTORKA */
+    /* Network bg */
+    .net{position:absolute;inset:0;pointer-events:none;opacity:.45}
+
+    /* Visual */
     .hero-visual{position:relative}
     .board-preview{
-      background:#eaf1ff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:var(--shadow), var(--glow);
-      position:relative;overflow:hidden;aspect-ratio:4/3;max-width:100%;max-height:min(60vh,520px);
+      background:linear-gradient(180deg,var(--glassA),var(--glassB));
+      border:1px solid var(--line); border-radius:var(--radius-lg);
+      box-shadow:var(--shadow-lg); position:relative; overflow:hidden;
+      aspect-ratio:4/3; max-width:100%; max-height:min(60vh,520px);
     }
-    .board-preview img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:20px}
-    .spark{position:absolute;inset:auto -20% -40% auto;width:60%;height:60%;
-      background:radial-gradient(closest-side, rgba(123,167,255,.25), transparent 70%); transform:rotate(-12deg);filter:blur(12px);pointer-events:none}
-
+    .board-preview img{width:100%;height:100%;object-fit:contain;background:#0b1d52;border-radius:var(--radius-lg)}
+    .spark{position:absolute;inset:auto -20% -35% auto;width:55%;height:70%;
+      background:radial-gradient(closest-side, rgba(123,167,255,.25), transparent 70%); filter:blur(10px);transform:rotate(-12deg)}
     .board-caption{
-      position:absolute;bottom:10px;left:12px;right:12px;background:rgba(255,255,255,.86);
-      color:#0f172a;font-size:14px;font-weight:600;text-align:center;padding:6px 10px;border-radius:10px;
-      box-shadow:0 2px 6px rgba(0,0,0,.08);backdrop-filter:blur(4px)
+      position:absolute;bottom:10px;left:12px;right:12px;background:rgba(9,18,42,.72);
+      color:#eaf1ff;font-size:13px;font-weight:600;text-align:center;padding:6px 10px;border-radius:10px;
+      border:1px solid var(--line);backdrop-filter:blur(4px)
     }
-
     .mentor{
       position:absolute;right:-6%;bottom:-6%;width:min(36%, 280px);pointer-events:none;
-      filter:drop-shadow(0 18px 24px rgba(15,23,42,.18));transform-origin:center;animation:floatMentor 6s ease-in-out infinite;border-radius:16px
+      filter:drop-shadow(0 18px 24px rgba(9,30,66,.45));transform-origin:center;animation:floatMentor 6s ease-in-out infinite;border-radius:16px
     }
-    @keyframes floatMentor{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-6px) } }
+    @keyframes floatMentor{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
     @media (max-width: 900px){ .mentor{display:none} }
 
-    /* Kroki */
-    .steps{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
-    .step{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid #e5e7eb;border-radius:14px;padding:12px}
-    .i{width:36px;height:36px;border-radius:10px;background:#eef3ff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:800;color:#3b5fcc;flex:0 0 36px}
-    .step h4{margin:2px 0 4px;font-size:16px}
-    .step p{margin:0;color:#374151;font-size:14px}
+    /* Kroki (zachowane treści) */
+    .steps{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    .step{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
+    .i{width:36px;height:36px;border-radius:10px;background:#163a82;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:#cfe1ff;flex:0 0 36px}
+    .step h4{margin:2px 0 4px;font-size:16px;color:#eaf1ff}
+    .step p{margin:0;color:var(--muted);font-size:14px}
 
     .section{padding:28px 0}
-    .section h2{margin:0 0 12px;font-size:clamp(18px,3.6vw,22px)}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--gap)}
-    .card{background:var(--card);border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 2px 10px rgba(0,0,0,.04);padding:14px;transition:transform .18s ease, box-shadow .18s ease}
-    .card:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.08)}
+    .section h2{margin:0 0 12px;font-size:clamp(18px,3.6vw,22px);color:#eaf1ff}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+    .card{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:14px;transition:transform .18s ease, box-shadow .18s ease}
+    .card:hover{transform:translateY(-2px);box-shadow:0 20px 50px rgba(9,30,66,.45)}
 
     .teacher{display:flex;gap:12px;align-items:flex-start}
-    .avatar{width:72px;height:72px;border-radius:14px;background:#eef3ff;object-fit:cover;border:1px solid #e5e7eb;flex:0 0 72px}
-    .name{font-weight:800;font-size:16px;margin:0 0 6px}
-    .desc{color:#374151;font-size:14px;margin:0 0 10px}
+    .avatar{width:72px;height:72px;border-radius:14px;background:#0f2c63;object-fit:cover;border:1px solid var(--line);flex:0 0 72px}
+    .name{font-weight:800;font-size:16px;margin:0 0 6px;color:#eaf1ff}
+    .desc{color:var(--muted);font-size:14px;margin:0 0 10px}
     .tags{display:flex;flex-wrap:wrap;gap:6px}
-    .tag{font-size:12px;color:#334155;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px}
-    .clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .tag{font-size:12px;color:#d8e6ff;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
 
-    @media (min-width: 900px){ .hero-in{grid-template-columns:1.1fr .9fr; padding:44px 0} .steps{grid-template-columns:1fr 1fr} }
+    @media (min-width: 900px){ .hero-in{grid-template-columns:1.1fr .9fr; padding:48px 0} .steps{grid-template-columns:1fr 1fr} }
     @media (max-width: 480px){ .board-preview{ max-height: 42vh } }
 
-    .foot{border-top:1px solid #e5e7eb;color:#6b7280;padding:18px 0;margin-top:22px;text-align:center}
+    footer{border-top:1px solid var(--line);color:#9eb5da;padding:18px 0;margin-top:22px;text-align:center}
 
-    /* preferencje dostępności */
     @media (prefers-reduced-motion: reduce){
       .btn.primary.pulse, .mentor{animation:none}
     }
   </style>
 
-  <!-- (Noa) Strukturalne dane SEO -->
+  <!-- Structured data -->
   <script type="application/ld+json">
-  {
-    "@context":"https://schema.org",
-    "@type":"Organization",
-    "name":"PolubiszTo.pl",
-    "url":"https://polubiszto.pl",
-    "email":"polubiszto.pl@gmail.com",
-    "logo":"https://polubiszto.pl/static/panel/podglad_tablicy.png"
-  }
+  {"@context":"https://schema.org","@type":"Organization","name":"PolubiszTo.pl","url":"https://polubiszto.pl","email":"polubiszto.pl@gmail.com","logo":"https://polubiszto.pl/static/panel/podglad_tablicy.png"}
   </script>
 </head>
 <body>
@@ -138,12 +142,27 @@
     </div>
   </header>
 
+  <!-- animowane tło siatki (lekki, bez JS) -->
+  <svg class="net" viewBox="0 0 1600 900" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="glow" x1="0" x2="1"><stop offset="0" stop-color="#1b4db3"/><stop offset="1" stop-color="#0b74ff"/></linearGradient></defs>
+    <g stroke="url(#glow)" stroke-width="1">
+      <circle cx="120" cy="160" r="2" fill="#8ab6ff"/><circle cx="420" cy="120" r="2" fill="#8ab6ff"/>
+      <circle cx="760" cy="220" r="2" fill="#8ab6ff"/><circle cx="1080" cy="140" r="2" fill="#8ab6ff"/>
+      <circle cx="1360" cy="200" r="2" fill="#8ab6ff"/>
+      <path d="M120 160 L420 120 L760 220 L1080 140 L1360 200" opacity=".6"/>
+      <path d="M120 160 L480 340 L820 300 L1160 360 L1520 300" opacity=".35"/>
+      <path d="M260 500 L540 420 L900 520 L1280 460" opacity=".28"/>
+      <path d="M80 700 L460 640 L840 700 L1240 660 L1520 740" opacity=".22"/>
+    </g>
+  </svg>
+
   <main id="main">
     <section class="hero" aria-label="Wprowadzenie">
       <div class="wrap hero-in">
         <div>
           <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
 
+          <!-- (Noa) zachowane kroki i treści -->
           <div class="steps" aria-label="Jak to działa">
             <div class="step"><div class="i">1</div><div><h4>Dołącz do nas</h4><p>Zarejestruj się i utwórz swoje konto.</p></div></div>
             <div class="step"><div class="i">2</div><div><h4>Wybierz nauczyciela i przedmiot</h4><p>Przeglądaj profil i bio nauczyciela (aktualnie matematyka, wkrótce także inne).</p></div></div>
@@ -159,21 +178,13 @@
         </div>
 
         <div class="hero-visual">
-          <!-- TABLICA (figure + figcaption semantics) -->
           <figure class="board-preview">
-            <img
-              src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}"
-              alt="Podgląd wirtualnej tablicy w pokoju zajęć PolubiszTo.pl"
-              loading="eager" decoding="async" />
+            <img src="{% static 'panel/podglad_tablicy.png' %}?v={% now 'U' %}" alt="Podgląd wirtualnej tablicy w pokoju zajęć PolubiszTo.pl" loading="eager" decoding="async" />
             <div class="spark" aria-hidden="true"></div>
             <figcaption class="board-caption">Podgląd wirtualnej tablicy PolubiszTo.pl</figcaption>
           </figure>
 
-          <!-- MENTORKA -->
-          <img class="mentor"
-               src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}"
-               alt="Twoja mentorka online"
-               loading="lazy" decoding="async" />
+          <img class="mentor" src="{% static 'panel/mentor_kobieta.png' %}?v={% now 'U' %}" alt="Twoja mentorka online" loading="lazy" decoding="async" />
         </div>
       </div>
     </section>
@@ -181,9 +192,9 @@
     <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
       <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
       <div class="grid">
-        <div class="card"><h4>✔ Doświadczeni nauczyciele</h4><p>Zweryfikowane profile z jasno opisanym doświadczeniem.</p></div>
-        <div class="card"><h4>✔ Dogodne godziny</h4><p>Elastyczny grafik dopasowany do Twojego planu dnia.</p></div>
-        <div class="card"><h4>✔ Materiały do lekcji</h4><p>Dodawanie plików oraz notatki po zajęciach.</p></div>
+        <div class="card"><h4 style="margin:0 0 6px;color:#eaf1ff">✔ Doświadczeni nauczyciele</h4><p class="desc">Zweryfikowane profile z jasno opisanym doświadczeniem.</p></div>
+        <div class="card"><h4 style="margin:0 0 6px;color:#eaf1ff">✔ Dogodne godziny</h4><p class="desc">Elastyczny grafik dopasowany do Twojego planu dnia.</p></div>
+        <div class="card"><h4 style="margin:0 0 6px;color:#eaf1ff">✔ Materiały do lekcji</h4><p class="desc">Dodawanie plików oraz notatki po zajęciach.</p></div>
       </div>
     </section>
 
@@ -200,7 +211,7 @@
                  onerror="this.src='https://placehold.co/72x72'"/>
             <div style="flex:1">
               <h3 class="name">{{ n.full_name }}</h3>
-              <p class="desc clamp-2">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
+              <p class="desc">{{ n.bio|default:"Doświadczony nauczyciel. Ustal temat i działajmy!" }}</p>
               {% if n.tag_list %}
                 <div class="tags" aria-label="Specjalizacje">
                   {% for t in n.tag_list %}<span class="tag">{{ t }}</span>{% endfor %}
@@ -209,24 +220,26 @@
             </div>
           </article>
         {% empty %}
-          <p>Wkrótce pojawią się nauczyciele.</p>
+          <p style="color:#b8c6dd">Wkrótce pojawią się nauczyciele.</p>
         {% endfor %}
       </div>
     </section>
 
     <section class="wrap section" id="cta" style="text-align:center" aria-label="Wezwanie do działania">
-      <h2>🚀 Zacznij już dziś!</h2>
-      <p>Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
+      <h2 style="color:#eaf1ff">🚀 Zacznij już dziś!</h2>
+      <p style="color:#b8c6dd">Dołącz do naszej społeczności i rozwijaj się z najlepszymi nauczycielami matematyki.</p>
       <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
     </section>
   </main>
 
   <footer>
-    <div class="wrap foot">© <span id="y"></span> PolubiszTo.pl — korepetycje online</div>
+    <div class="wrap" style="text-align:center;color:#9eb5da;padding:18px 0;border-top:1px solid var(--line)">
+      © <span id="y"></span> PolubiszTo.pl — korepetycje online
+    </div>
   </footer>
 
   <script>
-    // (Noa) Aktualizacja roku + nawigacja + header shadow
+    // (Noa) Rok + hamburger + cień headera
     document.getElementById('y').textContent = new Date().getFullYear();
     (function(){var btn=document.getElementById('hamb'), nav=document.getElementById('site-nav');
       if(btn&&nav){ btn.addEventListener('click', function(){ var open=nav.classList.toggle('open'); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); });}})();
