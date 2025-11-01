@@ -74,6 +74,20 @@
     header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
     .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
 
+    /* HERO LOGO (nowe) */
+    .hero-logo{
+      width: clamp(90px, 16vw, 160px);
+      height: auto;
+      margin: 0 auto 18px auto;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(11,116,255,.55));
+      animation: floatLogo 6s ease-in-out infinite;
+    }
+    @keyframes floatLogo{
+      0%,100%{ transform:translateY(0) }
+      50%{ transform:translateY(-6px) }
+    }
+
     .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);
         -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 10px 40px rgba(131,180,255,.25);margin:0}
     .sub{color:#bcd3ff;max-width:760px;font-size:clamp(16px,1.9vw,18px)}
@@ -195,6 +209,13 @@
   <!-- HERO -->
   <header class="hero" id="top">
     <div class="stack">
+      <!-- NOWE: logo głowy wyśrodkowane nad tytułem -->
+      <img 
+        src="{% static 'img/brand/logo_head.png' %}" 
+        alt="Logo PolubiszTo.pl" 
+        class="hero-logo"
+      />
+
       <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
       <p class="sub">Platforma z interaktywną tablicą i rozmową na żywo — <span class="tw" id="tw"></span></p>
 
@@ -278,7 +299,7 @@
     <a class="btn primary pulse" href="{% url 'register' %}">Zarejestruj się teraz</a>
   </section>
 
-  <!-- O NAS (prosta sekcja do linku #o-nas) -->
+  <!-- O NAS -->
   <section class="wrap section" id="o-nas" aria-label="O nas" style="text-align:center">
     <h2 style="color:#eaf1ff">O nas</h2>
     <p style="color:#b8c6dd;max-width:720px;margin:0 auto">
@@ -357,7 +378,7 @@
           ctx.arc(p.x+(px-w/2)*0.0008, p.y+(py-h/2)*0.0008, p.r, 0, Math.PI*2);
           ctx.fillStyle='rgba(131,180,255,0.9)'; ctx.fill();
         }
-        for(let i=0;i<N;i++){ for(let j=i+1;j<N;j++){ const a=P[i], b=P[j], dx=a.x-b.x, dy=a.y-b.y, d=Math.hypot(dx,dy);
+        for(let i=0;i<N;i++){ for(let j=i+1;j<N;j++){ const a=P[i], b=P[j], dx=a.x-b.x, dy=a.y-b-y, d=Math.hypot(dx,dy);
           if(d<120){ ctx.globalAlpha=(120-d)/120*.35; ctx.strokeStyle='#83b4ff'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha=1; } } }
         requestAnimationFrame(step);
       })();
