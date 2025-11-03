@@ -74,18 +74,14 @@
     header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
     .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
 
-    /* HERO LOGO (nowe) */
+    /* HERO LOGO (bez animacji) */
     .hero-logo{
       width: clamp(90px, 16vw, 160px);
       height: auto;
       margin: 0 auto 18px auto;
       display: block;
       filter: drop-shadow(0 0 20px rgba(11,116,255,.55));
-      animation: floatLogo 6s ease-in-out infinite;
-    }
-    @keyframes floatLogo{
-      0%,100%{ transform:translateY(0) }
-      50%{ transform:translateY(-6px) }
+      animation: none;
     }
 
     .h1{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:.3px;background:linear-gradient(90deg,#fff,#cfe2ff);
@@ -120,25 +116,12 @@
     .capOutside{margin:0 0 8px 0;background:rgba(9,18,42,.72);border:1px solid var(--line);
       border-radius:12px;padding:6px 10px;text-align:center}
 
-    /* ── MOBILE FIX: pełna, nieucięta karta i tablica ───────────────────── */
+    /* ── MOBILE FIX ─────────────────────────────────────────── */
     @media(max-width:900px){
-      .tilt{
-        aspect-ratio:auto;       /* bez sztywnego 16/9 */
-        height:auto;
-        overflow:visible;        /* nic nie przycinamy */
-      }
-      .tilt-in{
-        position:relative;
-        display:block;           /* układ w kolumnie */
-      }
-      .tilt-left, .tilt-right{
-        padding:16px;
-        border:0;
-      }
-      .board{
-        margin:0 auto;           /* ładne wycentrowanie */
-        max-width:680px;         /* pozwala zdjęciu oddychać */
-      }
+      .tilt{aspect-ratio:auto;height:auto;overflow:visible}
+      .tilt-in{position:relative;display:block}
+      .tilt-left, .tilt-right{padding:16px;border:0}
+      .board{margin:0 auto;max-width:680px}
       .gridlines{border-radius:var(--radius-lg)}
     }
 
@@ -188,7 +171,6 @@
     <div class="wrap bar">
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="drawer" aria-expanded="false"><i></i></button>
       <nav class="nav" id="site-nav" aria-label="Główne">
-        <!-- zmiana: O nas -> sekcja na stronie, Kontakt -> mailto -->
         <a class="btn only-desktop" href="#o-nas">O nas</a>
         <a class="btn only-desktop" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
         <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
@@ -209,11 +191,14 @@
   <!-- HERO -->
   <header class="hero" id="top">
     <div class="stack">
-      <!-- NOWE: logo głowy wyśrodkowane nad tytułem -->
-      <img 
-        src="{% static 'img/brand/logo_head.png' %}" 
-        alt="Logo PolubiszTo.pl" 
+      <!-- Logo głowy wyśrodkowane nad tytułem + fallback ścieżki -->
+      <img
+        src="{% static 'img/brand/logo_head.png' %}"
+        alt="Logo PolubiszTo.pl"
         class="hero-logo"
+        width="160" height="160"
+        decoding="async" loading="eager"
+        onerror="this.onerror=null;this.src='{% static 'panel/img/brand/logo_head.png' %}';"
       />
 
       <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
@@ -237,7 +222,6 @@
                 <span class="pill">🖼️ Obrazy</span>
                 <span class="pill">🎧 Czat głosowy</span>
               </div>
-              <!-- zmiana: usunięty drugi przycisk "Zaloguj się" + przeniesiony CTA -->
               <div class="actions"></div>
             </div>
           </div>
@@ -246,7 +230,7 @@
     </div>
   </header>
 
-  <!-- NAGŁÓWEK SEKCJI: Jak to działa (zamiast przycisku) -->
+  <!-- NAGŁÓWEK SEKCJI: Jak to działa -->
   <section id="jak-to-dziala" style="text-align:center;padding:60px 20px 30px">
     <h2 style="color:#eaf1ff;font-size:clamp(22px,3.4vw,30px);margin-bottom:20px;">Jak to działa</h2>
   </section>
@@ -261,7 +245,7 @@
     <section class="stepG"><h3>6️⃣ Korzystaj z notatek</h3><p>Materiały z lekcji dostępne są na Twoim koncie.</p></section>
   </main>
 
-  <!-- DLACZEGO + NAUCZYCIELE + CTA (bez zmian) -->
+  <!-- DLACZEGO + NAUCZYCIELE + CTA -->
   <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
     <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
     <div class="grid">
@@ -360,7 +344,7 @@
       c.addEventListener('mousemove', move); c.addEventListener('mouseleave', reset);
     })();
 
-    // Particles
+    // Particles (naprawiony dy)
     (function(){
       const cv=document.getElementById('fx'); const ctx=cv.getContext('2d');
       let w,h,px=0,py=0; const P=[]; const N=70;
@@ -378,8 +362,15 @@
           ctx.arc(p.x+(px-w/2)*0.0008, p.y+(py-h/2)*0.0008, p.r, 0, Math.PI*2);
           ctx.fillStyle='rgba(131,180,255,0.9)'; ctx.fill();
         }
-        for(let i=0;i<N;i++){ for(let j=i+1;j<N;j++){ const a=P[i], b=P[j], dx=a.x-b.x, dy=a.y-b-y, d=Math.hypot(dx,dy);
-          if(d<120){ ctx.globalAlpha=(120-d)/120*.35; ctx.strokeStyle='#83b4ff'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha=1; } } }
+        for(let i=0;i<N;i++){
+          for(let j=i+1;j<N;j++){
+            const a=P[i], b=P[j], dx=a.x-b.x, dy=a.y-b.y, d=Math.hypot(dx,dy);
+            if(d<120){
+              ctx.globalAlpha=(120-d)/120*.35; ctx.strokeStyle='#83b4ff';
+              ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha=1;
+            }
+          }
+        }
         requestAnimationFrame(step);
       })();
     })();
