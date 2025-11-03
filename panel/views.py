@@ -84,6 +84,7 @@ import mimetypes, os, pathlib
 from django.urls import reverse
 from django.http import FileResponse, Http404
 import openai
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
