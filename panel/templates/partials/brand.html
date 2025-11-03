@@ -1,48 +1,35 @@
 {# templates/partials/brand.html #}
-{# Wspólne logo z nową głową (plik: panel/static/img/brand/logo_head.png) #}
-{% load static %}
+{# Wspólne, lekkie logo/nagłówek — bez plików ze static/ #}
 <style>
-  .pt-brand-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-  }
-  .pt-brand-img {
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
-    border-radius: 50%;
-    filter: drop-shadow(0 0 6px rgba(11,116,255,.45));
-  }
-  .pt-brand-title {
-    line-height: 1.1;
-    display: flex;
-    flex-direction: column;
-  }
-  .pt-brand-title .pt-name {
-    font-weight: 800;
-    font-size: 20px;
-    color: #0b1320;
-  }
-  .pt-brand-title .pt-tag {
-    font-size: 13px;
-    color: #5b6777;
-  }
-  @media (max-width:480px){
-    .pt-brand-img{width:32px;height:32px}
-    .pt-brand-title .pt-name{font-size:18px}
+  .pt-brand-wrap{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .pt-brand-svg{width:32px;height:32px;flex:0 0 32px}
+  .pt-brand-title{line-height:1.1;display:flex;flex-direction:column}
+  .pt-brand-title .pt-name{font-weight:800;font-size:18px;color:#0b1320}
+  .pt-brand-title .pt-tag{font-size:13px;color:#5b6777}
+  @media (min-width:480px){
+    .pt-brand-svg{width:40px;height:40px}
+    .pt-brand-title .pt-name{font-size:20px}
   }
 </style>
 
 <a href="/" class="pt-brand-wrap" aria-label="PolubiszTo.pl — korepetycje online">
-  <img
-    src="{% static 'panel/img/brand/logo_head.png' %}"
-    alt="Logo PolubiszTo.pl"
-    class="pt-brand-img"
-    decoding="async"
-    loading="eager"
-  />
+  <!-- Ikona: czapka + książka (inline SVG, bez static) -->
+  <svg class="pt-brand-svg" viewBox="0 0 48 48" role="img" aria-hidden="true" focusable="false">
+    <defs>
+      <!-- Unikalny ID gradientu, by uniknąć kolizji, gdy partial pojawia się kilka razy -->
+      <linearGradient id="ptb-grad" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="#0b74ff"/>
+        <stop offset="1" stop-color="#095cd1"/>
+      </linearGradient>
+    </defs>
+    <!-- czapka -->
+    <path d="M4 16 24 7l20 9-20 9-20-9z" fill="url(#ptb-grad)"/>
+    <path d="M10 21c0 6 6 10 14 10s14-4 14-10" fill="#0b74ff" opacity=".22"/>
+    <!-- książka -->
+    <rect x="9" y="23" width="30" height="14" rx="3" fill="#dfeaff"/>
+    <path d="M24 23v14" stroke="#9bb8ff" stroke-width="2"/>
+  </svg>
+
   <span class="pt-brand-title">
     <span class="pt-name">PolubiszTo.pl</span>
     <span class="pt-tag">korepetycje online</span>
