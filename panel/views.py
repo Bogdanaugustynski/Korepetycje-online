@@ -83,6 +83,7 @@ from django.utils.http import urlencode
 import mimetypes, os, pathlib
 from django.urls import reverse
 from django.http import FileResponse, Http404
+import openai
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2122,3 +2123,16 @@ def pokoj_testowy_view(request):
 @user_passes_test(is_ai_test_user)
 def strefa_ai_home_view(request):
     return render(request, "test/strefa_ai_home.html")
+
+@csrf_exempt
+def ai_chat(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        prompt = data.get("message", "")
+        completion = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
+                      {"role": "user", "content": prompt}]
+        )
+        answer = completion.choices[0].message["content"]
+        return JsonResponse({"reply": answer})

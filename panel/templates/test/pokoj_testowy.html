@@ -85,6 +85,18 @@
     border-radius:999px;background:#fff;
     font-size:12px;color:#2a3956;
   }
+
+  /* ====== LICZNIK AKTYWNOŚCI ====== */
+  .ai-timer{
+    margin-top:14px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(11,116,255,.08)
+  }
+  .ai-timer-row{display:flex;align-items:center;gap:8px;font-size:14px;color:#2a3956}
+  .ai-timer .dot{width:10px;height:10px;border-radius:50%}
+  .ai-timer-time{font-weight:800;font-size:22px;margin-top:6px}
+  .ai-timer-ctrls{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  .ai-btn{border:1px solid var(--line);background:#fff;padding:8px 10px;border-radius:10px;cursor:pointer;font-weight:700}
+  .ai-btn:hover{filter:brightness(0.98)}
 </style>
 </head>
 <body>
@@ -123,6 +135,21 @@
           <li>Połączenie z głosem i tablicą dołożymy etapami.</li>
           <li>Testuj na telefonie i laptopie (responsywne).</li>
         </ul>
+
+        <!-- === LICZNIK AKTYWNOŚCI — START === -->
+        <div class="ai-timer" id="aiTimerBox">
+          <div class="ai-timer-row">
+            <span class="dot" id="aiStatusDot" style="background:#ff5a5a"></span>
+            <span id="aiStatusText">Nieaktywny</span>
+          </div>
+          <div class="ai-timer-time">
+            Czas aktywnej sesji: <span id="aiActiveTime">00:00:00</span>
+          </div>
+          <div class="ai-timer-ctrls">
+            <button class="ai-btn" id="aiReset">Reset</button>
+          </div>
+        </div>
+        <!-- === LICZNIK AKTYWNOŚCI — KONIEC === -->
       </section>
 
       <aside class="side">
@@ -142,5 +169,70 @@
     </div>
   </div>
 </main>
+
+<script>
+/* ====== LICZNIK AKTYWNOŚCI (pauza po 30 s bezczynności) ====== */
+(function(){
+  const IDLE_MS = 30000; // 30 s bezczynności = pauza
+  const dot = document.getElementById('aiStatusDot');
+  const txt = document.getElementById('aiStatusText');
+  const out = document.getElementById('aiActiveTime');
+  const btnReset = document.getElementById('aiReset');
+
+  let activeMs = parseInt(sessionStorage.getItem('ai_active_ms') || '0', 10);
+  let lastActivity = Date.now();
+  let visible = (document.visibilityState === 'visible');
+
+  function hhmmss(ms){
+    const s = Math.floor(ms/1000);
+    const h = String(Math.floor(s/3600)).padStart(2,'0');
+    const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const ss= String(s%60).padStart(2,'0');
+    return `${h}:${m}:${ss}`;
+  }
+  function updateTime(){ out.textContent = hhmmss(activeMs); }
+  function updateStatus(isActive){
+    if(isActive){ dot.style.background = 'var(--ok)'; txt.textContent='Aktywny'; }
+    else{ dot.style.background = '#ff5a5a'; txt.textContent='Nieaktywny'; }
+  }
+  function poke(){ lastActivity = Date.now(); }
+
+  // Zdarzenia aktywności
+  ['mousemove','keydown','touchstart','click','pointermove'].forEach(ev=>{
+    window.addEventListener(ev, poke, {passive:true});
+  });
+
+  // Widoczność karty
+  document.addEventListener('visibilitychange', ()=>{
+    visible = (document.visibilityState === 'visible');
+    poke();
+  });
+
+  // Główna pętla 1 Hz
+  setInterval(()=>{
+    const now = Date.now();
+    const isActive = visible && (now - lastActivity) < IDLE_MS;
+    updateStatus(isActive);
+    if(isActive){
+      activeMs += 1000;
+      sessionStorage.setItem('ai_active_ms', String(activeMs));
+      updateTime();
+    }
+  }, 1000);
+
+  // Reset
+  btnReset.addEventListener('click', ()=>{
+    activeMs = 0;
+    sessionStorage.removeItem('ai_active_ms');
+    updateTime();
+  });
+
+  // Publiczny hook — możesz pobrać ms i wysłać do backendu po zakończeniu sesji
+  window.aiTimerGetMs = ()=> activeMs;
+
+  // Inicjalizacja
+  updateTime();
+})();
+</script>
 </body>
 </html>
