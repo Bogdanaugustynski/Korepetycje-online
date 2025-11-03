@@ -101,6 +101,7 @@ urlpatterns = [
     #TESTY
     path("pokoj_testowy/", views.pokoj_testowy_view, name="pokoj_testowy"),
     path("strefa_ai_home/", views.strefa_ai_home_view, name="strefa_ai_home"),
+    path("ai_chat/", views.ai_chat, name="ai_chat"),
 
 
 ]
