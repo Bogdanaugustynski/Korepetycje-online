@@ -2125,25 +2125,42 @@ def pokoj_testowy_view(request):
 def strefa_ai_home_view(request):
     return render(request, "test/strefa_ai_home.html")
 
+log = logging.getLogger(__name__)
+
+# Klient 1.x
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 @csrf_exempt
 def ai_chat(request):
-    if request.method == "POST":
+    if request.method != "POST":
+        return JsonResponse({"detail": "Only POST allowed"}, status=405)
+
+    try:
         data = json.loads(request.body or "{}")
-        prompt = data.get("message", "")
-        if not prompt:
-            return JsonResponse({"reply": "Podaj wiadomość."}, status=400)
+    except Exception:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-        try:
-            completion = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            answer = completion.choices[0].message["content"]
-            return JsonResponse({"reply": answer})
-        except Exception as e:
-            return JsonResponse({"reply": f"Błąd: {e}"}, status=500)
+    prompt = (data.get("message") or "").strip()
+    if not prompt:
+        return JsonResponse({"error": "Brak pola 'message'."}, status=400)
 
-    return JsonResponse({"detail": "Only POST allowed"}, status=405)
+    # Prosta ochrona przed brakiem klucza
+    if not os.getenv("OPENAI_API_KEY"):
+        return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
+
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+        )
+        answer = resp.choices[0].message.content or ""
+        return JsonResponse({"reply": answer}, status=200)
+
+    except Exception as e:
+        # Log do Rendera + zwrot treści błędu w JSON (na czas testów)
+        log.exception("ai_chat error")
+        return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
