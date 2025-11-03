@@ -43,7 +43,6 @@
     header.scrolled{ box-shadow:0 16px 50px rgba(9,30,66,.45) }
     .bar{display:flex;align-items:center;gap:12px;min-height:72px}
 
-    /* desktop: lewa pusta; mobile: hamburger */
     .hamb{display:none;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#eaf1ff;
           border-radius:12px;padding:10px;align-items:center;gap:8px;cursor:pointer}
     .hamb i{width:18px;height:2px;background:#eaf1ff;box-shadow:0 6px 0 #eaf1ff, 0 -6px 0 #eaf1ff;display:inline-block;border-radius:2px}
@@ -74,7 +73,6 @@
     header.hero{min-height:92svh; display:grid; place-items:center; position:relative; padding:28px 16px 60px;}
     .stack{max-width:1100px;width:100%;display:grid;gap:18px;justify-items:center;text-align:center}
 
-    /* HERO LOGO (nowe) */
     .hero-logo{
       width: clamp(90px, 16vw, 160px);
       height: auto;
@@ -94,10 +92,9 @@
     .tw{display:inline-block;border-right:3px solid #cfe2ff;padding-right:6px;animation:blink 1s step-end infinite}
     @keyframes blink{50%{border-color:transparent}}
 
-    /* Karta hero */
     .tilt{
       width:min(980px,96vw);
-      aspect-ratio:16/9;                 /* desktop */
+      aspect-ratio:16/9;
       border-radius:var(--radius-lg);
       overflow:hidden;
       background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
@@ -113,32 +110,17 @@
     .tilt-right{display:grid;place-items:center;padding:18px;border-left:1px solid var(--line);
                background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45))}
 
-    /* Podgląd tablicy */
     .board{position:relative;width:100%;max-width:540px;border-radius:18px;overflow:hidden;border:1px solid var(--line);
            box-shadow:var(--shadow-lg);background:#0b1d52}
     .board img{width:100%;height:auto;display:block}
     .capOutside{margin:0 0 8px 0;background:rgba(9,18,42,.72);border:1px solid var(--line);
       border-radius:12px;padding:6px 10px;text-align:center}
 
-    /* ── MOBILE FIX: pełna, nieucięta karta i tablica ───────────────────── */
     @media(max-width:900px){
-      .tilt{
-        aspect-ratio:auto;       /* bez sztywnego 16/9 */
-        height:auto;
-        overflow:visible;        /* nic nie przycinamy */
-      }
-      .tilt-in{
-        position:relative;
-        display:block;           /* układ w kolumnie */
-      }
-      .tilt-left, .tilt-right{
-        padding:16px;
-        border:0;
-      }
-      .board{
-        margin:0 auto;           /* ładne wycentrowanie */
-        max-width:680px;         /* pozwala zdjęciu oddychać */
-      }
+      .tilt{ aspect-ratio:auto; height:auto; overflow:visible; }
+      .tilt-in{ position:relative; display:block; }
+      .tilt-left, .tilt-right{ padding:16px; border:0; }
+      .board{ margin:0 auto; max-width:680px; }
       .gridlines{border-radius:var(--radius-lg)}
     }
 
@@ -147,7 +129,6 @@
     .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px}
     .actions .btn.secondary{background:rgba(255,255,255,.08)}
 
-    /* Karty kroków */
     main .steps{max-width:var(--max);margin:70px auto;padding:0 16px;display:grid;gap:16px}
     @media(min-width:860px){ main .steps{grid-template-columns:repeat(3,1fr)} }
     .stepG{background:linear-gradient(180deg,rgba(14,29,55,.5),rgba(12,26,50,.45));border:1px solid var(--line);
@@ -168,7 +149,6 @@
     footer{border-top:1px solid var(--line);color:#9eb5da;padding:22px 0;text-align:center;margin-top:30px}
   </style>
 
-  <!-- SEO schema -->
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
@@ -188,7 +168,6 @@
     <div class="wrap bar">
       <button class="hamb" id="hamb" aria-label="Otwórz menu" aria-controls="drawer" aria-expanded="false"><i></i></button>
       <nav class="nav" id="site-nav" aria-label="Główne">
-        <!-- zmiana: O nas -> sekcja na stronie, Kontakt -> mailto -->
         <a class="btn only-desktop" href="#o-nas">O nas</a>
         <a class="btn only-desktop" href="mailto:polubiszto.pl@gmail.com">Kontakt</a>
         <a class="btn mobile-login" href="{% url 'login' %}">Zaloguj</a>
@@ -209,13 +188,11 @@
   <!-- HERO -->
   <header class="hero" id="top">
     <div class="stack">
-      <!-- NOWE: logo głowy wyśrodkowane nad tytułem -->
       <img 
         src="{% static 'img/brand/logo_head.png' %}" 
         alt="Logo PolubiszTo.pl" 
         class="hero-logo"
       />
-
       <h1 class="h1">Korepetycje online — Twój sukces w nauce</h1>
       <p class="sub">Platforma z interaktywną tablicą i rozmową na żywo — <span class="tw" id="tw"></span></p>
 
@@ -237,7 +214,6 @@
                 <span class="pill">🖼️ Obrazy</span>
                 <span class="pill">🎧 Czat głosowy</span>
               </div>
-              <!-- zmiana: usunięty drugi przycisk "Zaloguj się" + przeniesiony CTA -->
               <div class="actions"></div>
             </div>
           </div>
@@ -246,7 +222,7 @@
     </div>
   </header>
 
-  <!-- NAGŁÓWEK SEKCJI: Jak to działa (zamiast przycisku) -->
+  <!-- NAGŁÓWEK SEKCJI -->
   <section id="jak-to-dziala" style="text-align:center;padding:60px 20px 30px">
     <h2 style="color:#eaf1ff;font-size:clamp(22px,3.4vw,30px);margin-bottom:20px;">Jak to działa</h2>
   </section>
@@ -261,7 +237,7 @@
     <section class="stepG"><h3>6️⃣ Korzystaj z notatek</h3><p>Materiały z lekcji dostępne są na Twoim koncie.</p></section>
   </main>
 
-  <!-- DLACZEGO + NAUCZYCIELE + CTA (bez zmian) -->
+  <!-- DLACZEGO + NAUCZYCIELE + CTA -->
   <section class="wrap section" id="dlaczego-my" aria-labelledby="why-title">
     <h2 id="why-title">Dlaczego warto nas wybrać?</h2>
     <div class="grid">
@@ -360,16 +336,19 @@
       c.addEventListener('mousemove', move); c.addEventListener('mouseleave', reset);
     })();
 
-    // Particles
+    // Particles (kropki + łączące linie)
     (function(){
       const cv=document.getElementById('fx'); const ctx=cv.getContext('2d');
       let w,h,px=0,py=0; const P=[]; const N=70;
       function size(){ w=cv.width=innerWidth; h=cv.height=innerHeight; }
       addEventListener('resize', size); size();
-      for(let i=0;i<N;i++){ P.push({x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-.5)*.6, vy:(Math.random()-.5)*.6, r:Math.random()*1.8+0.6}); }
+      for(let i=0;i<N;i++){
+        P.push({x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-.5)*.6, vy:(Math.random()-.5)*.6, r:Math.random()*1.8+0.6});
+      }
       addEventListener('mousemove', e=>{ px=e.clientX; py=e.clientY; });
       (function step(){
         ctx.clearRect(0,0,w,h);
+        // cząstki
         for(const p of P){
           p.x+=p.vx; p.y+=p.vy;
           if(p.x<0||p.x>w) p.vx*=-1;
@@ -378,8 +357,23 @@
           ctx.arc(p.x+(px-w/2)*0.0008, p.y+(py-h/2)*0.0008, p.r, 0, Math.PI*2);
           ctx.fillStyle='rgba(131,180,255,0.9)'; ctx.fill();
         }
-        for(let i=0;i<N;i++){ for(let j=i+1;j<N;j++){ const a=P[i], b=P[j], dx=a.x-b.x, dy=a.y-b-y, d=Math.hypot(dx,dy);
-          if(d<120){ ctx.globalAlpha=(120-d)/120*.35; ctx.strokeStyle='#83b4ff'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha=1; } } }
+        // linie łączące (POPRAWKA: dy = a.y - b.y)
+        for(let i=0;i<N;i++){
+          for(let j=i+1;j<N;j++){
+            const a=P[i], b=P[j];
+            const dx=a.x-b.x, dy=a.y-b.y;
+            const d=Math.hypot(dx,dy);
+            if(d<120){
+              ctx.globalAlpha=(120-d)/120*.35;
+              ctx.strokeStyle='#83b4ff';
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+              ctx.globalAlpha=1;
+            }
+          }
+        }
         requestAnimationFrame(step);
       })();
     })();
