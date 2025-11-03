@@ -84,7 +84,6 @@ import mimetypes, os, pathlib
 from django.urls import reverse
 from django.http import FileResponse, Http404
 import openai
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2126,9 +2125,7 @@ def strefa_ai_home_view(request):
     return render(request, "test/strefa_ai_home.html")
 
 log = logging.getLogger(__name__)
-
-# Klient 1.x
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")  # ustawienie klucza
 
 @csrf_exempt
 def ai_chat(request):
@@ -2144,12 +2141,11 @@ def ai_chat(request):
     if not prompt:
         return JsonResponse({"error": "Brak pola 'message'."}, status=400)
 
-    # Prosta ochrona przed brakiem klucza
     if not os.getenv("OPENAI_API_KEY"):
         return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
 
     try:
-        resp = client.chat.completions.create(
+        completion = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
@@ -2157,10 +2153,8 @@ def ai_chat(request):
             ],
             temperature=0.7,
         )
-        answer = resp.choices[0].message.content or ""
-        return JsonResponse({"reply": answer}, status=200)
-
+        answer = completion.choices[0].message["content"]
+        return JsonResponse({"reply": answer})
     except Exception as e:
-        # Log do Rendera + zwrot treści błędu w JSON (na czas testów)
         log.exception("ai_chat error")
         return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
