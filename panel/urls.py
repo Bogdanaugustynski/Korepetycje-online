@@ -98,4 +98,9 @@ urlpatterns = [
     # Panel Księgowości – edycja
     path("ksiegowosc/legal/", legal_edit_config_view, name="legal_edit_config"),
 
+    #TESTY
+    path("pokoj_testowy/", views.pokoj_testowy_view, name="pokoj_testowy"),
+    path("strefa_ai_home/", views.strefa_ai_home_view, name="strefa_ai_home"),
+
+
 ]

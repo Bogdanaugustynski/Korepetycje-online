@@ -2107,3 +2107,18 @@ def regulamin_view(request):
 def polityka_view(request):
     cfg = SiteLegalConfig.get_solo()
     return render(request, "legal/polityka_prywatnosci.html", _ctx_from_config(cfg))
+
+#TESTY
+
+def is_ai_test_user(user):
+    return user.groups.filter(name="AI_Test").exists()
+
+@login_required
+@user_passes_test(is_ai_test_user)
+def pokoj_testowy_view(request):
+    return render(request, "test/pokoj_testowy.html")
+
+@login_required
+@user_passes_test(is_ai_test_user)
+def strefa_ai_home_view(request):
+    return render(request, "test/strefa_ai_home.html")

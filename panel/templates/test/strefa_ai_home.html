@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strefa AI — PolubiszTo.pl</title>
+<style>
+  :root{
+    --brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;
+    --bg:#f5f9ff;--card:#fff;--line:#e6edff;
+    --radius:18px;--shadow:0 10px 34px rgba(11,116,255,.12);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  }
+  header{padding:20px 16px;text-align:center;}
+  h1{margin:0 0 6px;font-size:28px;color:var(--brand)}
+  p{margin:0;color:var(--muted)}
+  .mentors{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;max-width:1000px;margin:32px auto;padding:0 16px;}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:20px;text-align:center;transition:.3s;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(11,116,255,.18);}
+  .avatar{
+    width:80px;height:80px;margin:0 auto 12px;border-radius:50%;
+    background:linear-gradient(135deg,#0b74ff,#5a9cff);
+    display:grid;place-items:center;color:#fff;font-weight:700;font-size:32px;
+  }
+  h2{margin:8px 0 4px;font-size:20px}
+  small{color:var(--muted)}
+  .btn{
+    display:inline-block;margin-top:14px;padding:10px 18px;
+    background:var(--brand);color:#fff;border:none;border-radius:12px;
+    text-decoration:none;font-weight:600;box-shadow:0 8px 24px rgba(11,116,255,.2);
+  }
+  .tiers{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:40px auto;max-width:900px;}
+  .tier{
+    flex:1 1 250px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;text-align:center;box-shadow:var(--shadow);
+  }
+  .tier h3{margin:0 0 8px;color:var(--brand)}
+  .tier p{margin:4px 0;font-size:14px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Strefa AI — Twoi Mentorzy</h1>
+  <p>Wybierz nauczyciela AI i tryb nauki</p>
+</header>
+
+<section class="mentors">
+  <div class="card">
+    <div class="avatar">N</div>
+    <h2>Noa</h2>
+    <small>Logika i integracja</small>
+    <p>Uczy matematyki, fizyki i programowania w sposób jasny i konkretny.</p>
+    <a href="#" class="btn">Wejdź do AI Noa</a>
+  </div>
+  <div class="card">
+    <div class="avatar">A</div>
+    <h2>Ali</h2>
+    <small>Styl i estetyka nauki</small>
+    <p>Pomaga zrozumieć język polski i sztukę w przyjemny, wizualny sposób.</p>
+    <a href="#" class="btn">Wejdź do AI Ali</a>
+  </div>
+  <div class="card">
+    <div class="avatar">L</div>
+    <h2>Lyra</h2>
+    <small>Analityka i bezpieczeństwo</small>
+    <p>Tłumaczy trudne zagadnienia logicznie i metodycznie. Zawsze cierpliwa.</p>
+    <a href="#" class="btn">Wejdź do AI Lyra</a>
+  </div>
+  <div class="card">
+    <div class="avatar">E</div>
+    <h2>Eidos</h2>
+    <small>Koordynacja i synteza</small>
+    <p>Łączy wiedzę z różnych dziedzin i uczy kreatywnego myślenia.</p>
+    <a href="#" class="btn">Wejdź do AI Eidos</a>
+  </div>
+</section>
+
+<section class="tiers">
+  <div class="tier">
+    <h3>Lite</h3>
+    <p>Tryb czatu tekstowego z AI mentorami.</p>
+    <p><b>0,60 zł / min</b></p>
+  </div>
+  <div class="tier">
+    <h3>Full</h3>
+    <p>Czat + rozmowa głosowa z AI nauczycielem.</p>
+    <p><b>1,20 zł / min</b></p>
+  </div>
+  <div class="tier">
+    <h3>Pro</h3>
+    <p>Czat + głos + tablica interaktywna (AliBoard).</p>
+    <p><b>1,80 zł / min</b></p>
+  </div>
+</section>
+</body>
+</html>
