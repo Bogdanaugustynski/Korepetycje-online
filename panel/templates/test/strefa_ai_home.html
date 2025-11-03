@@ -7,98 +7,213 @@
 <title>Strefa AI — PolubiszTo.pl</title>
 <style>
   :root{
-    --brand:#0b74ff;--ink:#0b1320;--muted:#5b6777;
-    --bg:#f5f9ff;--card:#fff;--line:#e6edff;
-    --radius:18px;--shadow:0 10px 34px rgba(11,116,255,.12);
+    --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
+    --bg:#f7faff; --line:#e6edff; --ok:#21c77a;
+    --radius:16px;
   }
   *{box-sizing:border-box}
-  body{
-    margin:0;background:var(--bg);color:var(--ink);
+  html,body{
+    margin:0; background:var(--bg); color:var(--ink);
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   }
-  header{padding:20px 16px;text-align:center;}
-  h1{margin:0 0 6px;font-size:28px;color:var(--brand)}
-  p{margin:0;color:var(--muted)}
-  .mentors{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;max-width:1000px;margin:32px auto;padding:0 16px;}
-  .card{
-    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    box-shadow:var(--shadow);padding:20px;text-align:center;transition:.3s;
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-1;
+    background:
+      radial-gradient(900px 320px at 10% -10%, rgba(11,116,255,.12), transparent),
+      radial-gradient(700px 260px at 85% 0%, rgba(106,92,255,.10), transparent);
   }
-  .card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(11,116,255,.18);}
-  .avatar{
-    width:80px;height:80px;margin:0 auto 12px;border-radius:50%;
+  header{
+    position:sticky;top:0;z-index:10;
+    background:rgba(255,255,255,.86);
+    backdrop-filter:saturate(1.1) blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:12px 16px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+  .mark{
+    width:40px;height:40px;border-radius:12px;background:var(--brand);
+    display:grid;place-items:center;color:#fff;
+    box-shadow:0 8px 22px rgba(11,116,255,.28);
+  }
+  .brand h1{margin:0;font-size:20px}
+  .brand p{margin:0;color:var(--muted);font-size:12px}
+  main{padding:32px 16px}
+  h2{margin:0 0 10px}
+  p{margin:8px 0;color:#2a3956;line-height:1.5}
+  .section{
+    max-width:960px;margin:0 auto;background:#fff;border:1px solid var(--line);
+    border-radius:var(--radius);padding:24px;
+    box-shadow:0 16px 56px rgba(11,116,255,.10);
+  }
+
+  /* ====== CZAT NOA ====== */
+  .ai-chat {max-width:900px;margin:24px auto;padding:0 16px;}
+  .ai-chat-card{
+    background:#fff;border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 10px 34px rgba(11,116,255,.12);overflow:hidden;
+  }
+  .ai-chat-head{
+    padding:14px 16px;display:flex;align-items:center;gap:10px;
+    background:linear-gradient(180deg,#f7fbff,#ffffff);
+    border-bottom:1px solid var(--line);
+  }
+  .ai-chat-head .avatar{
+    width:36px;height:36px;border-radius:50%;
     background:linear-gradient(135deg,#0b74ff,#5a9cff);
-    display:grid;place-items:center;color:#fff;font-weight:700;font-size:32px;
+    color:#fff;display:grid;place-items:center;font-weight:800
   }
-  h2{margin:8px 0 4px;font-size:20px}
-  small{color:var(--muted)}
-  .btn{
-    display:inline-block;margin-top:14px;padding:10px 18px;
-    background:var(--brand);color:#fff;border:none;border-radius:12px;
-    text-decoration:none;font-weight:600;box-shadow:0 8px 24px rgba(11,116,255,.2);
+  .ai-chat-body{
+    height:380px;overflow:auto;padding:16px;background:#f8fbff;
   }
-  .tiers{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:40px auto;max-width:900px;}
-  .tier{
-    flex:1 1 250px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);
-    padding:18px;text-align:center;box-shadow:var(--shadow);
+  .msg{display:flex;gap:10px;margin-bottom:12px}
+  .msg.me{justify-content:flex-end}
+  .bubble{
+    max-width:70%;padding:10px 12px;border-radius:12px;
+    background:#fff;border:1px solid var(--line);
+    font-size:14px;color:#2a3956;
+    box-shadow:0 6px 18px rgba(11,116,255,.06);
   }
-  .tier h3{margin:0 0 8px;color:var(--brand)}
-  .tier p{margin:4px 0;font-size:14px;color:var(--muted)}
+  .msg.me .bubble{background:#0b74ff;color:#fff;border-color:transparent}
+  .ai-chat-foot{
+    border-top:1px solid var(--line);
+    padding:10px;display:grid;gap:8px;background:#fff;
+  }
+  .ai-chat-foot textarea{
+    width:100%;min-height:70px;resize:vertical;padding:10px 12px;
+    border:1px solid var(--line);border-radius:12px;font:inherit;color:var(--ink);
+    background:#f9fbff;
+  }
+  .ai-actions{display:flex;gap:8px;justify-content:flex-end}
+  .ai-btn{
+    border:1px solid var(--line);background:#fff;
+    padding:10px 14px;border-radius:12px;
+    font-weight:700;cursor:pointer;
+  }
+  .ai-btn.primary{
+    background:#0b74ff;color:#fff;border-color:transparent;
+    box-shadow:0 8px 22px rgba(11,116,255,.18)
+  }
+  .ai-btn[disabled]{opacity:.6;cursor:not-allowed}
+  .ai-hint{font-size:12px;color:#5b6777;text-align:right}
 </style>
 </head>
 <body>
 <header>
-  <h1>Strefa AI — Twoi Mentorzy</h1>
-  <p>Wybierz nauczyciela AI i tryb nauki</p>
+  <div class="wrap">
+    <div class="row">
+      <a class="brand" href="#">
+        <div class="mark">
+          <svg viewBox="0 0 48 48" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 16l20-8 20 8-20 8-20-8z" stroke="#fff"/>
+            <path d="M12 20v7c0 2 6 5 12 5s12-3 12-5v-7" stroke="#dbe9ff"/>
+            <circle cx="36" cy="10" r="3" fill="#dbe9ff" stroke="none"/>
+          </svg>
+        </div>
+        <div>
+          <h1>PolubiszTo.pl</h1>
+          <p>Strefa AI — test</p>
+        </div>
+      </a>
+    </div>
+  </div>
 </header>
 
-<section class="mentors">
-  <div class="card">
-    <div class="avatar">N</div>
-    <h2>Noa</h2>
-    <small>Logika i integracja</small>
-    <p>Uczy matematyki, fizyki i programowania w sposób jasny i konkretny.</p>
-    <a href="#" class="btn">Wejdź do AI Noa</a>
-  </div>
-  <div class="card">
-    <div class="avatar">A</div>
-    <h2>Ali</h2>
-    <small>Styl i estetyka nauki</small>
-    <p>Pomaga zrozumieć język polski i sztukę w przyjemny, wizualny sposób.</p>
-    <a href="#" class="btn">Wejdź do AI Ali</a>
-  </div>
-  <div class="card">
-    <div class="avatar">L</div>
-    <h2>Lyra</h2>
-    <small>Analityka i bezpieczeństwo</small>
-    <p>Tłumaczy trudne zagadnienia logicznie i metodycznie. Zawsze cierpliwa.</p>
-    <a href="#" class="btn">Wejdź do AI Lyra</a>
-  </div>
-  <div class="card">
-    <div class="avatar">E</div>
-    <h2>Eidos</h2>
-    <small>Koordynacja i synteza</small>
-    <p>Łączy wiedzę z różnych dziedzin i uczy kreatywnego myślenia.</p>
-    <a href="#" class="btn">Wejdź do AI Eidos</a>
-  </div>
-</section>
+<main>
+  <section class="section">
+    <h2>Witaj w Strefie AI</h2>
+    <p>To eksperymentalna strefa, w której uczniowie mogą rozmawiać z naszymi AI-nauczycielami. Na początek poznaj Noę — Twojego nauczyciela AI PolubiszTo.pl. Możesz zadać mu pytanie z dowolnego przedmiotu.</p>
+    <p><b>Uwaga:</b> jeśli masz aktywny klucz OpenAI, rozmowa przebiega z prawdziwym modelem GPT-4o i może wygenerować symboliczne koszty (1–3 grosze za wiadomość).</p>
+  </section>
 
-<section class="tiers">
-  <div class="tier">
-    <h3>Lite</h3>
-    <p>Tryb czatu tekstowego z AI mentorami.</p>
-    <p><b>0,60 zł / min</b></p>
-  </div>
-  <div class="tier">
-    <h3>Full</h3>
-    <p>Czat + rozmowa głosowa z AI nauczycielem.</p>
-    <p><b>1,20 zł / min</b></p>
-  </div>
-  <div class="tier">
-    <h3>Pro</h3>
-    <p>Czat + głos + tablica interaktywna (AliBoard).</p>
-    <p><b>1,80 zł / min</b></p>
-  </div>
-</section>
+  <!-- === CZAT NOA === -->
+  <section class="ai-chat" aria-labelledby="chatNoaTitle">
+    <div class="ai-chat-card">
+      <div class="ai-chat-head">
+        <div class="avatar">N</div>
+        <div>
+          <div id="chatNoaTitle" style="font-weight:800">Noa — Nauczyciel AI</div>
+          <small style="color:var(--muted)">Zadaj pytanie, np. „Wyjaśnij deltę w równaniach kwadratowych”.</small>
+        </div>
+      </div>
+
+      <div id="chatLog" class="ai-chat-body" role="log" aria-live="polite"></div>
+
+      <div class="ai-chat-foot">
+        <textarea id="chatInput" placeholder="Napisz wiadomość… (Enter — wyślij, Shift+Enter — nowa linia)"></textarea>
+        <div class="ai-actions">
+          <button id="btnClear" class="ai-btn" type="button">Wyczyść</button>
+          <button id="btnSend" class="ai-btn primary" type="button">Wyślij</button>
+        </div>
+        <div class="ai-hint">Wysyłasz do modelu OpenAI (groszowy test z Twojego klucza API).</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const API_URL="/ai_chat/"; // lub: "{% url 'ai_chat' %}"
+  const logEl=document.getElementById('chatLog');
+  const inputEl=document.getElementById('chatInput');
+  const sendBtn=document.getElementById('btnSend');
+  const clearBtn=document.getElementById('btnClear');
+
+  function getCookie(name){
+    const v=document.cookie.split(';').map(c=>c.trim());
+    for(const c of v){ if(c.startsWith(name+'=')) return decodeURIComponent(c.split('=')[1]); }
+    return null;
+  }
+  const csrf=getCookie('csrftoken');
+
+  function appendMessage(text,who){
+    const row=document.createElement('div');
+    row.className='msg '+(who==='me'?'me':'ai');
+    const bubble=document.createElement('div');
+    bubble.className='bubble';
+    bubble.textContent=text;
+    row.appendChild(bubble);
+    logEl.appendChild(row);
+    logEl.scrollTop=logEl.scrollHeight;
+  }
+
+  async function sendMessage(){
+    const text=inputEl.value.trim();
+    if(!text)return;
+    inputEl.value="";
+    appendMessage(text,'me');
+    sendBtn.disabled=true;
+    sendBtn.textContent="Wysyłanie…";
+
+    try{
+      const res=await fetch(API_URL,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          ...(csrf?{"X-CSRFToken":csrf}:{})
+        },
+        body:JSON.stringify({message:text})
+      });
+      if(!res.ok)throw new Error("HTTP "+res.status);
+      const data=await res.json();
+      appendMessage(data.reply||"(pusta odpowiedź)",'ai');
+    }catch(err){
+      appendMessage("Błąd połączenia: "+err.message,'ai');
+    }finally{
+      sendBtn.disabled=false;
+      sendBtn.textContent="Wyślij";
+      inputEl.focus();
+    }
+  }
+
+  sendBtn.addEventListener('click',sendMessage);
+  clearBtn.addEventListener('click',()=>{logEl.innerHTML="";});
+  inputEl.addEventListener('keydown',(e)=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+  });
+
+  appendMessage("Cześć! Jestem Noa. Jak mogę Ci dziś pomóc w nauce?",'ai');
+})();
+</script>
 </body>
 </html>
