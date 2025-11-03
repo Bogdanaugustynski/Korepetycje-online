@@ -2128,12 +2128,22 @@ def strefa_ai_home_view(request):
 @csrf_exempt
 def ai_chat(request):
     if request.method == "POST":
-        data = json.loads(request.body)
+        data = json.loads(request.body or "{}")
         prompt = data.get("message", "")
-        completion = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
-                      {"role": "user", "content": prompt}]
-        )
-        answer = completion.choices[0].message["content"]
-        return JsonResponse({"reply": answer})
+        if not prompt:
+            return JsonResponse({"reply": "Podaj wiadomość."}, status=400)
+
+        try:
+            completion = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            answer = completion.choices[0].message["content"]
+            return JsonResponse({"reply": answer})
+        except Exception as e:
+            return JsonResponse({"reply": f"Błąd: {e}"}, status=500)
+
+    return JsonResponse({"detail": "Only POST allowed"}, status=405)
