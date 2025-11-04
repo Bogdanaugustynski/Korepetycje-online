@@ -1,6 +1,5 @@
 {% load static %}
 <style>
-  /* --- Kontener marki --- */
   .pt-brand-wrap{
     display:flex;
     align-items:center;
@@ -8,16 +7,17 @@
     text-decoration:none;
   }
 
-  /* --- Głowa (czysta, bez tła) --- */
+  /* Czysta głowa – bez tła, obwódek i cieni */
   .pt-brand-img{
-    width:46px; height:46px; flex:0 0 46px;
+    width:46px;
+    height:46px;
+    flex:0 0 46px;
     border-radius:50%;
-    box-shadow:0 0 10px rgba(11,116,255,.25);
-    background:none; /* usuwa całkowicie niebieskie tło */
+    background:none;
+    box-shadow:none;
     padding:0;
   }
 
-  /* --- Teksty --- */
   .pt-brand-title{
     display:flex;
     flex-direction:column;
@@ -31,7 +31,6 @@
     -webkit-background-clip:text;
     background-clip:text;
     color:transparent;
-    text-shadow:0 0 14px rgba(131,180,255,.25);
     letter-spacing:.3px;
   }
 
@@ -41,16 +40,14 @@
     letter-spacing:.3px;
   }
 
-  /* --- Wersja jasna (panele) --- */
+  /* Jasny motyw (panele) */
   @media (prefers-color-scheme: light){
     .pt-name{
       background:linear-gradient(90deg,#0b1320,#0b74ff);
       -webkit-background-clip:text;
       color:transparent;
-      text-shadow:none;
     }
-    .pt-tag{color:#0b74ff;text-shadow:none;}
-    .pt-brand-img{box-shadow:0 0 6px rgba(11,116,255,.25);}
+    .pt-tag{color:#0b74ff;}
   }
 
   @media(max-width:480px){

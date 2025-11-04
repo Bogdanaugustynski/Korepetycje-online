@@ -83,7 +83,7 @@ from django.utils.http import urlencode
 import mimetypes, os, pathlib
 from django.urls import reverse
 from django.http import FileResponse, Http404
-import openai
+from openai import OpenAI
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2125,7 +2125,7 @@ def strefa_ai_home_view(request):
     return render(request, "test/strefa_ai_home.html")
 
 log = logging.getLogger(__name__)
-openai.api_key = os.getenv("OPENAI_API_KEY")  # ustawienie klucza
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # <-- nowy klient
 
 @csrf_exempt
 def ai_chat(request):
@@ -2145,16 +2145,16 @@ def ai_chat(request):
         return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
 
     try:
-        completion = openai.ChatCompletion.create(
+        resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.7,
+            temperature=0.7,  # kropka, nie przecinek
         )
-        answer = completion.choices[0].message["content"]
-        return JsonResponse({"reply": answer})
+        answer = resp.choices[0].message.content or ""
+        return JsonResponse({"reply": answer}, status=200)
     except Exception as e:
         log.exception("ai_chat error")
         return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
