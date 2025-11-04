@@ -16,15 +16,9 @@
     border-radius:50%;
     background:radial-gradient(circle at 60% 40%,#58a6ff 0%,#0b74ff 60%,#062150 100%);
     box-shadow:
-      0 0 16px rgba(11,116,255,.55),
-      0 0 40px rgba(11,116,255,.25);
+      0 0 16px rgba(11,116,255,.45),
+      0 0 36px rgba(11,116,255,.25);
     padding:3px;
-    animation:ptPulse 4.5s ease-in-out infinite;
-  }
-
-  @keyframes ptPulse{
-    0%,100%{ transform:scale(1); box-shadow:0 0 16px rgba(11,116,255,.55),0 0 40px rgba(11,116,255,.25); }
-    50%{ transform:scale(1.05); box-shadow:0 0 22px rgba(11,116,255,.65),0 0 50px rgba(11,116,255,.35); }
   }
 
   /* --- Teksty --- */
@@ -37,17 +31,17 @@
   .pt-name{
     font-weight:800;
     font-size:22px;
-    background:linear-gradient(90deg,#fff,#bcd6ff,#0b74ff);
+    background:linear-gradient(90deg,#fff,#cfe2ff,#0b74ff);
     -webkit-background-clip:text;
     background-clip:text;
     color:transparent;
-    text-shadow:0 0 24px rgba(131,180,255,.25);
+    text-shadow:0 0 18px rgba(131,180,255,.25);
     letter-spacing:.3px;
   }
 
   .pt-tag{
     font-size:13.5px;
-    color:#7fa7ff;
+    color:#bcd3ff;
     text-shadow:0 0 8px rgba(131,180,255,.35);
     letter-spacing:.3px;
   }
@@ -61,7 +55,7 @@
       text-shadow:none;
     }
     .pt-tag{color:#0b74ff;text-shadow:none;}
-    .pt-brand-img{box-shadow:0 0 12px rgba(11,116,255,.45);}
+    .pt-brand-img{box-shadow:0 0 12px rgba(11,116,255,.35);}
   }
 
   @media(max-width:480px){
