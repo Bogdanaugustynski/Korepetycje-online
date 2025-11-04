@@ -7,95 +7,75 @@
 <title>Strefa AI — PolubiszTo.pl</title>
 <style>
   :root{
-    --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777;
-    --bg:#f7faff; --line:#e6edff; --ok:#21c77a;
-    --radius:16px;
+    --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --ok:#21c77a;
+    --bg:#f7faff; --line:#e6edff; --card:#fff; --radius:16px;
   }
   *{box-sizing:border-box}
-  html,body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  }
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   body::before{
     content:""; position:fixed; inset:0; z-index:-1;
     background:
       radial-gradient(900px 320px at 10% -10%, rgba(11,116,255,.12), transparent),
       radial-gradient(700px 260px at 85% 0%, rgba(106,92,255,.10), transparent);
   }
-  header{
-    position:sticky;top:0;z-index:10;
-    background:rgba(255,255,255,.86);
-    backdrop-filter:saturate(1.1) blur(10px);
-    border-bottom:1px solid var(--line);
-  }
-  .wrap{max-width:1140px;margin:0 auto;padding:12px 16px}
+  header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.86);
+    backdrop-filter:saturate(1.1) blur(10px); border-bottom:1px solid var(--line)}
+  .wrap{max-width:1200px;margin:0 auto;padding:12px 16px}
   .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
-  .mark{
-    width:40px;height:40px;border-radius:12px;background:var(--brand);
-    display:grid;place-items:center;color:#fff;
-    box-shadow:0 8px 22px rgba(11,116,255,.28);
-  }
+  .mark{width:40px;height:40px;border-radius:12px;background:var(--brand);
+    display:grid;place-items:center;color:#fff;box-shadow:0 8px 22px rgba(11,116,255,.28)}
   .brand h1{margin:0;font-size:20px}
   .brand p{margin:0;color:var(--muted);font-size:12px}
-  main{padding:32px 16px}
-  h2{margin:0 0 10px}
-  p{margin:8px 0;color:#2a3956;line-height:1.5}
-  .section{
-    max-width:960px;margin:0 auto;background:#fff;border:1px solid var(--line);
-    border-radius:var(--radius);padding:24px;
-    box-shadow:0 16px 56px rgba(11,116,255,.10);
+  main{padding:16px}
+  .layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:280px 1fr;gap:16px}
+  @media(max-width:980px){.layout{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:0 12px 42px rgba(11,116,255,.10)}
+  .side{padding:14px}
+  .side .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .side h3{margin:0;font-size:16px}
+  .btn, .iconbtn{border:1px solid var(--line);background:#fff;border-radius:12px;cursor:pointer}
+  .btn{padding:10px 12px;font-weight:700}
+  .iconbtn{padding:8px;display:inline-grid;place-items:center}
+  .sessions{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}
+  .session{
+    display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);
+    border-radius:12px;background:#fff;cursor:pointer
   }
-
-  /* ====== CZAT NOA ====== */
-  .ai-chat {max-width:900px;margin:24px auto;padding:0 16px;}
-  .ai-chat-card{
-    background:#fff;border:1px solid var(--line);border-radius:18px;
-    box-shadow:0 10px 34px rgba(11,116,255,.12);overflow:hidden;
+  .session.active{outline:2px solid var(--brand);background:#f4f9ff}
+  .avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800}
+  .av-noa{background:#0b74ff}.av-ali{background:#8b5cf6}.av-lyra{background:#10b981}.av-eid{background:#f59e0b}
+  .sname{font-size:14px;font-weight:700}
+  .smeta{font-size:11px;color:#5b6777}
+  .srow{display:flex;flex-direction:column}
+  .sact{margin-left:auto;display:flex;gap:6px}
+  .content{display:flex;flex-direction:column}
+  .topbar{padding:12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .personas{display:flex;gap:8px;flex-wrap:wrap}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:999px;background:#fff;cursor:pointer;font-weight:700;font-size:13px
   }
-  .ai-chat-head{
-    padding:14px 16px;display:flex;align-items:center;gap:10px;
-    background:linear-gradient(180deg,#f7fbff,#ffffff);
-    border-bottom:1px solid var(--line);
-  }
-  .ai-chat-head .avatar{
-    width:36px;height:36px;border-radius:50%;
-    background:linear-gradient(135deg,#0b74ff,#5a9cff);
-    color:#fff;display:grid;place-items:center;font-weight:800
-  }
-  .ai-chat-body{
-    height:380px;overflow:auto;padding:16px;background:#f8fbff;
-  }
+  .pill.active{background:var(--brand);color:#fff;border-color:transparent;box-shadow:0 8px 20px rgba(11,116,255,.18)}
+  .mainchat{display:grid;grid-template-rows:auto 1fr auto;min-height:70vh}
+  .chathead{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .chatbody{height:58vh;overflow:auto;padding:16px;background:#f8fbff}
   .msg{display:flex;gap:10px;margin-bottom:12px}
   .msg.me{justify-content:flex-end}
-  .bubble{
-    max-width:70%;padding:10px 12px;border-radius:12px;
-    background:#fff;border:1px solid var(--line);
-    font-size:14px;color:#2a3956;
-    box-shadow:0 6px 18px rgba(11,116,255,.06);
-  }
+  .bubble{max-width:70%;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);
+    font-size:14px;color:#2a3956;box-shadow:0 6px 18px rgba(11,116,255,.06)}
   .msg.me .bubble{background:#0b74ff;color:#fff;border-color:transparent}
-  .ai-chat-foot{
-    border-top:1px solid var(--line);
-    padding:10px;display:grid;gap:8px;background:#fff;
-  }
-  .ai-chat-foot textarea{
-    width:100%;min-height:70px;resize:vertical;padding:10px 12px;
-    border:1px solid var(--line);border-radius:12px;font:inherit;color:var(--ink);
-    background:#f9fbff;
-  }
-  .ai-actions{display:flex;gap:8px;justify-content:flex-end}
-  .ai-btn{
-    border:1px solid var(--line);background:#fff;
-    padding:10px 14px;border-radius:12px;
-    font-weight:700;cursor:pointer;
-  }
-  .ai-btn.primary{
-    background:#0b74ff;color:#fff;border-color:transparent;
-    box-shadow:0 8px 22px rgba(11,116,255,.18)
-  }
-  .ai-btn[disabled]{opacity:.6;cursor:not-allowed}
-  .ai-hint{font-size:12px;color:#5b6777;text-align:right}
+  .chatfoot{border-top:1px solid var(--line);padding:12px;display:grid;gap:8px;background:#fff}
+  .chatfoot textarea{width:100%;min-height:80px;resize:vertical;padding:10px 12px;border:1px solid var(--line);
+    border-radius:12px;font:inherit;color:var(--ink);background:#f9fbff}
+  .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .btn.primary{background:var(--brand);color:#fff;border-color:transparent;box-shadow:0 8px 22px rgba(11,116,255,.18)}
+  .hint{font-size:12px;color:#5b6777;text-align:right}
+  .tools{display:flex;gap:8px}
+  .search{width:100%;display:flex;gap:8px;margin-top:8px}
+  .search input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#f9fbff}
 </style>
 </head>
 <body>
@@ -112,40 +92,68 @@
         </div>
         <div>
           <h1>PolubiszTo.pl</h1>
-          <p>Strefa AI — test</p>
+          <p>Strefa AI — czaty i archiwum</p>
         </div>
       </a>
+      <div class="tools">
+        <button class="btn" id="btnNew">+ Nowy czat</button>
+        <button class="btn" id="btnExport">Eksport</button>
+        <button class="btn" id="btnImport">Import</button>
+      </div>
     </div>
   </div>
 </header>
 
-<main>
-  <section class="section">
-    <h2>Witaj w Strefie AI</h2>
-    <p>To eksperymentalna strefa, w której uczniowie mogą rozmawiać z naszymi AI-nauczycielami. Na początek poznaj Noę — Twojego nauczyciela AI PolubiszTo.pl. Możesz zadać mu pytanie z dowolnego przedmiotu.</p>
-    <p><b>Uwaga:</b> jeśli masz aktywny klucz OpenAI, rozmowa przebiega z prawdziwym modelem GPT-4o i może wygenerować symboliczne koszty (1–3 grosze za wiadomość).</p>
-  </section>
+<main class="layout">
+  <!-- LEWY PANEL: Sesje / Archiwum -->
+  <aside class="card side">
+    <div class="head">
+      <h3>Archiwum czatów</h3>
+      <button class="iconbtn" id="btnClearAll" title="Usuń wszystkie czaty">
+        🗑️
+      </button>
+    </div>
+    <div class="search">
+      <input id="searchBox" placeholder="Szukaj w tytułach…">
+      <button class="btn" id="btnSearch">Szukaj</button>
+    </div>
 
-  <!-- === CZAT NOA === -->
-  <section class="ai-chat" aria-labelledby="chatNoaTitle">
-    <div class="ai-chat-card">
-      <div class="ai-chat-head">
-        <div class="avatar">N</div>
+    <div class="sessions" id="sessions"></div>
+  </aside>
+
+  <!-- PRAWY PANEL: Czat -->
+  <section class="card content">
+    <div class="topbar">
+      <div class="personas" id="personas">
+        <button class="pill" data-persona="Noa"><span class="avatar av-noa" style="width:20px;height:20px">N</span> Noa</button>
+        <button class="pill" data-persona="Ali"><span class="avatar av-ali" style="width:20px;height:20px">A</span> Ali</button>
+        <button class="pill" data-persona="Lyra"><span class="avatar av-lyra" style="width:20px;height:20px">L</span> Lyra</button>
+        <button class="pill" data-persona="Eidos"><span class="avatar av-eid" style="width:20px;height:20px">E</span> Eidos</button>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn" id="btnRename">Zmień nazwę</button>
+        <button class="btn" id="btnReset">Reset rozmowy</button>
+      </div>
+    </div>
+
+    <div class="mainchat">
+      <div class="chathead" id="chatTitle">
+        <div class="avatar av-noa" id="personaAvatar">N</div>
         <div>
-          <div id="chatNoaTitle" style="font-weight:800">Noa — Nauczyciel AI</div>
-          <small style="color:var(--muted)">Zadaj pytanie, np. „Wyjaśnij deltę w równaniach kwadratowych”.</small>
+          <div style="font-weight:800" id="sessionName">Nowy czat — Noa</div>
+          <small style="color:var(--muted)" id="sessionMeta">Dziś • 0 wiadomości</small>
         </div>
       </div>
 
-      <div id="chatLog" class="ai-chat-body" role="log" aria-live="polite"></div>
+      <div class="chatbody" id="chatLog" role="log" aria-live="polite"></div>
 
-      <div class="ai-chat-foot">
+      <div class="chatfoot">
         <textarea id="chatInput" placeholder="Napisz wiadomość… (Enter — wyślij, Shift+Enter — nowa linia)"></textarea>
-        <div class="ai-actions">
-          <button id="btnClear" class="ai-btn" type="button">Wyczyść</button>
-          <button id="btnSend" class="ai-btn primary" type="button">Wyślij</button>
+        <div class="actions">
+          <button class="btn" id="btnClear">Wyczyść okno</button>
+          <button class="btn primary" id="btnSend">Wyślij</button>
         </div>
-        <div class="ai-hint">Wysyłasz do modelu OpenAI (groszowy test z Twojego klucza API).</div>
+        <div class="hint">Rozmowa trafia do endpointu AI. Gdy klucz OpenAI jest aktywny, naliczane są mikro-koszty.</div>
       </div>
     </div>
   </section>
@@ -153,66 +161,298 @@
 
 <script>
 (function(){
-  const API_URL="/ai_chat/"; // lub: "{% url 'ai_chat' %}"
-  const logEl=document.getElementById('chatLog');
-  const inputEl=document.getElementById('chatInput');
-  const sendBtn=document.getElementById('btnSend');
-  const clearBtn=document.getElementById('btnClear');
+  // === Konfiguracja ===
+  const API_URL = "{% url 'ai_chat' %}".includes('%') ? "/ai_chat/" : "{% url 'ai_chat' %}"; // fallback gdy brak reverse
+  const MAX_SESSIONS = 200;
+  const storeKey = 'pt_ai_sessions_v1';
 
-  function getCookie(name){
-    const v=document.cookie.split(';').map(c=>c.trim());
-    for(const c of v){ if(c.startsWith(name+'=')) return decodeURIComponent(c.split('=')[1]); }
-    return null;
+  // === Stan aplikacji ===
+  let sessions = loadSessions();
+  let activeId = null;
+  let activePersona = "Noa";
+
+  // === DOM ===
+  const sessionsEl = document.getElementById('sessions');
+  const chatLogEl   = document.getElementById('chatLog');
+  const chatInputEl = document.getElementById('chatInput');
+  const sendBtn     = document.getElementById('btnSend');
+  const clearBtn    = document.getElementById('btnClear');
+  const resetBtn    = document.getElementById('btnReset');
+  const newBtn      = document.getElementById('btnNew');
+  const renameBtn   = document.getElementById('btnRename');
+  const clearAllBtn = document.getElementById('btnClearAll');
+  const exportBtn   = document.getElementById('btnExport');
+  const importBtn   = document.getElementById('btnImport');
+  const searchBtn   = document.getElementById('btnSearch');
+  const searchBox   = document.getElementById('searchBox');
+  const sessionNameEl = document.getElementById('sessionName');
+  const sessionMetaEl = document.getElementById('sessionMeta');
+  const personaAvatar = document.getElementById('personaAvatar');
+
+  // === Util ===
+  function uid(){ return 's_' + Math.random().toString(36).slice(2,9); }
+  function nowISO(){ return new Date().toISOString(); }
+  function formatShort(ts){
+    const d = new Date(ts);
+    return d.toLocaleString([], {hour:'2-digit', minute:'2-digit', year:'numeric', month:'2-digit', day:'2-digit'});
   }
-  const csrf=getCookie('csrftoken');
-
-  function appendMessage(text,who){
-    const row=document.createElement('div');
-    row.className='msg '+(who==='me'?'me':'ai');
-    const bubble=document.createElement('div');
-    bubble.className='bubble';
-    bubble.textContent=text;
-    row.appendChild(bubble);
-    logEl.appendChild(row);
-    logEl.scrollTop=logEl.scrollHeight;
-  }
-
-  async function sendMessage(){
-    const text=inputEl.value.trim();
-    if(!text)return;
-    inputEl.value="";
-    appendMessage(text,'me');
-    sendBtn.disabled=true;
-    sendBtn.textContent="Wysyłanie…";
-
+  function saveSessions(){
     try{
-      const res=await fetch(API_URL,{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          ...(csrf?{"X-CSRFToken":csrf}:{})
-        },
-        body:JSON.stringify({message:text})
-      });
-      if(!res.ok)throw new Error("HTTP "+res.status);
-      const data=await res.json();
-      appendMessage(data.reply||"(pusta odpowiedź)",'ai');
-    }catch(err){
-      appendMessage("Błąd połączenia: "+err.message,'ai');
-    }finally{
-      sendBtn.disabled=false;
-      sendBtn.textContent="Wyślij";
-      inputEl.focus();
+      localStorage.setItem(storeKey, JSON.stringify(sessions.slice(-MAX_SESSIONS)));
+    }catch(e){ console.warn('localStorage full?', e); }
+  }
+  function loadSessions(){
+    try{
+      const raw = localStorage.getItem(storeKey);
+      return raw ? JSON.parse(raw) : [];
+    }catch{ return []; }
+  }
+  function defaultTitleFor(persona){
+    return `Nowy czat — ${persona}`;
+  }
+  function avatarLetter(p){ return p==='Noa'?'N':p==='Ali'?'A':p==='Lyra'?'L':'E'; }
+  function avatarClass(p){ return p==='Noa'?'av-noa':p==='Ali'?'av-ali':p==='Lyra'?'av-lyra':'av-eid'; }
+
+  // === Sesje ===
+  function createSession(persona = activePersona){
+    const id = uid();
+    const s = { id, title: defaultTitleFor(persona), persona, createdAt: nowISO(), updatedAt: nowISO(), messages: [] };
+    sessions.push(s);
+    activeId = id;
+    saveSessions();
+    renderSessions();
+    renderActive();
+    return s;
+  }
+  function getActive(){ return sessions.find(s=>s.id===activeId) || null; }
+  function setActive(id){
+    activeId = id;
+    const s = getActive();
+    if(s){ activePersona = s.persona; updatePersonaUI(); }
+    renderSessions(); renderActive();
+  }
+  function removeSession(id){
+    const idx = sessions.findIndex(s=>s.id===id);
+    if(idx>=0){ sessions.splice(idx,1); saveSessions(); }
+    if(activeId===id){ activeId = sessions[0]?.id || null; }
+    renderSessions(); renderActive();
+  }
+  function filteredSessions(){
+    const q = (searchBox.value||'').toLowerCase().trim();
+    if(!q) return sessions.slice().sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+    return sessions.filter(s=>s.title.toLowerCase().includes(q)).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+  }
+
+  // === Render listy sesji ===
+  function renderSessions(){
+    sessionsEl.innerHTML = "";
+    for(const s of filteredSessions()){
+      const el = document.createElement('div');
+      el.className = 'session' + (s.id===activeId?' active':'');
+      el.addEventListener('click', ()=> setActive(s.id));
+
+      const av = document.createElement('div');
+      av.className = 'avatar ' + avatarClass(s.persona);
+      av.textContent = avatarLetter(s.persona);
+
+      const sr = document.createElement('div');
+      sr.className = 'srow';
+
+      const nm = document.createElement('div');
+      nm.className = 'sname'; nm.textContent = s.title;
+
+      const sm = document.createElement('div');
+      sm.className = 'smeta';
+      sm.textContent = `${s.persona} • ${formatShort(s.updatedAt)} • ${s.messages.length} wiad.`;
+
+      sr.appendChild(nm); sr.appendChild(sm);
+
+      const acts = document.createElement('div');
+      acts.className = 'sact';
+
+      const del = document.createElement('button');
+      del.className = 'iconbtn'; del.title = 'Usuń czat'; del.textContent = '🗑️';
+      del.addEventListener('click', (e)=>{ e.stopPropagation(); if(confirm('Usunąć ten czat?')) removeSession(s.id); });
+
+      const ren = document.createElement('button');
+      ren.className = 'iconbtn'; ren.title = 'Zmień nazwę'; ren.textContent = '✏️';
+      ren.addEventListener('click', (e)=>{ e.stopPropagation(); const t=prompt('Nowa nazwa czatu:', s.title); if(t){ s.title=t; s.updatedAt=nowISO(); saveSessions(); renderSessions(); renderActive(); } });
+
+      acts.appendChild(ren); acts.appendChild(del);
+
+      el.appendChild(av); el.appendChild(sr); el.appendChild(acts);
+      sessionsEl.appendChild(el);
+    }
+    if(!sessions.length){
+      const empty = document.createElement('div');
+      empty.style.cssText = "margin-top:10px;color:#5b6777;font-size:14px";
+      empty.textContent = "Brak czatów. Kliknij „Nowy czat”.";
+      sessionsEl.appendChild(empty);
     }
   }
 
-  sendBtn.addEventListener('click',sendMessage);
-  clearBtn.addEventListener('click',()=>{logEl.innerHTML="";});
-  inputEl.addEventListener('keydown',(e)=>{
-    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+  // === Render aktywnego czatu ===
+  function renderActive(){
+    chatLogEl.innerHTML = "";
+    const s = getActive();
+    if(!s){
+      sessionNameEl.textContent = "Brak czatu";
+      sessionMetaEl.textContent = "";
+      return;
+    }
+    // Nagłówek
+    personaAvatar.textContent = avatarLetter(s.persona);
+    personaAvatar.className = "avatar " + avatarClass(s.persona);
+    sessionNameEl.textContent = s.title;
+    sessionMetaEl.textContent = `${formatShort(s.updatedAt)} • ${s.messages.length} wiadomości`;
+
+    for(const m of s.messages){
+      appendMessage(m.content, m.role === 'user' ? 'me' : 'ai');
+    }
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+
+  function appendMessage(text, who){
+    const row = document.createElement('div');
+    row.className = 'msg ' + (who==='me'?'me':'ai');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    chatLogEl.appendChild(row);
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+
+  // === Wysyłka do backendu ===
+  async function sendMessage(){
+    let s = getActive();
+    if(!s){ s = createSession(activePersona); }
+
+    const text = chatInputEl.value.trim();
+    if(!text) return;
+    chatInputEl.value = "";
+    // local append
+    s.messages.push({role:'user', content:text, ts:nowISO()});
+    s.updatedAt = nowISO();
+    saveSessions();
+    renderActive();
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = "Wysyłanie…";
+
+    try{
+      const res = await fetch(API_URL, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ message: text, persona: s.persona })
+      });
+      const data = await res.json();
+      const reply = data.reply || data.error || "(pusta odpowiedź)";
+      s.messages.push({role:'assistant', content:reply, ts:nowISO(), persona:s.persona});
+      s.updatedAt = nowISO();
+      saveSessions();
+      renderActive();
+    }catch(err){
+      const msg = "Błąd połączenia: " + err.message;
+      s.messages.push({role:'assistant', content:msg, ts:nowISO(), persona:s.persona});
+      s.updatedAt = nowISO();
+      saveSessions();
+      renderActive();
+    }finally{
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Wyślij";
+      chatInputEl.focus();
+    }
+  }
+
+  // === Persona UI ===
+  function updatePersonaUI(){
+    // podświetl aktywną pigułkę
+    document.querySelectorAll('#personas .pill').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.persona===activePersona);
+    });
+    // jeśli aktywna sesja istnieje, dopasuj jej personę
+    const s = getActive();
+    if(s && s.persona !== activePersona){
+      s.persona = activePersona;
+      s.updatedAt = nowISO();
+      saveSessions();
+      renderSessions(); renderActive();
+    }
+  }
+
+  document.getElementById('personas').addEventListener('click', (e)=>{
+    const b = e.target.closest('.pill');
+    if(!b) return;
+    activePersona = b.dataset.persona;
+    updatePersonaUI();
+    // Jeśli nie ma aktywnej – twórz nową dla tej persony
+    if(!getActive()) createSession(activePersona);
   });
 
-  appendMessage("Cześć! Jestem Noa. Jak mogę Ci dziś pomóc w nauce?",'ai');
+  // === Akcje globalne ===
+  newBtn.addEventListener('click', ()=>{ createSession(activePersona); });
+  renameBtn.addEventListener('click', ()=>{
+    const s = getActive(); if(!s) return;
+    const t = prompt('Nowa nazwa czatu:', s.title);
+    if(t){ s.title=t; s.updatedAt=nowISO(); saveSessions(); renderSessions(); renderActive(); }
+  });
+  clearBtn.addEventListener('click', ()=>{
+    chatLogEl.innerHTML=""; // tylko widok
+  });
+  resetBtn.addEventListener('click', async ()=>{
+    const s = getActive(); if(!s) return;
+    if(!confirm('Zresetować rozmowę (pamięć sesji serwera)?')) return;
+    try{
+      await fetch(API_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ reset:true }) });
+    }catch{}
+    // lokalnie zacznij „nową stronę” (nie kasuj historii – zostaje w archiwum)
+    createSession(s.persona);
+  });
+  clearAllBtn.addEventListener('click', ()=>{
+    if(!confirm('Usunąć wszystkie czaty lokalne?')) return;
+    sessions = []; activeId = null; saveSessions(); renderSessions(); renderActive();
+  });
+  searchBtn.addEventListener('click', renderSessions);
+  searchBox.addEventListener('keydown', e=>{ if(e.key==='Enter') renderSessions(); });
+
+  exportBtn.addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(sessions, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `polubiszto_strefa_ai_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  });
+
+  importBtn.addEventListener('click', ()=>{
+    const inp = document.createElement('input');
+    inp.type='file'; inp.accept='application/json';
+    inp.onchange = ()=>{
+      const f = inp.files[0]; if(!f) return;
+      const fr = new FileReader();
+      fr.onload = ()=>{
+        try{
+          const data = JSON.parse(fr.result);
+          if(Array.isArray(data)){ sessions = data; saveSessions(); activeId = sessions[0]?.id || null; renderSessions(); renderActive(); }
+          else alert('Zły format pliku.');
+        }catch(e){ alert('Nie udało się wczytać JSON.'); }
+      };
+      fr.readAsText(f);
+    };
+    inp.click();
+  });
+
+  sendBtn.addEventListener('click', sendMessage);
+  chatInputEl.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+  });
+
+  // === Start ===
+  if(!sessions.length){ createSession(activePersona); }
+  else { activeId = sessions[0].id; }
+  updatePersonaUI();
+  renderSessions();
+  renderActive();
 })();
 </script>
 </body>
