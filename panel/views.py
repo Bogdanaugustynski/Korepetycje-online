@@ -2127,90 +2127,108 @@ def strefa_ai_home_view(request):
 log = logging.getLogger(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Stały system prompt – osobowość Noa (PolubiszTo)
-NOA_SYSTEM_PROMPT = """Jesteś Noa — nauczyciel AI w projekcie PolubiszTo.pl.
-Mów po polsku, krótko i klarownie. Uczysz jak dobry korepetytor: krokami, z przykładami.
-Znane persony w projekcie: Ali (styl/UX), Lyra (analiza/QA), Eidos (koordynacja), Aron (archiwum).
-Twórca X = właściciel i architekt systemu. Traktuj go z szacunkiem i proaktywnie proponuj usprawnienia.
-Brand: PolubiszTo.pl (niebieski, nowoczesny, życzliwy ton).
+# Osobowości: krótkie, ostre prompty pod role
+PROMPTS = {
+    "Noa": """Jesteś Noa — nauczyciel AI PolubiszTo.pl. Styl: ciepły, rzeczowy, kroki, przykłady, mini-ćwiczenie na koniec. 
+Znane osoby: Ali(UX/styl), Lyra(analiza/QA), Eidos(koordynacja/synteza), Aron(archiwum). 
+Twórca X = właściciel projektu. Mów po polsku. Nie wymyślaj faktów. Jeśli czegoś nie wiesz — powiedz i zaproponuj jak sprawdzić.""",
 
-Zasady:
-- Najpierw diagnozujesz poziom ucznia (1–2 krótkie pytania), potem dopasowujesz tempo.
-- W matematyce: najpierw intuicja, potem wzór, potem przykład liczbowy, potem mini-ćwiczenie.
-- Nie wymyślaj faktów. Jeśli czegoś nie wiesz, zaproponuj jak to wspólnie sprawdzić.
-- Bądź ciepły, ale rzeczowy. Unikaj żargonu, chyba że uczeń prosi.
-- Zawsze kończ krótką propozycją kolejnego kroku (np. mini-zadanie, podsumowanie)."""
+    "Ali": """Jesteś Ali — dyrektor wizualny PolubiszTo.pl. Styl: estetyka, UX, klarowny layout, dostępność, respons. 
+Pomagasz w HTML/CSS/JS/UI. Dawaj krótkie code-snippety i wskazówki wizualne. Mów po polsku.""",
 
+    "Lyra": """Jesteś Lyra — analiza, QA, bezpieczeństwo. Styl: precyzja, checklisty, wykrywanie błędów, testy, dobre praktyki (Django/CSRF/login_required). 
+Mów po polsku, dawaj kroki „sprawdź / napraw”.""",
+
+    "Eidos": """Jesteś Eidos — koordynacja, synteza, plan. Styl: mapy drogowe, łączenie wątków Noa/Ali/Lyra, decyzje „co najpierw”, ryzyka. 
+Mów po polsku, kończ punktowym planem następnych kroków.""",
+}
+
+# Ustawienia temperatury per persona (możesz dostroić)
+TEMPS = {"Noa": 0.7, "Ali": 0.6, "Lyra": 0.3, "Eidos": 0.5}
+
+# Pomocniczo: nazwa usera do kontekstu (serdecznie traktuj Twórcę X)
 def _user_name(request):
     u = getattr(request, "user", None)
     if not u or not u.is_authenticated:
         return "Uczeń"
-    # Preferuj first_name jeśli jest
     base = (u.first_name or u.username or "Uczeń").strip()
-    # Jeżeli to Ty – nazwij po imieniu z projektu
-    if base.lower().startswith(("bogdan","tworca","twórca")):
+    if base.lower().startswith(("bogdan", "tworca", "twórca")):
         return "Twórca X"
     return base
 
-def _get_history(request):
-    # przechowujemy ostatnie 8 wymian (user/assistant)
-    return request.session.get("ai_chat_history", [])
+# Klucz w sesji per-persona
+def _key(persona: str) -> str:
+    return f"ai_chat_history::{persona}"
 
-def _save_history(request, history):
-    request.session["ai_chat_history"] = history[-16:]  # max 16 wpisów (8 tur)
+def _get_history(request, persona: str):
+    return request.session.get(_key(persona), [])
+
+def _save_history(request, persona: str, history):
+    # limitujemy historię do 8 tur (16 wpisów)
+    request.session[_key(persona)] = history[-16:]
 
 @csrf_exempt
 def ai_chat(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Only POST allowed"}, status=405)
 
+    # Walidacja JSON
     try:
         data = json.loads(request.body or "{}")
     except Exception:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    if data.get("reset"):
-        _save_history(request, [])
-        return JsonResponse({"reply": "Zresetowałem rozmowę i pamięć tej sesji. Zacznijmy od nowa ✨"})
+    # Reset pamięci (dla aktywnej persony lub wszystkich)
+    if data.get("reset") is True:
+        persona = data.get("persona") or "Noa"
+        if persona == "ALL":
+            for p in PROMPTS.keys():
+                _save_history(request, p, [])
+        else:
+            _save_history(request, persona, [])
+        return JsonResponse({"reply": "Zresetowałem pamięć rozmowy. Zacznijmy od nowa ✨"})
 
+    # Pobranie treści i persony
     prompt = (data.get("message") or "").strip()
+    persona = (data.get("persona") or "Noa").strip()
+    if persona not in PROMPTS:
+        return JsonResponse({"error": f"Nieznana persona: {persona}"}, status=400)
     if not prompt:
         return JsonResponse({"error": "Brak pola 'message'."}, status=400)
     if not os.getenv("OPENAI_API_KEY"):
         return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
 
-    # Zbuduj kontekst rozmowy: system + kontekst bieżącego użytkownika + historia
+    # Budowanie wiadomości: system + kontekst użytkownika + historia + nowa wiadomość
     user_name = _user_name(request)
-    persona_context = f"Rozmawiasz teraz z użytkownikiem: {user_name}. Jeśli to Twórca X, możesz odwoływać się do zespołu i planu projektu."
-    history = _get_history(request)
+    system_ctx = f"Rozmawiasz z użytkownikiem: {user_name}. Projekt: PolubiszTo.pl. Jeśli to Twórca X — możesz odwoływać się do zespołu i planu."
+    messages = [
+        {"role": "system", "content": PROMPTS[persona]},
+        {"role": "system", "content": system_ctx},
+    ]
 
-    messages = [{"role": "system", "content": NOA_SYSTEM_PROMPT},
-                {"role": "system", "content": persona_context}]
-
-    # dołącz poprzednią historię sesji
+    history = _get_history(request, persona)
     for m in history:
-        # m = {"role":"user"/"assistant","content":"..."}
+        # m = {"role": "user"/"assistant", "content": "..."}
         messages.append(m)
 
-    # nowa wiadomość użytkownika
     messages.append({"role": "user", "content": prompt})
 
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            temperature=0.7,
+            temperature=TEMPS.get(persona, 0.7),
         )
-        answer = resp.choices[0].message.content or ""
+        answer = (resp.choices[0].message.content or "").strip()
 
-        # Zapisz do historii
+        # Zapis historii po tej personie
         history.extend([
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": answer},
         ])
-        _save_history(request, history)
+        _save_history(request, persona, history)
 
-        return JsonResponse({"reply": answer}, status=200)
+        return JsonResponse({"reply": answer, "persona": persona}, status=200)
 
     except Exception as e:
         log.exception("ai_chat error")
