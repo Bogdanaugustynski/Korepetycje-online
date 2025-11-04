@@ -1,24 +1,72 @@
-{# templates/partials/brand.html #}
-{# Wspólne logo z nową głową — ścieżka zgodna z manifestem statyków #}
 {% load static %}
 <style>
-  .pt-brand-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
+  /* --- Kontener marki --- */
+  .pt-brand-wrap{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    text-decoration:none;
+    position:relative;
+    isolation:isolate;
   }
-  .pt-brand-img {
-    width: 40px; height: 40px; flex: 0 0 40px;
-    border-radius: 50%;
-    filter: drop-shadow(0 0 6px rgba(11,116,255,.45));
+
+  /* --- Głowa AI --- */
+  .pt-brand-img{
+    width:46px; height:46px; flex:0 0 46px;
+    border-radius:50%;
+    background:radial-gradient(circle at 60% 40%,#58a6ff 0%,#0b74ff 60%,#062150 100%);
+    box-shadow:
+      0 0 16px rgba(11,116,255,.55),
+      0 0 40px rgba(11,116,255,.25);
+    padding:3px;
+    animation:ptPulse 4.5s ease-in-out infinite;
   }
-  .pt-brand-title { line-height: 1.1; display: flex; flex-direction: column; }
-  .pt-brand-title .pt-name { font-weight: 800; font-size: 20px; color: #0b1320; }
-  .pt-brand-title .pt-tag { font-size: 13px; color: #5b6777; }
-  @media (max-width:480px){
-    .pt-brand-img{width:32px;height:32px}
-    .pt-brand-title .pt-name{font-size:18px}
+
+  @keyframes ptPulse{
+    0%,100%{ transform:scale(1); box-shadow:0 0 16px rgba(11,116,255,.55),0 0 40px rgba(11,116,255,.25); }
+    50%{ transform:scale(1.05); box-shadow:0 0 22px rgba(11,116,255,.65),0 0 50px rgba(11,116,255,.35); }
+  }
+
+  /* --- Teksty --- */
+  .pt-brand-title{
+    display:flex;
+    flex-direction:column;
+    line-height:1.1;
+  }
+
+  .pt-name{
+    font-weight:800;
+    font-size:22px;
+    background:linear-gradient(90deg,#fff,#bcd6ff,#0b74ff);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:0 0 24px rgba(131,180,255,.25);
+    letter-spacing:.3px;
+  }
+
+  .pt-tag{
+    font-size:13.5px;
+    color:#7fa7ff;
+    text-shadow:0 0 8px rgba(131,180,255,.35);
+    letter-spacing:.3px;
+  }
+
+  /* --- Wersja jasna (panele) --- */
+  @media (prefers-color-scheme: light){
+    .pt-name{
+      background:linear-gradient(90deg,#0b1320,#0b74ff);
+      -webkit-background-clip:text;
+      color:transparent;
+      text-shadow:none;
+    }
+    .pt-tag{color:#0b74ff;text-shadow:none;}
+    .pt-brand-img{box-shadow:0 0 12px rgba(11,116,255,.45);}
+  }
+
+  @media(max-width:480px){
+    .pt-brand-img{width:38px;height:38px}
+    .pt-name{font-size:19px}
   }
 </style>
 
