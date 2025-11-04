@@ -2125,7 +2125,39 @@ def strefa_ai_home_view(request):
     return render(request, "test/strefa_ai_home.html")
 
 log = logging.getLogger(__name__)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # <-- nowy klient
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Stały system prompt – osobowość Noa (PolubiszTo)
+NOA_SYSTEM_PROMPT = """Jesteś Noa — nauczyciel AI w projekcie PolubiszTo.pl.
+Mów po polsku, krótko i klarownie. Uczysz jak dobry korepetytor: krokami, z przykładami.
+Znane persony w projekcie: Ali (styl/UX), Lyra (analiza/QA), Eidos (koordynacja), Aron (archiwum).
+Twórca X = właściciel i architekt systemu. Traktuj go z szacunkiem i proaktywnie proponuj usprawnienia.
+Brand: PolubiszTo.pl (niebieski, nowoczesny, życzliwy ton).
+
+Zasady:
+- Najpierw diagnozujesz poziom ucznia (1–2 krótkie pytania), potem dopasowujesz tempo.
+- W matematyce: najpierw intuicja, potem wzór, potem przykład liczbowy, potem mini-ćwiczenie.
+- Nie wymyślaj faktów. Jeśli czegoś nie wiesz, zaproponuj jak to wspólnie sprawdzić.
+- Bądź ciepły, ale rzeczowy. Unikaj żargonu, chyba że uczeń prosi.
+- Zawsze kończ krótką propozycją kolejnego kroku (np. mini-zadanie, podsumowanie)."""
+
+def _user_name(request):
+    u = getattr(request, "user", None)
+    if not u or not u.is_authenticated:
+        return "Uczeń"
+    # Preferuj first_name jeśli jest
+    base = (u.first_name or u.username or "Uczeń").strip()
+    # Jeżeli to Ty – nazwij po imieniu z projektu
+    if base.lower().startswith(("bogdan","tworca","twórca")):
+        return "Twórca X"
+    return base
+
+def _get_history(request):
+    # przechowujemy ostatnie 8 wymian (user/assistant)
+    return request.session.get("ai_chat_history", [])
+
+def _save_history(request, history):
+    request.session["ai_chat_history"] = history[-16:]  # max 16 wpisów (8 tur)
 
 @csrf_exempt
 def ai_chat(request):
@@ -2137,24 +2169,49 @@ def ai_chat(request):
     except Exception:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    if data.get("reset"):
+        _save_history(request, [])
+        return JsonResponse({"reply": "Zresetowałem rozmowę i pamięć tej sesji. Zacznijmy od nowa ✨"})
+
     prompt = (data.get("message") or "").strip()
     if not prompt:
         return JsonResponse({"error": "Brak pola 'message'."}, status=400)
-
     if not os.getenv("OPENAI_API_KEY"):
         return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
+
+    # Zbuduj kontekst rozmowy: system + kontekst bieżącego użytkownika + historia
+    user_name = _user_name(request)
+    persona_context = f"Rozmawiasz teraz z użytkownikiem: {user_name}. Jeśli to Twórca X, możesz odwoływać się do zespołu i planu projektu."
+    history = _get_history(request)
+
+    messages = [{"role": "system", "content": NOA_SYSTEM_PROMPT},
+                {"role": "system", "content": persona_context}]
+
+    # dołącz poprzednią historię sesji
+    for m in history:
+        # m = {"role":"user"/"assistant","content":"..."}
+        messages.append(m)
+
+    # nowa wiadomość użytkownika
+    messages.append({"role": "user", "content": prompt})
 
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Jesteś nauczycielem AI PolubiszTo.pl o imieniu Noa."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.7,  # kropka, nie przecinek
+            messages=messages,
+            temperature=0.7,
         )
         answer = resp.choices[0].message.content or ""
+
+        # Zapisz do historii
+        history.extend([
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": answer},
+        ])
+        _save_history(request, history)
+
         return JsonResponse({"reply": answer}, status=200)
+
     except Exception as e:
         log.exception("ai_chat error")
         return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
