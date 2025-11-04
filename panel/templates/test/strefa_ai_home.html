@@ -69,11 +69,27 @@
   .msg.me .bubble{background:#0b74ff;color:#fff;border-color:transparent}
   .chatfoot{border-top:1px solid var(--line);padding:12px;display:grid;gap:8px;background:#fff}
   .chatfoot textarea{width:100%;min-height:80px;resize:vertical;padding:10px 12px;border:1px solid var(--line);
-    border-radius:12px;font:inherit;color:var(--ink);background:#f9fbff}
+    border-radius:12px;font:inherit;color:#111;background:#f9fbff}
+
+  /* === upload === */
+  .uploader{border:1px dashed var(--line); background:#f9fbff; border-radius:12px; padding:10px}
+  .uploader.drag{outline:2px solid var(--brand)}
+  .uploader .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .uploader input[type=file]{display:none}
+  .uploader .pick{border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 10px; cursor:pointer; font-weight:700}
+  .attach-list{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+  .attach{
+    display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--line);
+    background:#fff; border-radius:10px; max-width:240px;
+  }
+  .attach img{width:36px; height:36px; object-fit:cover; border-radius:6px; border:1px solid var(--line)}
+  .attach .meta{display:flex; flex-direction:column; min-width:0}
+  .attach .name{font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .attach .size{font-size:11px; color:#5b6777}
+  .attach .x{margin-left:auto; cursor:pointer; border:none; background:#fff; font-size:16px}
   .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent;box-shadow:0 8px 22px rgba(11,116,255,.18)}
   .hint{font-size:12px;color:#5b6777;text-align:right}
-  .tools{display:flex;gap:8px}
   .search{width:100%;display:flex;gap:8px;margin-top:8px}
   .search input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#f9fbff}
 </style>
@@ -92,7 +108,7 @@
         </div>
         <div>
           <h1>PolubiszTo.pl</h1>
-          <p>Strefa AI — czaty i archiwum</p>
+          <p>Strefa AI — czaty • pliki • archiwum</p>
         </div>
       </a>
       <div class="tools">
@@ -105,23 +121,18 @@
 </header>
 
 <main class="layout">
-  <!-- LEWY PANEL: Sesje / Archiwum -->
   <aside class="card side">
     <div class="head">
       <h3>Archiwum czatów</h3>
-      <button class="iconbtn" id="btnClearAll" title="Usuń wszystkie czaty">
-        🗑️
-      </button>
+      <button class="iconbtn" id="btnClearAll" title="Usuń wszystkie czaty">🗑️</button>
     </div>
     <div class="search">
       <input id="searchBox" placeholder="Szukaj w tytułach…">
       <button class="btn" id="btnSearch">Szukaj</button>
     </div>
-
     <div class="sessions" id="sessions"></div>
   </aside>
 
-  <!-- PRAWY PANEL: Czat -->
   <section class="card content">
     <div class="topbar">
       <div class="personas" id="personas">
@@ -148,12 +159,21 @@
       <div class="chatbody" id="chatLog" role="log" aria-live="polite"></div>
 
       <div class="chatfoot">
+        <div class="uploader" id="uploader">
+          <div class="row">
+            <label class="pick" for="fileInput">➕ Dodaj pliki</label>
+            <span style="font-size:12px; color:#5b6777">Przeciągnij i upuść tutaj (obrazy, PDF, DOCX…)</span>
+          </div>
+          <input id="fileInput" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx">
+          <div class="attach-list" id="attachList"></div>
+        </div>
+
         <textarea id="chatInput" placeholder="Napisz wiadomość… (Enter — wyślij, Shift+Enter — nowa linia)"></textarea>
         <div class="actions">
           <button class="btn" id="btnClear">Wyczyść okno</button>
           <button class="btn primary" id="btnSend">Wyślij</button>
         </div>
-        <div class="hint">Rozmowa trafia do endpointu AI. Gdy klucz OpenAI jest aktywny, naliczane są mikro-koszty.</div>
+        <div class="hint">Uwaga: Lyra nie skanuje dużych plików w trakcie pisania — robi to tylko na wyraźne polecenie.</div>
       </div>
     </div>
   </section>
@@ -161,17 +181,14 @@
 
 <script>
 (function(){
-  // === Konfiguracja ===
-  const API_URL = "{% url 'ai_chat' %}".includes('%') ? "/ai_chat/" : "{% url 'ai_chat' %}"; // fallback gdy brak reverse
+  const API_URL = "{% url 'ai_chat' %}".includes('%') ? "/ai_chat/" : "{% url 'ai_chat' %}";
   const MAX_SESSIONS = 200;
   const storeKey = 'pt_ai_sessions_v1';
 
-  // === Stan aplikacji ===
   let sessions = loadSessions();
   let activeId = null;
   let activePersona = "Noa";
 
-  // === DOM ===
   const sessionsEl = document.getElementById('sessions');
   const chatLogEl   = document.getElementById('chatLog');
   const chatInputEl = document.getElementById('chatInput');
@@ -189,31 +206,67 @@
   const sessionMetaEl = document.getElementById('sessionMeta');
   const personaAvatar = document.getElementById('personaAvatar');
 
-  // === Util ===
+  const uploaderEl   = document.getElementById('uploader');
+  const fileInputEl  = document.getElementById('fileInput');
+  const attachListEl = document.getElementById('attachList');
+
+  let pendingFiles = [];
+  function fmtBytes(b){ if(!b && b!==0) return ""; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed((i?1:0))+' '+u[i]; }
+  function isImage(f){ return (f.type||'').startsWith('image/'); }
+
   function uid(){ return 's_' + Math.random().toString(36).slice(2,9); }
   function nowISO(){ return new Date().toISOString(); }
-  function formatShort(ts){
-    const d = new Date(ts);
-    return d.toLocaleString([], {hour:'2-digit', minute:'2-digit', year:'numeric', month:'2-digit', day:'2-digit'});
-  }
-  function saveSessions(){
-    try{
-      localStorage.setItem(storeKey, JSON.stringify(sessions.slice(-MAX_SESSIONS)));
-    }catch(e){ console.warn('localStorage full?', e); }
-  }
-  function loadSessions(){
-    try{
-      const raw = localStorage.getItem(storeKey);
-      return raw ? JSON.parse(raw) : [];
-    }catch{ return []; }
-  }
-  function defaultTitleFor(persona){
-    return `Nowy czat — ${persona}`;
-  }
+  function saveSessions(){ try{ localStorage.setItem(storeKey, JSON.stringify(sessions.slice(-MAX_SESSIONS))); }catch(e){} }
+  function loadSessions(){ try{ const raw = localStorage.getItem(storeKey); return raw ? JSON.parse(raw) : []; }catch{ return []; } }
+  function defaultTitleFor(persona){ return `Nowy czat — ${persona}`; }
   function avatarLetter(p){ return p==='Noa'?'N':p==='Ali'?'A':p==='Lyra'?'L':'E'; }
   function avatarClass(p){ return p==='Noa'?'av-noa':p==='Ali'?'av-ali':p==='Lyra'?'av-lyra':'av-eid'; }
+  function formatShort(ts){ const d=new Date(ts); return d.toLocaleString([], {hour:'2-digit', minute:'2-digit', year:'numeric', month:'2-digit', day:'2-digit'}); }
 
-  // === Sesje ===
+  function renderAttachments(){
+    attachListEl.innerHTML = "";
+    for(const it of pendingFiles){
+      const wrap = document.createElement('div');
+      wrap.className = 'attach';
+      if(isImage(it.file)){
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(it.file);
+        wrap.appendChild(img);
+      }else{
+        const ph = document.createElement('div');
+        ph.style.cssText = "width:36px;height:36px;border:1px solid var(--line);border-radius:6px;display:grid;place-items:center;font-size:12px;background:#fff";
+        ph.textContent = it.file.name.split('.').pop()?.toUpperCase().slice(0,4) || 'FILE';
+        wrap.appendChild(ph);
+      }
+      const meta = document.createElement('div'); meta.className='meta';
+      const nm = document.createElement('div'); nm.className='name'; nm.textContent = it.file.name;
+      const sz = document.createElement('div'); sz.className='size'; sz.textContent = fmtBytes(it.file.size);
+      meta.appendChild(nm); meta.appendChild(sz);
+      const x = document.createElement('button'); x.className='x'; x.title='Usuń'; x.textContent='×';
+      x.addEventListener('click', ()=>{ pendingFiles = pendingFiles.filter(p=>p.id!==it.id); renderAttachments(); });
+      wrap.appendChild(meta); wrap.appendChild(x);
+      attachListEl.appendChild(wrap);
+    }
+  }
+
+  function addFiles(files){
+    for(const f of files){
+      pendingFiles.push({ id: 'f_'+Math.random().toString(36).slice(2,9), file: f });
+    }
+    renderAttachments();
+  }
+  fileInputEl.addEventListener('change', (e)=> addFiles(e.target.files));
+  ;['dragenter','dragover'].forEach(evt=>{
+    uploaderEl.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); uploaderEl.classList.add('drag'); });
+  });
+  ;['dragleave','drop'].forEach(evt=>{
+    uploaderEl.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); uploaderEl.classList.remove('drag'); });
+  });
+  uploaderEl.addEventListener('drop', (e)=>{
+    const dt = e.dataTransfer;
+    if(dt && dt.files && dt.files.length){ addFiles(dt.files); }
+  });
+
   function createSession(persona = activePersona){
     const id = uid();
     const s = { id, title: defaultTitleFor(persona), persona, createdAt: nowISO(), updatedAt: nowISO(), messages: [] };
@@ -243,7 +296,6 @@
     return sessions.filter(s=>s.title.toLowerCase().includes(q)).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
   }
 
-  // === Render listy sesji ===
   function renderSessions(){
     sessionsEl.innerHTML = "";
     for(const s of filteredSessions()){
@@ -267,19 +319,14 @@
 
       sr.appendChild(nm); sr.appendChild(sm);
 
-      const acts = document.createElement('div');
-      acts.className = 'sact';
-
-      const del = document.createElement('button');
-      del.className = 'iconbtn'; del.title = 'Usuń czat'; del.textContent = '🗑️';
+      const acts = document.createElement('div'); acts.className = 'sact';
+      const del = document.createElement('button'); del.className = 'iconbtn'; del.title = 'Usuń czat'; del.textContent = '🗑️';
       del.addEventListener('click', (e)=>{ e.stopPropagation(); if(confirm('Usunąć ten czat?')) removeSession(s.id); });
 
-      const ren = document.createElement('button');
-      ren.className = 'iconbtn'; ren.title = 'Zmień nazwę'; ren.textContent = '✏️';
+      const ren = document.createElement('button'); ren.className = 'iconbtn'; ren.title = 'Zmień nazwę'; ren.textContent = '✏️';
       ren.addEventListener('click', (e)=>{ e.stopPropagation(); const t=prompt('Nowa nazwa czatu:', s.title); if(t){ s.title=t; s.updatedAt=nowISO(); saveSessions(); renderSessions(); renderActive(); } });
 
       acts.appendChild(ren); acts.appendChild(del);
-
       el.appendChild(av); el.appendChild(sr); el.appendChild(acts);
       sessionsEl.appendChild(el);
     }
@@ -291,7 +338,6 @@
     }
   }
 
-  // === Render aktywnego czatu ===
   function renderActive(){
     chatLogEl.innerHTML = "";
     const s = getActive();
@@ -300,7 +346,6 @@
       sessionMetaEl.textContent = "";
       return;
     }
-    // Nagłówek
     personaAvatar.textContent = avatarLetter(s.persona);
     personaAvatar.className = "avatar " + avatarClass(s.persona);
     sessionNameEl.textContent = s.title;
@@ -323,16 +368,15 @@
     chatLogEl.scrollTop = chatLogEl.scrollHeight;
   }
 
-  // === Wysyłka do backendu ===
   async function sendMessage(){
     let s = getActive();
     if(!s){ s = createSession(activePersona); }
 
     const text = chatInputEl.value.trim();
-    if(!text) return;
+    if(!text && !pendingFiles.length) return;
     chatInputEl.value = "";
-    // local append
-    s.messages.push({role:'user', content:text, ts:nowISO()});
+
+    s.messages.push({role:'user', content:text || '(załączniki)', ts:nowISO()});
     s.updatedAt = nowISO();
     saveSessions();
     renderActive();
@@ -340,12 +384,15 @@
     sendBtn.disabled = true;
     sendBtn.textContent = "Wysyłanie…";
 
+    const fd = new FormData();
+    fd.append("message", text);
+    fd.append("persona", s.persona);
+    for(const it of pendingFiles){
+      fd.append("files[]", it.file, it.file.name);
+    }
+
     try{
-      const res = await fetch(API_URL, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ message: text, persona: s.persona })
-      });
+      const res = await fetch(API_URL, { method: "POST", body: fd });
       const data = await res.json();
       const reply = data.reply || data.error || "(pusta odpowiedź)";
       s.messages.push({role:'assistant', content:reply, ts:nowISO(), persona:s.persona});
@@ -359,19 +406,18 @@
       saveSessions();
       renderActive();
     }finally{
+      pendingFiles = [];
+      renderAttachments();
       sendBtn.disabled = false;
       sendBtn.textContent = "Wyślij";
       chatInputEl.focus();
     }
   }
 
-  // === Persona UI ===
   function updatePersonaUI(){
-    // podświetl aktywną pigułkę
     document.querySelectorAll('#personas .pill').forEach(btn=>{
       btn.classList.toggle('active', btn.dataset.persona===activePersona);
     });
-    // jeśli aktywna sesja istnieje, dopasuj jej personę
     const s = getActive();
     if(s && s.persona !== activePersona){
       s.persona = activePersona;
@@ -386,27 +432,22 @@
     if(!b) return;
     activePersona = b.dataset.persona;
     updatePersonaUI();
-    // Jeśli nie ma aktywnej – twórz nową dla tej persony
     if(!getActive()) createSession(activePersona);
   });
 
-  // === Akcje globalne ===
   newBtn.addEventListener('click', ()=>{ createSession(activePersona); });
   renameBtn.addEventListener('click', ()=>{
     const s = getActive(); if(!s) return;
     const t = prompt('Nowa nazwa czatu:', s.title);
     if(t){ s.title=t; s.updatedAt=nowISO(); saveSessions(); renderSessions(); renderActive(); }
   });
-  clearBtn.addEventListener('click', ()=>{
-    chatLogEl.innerHTML=""; // tylko widok
-  });
+  clearBtn.addEventListener('click', ()=>{ chatLogEl.innerHTML=""; });
   resetBtn.addEventListener('click', async ()=>{
     const s = getActive(); if(!s) return;
-    if(!confirm('Zresetować rozmowę (pamięć sesji serwera)?')) return;
+    if(!confirm('Zresetować rozmowę (pamięć persony po stronie serwera)?')) return;
     try{
-      await fetch(API_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ reset:true }) });
+      await fetch(API_URL, { method:"POST", headers:{}, body: (()=>{ const fd=new FormData(); fd.append('reset','true'); fd.append('persona', s.persona); return fd; })() });
     }catch{}
-    // lokalnie zacznij „nową stronę” (nie kasuj historii – zostaje w archiwum)
     createSession(s.persona);
   });
   clearAllBtn.addEventListener('click', ()=>{
@@ -447,7 +488,6 @@
     if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
   });
 
-  // === Start ===
   if(!sessions.length){ createSession(activePersona); }
   else { activeId = sessions[0].id; }
   updatePersonaUI();

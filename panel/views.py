@@ -80,7 +80,7 @@ from django.core.validators import validate_email
 from decimal import Decimal
 from django.db.models.functions import Lower
 from django.utils.http import urlencode
-import mimetypes, os, pathlib
+import mimetypes, os, pathlib, mimetypes, posixpath
 from django.urls import reverse
 from django.http import FileResponse, Http404
 from openai import OpenAI
@@ -2127,26 +2127,25 @@ def strefa_ai_home_view(request):
 log = logging.getLogger(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Osobowości: krótkie, ostre prompty pod role
+# Osobowości (Lyra nie robi live-lintu ani skanowania dużych plików)
 PROMPTS = {
-    "Noa": """Jesteś Noa — nauczyciel AI PolubiszTo.pl. Styl: ciepły, rzeczowy, kroki, przykłady, mini-ćwiczenie na koniec. 
-Znane osoby: Ali(UX/styl), Lyra(analiza/QA), Eidos(koordynacja/synteza), Aron(archiwum). 
+    "Noa": """Jesteś Noa — nauczyciel AI PolubiszTo.pl. Styl: ciepły, rzeczowy, kroki, przykłady, mini-ćwiczenie na koniec.
+Znane osoby: Ali(UX/styl), Lyra(analiza/QA), Eidos(koordynacja/synteza), Aron(archiwum).
 Twórca X = właściciel projektu. Mów po polsku. Nie wymyślaj faktów. Jeśli czegoś nie wiesz — powiedz i zaproponuj jak sprawdzić.""",
 
-    "Ali": """Jesteś Ali — dyrektor wizualny PolubiszTo.pl. Styl: estetyka, UX, klarowny layout, dostępność, respons. 
+    "Ali": """Jesteś Ali — dyrektor wizualny PolubiszTo.pl. Styl: estetyka, UX, klarowny layout, dostępność, respons.
 Pomagasz w HTML/CSS/JS/UI. Dawaj krótkie code-snippety i wskazówki wizualne. Mów po polsku.""",
 
-    "Lyra": """Jesteś Lyra — analiza, QA, bezpieczeństwo. Styl: precyzja, checklisty, wykrywanie błędów, testy, dobre praktyki (Django/CSRF/login_required). 
-Mów po polsku, dawaj kroki „sprawdź / napraw”.""",
+    "Lyra": """Jesteś Lyra — analiza, QA, bezpieczeństwo. Styl: precyzja, checklisty, wykrywanie błędów, dobre praktyki (Django/CSRF/login_required).
+UWAGA: Nie uruchamiasz lintów ani skanów dużych plików podczas pisania. Jeśli użytkownik wyraźnie poprosi o audyt, robisz go na podstawie skrótów/fragmentów.
+Mów po polsku i dawaj kroki „sprawdź / napraw”.""",
 
-    "Eidos": """Jesteś Eidos — koordynacja, synteza, plan. Styl: mapy drogowe, łączenie wątków Noa/Ali/Lyra, decyzje „co najpierw”, ryzyka. 
+    "Eidos": """Jesteś Eidos — koordynacja, synteza, plan. Styl: mapy drogowe, łączenie Noa/Ali/Lyra, decyzje „co najpierw”, ryzyka.
 Mów po polsku, kończ punktowym planem następnych kroków.""",
 }
 
-# Ustawienia temperatury per persona (możesz dostroić)
 TEMPS = {"Noa": 0.7, "Ali": 0.6, "Lyra": 0.3, "Eidos": 0.5}
 
-# Pomocniczo: nazwa usera do kontekstu (serdecznie traktuj Twórcę X)
 def _user_name(request):
     u = getattr(request, "user", None)
     if not u or not u.is_authenticated:
@@ -2156,7 +2155,6 @@ def _user_name(request):
         return "Twórca X"
     return base
 
-# Klucz w sesji per-persona
 def _key(persona: str) -> str:
     return f"ai_chat_history::{persona}"
 
@@ -2164,33 +2162,63 @@ def _get_history(request, persona: str):
     return request.session.get(_key(persona), [])
 
 def _save_history(request, persona: str, history):
-    # limitujemy historię do 8 tur (16 wpisów)
-    request.session[_key(persona)] = history[-16:]
+    request.session[_key(persona)] = history[-16:]  # max 8 tur
+
+def _media_url(request, rel_path: str) -> str:
+    media_url = os.getenv("MEDIA_URL", "/media/").rstrip("/") + "/"
+    # build_absolute_uri zapewnia pełny URL
+    return request.build_absolute_uri(posixpath.join(media_url, rel_path))
+
+def _save_uploaded_files(request):
+    """
+    Zapisuje 'files[]' do MEDIA/ai_uploads.
+    Zwraca listę: {name, url, mime, is_image}
+    """
+    saved = []
+    files = request.FILES.getlist("files[]")
+    base_dir = "ai_uploads"
+    for f in files:
+        rel_path = default_storage.save(posixpath.join(base_dir, f.name), ContentFile(f.read()))
+        file_url = _media_url(request, rel_path)
+        mime, _ = mimetypes.guess_type(f.name)
+        saved.append({
+            "name": f.name,
+            "url": file_url,
+            "mime": mime or "application/octet-stream",
+            "is_image": (mime or "").startswith("image/"),
+        })
+    return saved
 
 @csrf_exempt
 def ai_chat(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Only POST allowed"}, status=405)
 
-    # Walidacja JSON
+    content_type = request.META.get("CONTENT_TYPE", "")
+    is_multipart = content_type.startswith("multipart/form-data")
+
     try:
-        data = json.loads(request.body or "{}")
-    except Exception:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-    # Reset pamięci (dla aktywnej persony lub wszystkich)
-    if data.get("reset") is True:
-        persona = data.get("persona") or "Noa"
-        if persona == "ALL":
-            for p in PROMPTS.keys():
-                _save_history(request, p, [])
+        if is_multipart:
+            prompt = (request.POST.get("message") or "").strip()
+            persona = (request.POST.get("persona") or "Noa").strip()
+            reset = (request.POST.get("reset") == "true")
         else:
-            _save_history(request, persona, [])
-        return JsonResponse({"reply": "Zresetowałem pamięć rozmowy. Zacznijmy od nowa ✨"})
+            data = json.loads(request.body or "{}")
+            prompt = (data.get("message") or "").strip()
+            persona = (data.get("persona") or "Noa").strip()
+            reset = bool(data.get("reset"))
+    except Exception:
+        return JsonResponse({"error": "Invalid input"}, status=400)
 
-    # Pobranie treści i persony
-    prompt = (data.get("message") or "").strip()
-    persona = (data.get("persona") or "Noa").strip()
+    if persona == "ALL" and reset:
+        for p in PROMPTS.keys():
+            _save_history(request, p, [])
+        return JsonResponse({"reply": "Zresetowałem pamięć rozmów (wszystkie persony). ✨"})
+
+    if reset:
+        _save_history(request, persona, [])
+        return JsonResponse({"reply": f"Zresetowałem pamięć: {persona}. Zacznijmy od nowa ✨"})
+
     if persona not in PROMPTS:
         return JsonResponse({"error": f"Nieznana persona: {persona}"}, status=400)
     if not prompt:
@@ -2198,9 +2226,17 @@ def ai_chat(request):
     if not os.getenv("OPENAI_API_KEY"):
         return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
 
-    # Budowanie wiadomości: system + kontekst użytkownika + historia + nowa wiadomość
+    attachments = []
+    if is_multipart and request.FILES:
+        try:
+            attachments = _save_uploaded_files(request)
+        except Exception as e:
+            log.exception("save files error")
+            return JsonResponse({"error": f"UploadError: {e}"}, status=500)
+
     user_name = _user_name(request)
     system_ctx = f"Rozmawiasz z użytkownikiem: {user_name}. Projekt: PolubiszTo.pl. Jeśli to Twórca X — możesz odwoływać się do zespołu i planu."
+
     messages = [
         {"role": "system", "content": PROMPTS[persona]},
         {"role": "system", "content": system_ctx},
@@ -2208,10 +2244,14 @@ def ai_chat(request):
 
     history = _get_history(request, persona)
     for m in history:
-        # m = {"role": "user"/"assistant", "content": "..."}
         messages.append(m)
 
-    messages.append({"role": "user", "content": prompt})
+    # content użytkownika: tekst + obrazy (vision)
+    user_content = [{"type": "text", "text": prompt}]
+    for att in attachments:
+        if att["is_image"]:
+            user_content.append({"type": "input_image", "image_url": {"url": att["url"]}})
+    messages.append({"role": "user", "content": user_content})
 
     try:
         resp = client.chat.completions.create(
@@ -2221,14 +2261,13 @@ def ai_chat(request):
         )
         answer = (resp.choices[0].message.content or "").strip()
 
-        # Zapis historii po tej personie
         history.extend([
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": answer},
         ])
         _save_history(request, persona, history)
 
-        return JsonResponse({"reply": answer, "persona": persona}, status=200)
+        return JsonResponse({"reply": answer, "persona": persona, "attachments": attachments}, status=200)
 
     except Exception as e:
         log.exception("ai_chat error")
