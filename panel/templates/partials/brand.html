@@ -1,5 +1,5 @@
 {# templates/partials/brand.html #}
-{# Wspólne logo z nową głową (plik: panel/static/img/brand/logo_head.png) #}
+{# Wspólne logo z nową głową — ścieżka zgodna z manifestem statyków #}
 {% load static %}
 <style>
   .pt-brand-wrap {
@@ -9,26 +9,13 @@
     text-decoration: none;
   }
   .pt-brand-img {
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
+    width: 40px; height: 40px; flex: 0 0 40px;
     border-radius: 50%;
     filter: drop-shadow(0 0 6px rgba(11,116,255,.45));
   }
-  .pt-brand-title {
-    line-height: 1.1;
-    display: flex;
-    flex-direction: column;
-  }
-  .pt-brand-title .pt-name {
-    font-weight: 800;
-    font-size: 20px;
-    color: #0b1320;
-  }
-  .pt-brand-title .pt-tag {
-    font-size: 13px;
-    color: #5b6777;
-  }
+  .pt-brand-title { line-height: 1.1; display: flex; flex-direction: column; }
+  .pt-brand-title .pt-name { font-weight: 800; font-size: 20px; color: #0b1320; }
+  .pt-brand-title .pt-tag { font-size: 13px; color: #5b6777; }
   @media (max-width:480px){
     .pt-brand-img{width:32px;height:32px}
     .pt-brand-title .pt-name{font-size:18px}
@@ -37,11 +24,10 @@
 
 <a href="/" class="pt-brand-wrap" aria-label="PolubiszTo.pl — korepetycje online">
   <img
-    src="{% static 'panel/img/brand/logo_head.png' %}"
+    src="{% static 'img/brand/logo_head.png' %}"
     alt="Logo PolubiszTo.pl"
     class="pt-brand-img"
-    decoding="async"
-    loading="eager"
+    decoding="async" loading="eager"
   />
   <span class="pt-brand-title">
     <span class="pt-name">PolubiszTo.pl</span>
