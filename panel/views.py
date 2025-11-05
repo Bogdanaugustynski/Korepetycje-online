@@ -80,10 +80,12 @@ from django.core.validators import validate_email
 from decimal import Decimal
 from django.db.models.functions import Lower
 from django.utils.http import urlencode
-import mimetypes, os, pathlib, mimetypes, posixpath
+import mimetypes, os, pathlib, mimetypes, posixpath, io
 from django.urls import reverse
 from django.http import FileResponse, Http404
 from openai import OpenAI
+from pypdf import PdfReader
+from docx import Document
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2172,20 +2174,25 @@ def _media_url(request, rel_path: str) -> str:
 def _save_uploaded_files(request):
     """
     Zapisuje 'files[]' do MEDIA/ai_uploads.
-    Zwraca listę: {name, url, mime, is_image}
+    Zwraca listę: {name, url, mime, is_image, text_preview}
     """
     saved = []
     files = request.FILES.getlist("files[]")
     base_dir = "ai_uploads"
     for f in files:
-        rel_path = default_storage.save(posixpath.join(base_dir, f.name), ContentFile(f.read()))
+        raw = f.read()  # potrzebne do ekstrakcji
+        rel_path = default_storage.save(posixpath.join(base_dir, f.name), ContentFile(raw))
         file_url = _media_url(request, rel_path)
         mime, _ = mimetypes.guess_type(f.name)
+        is_img = (mime or "").startswith("image/")
+        text_preview = "" if is_img else _extract_text_for_prompt(f.name, mime, raw)
+
         saved.append({
             "name": f.name,
             "url": file_url,
             "mime": mime or "application/octet-stream",
-            "is_image": (mime or "").startswith("image/"),
+            "is_image": is_img,
+            "text_preview": text_preview,  # <= NOWE
         })
     return saved
 
@@ -2248,9 +2255,21 @@ def ai_chat(request):
 
     # content użytkownika: tekst + obrazy (vision)
     user_content = [{"type": "text", "text": prompt}]
+
     for att in attachments:
-        if att["is_image"]:
-            user_content.append({"type": "input_image", "image_url": {"url": att["url"]}})
+        if att.get("is_image"):
+            # obraz do vision
+            user_content.append({
+                "type": "input_image",
+                "image_url": {"url": att["url"]}
+            })
+        elif att.get("text_preview"):
+            # przycięty wyciąg z PDF/DOCX/TXT do kontekstu
+            user_content.append({
+                "type": "text",
+                "text": f"[Wyciąg z pliku: {att['name']}]\n{att['text_preview']}"
+            })
+
     messages.append({"role": "user", "content": user_content})
 
     try:
@@ -2267,8 +2286,98 @@ def ai_chat(request):
         ])
         _save_history(request, persona, history)
 
-        return JsonResponse({"reply": answer, "persona": persona, "attachments": attachments}, status=200)
+        return JsonResponse(
+            {"reply": answer, "persona": persona, "attachments": attachments},
+            status=200
+        )
 
     except Exception as e:
         log.exception("ai_chat error")
         return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
+    
+    # --- Ekstrakcja tekstu z plików ------------------------------------------------
+MAX_EXTRACT_CHARS = 50_000        # twardy limit surowego ekstraktu/plik
+MAX_SUMMARY_CHARS = 6_000         # ile tekstu finalnie trafi do promptu per plik
+
+def _safe_clip(text: str, limit: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "\n…[przycięto]"
+
+def _extract_text_from_pdf(file_bytes: bytes) -> str:
+    try:
+        reader = PdfReader(io.BytesIO(file_bytes))
+        parts = []
+        for page in reader.pages:
+            txt = page.extract_text() or ""
+            if txt.strip():
+                parts.append(txt)
+            if sum(len(p) for p in parts) > MAX_EXTRACT_CHARS:
+                break
+        return _safe_clip("\n\n".join(parts), MAX_EXTRACT_CHARS)
+    except Exception:
+        return ""
+
+def _extract_text_from_docx(file_bytes: bytes) -> str:
+    try:
+        bio = io.BytesIO(file_bytes)
+        doc = Document(bio)
+        parts = []
+        for p in doc.paragraphs:
+            if p.text.strip():
+                parts.append(p.text)
+            if sum(len(x) for x in parts) > MAX_EXTRACT_CHARS:
+                break
+        return _safe_clip("\n".join(parts), MAX_EXTRACT_CHARS)
+    except Exception:
+        return ""
+
+def _extract_text_from_txt(file_bytes: bytes) -> str:
+    # spróbuj UTF-8, w razie czego latin-1 (bezpieczne dla binów jako „śmieci”)
+    for enc in ("utf-8", "utf-8-sig", "latin-1"):
+        try:
+            return _safe_clip(file_bytes.decode(enc, errors="ignore"), MAX_EXTRACT_CHARS)
+        except Exception:
+            continue
+    return ""
+
+def _summarize_locally(text: str) -> str:
+    """
+    Lekka „kompresja” bez wołania modelu:
+    - bierzemy pierwsze i ostatnie ~3k znaków; często wystarcza do kontekstu
+    - dodajemy nagłówek z informacją o przycięciu
+    (Jeśli chcesz, możemy później zrobić prawdziwe streszczenie LLM.)
+    """
+    if not text:
+        return ""
+    if len(text) <= MAX_SUMMARY_CHARS:
+        return text
+    head = text[: (MAX_SUMMARY_CHARS // 2)]
+    tail = text[-(MAX_SUMMARY_CHARS // 2):]
+    return (
+        "[Zwięzły wyciąg z dłuższego pliku — środek przycięty]\n\n"
+        + head
+        + "\n\n…[środek pominięty]…\n\n"
+        + tail
+    )
+
+def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
+    mime = (mime or "").lower()
+    name_low = (name or "").lower()
+
+    text = ""
+    if mime.startswith("application/pdf") or name_low.endswith(".pdf"):
+        text = _extract_text_from_pdf(raw_bytes)
+    elif mime in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document",) or name_low.endswith(".docx"):
+        text = _extract_text_from_docx(raw_bytes)
+    elif mime.startswith("text/") or name_low.endswith(".txt"):
+        text = _extract_text_from_txt(raw_bytes)
+    else:
+        # Na razie nie wspieramy .doc/.ppt/.xls — ominiemy
+        text = ""
+
+    if not text:
+        return ""
+    return _summarize_locally(text)
