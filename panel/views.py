@@ -2371,3 +2371,7 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
     if not text:
         return ""
     return _summarize_locally(text)
+
+#TABLICA
+def aliboard_view(request):
+    return render(request, "test/aliboard.html")

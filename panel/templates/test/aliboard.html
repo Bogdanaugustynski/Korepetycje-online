@@ -1,0 +1,351 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Aliboard — PolubiszTo.pl</title>
+<style>
+  :root{
+    --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --line:#e6edff;
+    --card:#fff; --bg:#f7f9fe; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  header{
+    position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+  }
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .mark{width:36px;height:36px;border-radius:10px;background:var(--brand);
+    display:grid;place-items:center;color:#fff}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+  .btn,.seg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700}
+  .seg{display:inline-flex;gap:6px}
+  .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
+  .state{font-size:12px;color:var(--muted)}
+  .wrap{height:calc(100% - 64px)}
+  .stage{
+    position:relative; height:100%; width:100%; overflow:hidden; background:#fff;
+    border-top:1px solid var(--line);
+  }
+  canvas{position:absolute; inset:0; width:100%; height:100%}
+  #grid{pointer-events:none}
+  #overlay{pointer-events:none}
+  .footer{
+    position:fixed; right:12px; bottom:12px; display:flex; gap:8px;
+  }
+  /* małe badge i pickery */
+  .picker{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .picker input[type=color]{width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px}
+  .picker select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff}
+  /* prosty tooltip */
+  .btn[title]{position:relative}
+  .btn[title]:hover::after{
+    content:attr(title); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+    background:#111;color:#fff;padding:6px 8px;border-radius:8px;font-size:12px;white-space:nowrap
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="#fff"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-weight:800">Aliboard</div>
+      <div class="state" id="state">Tryb: Ołówek • 1px • #0b74ff</div>
+    </div>
+  </div>
+
+  <!-- Narzędzia -->
+  <div class="tools">
+    <div class="seg">
+      <button class="btn" data-tool="pen" title="Ołówek (P)">✏️</button>
+      <button class="btn" data-tool="line" title="Linia (L)">／</button>
+      <button class="btn" data-tool="eraser" title="Gumka (E)">🩹</button>
+      <button class="btn" data-tool="text" title="Tekst (T)">T</button>
+    </div>
+
+    <div class="picker">
+      Kolor <input type="color" id="color" value="#0b74ff">
+      Grubość
+      <select id="size">
+        <option value="1">1px</option>
+        <option value="3" selected>3px</option>
+        <option value="5">5px</option>
+        <option value="8">8px</option>
+      </select>
+    </div>
+
+    <div class="picker">
+      Siatka
+      <select id="gridSize">
+        <option value="0">Brak</option>
+        <option value="16">Mała</option>
+        <option value="24" selected>Średnia</option>
+        <option value="32">Duża</option>
+      </select>
+    </div>
+
+    <label class="btn" title="Wstaw obraz">
+      📷 Obraz
+      <input id="imgInput" type="file" accept="image/*" style="display:none">
+    </label>
+
+    <button class="btn" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
+    <button class="btn" id="redo" title="Ponów (Ctrl+Y)">↷</button>
+    <button class="btn" id="clear" title="Wyczyść">🗑️</button>
+    <button class="btn primary" id="save" title="Zapisz jako PNG">💾 Zapisz PNG</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="stage" id="stage">
+    <canvas id="grid"></canvas>
+    <canvas id="board"></canvas>
+    <canvas id="overlay"></canvas>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
+</div>
+
+<script>
+(function(){
+  // CANVASY
+  const stage = document.getElementById('stage');
+  const gridC = document.getElementById('grid');
+  const drawC = document.getElementById('board');
+  const ovlC  = document.getElementById('overlay');
+  const stateEl = document.getElementById('state');
+
+  const g = gridC.getContext('2d');
+  const ctx = drawC.getContext('2d');
+  const ovl = ovlC.getContext('2d');
+
+  // NARZĘDZIA
+  const TOOLS = { PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text' };
+  let tool = TOOLS.PEN;
+  let color = document.getElementById('color').value;
+  let size  = parseInt(document.getElementById('size').value,10);
+  let gridSize = parseInt(document.getElementById('gridSize').value,10);
+
+  // HISTORIA (undo/redo)
+  const history = [];
+  let redoStack = [];
+
+  function resize(){
+    const {clientWidth:w, clientHeight:h} = stage;
+    [gridC, drawC, ovlC].forEach(c=>{
+      const dpr = window.devicePixelRatio||1;
+      c.width = Math.floor(w*dpr);
+      c.height = Math.floor(h*dpr);
+      c.style.width = w+'px';
+      c.style.height = h+'px';
+      c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+    });
+    drawGrid();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Siatka
+  function drawGrid(){
+    g.clearRect(0,0,gridC.width, gridC.height);
+    if(!gridSize){ return; }
+    const {width:w,height:h} = gridC;
+    g.save();
+    g.strokeStyle = '#e6edff';
+    g.lineWidth = 1;
+    for(let x=0; x<w; x+=gridSize){
+      g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke();
+    }
+    for(let y=0; y<h; y+=gridSize){
+      g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke();
+    }
+    g.restore();
+  }
+
+  // Zapisywanie stanu (do undo)
+  function snapshot(){
+    redoStack = [];
+    history.push(drawC.toDataURL('image/png'));
+    if(history.length>50) history.shift();
+  }
+
+  function restore(dataURL){
+    return new Promise((resolve)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        ctx.clearRect(0,0,drawC.width, drawC.height);
+        ctx.drawImage(img,0,0,drawC.width, drawC.height);
+        resolve();
+      };
+      img.src = dataURL;
+    });
+  }
+
+  // Aktualizacja statusu
+  function updateState(){
+    stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`;
+  }
+  function toolLabel(){
+    return tool===TOOLS.PEN?'Ołówek':tool===TOOLS.LINE?'Linia':tool===TOOLS.ERASER?'Gumka':'Tekst';
+  }
+  updateState();
+
+  // Narzędzia — UI
+  document.querySelectorAll('[data-tool]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      tool = b.getAttribute('data-tool');
+      updateState();
+    });
+  });
+  document.getElementById('color').addEventListener('input', (e)=>{ color=e.target.value; updateState(); });
+  document.getElementById('size').addEventListener('change', (e)=>{ size=parseInt(e.target.value,10); updateState(); });
+  document.getElementById('gridSize').addEventListener('change', (e)=>{ gridSize=parseInt(e.target.value,10); drawGrid(); });
+
+  // Wstaw obraz
+  document.getElementById('imgInput').addEventListener('change', (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const img = new Image();
+    img.onload = ()=>{
+      snapshot();
+      // wstaw centrycznie, dopasuj do wysokości
+      const ratio = Math.min(drawC.width/img.width, drawC.height/img.height);
+      const w = img.width * ratio;
+      const h = img.height * ratio;
+      const x = (drawC.width - w)/2;
+      const y = (drawC.height - h)/2;
+      ctx.drawImage(img, x, y, w, h);
+    };
+    img.src = URL.createObjectURL(f);
+  });
+
+  // Undo/Redo/Clear/Save
+  document.getElementById('undo').addEventListener('click', async ()=>{
+    if(!history.length) return;
+    const last = history.pop();
+    redoStack.push(drawC.toDataURL('image/png'));
+    await restore(last);
+  });
+  document.getElementById('redo').addEventListener('click', async ()=>{
+    if(!redoStack.length) return;
+    const next = redoStack.pop();
+    history.push(drawC.toDataURL('image/png'));
+    await restore(next);
+  });
+  document.getElementById('clear').addEventListener('click', ()=>{
+    snapshot();
+    ctx.clearRect(0,0,drawC.width, drawC.height);
+  });
+  document.getElementById('save').addEventListener('click', ()=>{
+    const url = drawC.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aliboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+    a.click();
+  });
+
+  // Rysowanie — logika wspólna dla myszy i dotyku
+  let drawing = false;
+  let startX=0, startY=0, lastX=0, lastY=0;
+
+  function begin(x,y){
+    drawing = true; startX=lastX=x; startY=lastY=y;
+    snapshot();
+    if(tool===TOOLS.PEN || tool===TOOLS.ERASER){
+      ctx.beginPath(); ctx.moveTo(x,y);
+    }
+  }
+  function move(x,y){
+    if(!drawing) return;
+    if(tool===TOOLS.PEN){
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineCap = 'round'; ctx.lineJoin='round';
+      ctx.strokeStyle = color; ctx.lineWidth = size;
+      ctx.lineTo(x,y); ctx.stroke();
+      lastX=x; lastY=y;
+    }else if(tool===TOOLS.ERASER){
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineCap = 'round'; ctx.lineJoin='round';
+      ctx.lineWidth = size*2; // gumka nieco większa
+      ctx.lineTo(x,y); ctx.stroke();
+      lastX=x; lastY=y;
+      ctx.globalCompositeOperation = 'source-over';
+    }else if(tool===TOOLS.LINE){
+      // podgląd na overlay
+      ovl.clearRect(0,0,ovlC.width,ovlC.height);
+      ovl.lineCap='round'; ovl.lineJoin='round';
+      ovl.strokeStyle = color; ovl.lineWidth = size;
+      ovl.beginPath(); ovl.moveTo(startX,startY); ovl.lineTo(x,y); ovl.stroke();
+    }
+  }
+  function end(x,y){
+    if(!drawing) return;
+    if(tool===TOOLS.LINE){
+      ovl.clearRect(0,0,ovlC.width,ovlC.height);
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.strokeStyle = color; ctx.lineWidth = size;
+      ctx.beginPath(); ctx.moveTo(startX,startY); ctx.lineTo(x,y); ctx.stroke();
+    }else if(tool===TOOLS.TEXT){
+      // prosty tekst — prompt
+      const txt = prompt('Wpisz tekst:'); 
+      if(txt && txt.trim()){
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.font = `${Math.max(14, size*6)}px ui-sans-serif, system-ui, Arial`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(txt.trim(), x, y);
+        ctx.restore();
+      }else{
+        // cofamy snapshot, jeśli pusty tekst
+        if(history.length) {
+          restore(history.pop());
+        }
+      }
+    }
+    drawing = false;
+  }
+
+  function getXY(e){
+    const rect = drawC.getBoundingClientRect();
+    if(e.touches && e.touches[0]){
+      return {
+        x: (e.touches[0].clientX - rect.left),
+        y: (e.touches[0].clientY - rect.top)
+      };
+    }
+    return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+  }
+
+  // Mysz
+  drawC.addEventListener('mousedown', (e)=>{ const {x,y}=getXY(e); begin(x,y); });
+  window.addEventListener('mousemove', (e)=>{ const {x,y}=getXY(e); move(x,y); });
+  window.addEventListener('mouseup',   (e)=>{ const {x,y}=getXY(e); end(x,y); });
+
+  // Dotyk
+  drawC.addEventListener('touchstart', (e)=>{ e.preventDefault(); const {x,y}=getXY(e); begin(x,y); }, {passive:false});
+  drawC.addEventListener('touchmove',  (e)=>{ e.preventDefault(); const {x,y}=getXY(e); move(x,y); }, {passive:false});
+  drawC.addEventListener('touchend',   (e)=>{ e.preventDefault(); const {x,y}=getXY(e); end(x,y); }, {passive:false});
+
+  // Skróty
+  window.addEventListener('keydown', (e)=>{
+    if(e.key==='p' || e.key==='P') { tool=TOOLS.PEN; updateState(); }
+    if(e.key==='l' || e.key==='L') { tool=TOOLS.LINE; updateState(); }
+    if(e.key==='e' || e.key==='E') { tool=TOOLS.ERASER; updateState(); }
+    if(e.key==='t' || e.key==='T') { tool=TOOLS.TEXT; updateState(); }
+    if(e.ctrlKey && e.key==='z'){ document.getElementById('undo').click(); }
+    if(e.ctrlKey && (e.key==='y' || (e.shiftKey && e.key==='Z'))){ document.getElementById('redo').click(); }
+  });
+
+})();
+</script>
+</body>
+</html>

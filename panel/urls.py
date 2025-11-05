@@ -103,5 +103,8 @@ urlpatterns = [
     path("strefa_ai_home/", views.strefa_ai_home_view, name="strefa_ai_home"),
     path("ai_chat/", views.ai_chat, name="ai_chat"),
 
+    #Tablica
+    path("aliboard/", views.aliboard_view, name="aliboard"),
+
 
 ]
