@@ -2174,7 +2174,7 @@ def _media_url(request, rel_path: str) -> str:
 def _save_uploaded_files(request):
     """
     Zapisuje 'files[]' do MEDIA/ai_uploads.
-    Zwraca listę: {name, url, mime, is_image, text_preview}
+    Zwraca: {name, url, mime, is_image, text_preview}
     """
     saved = []
     files = request.FILES.getlist("files[]")
@@ -2192,7 +2192,7 @@ def _save_uploaded_files(request):
             "url": file_url,
             "mime": mime or "application/octet-stream",
             "is_image": is_img,
-            "text_preview": text_preview,  # <= NOWE
+            "text_preview": text_preview,
         })
     return saved
 
