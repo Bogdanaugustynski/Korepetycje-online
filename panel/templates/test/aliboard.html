@@ -4,7 +4,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard — PolubiszTo.pl (merged + touch fixes)</title>
+<title>Aliboard 2.0 — PolubiszTo.pl (test)</title>
+<!-- PDF (client-side) -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
 <style>
   :root{
     --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --line:#e6edff;
@@ -24,6 +26,7 @@
   .btn,.seg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700}
   .seg{display:inline-flex;gap:6px}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
+  .btn.is-active{ outline:2px solid var(--brand); outline-offset:2px }
   .state{font-size:12px;color:var(--muted)}
   .wrap{height:calc(100% - 64px)}
   .stage{
@@ -32,13 +35,13 @@
   }
   canvas{
     position:absolute; inset:0; width:100%; height:100%;
-    /* FIX: blokuje scroll/gesty przeglądarki nad canvasem mobilnie */
+    /* blokuje scroll/gesty przeglądarki nad canvasem mobilnie */
     touch-action:none;
   }
   #grid{pointer-events:none}
   #overlay{pointer-events:none}
   .footer{
-    position:fixed; right:12px; bottom:12px; display:flex; gap:8px;
+    position:fixed; right:12px; bottom:12px; display:flex; gap:8px; flex-wrap:wrap;
   }
   .picker{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#fff}
   .picker input[type=color]{width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px}
@@ -47,6 +50,10 @@
   .btn[title]:hover::after{
     content:attr(title); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
     background:#111;color:#fff;padding:6px 8px;border-radius:8px;font-size:12px;white-space:nowrap
+  }
+  @media (max-width: 720px){
+    .tools{gap:6px}
+    .btn,.picker{padding:6px 8px}
   }
 </style>
 </head>
@@ -66,10 +73,10 @@
 
   <div class="tools">
     <div class="seg">
-      <button class="btn" data-tool="pen" title="Ołówek (P)">✏️</button>
-      <button class="btn" data-tool="line" title="Linia (L)">／</button>
+      <button class="btn" data-tool="pen"   title="Ołówek (P)">✏️</button>
+      <button class="btn" data-tool="line"  title="Linia (L)">／</button>
       <button class="btn" data-tool="eraser" title="Gumka (E)">🩹</button>
-      <button class="btn" data-tool="text" title="Tekst (T)">T</button>
+      <button class="btn" data-tool="text"  title="Tekst (T)">T</button>
     </div>
 
     <div class="picker">
@@ -101,7 +108,9 @@
     <button class="btn" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
     <button class="btn" id="redo" title="Ponów (Ctrl+Y)">↷</button>
     <button class="btn" id="clear" title="Wyczyść">🗑️</button>
-    <button class="btn primary" id="save" title="Zapisz jako PNG">💾 Zapisz PNG</button>
+    <button class="btn primary" id="savePng" title="Zapisz jako PNG">💾 PNG</button>
+    <button class="btn primary" id="savePdf" title="Zapisz jako PDF">📄 PDF</button>
+    <button class="btn primary" id="saveSrv" title="Zapisz na serwer" style="display:none">☁️ Serwer</button>
   </div>
 </header>
 
@@ -115,122 +124,159 @@
 
 <div class="footer">
   <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
+  <span class="btn" id="roomInfo" title="Room ID z query string">room_id: —</span>
 </div>
 
 <script>
 (function(){
-  // CANVASY
+  // ====== Konfiguracja opcjonalna (serwerowy zapis) ======
+  // Jeśli ustawisz poniżej URL, pojawi się przycisk "Zapisz na serwer".
+  // Przykład: window.SERVER_SAVE_URL = "/api/boards/save/";
+  // Backend: przyjmuje JSON: { filename, image_base64, room_id }
+  // window.SERVER_SAVE_URL = undefined;
+
+  // ====== CANVASY / KONTEXTY ======
   const stage = document.getElementById('stage');
   const gridC = document.getElementById('grid');
   const drawC = document.getElementById('board');
   const ovlC  = document.getElementById('overlay');
-  const stateEl = document.getElementById('state');
-
   const g = gridC.getContext('2d');
   const ctx = drawC.getContext('2d');
   const ovl = ovlC.getContext('2d');
+  const stateEl = document.getElementById('state');
 
-  // NARZĘDZIA
+  // ====== NARZĘDZIA ======
   const TOOLS = { PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text' };
   let tool = TOOLS.PEN;
-  let color = document.getElementById('color').value;
-  let size  = parseInt(document.getElementById('size').value,10);
-  let gridSize = parseInt(document.getElementById('gridSize').value,10);
+  let color = '#0b74ff';
+  let size  = 3;
+  let gridSize = 24;
 
-  // HISTORIA (undo/redo)
+  // room_id z query string (?room=UUID) — pod test integracji
+  const qs = new URLSearchParams(location.search);
+  const roomId = qs.get('room') || 'local-test';
+  const roomInfo = document.getElementById('roomInfo');
+  if(roomInfo){ roomInfo.textContent = 'room_id: ' + roomId; }
+
+  // ====== HISTORIA (undo/redo) ======
   const history = [];
   let redoStack = [];
 
-  // DPI-aware resize
+  // ====== DPI-aware resize ======
   function resize(){
     const {clientWidth:w, clientHeight:h} = stage;
+    const dpr = window.devicePixelRatio || 1;
     [gridC, drawC, ovlC].forEach(c=>{
-      const dpr = window.devicePixelRatio||1;
-      c.width = Math.floor(w*dpr);
-      c.height = Math.floor(h*dpr);
+      c.width = Math.floor(w * dpr);
+      c.height = Math.floor(h * dpr);
       c.style.width = w+'px';
       c.style.height = h+'px';
-      c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+      const c2d = c.getContext('2d');
+      c2d.setTransform(dpr,0,0,dpr,0,0); // rysujemy w CSS px
     });
     drawGrid();
   }
   window.addEventListener('resize', resize, {passive:true});
   resize();
 
-  // Siatka
+  // ====== SIATKA ======
   function drawGrid(){
-    g.clearRect(0,0,gridC.width, gridC.height);
+    const dpr = window.devicePixelRatio || 1;
+    const w = gridC.width / dpr;   // w CSS px
+    const h = gridC.height / dpr;  // w CSS px
+    g.clearRect(0,0,w,h);
     if(!gridSize){ return; }
-    const {width:w,height:h} = gridC;
     g.save();
     g.strokeStyle = '#e6edff';
     g.lineWidth = 1;
-    for(let x=0; x<w; x+=gridSize){
+
+    for(let x=0; x<=w; x+=gridSize){
       g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke();
     }
-    for(let y=0; y<h; y+=gridSize){
+    for(let y=0; y<=h; y+=gridSize){
       g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke();
     }
     g.restore();
   }
 
-  // Snapshociki
+  // ====== SNAPSHOTS ======
   function snapshot(){
     redoStack = [];
-    history.push(drawC.toDataURL('image/png'));
-    if(history.length>50) history.shift();
+    try{
+      history.push(drawC.toDataURL('image/png'));
+      if(history.length>50) history.shift();
+    }catch(_){}
   }
 
   function restore(dataURL){
     return new Promise((resolve)=>{
       const img = new Image();
       img.onload = ()=>{
-        ctx.clearRect(0,0,drawC.width, drawC.height);
-        ctx.drawImage(img,0,0,drawC.width, drawC.height);
+        const dpr = window.devicePixelRatio || 1;
+        const w = drawC.width / dpr;
+        const h = drawC.height / dpr;
+        ctx.clearRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h); // rysuj w CSS px
         resolve();
       };
       img.src = dataURL;
     });
   }
 
-  // Status
-  function updateState(){
-    stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`;
-  }
+  // ====== STATUS ======
   function toolLabel(){
     return tool===TOOLS.PEN?'Ołówek':tool===TOOLS.LINE?'Linia':tool===TOOLS.ERASER?'Gumka':'Tekst';
   }
-  updateState();
+  function updateState(){
+    stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`;
+  }
 
-  // UI narzędzi
-  document.querySelectorAll('[data-tool]').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      tool = b.getAttribute('data-tool');
-      updateState();
+  // Aktywny wygląd przycisków
+  const toolButtons = Array.from(document.querySelectorAll('[data-tool]'));
+  function setTool(next){
+    tool = next;
+    updateState();
+    toolButtons.forEach(b=>{
+      b.classList.toggle('is-active', b.getAttribute('data-tool') === tool);
     });
+  }
+  toolButtons.forEach(b=>{
+    b.addEventListener('click', ()=> setTool(b.getAttribute('data-tool')));
   });
-  document.getElementById('color').addEventListener('input', (e)=>{ color=e.target.value; updateState(); });
-  document.getElementById('size').addEventListener('change', (e)=>{ size=parseInt(e.target.value,10); updateState(); });
-  document.getElementById('gridSize').addEventListener('change', (e)=>{ gridSize=parseInt(e.target.value,10); drawGrid(); });
 
-  // Wstaw obraz
+  // Picker-y
+  const colorEl = document.getElementById('color');
+  const sizeEl  = document.getElementById('size');
+  const gridEl  = document.getElementById('gridSize');
+  colorEl.addEventListener('input', (e)=>{ color=e.target.value; updateState(); });
+  sizeEl.addEventListener('change', (e)=>{ size=parseInt(e.target.value,10); updateState(); });
+  gridEl.addEventListener('change', (e)=>{ gridSize=parseInt(e.target.value,10); drawGrid(); });
+
+  // Startowe wartości
+  color = colorEl.value;
+  size = parseInt(sizeEl.value,10);
+  gridSize = parseInt(gridEl.value,10);
+  setTool(TOOLS.PEN);
+
+  // ====== WSTAW OBRAZ ======
   document.getElementById('imgInput').addEventListener('change', (e)=>{
     const f = e.target.files[0]; if(!f) return;
     const img = new Image();
     img.onload = ()=>{
       snapshot();
-      // dopasowanie i centrowanie
-      const ratio = Math.min(drawC.width/img.width, drawC.height/img.height);
+      const dpr = window.devicePixelRatio || 1;
+      const W = drawC.width / dpr, H = drawC.height / dpr;
+      const ratio = Math.min(W/img.width, H/img.height);
       const w = img.width * ratio;
       const h = img.height * ratio;
-      const x = (drawC.width - w)/2;
-      const y = (drawC.height - h)/2;
+      const x = (W - w)/2;
+      const y = (H - h)/2;
       ctx.drawImage(img, x, y, w, h);
     };
     img.src = URL.createObjectURL(f);
   });
 
-  // Undo/Redo/Clear/Save
+  // ====== UNDO / REDO / CLEAR ======
   document.getElementById('undo').addEventListener('click', async ()=>{
     if(!history.length) return;
     const last = history.pop();
@@ -245,9 +291,13 @@
   });
   document.getElementById('clear').addEventListener('click', ()=>{
     snapshot();
-    ctx.clearRect(0,0,drawC.width, drawC.height);
+    const dpr = window.devicePixelRatio || 1;
+    const w = drawC.width / dpr, h = drawC.height / dpr;
+    ctx.clearRect(0,0,w,h);
   });
-  document.getElementById('save').addEventListener('click', ()=>{
+
+  // ====== ZAPIS PNG ======
+  document.getElementById('savePng').addEventListener('click', ()=>{
     const url = drawC.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = url;
@@ -255,35 +305,83 @@
     a.click();
   });
 
-  // Rysowanie — wspólna logika
-  const TO_RADIANS = Math.PI/180; // (zostawione pod przyszłe narzędzia)
+  // ====== ZAPIS PDF ======
+  document.getElementById('savePdf').addEventListener('click', async ()=>{
+    try{
+      const { jsPDF } = window.jspdf || {}; // umd
+      if(!jsPDF){ alert('Biblioteka PDF nie jest jeszcze załadowana. Spróbuj za chwilę.'); return; }
+      const pdf = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+      // render canvas -> image
+      const dataUrl = drawC.toDataURL('image/png');
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      // dopasowanie z zachowaniem proporcji
+      const img = new Image();
+      img.onload = ()=>{
+        const ratio = Math.min(pageW/img.width, pageH/img.height);
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+        const x = (pageW - w)/2, y = (pageH - h)/2;
+        pdf.addImage(dataUrl, 'PNG', x, y, w, h);
+        pdf.save(`aliboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`);
+      };
+      img.src = dataUrl;
+    }catch(err){
+      console.error(err);
+      alert('Nie udało się zapisać PDF.');
+    }
+  });
+
+  // ====== ZAPIS NA SERWER (opcjonalny) ======
+  const saveSrvBtn = document.getElementById('saveSrv');
+  if(window.SERVER_SAVE_URL){
+    saveSrvBtn.style.display = '';
+    saveSrvBtn.addEventListener('click', async ()=>{
+      try{
+        const image_base64 = drawC.toDataURL('image/png');
+        const filename = `aliboard_${Date.now()}.png`;
+        const payload = { filename, image_base64, room_id: roomId };
+        const res = await fetch(window.SERVER_SAVE_URL, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'X-Requested-With':'XMLHttpRequest' },
+          body: JSON.stringify(payload),
+          credentials:'include'
+        });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        alert('Zapisano na serwerze ✔');
+      }catch(e){
+        console.error(e);
+        alert('Błąd zapisu na serwer.');
+      }
+    });
+  }
+
+  // ====== RYSOWANIE ======
   let drawing = false;
-  let startX=0, startY=0, lastX=0, lastY=0;
+  let startX=0, startY=0;
 
   function begin(x,y){
-    drawing = true; startX=lastX=x; startY=lastY=y;
+    drawing = true; startX=x; startY=y;
     snapshot();
-    if(tool==='pen' || tool==='eraser'){
+    if(tool===TOOLS.PEN || tool===TOOLS.ERASER){
       ctx.beginPath(); ctx.moveTo(x,y);
     }
   }
   function move(x,y){
     if(!drawing) return;
-    if(tool==='pen'){
+    if(tool===TOOLS.PEN){
       ctx.globalCompositeOperation = 'source-over';
       ctx.lineCap = 'round'; ctx.lineJoin='round';
       ctx.strokeStyle = color; ctx.lineWidth = size;
       ctx.lineTo(x,y); ctx.stroke();
-      lastX=x; lastY=y;
-    }else if(tool==='eraser'){
+    }else if(tool===TOOLS.ERASER){
       ctx.globalCompositeOperation = 'destination-out';
       ctx.lineCap = 'round'; ctx.lineJoin='round';
       ctx.lineWidth = size*2;
       ctx.lineTo(x,y); ctx.stroke();
-      lastX=x; lastY=y;
       ctx.globalCompositeOperation = 'source-over';
-    }else if(tool==='line'){
-      ovl.clearRect(0,0,ovlC.width,ovlC.height);
+    }else if(tool===TOOLS.LINE){
+      ovl.clearRect(0,0, ovlC.width, ovlC.height);
       ovl.lineCap='round'; ovl.lineJoin='round';
       ovl.strokeStyle = color; ovl.lineWidth = size;
       ovl.beginPath(); ovl.moveTo(startX,startY); ovl.lineTo(x,y); ovl.stroke();
@@ -291,13 +389,13 @@
   }
   function end(x,y){
     if(!drawing) return;
-    if(tool==='line'){
-      ovl.clearRect(0,0,ovlC.width,ovlC.height);
+    if(tool===TOOLS.LINE){
+      ovl.clearRect(0,0, ovlC.width, ovlC.height);
       ctx.lineCap='round'; ctx.lineJoin='round';
       ctx.strokeStyle = color; ctx.lineWidth = size;
       ctx.beginPath(); ctx.moveTo(startX,startY); ctx.lineTo(x,y); ctx.stroke();
-    }else if(tool==='TEXT' || tool==='text'){
-      const txt = prompt('Wpisz tekst:'); 
+    }else if(tool===TOOLS.TEXT){
+      const txt = prompt('Wpisz tekst:');
       if(txt && txt.trim()){
         ctx.save();
         ctx.fillStyle = color;
@@ -306,7 +404,8 @@
         ctx.fillText(txt.trim(), x, y);
         ctx.restore();
       }else{
-        if(history.length) { restore(history.pop()); }
+        // jeśli anulowano, cofamy snapshot dodany przy begin()
+        if(history.length){ restore(history.pop()); }
       }
     }
     drawing = false;
@@ -315,51 +414,53 @@
   // Pozycja wskaźnika (mysz/dotyk)
   function getXY(e){
     const rect = drawC.getBoundingClientRect();
-    // Obsługa dotyku — bierze pierwszy palec
     if(e.touches && e.touches[0]){
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
     }
-    // MouseEvent
     if(typeof e.clientX === 'number'){
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
-    // Fallback (np. touchend bez touches)
     if(e.changedTouches && e.changedTouches[0]){
-      return {
-        x: e.changedTouches[0].clientX - rect.left,
-        y: e.changedTouches[0].clientY - rect.top
-      };
+      return { x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top };
     }
-    return {x:lastX,y:lastY};
+    return { x: startX, y: startY };
   }
 
   // Eventy z poprawkami mobilnymi (passive:false + preventDefault)
-  // START
   drawC.addEventListener('mousedown', (e)=>{ const {x,y}=getXY(e); begin(x,y); });
   drawC.addEventListener('touchstart', (e)=>{ e.preventDefault(); const {x,y}=getXY(e); begin(x,y); }, {passive:false});
 
-  // MOVE (na window – stabilniejsze przy wyjściu poza płótno)
   window.addEventListener('mousemove', (e)=>{ if(!drawing) return; const {x,y}=getXY(e); move(x,y); }, {passive:true});
   window.addEventListener('touchmove',  (e)=>{ if(!drawing) return; e.preventDefault(); const {x,y}=getXY(e); move(x,y); }, {passive:false});
 
-  // END
   window.addEventListener('mouseup',   (e)=>{ if(!drawing) return; const {x,y}=getXY(e); end(x,y); }, {passive:true});
   window.addEventListener('touchend',  (e)=>{ if(!drawing) return; e.preventDefault(); const {x,y}=getXY(e); end(x,y); }, {passive:false});
   window.addEventListener('mouseleave',(e)=>{ if(!drawing) return; const {x,y}=getXY(e); end(x,y); }, {passive:true});
 
   // Skróty klawiaturowe
   window.addEventListener('keydown', (e)=>{
-    if(e.key==='p' || e.key==='P') { tool=TOOLS.PEN; updateState(); }
-    if(e.key==='l' || e.key==='L') { tool=TOOLS.LINE; updateState(); }
-    if(e.key==='e' || e.key==='E') { tool=TOOLS.ERASER; updateState(); }
-    if(e.key==='t' || e.key==='T') { tool=TOOLS.TEXT; updateState(); }
+    if(e.key==='p'||e.key==='P') setTool(TOOLS.PEN);
+    if(e.key==='l'||e.key==='L') setTool(TOOLS.LINE);
+    if(e.key==='e'||e.key==='E') setTool(TOOLS.ERASER);
+    if(e.key==='t'||e.key==='T') setTool(TOOLS.TEXT);
     if(e.ctrlKey && e.key==='z'){ document.getElementById('undo').click(); }
     if(e.ctrlKey && (e.key==='y' || (e.shiftKey && e.key==='Z'))){ document.getElementById('redo').click(); }
   });
 
+  // ====== AUTOSAVE lokalny ======
+  const AUTOSAVE_KEY = 'aliboard_autosave_v2';
+  function autosave(){
+    try{ localStorage.setItem(AUTOSAVE_KEY, drawC.toDataURL('image/png')); }catch(_){}
+  }
+  setInterval(autosave, 30000); // co 30 s
+
+  (function tryRestoreFromLocal(){
+    const url = localStorage.getItem(AUTOSAVE_KEY);
+    if(!url) return;
+    restore(url);
+  })();
+
+  updateState();
 })();
 </script>
 </body>
