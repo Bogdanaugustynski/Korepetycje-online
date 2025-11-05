@@ -2295,9 +2295,9 @@ def ai_chat(request):
         log.exception("ai_chat error")
         return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
     
-    # --- Ekstrakcja tekstu z plików ------------------------------------------------
+   # --- Ekstrakcja tekstu z plików ------------------------------------------------
 MAX_EXTRACT_CHARS = 50_000        # twardy limit surowego ekstraktu/plik
-MAX_SUMMARY_CHARS = 6_000         # ile tekstu finalnie trafi do promptu per plik
+MAX_SUMMARY_CHARS = 6_000         # finalnie do promptu per plik
 
 def _safe_clip(text: str, limit: int) -> str:
     if not text:
@@ -2335,7 +2335,6 @@ def _extract_text_from_docx(file_bytes: bytes) -> str:
         return ""
 
 def _extract_text_from_txt(file_bytes: bytes) -> str:
-    # spróbuj UTF-8, w razie czego latin-1 (bezpieczne dla binów jako „śmieci”)
     for enc in ("utf-8", "utf-8-sig", "latin-1"):
         try:
             return _safe_clip(file_bytes.decode(enc, errors="ignore"), MAX_EXTRACT_CHARS)
@@ -2344,12 +2343,6 @@ def _extract_text_from_txt(file_bytes: bytes) -> str:
     return ""
 
 def _summarize_locally(text: str) -> str:
-    """
-    Lekka „kompresja” bez wołania modelu:
-    - bierzemy pierwsze i ostatnie ~3k znaków; często wystarcza do kontekstu
-    - dodajemy nagłówek z informacją o przycięciu
-    (Jeśli chcesz, możemy później zrobić prawdziwe streszczenie LLM.)
-    """
     if not text:
         return ""
     if len(text) <= MAX_SUMMARY_CHARS:
@@ -2358,9 +2351,7 @@ def _summarize_locally(text: str) -> str:
     tail = text[-(MAX_SUMMARY_CHARS // 2):]
     return (
         "[Zwięzły wyciąg z dłuższego pliku — środek przycięty]\n\n"
-        + head
-        + "\n\n…[środek pominięty]…\n\n"
-        + tail
+        + head + "\n\n…[środek pominięty]…\n\n" + tail
     )
 
 def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
@@ -2375,8 +2366,7 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
     elif mime.startswith("text/") or name_low.endswith(".txt"):
         text = _extract_text_from_txt(raw_bytes)
     else:
-        # Na razie nie wspieramy .doc/.ppt/.xls — ominiemy
-        text = ""
+        text = ""  # na razie pomijamy .doc/.ppt/.xls
 
     if not text:
         return ""
