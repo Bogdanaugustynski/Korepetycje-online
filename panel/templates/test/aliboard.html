@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard — PolubiszTo.pl</title>
+<title>Aliboard — PolubiszTo.pl (merged + touch fixes)</title>
 <style>
   :root{
     --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --line:#e6edff;
@@ -30,17 +30,19 @@
     position:relative; height:100%; width:100%; overflow:hidden; background:#fff;
     border-top:1px solid var(--line);
   }
-  canvas{position:absolute; inset:0; width:100%; height:100%}
+  canvas{
+    position:absolute; inset:0; width:100%; height:100%;
+    /* FIX: blokuje scroll/gesty przeglądarki nad canvasem mobilnie */
+    touch-action:none;
+  }
   #grid{pointer-events:none}
   #overlay{pointer-events:none}
   .footer{
     position:fixed; right:12px; bottom:12px; display:flex; gap:8px;
   }
-  /* małe badge i pickery */
   .picker{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#fff}
   .picker input[type=color]{width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px}
   .picker select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff}
-  /* prosty tooltip */
   .btn[title]{position:relative}
   .btn[title]:hover::after{
     content:attr(title); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
@@ -58,11 +60,10 @@
     </div>
     <div>
       <div style="font-weight:800">Aliboard</div>
-      <div class="state" id="state">Tryb: Ołówek • 1px • #0b74ff</div>
+      <div class="state" id="state">Tryb: Ołówek • 3px • #0b74ff</div>
     </div>
   </div>
 
-  <!-- Narzędzia -->
   <div class="tools">
     <div class="seg">
       <button class="btn" data-tool="pen" title="Ołówek (P)">✏️</button>
@@ -140,6 +141,7 @@
   const history = [];
   let redoStack = [];
 
+  // DPI-aware resize
   function resize(){
     const {clientWidth:w, clientHeight:h} = stage;
     [gridC, drawC, ovlC].forEach(c=>{
@@ -152,7 +154,7 @@
     });
     drawGrid();
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', resize, {passive:true});
   resize();
 
   // Siatka
@@ -172,7 +174,7 @@
     g.restore();
   }
 
-  // Zapisywanie stanu (do undo)
+  // Snapshociki
   function snapshot(){
     redoStack = [];
     history.push(drawC.toDataURL('image/png'));
@@ -191,7 +193,7 @@
     });
   }
 
-  // Aktualizacja statusu
+  // Status
   function updateState(){
     stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`;
   }
@@ -200,7 +202,7 @@
   }
   updateState();
 
-  // Narzędzia — UI
+  // UI narzędzi
   document.querySelectorAll('[data-tool]').forEach(b=>{
     b.addEventListener('click', ()=>{
       tool = b.getAttribute('data-tool');
@@ -217,7 +219,7 @@
     const img = new Image();
     img.onload = ()=>{
       snapshot();
-      // wstaw centrycznie, dopasuj do wysokości
+      // dopasowanie i centrowanie
       const ratio = Math.min(drawC.width/img.width, drawC.height/img.height);
       const w = img.width * ratio;
       const h = img.height * ratio;
@@ -253,34 +255,34 @@
     a.click();
   });
 
-  // Rysowanie — logika wspólna dla myszy i dotyku
+  // Rysowanie — wspólna logika
+  const TO_RADIANS = Math.PI/180; // (zostawione pod przyszłe narzędzia)
   let drawing = false;
   let startX=0, startY=0, lastX=0, lastY=0;
 
   function begin(x,y){
     drawing = true; startX=lastX=x; startY=lastY=y;
     snapshot();
-    if(tool===TOOLS.PEN || tool===TOOLS.ERASER){
+    if(tool==='pen' || tool==='eraser'){
       ctx.beginPath(); ctx.moveTo(x,y);
     }
   }
   function move(x,y){
     if(!drawing) return;
-    if(tool===TOOLS.PEN){
+    if(tool==='pen'){
       ctx.globalCompositeOperation = 'source-over';
       ctx.lineCap = 'round'; ctx.lineJoin='round';
       ctx.strokeStyle = color; ctx.lineWidth = size;
       ctx.lineTo(x,y); ctx.stroke();
       lastX=x; lastY=y;
-    }else if(tool===TOOLS.ERASER){
+    }else if(tool==='eraser'){
       ctx.globalCompositeOperation = 'destination-out';
       ctx.lineCap = 'round'; ctx.lineJoin='round';
-      ctx.lineWidth = size*2; // gumka nieco większa
+      ctx.lineWidth = size*2;
       ctx.lineTo(x,y); ctx.stroke();
       lastX=x; lastY=y;
       ctx.globalCompositeOperation = 'source-over';
-    }else if(tool===TOOLS.LINE){
-      // podgląd na overlay
+    }else if(tool==='line'){
       ovl.clearRect(0,0,ovlC.width,ovlC.height);
       ovl.lineCap='round'; ovl.lineJoin='round';
       ovl.strokeStyle = color; ovl.lineWidth = size;
@@ -289,13 +291,12 @@
   }
   function end(x,y){
     if(!drawing) return;
-    if(tool===TOOLS.LINE){
+    if(tool==='line'){
       ovl.clearRect(0,0,ovlC.width,ovlC.height);
       ctx.lineCap='round'; ctx.lineJoin='round';
       ctx.strokeStyle = color; ctx.lineWidth = size;
       ctx.beginPath(); ctx.moveTo(startX,startY); ctx.lineTo(x,y); ctx.stroke();
-    }else if(tool===TOOLS.TEXT){
-      // prosty tekst — prompt
+    }else if(tool==='TEXT' || tool==='text'){
       const txt = prompt('Wpisz tekst:'); 
       if(txt && txt.trim()){
         ctx.save();
@@ -305,37 +306,51 @@
         ctx.fillText(txt.trim(), x, y);
         ctx.restore();
       }else{
-        // cofamy snapshot, jeśli pusty tekst
-        if(history.length) {
-          restore(history.pop());
-        }
+        if(history.length) { restore(history.pop()); }
       }
     }
     drawing = false;
   }
 
+  // Pozycja wskaźnika (mysz/dotyk)
   function getXY(e){
     const rect = drawC.getBoundingClientRect();
+    // Obsługa dotyku — bierze pierwszy palec
     if(e.touches && e.touches[0]){
       return {
-        x: (e.touches[0].clientX - rect.left),
-        y: (e.touches[0].clientY - rect.top)
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
       };
     }
-    return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+    // MouseEvent
+    if(typeof e.clientX === 'number'){
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    // Fallback (np. touchend bez touches)
+    if(e.changedTouches && e.changedTouches[0]){
+      return {
+        x: e.changedTouches[0].clientX - rect.left,
+        y: e.changedTouches[0].clientY - rect.top
+      };
+    }
+    return {x:lastX,y:lastY};
   }
 
-  // Mysz
+  // Eventy z poprawkami mobilnymi (passive:false + preventDefault)
+  // START
   drawC.addEventListener('mousedown', (e)=>{ const {x,y}=getXY(e); begin(x,y); });
-  window.addEventListener('mousemove', (e)=>{ const {x,y}=getXY(e); move(x,y); });
-  window.addEventListener('mouseup',   (e)=>{ const {x,y}=getXY(e); end(x,y); });
-
-  // Dotyk
   drawC.addEventListener('touchstart', (e)=>{ e.preventDefault(); const {x,y}=getXY(e); begin(x,y); }, {passive:false});
-  drawC.addEventListener('touchmove',  (e)=>{ e.preventDefault(); const {x,y}=getXY(e); move(x,y); }, {passive:false});
-  drawC.addEventListener('touchend',   (e)=>{ e.preventDefault(); const {x,y}=getXY(e); end(x,y); }, {passive:false});
 
-  // Skróty
+  // MOVE (na window – stabilniejsze przy wyjściu poza płótno)
+  window.addEventListener('mousemove', (e)=>{ if(!drawing) return; const {x,y}=getXY(e); move(x,y); }, {passive:true});
+  window.addEventListener('touchmove',  (e)=>{ if(!drawing) return; e.preventDefault(); const {x,y}=getXY(e); move(x,y); }, {passive:false});
+
+  // END
+  window.addEventListener('mouseup',   (e)=>{ if(!drawing) return; const {x,y}=getXY(e); end(x,y); }, {passive:true});
+  window.addEventListener('touchend',  (e)=>{ if(!drawing) return; e.preventDefault(); const {x,y}=getXY(e); end(x,y); }, {passive:false});
+  window.addEventListener('mouseleave',(e)=>{ if(!drawing) return; const {x,y}=getXY(e); end(x,y); }, {passive:true});
+
+  // Skróty klawiaturowe
   window.addEventListener('keydown', (e)=>{
     if(e.key==='p' || e.key==='P') { tool=TOOLS.PEN; updateState(); }
     if(e.key==='l' || e.key==='L') { tool=TOOLS.LINE; updateState(); }
