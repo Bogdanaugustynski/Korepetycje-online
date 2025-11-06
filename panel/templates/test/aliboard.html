@@ -80,7 +80,7 @@
     <div class="brand">
       <div class="mark">
         <!-- Sama głowa loga -->
-        <img src="{% static 'panel/img/brand/logo_head.png' %}" alt="PolubiszTo.pl">
+        <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl">
       </div>
       <div>
         <div style="font-weight:800">Aliboard</div>
@@ -460,7 +460,7 @@
     }else if(s.type==='line'){
       const minx=Math.min(s.a.x,s.b.x), maxx=Math.max(s.a.x,s.b.x);
       const miny=Math.min(s.a.y,s.b.y), maxy=Math.max(s.a.y,s.b.y);
-      return {x:minx,y=miny,w:maxx-minx,h:maxy-miny};
+      return {x:minx,y:miny,w:maxx-minx,h:maxy-miny};
     }else if(s.type==='text'){
       const w = (Math.max(14, s.size*6)*0.6) * (s.text?.length||0);
       const h = Math.max(14, s.size*6);
