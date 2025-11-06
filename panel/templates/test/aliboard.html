@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard 2.3 — PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 — PolubiszTo.pl (test)</title>
 
 <!-- PDF render (klient) -->
 <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
@@ -18,150 +18,139 @@
     --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --line:#e6edff;
     --card:#fff; --bg:#f7f9fe; --radius:16px;
   }
-  *{box-sizing:border-box}
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   header{
-    position:sticky; top:0; z-index:100; background:#fff; border-bottom:1px solid var(--line);
-    display:flex; align-items:stretch; gap:16px; padding:10px 12px;
+    position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid var(--line);
+    display:flex; align-items:stretch; gap:12px; padding:10px 12px;
   }
-  .left{ display:flex; flex-direction:column; gap:8px; min-width:260px; }
-  .brand{display:flex;align-items:center;gap:10px;min-height:44px}
-  .brand .mark{
-    width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:0 0 auto;overflow:hidden;
-    background:var(--brand); color:#fff;
-  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:190px}
+  .brand .mark{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;overflow:hidden;flex:0 0 auto}
+  .brand .mark img{width:100%;height:100%;object-fit:contain}
   .state{font-size:12px;color:var(--muted)}
+  /* Pasek narzędzi przewijany (powrót do 2.4) */
   .toolrow{
-    display:flex;gap:8px;flex-wrap:nowrap;overflow:auto;padding-bottom:2px;
+    display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity; flex:1; padding-bottom:2px;
   }
+  .toolrow::-webkit-scrollbar{height:8px} .toolrow::-webkit-scrollbar-thumb{background:#e6edff;border-radius:8px}
   .btn{
-    border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700;
-    display:inline-flex;align-items:center;gap:6px; user-select:none;
+    border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px 12px;
+    font-weight:700; cursor:pointer; user-select:none; touch-action:manipulation; white-space:nowrap;
   }
-  .btn:active{transform:translateY(1px)}
+  .btn.icon-only{padding:10px}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
   .btn.is-active{ outline:2px solid var(--brand); outline-offset:2px }
-  .btn input[type=color], .btn select{ font:inherit }
-  .btn input[type=color]{width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px}
-  .btn select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff}
-  .wrap{height:calc(100% - 64px)}
-  .stage{
-    position:relative; height:100%; width:100%; overflow:hidden; background:#fff;
-    border-top:1px solid var(--line);
-  }
-  canvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
-  #grid,#overlay{pointer-events:none}
-
-  .right{margin-left:auto; display:flex; align-items:flex-start;}
-  .menu-wrap{position:relative}
-  .menu-btn{display:inline-flex; align-items:center; gap:8px}
-  .dropdown{
-    position:absolute; right:0; top:calc(100% + 8px); min-width:260px;
-    background:#fff; border:1px solid var(--line); border-radius:12px;
-    box-shadow:0 12px 40px rgba(11,116,255,.12); padding:8px; display:none; z-index:200;
-  }
-  .dropdown.open{display:block}
-  .drop-group{padding:6px 6px}
-  .drop-title{font-size:12px; color:var(--muted); margin:4px 6px 6px}
-  .drop-item{width:100%; text-align:left; background:#fff; border:1px solid var(--line);
-    border-radius:10px; padding:10px 12px; cursor:pointer; margin:4px 0}
-  .drop-row{display:flex; gap:6px; flex-wrap:wrap}
-  .drop-item.primary{background:var(--brand);color:#fff;border-color:transparent}
-
   .btn[title]{position:relative}
+  /* Tooltips POD przyciskiem */
   .btn[title]:hover::after{
     content:attr(title); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%);
     background:#111;color:#fff;padding:6px 8px;border-radius:8px;font-size:12px;white-space:nowrap
   }
+  /* Menu */
+  .right{margin-left:auto; display:flex; align-items:flex-start; position:relative}
+  .menu-wrap{position:relative; z-index:60}
+  .dropdown{
+    position:absolute; right:0; top:calc(100% + 8px); min-width:250px;
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    box-shadow:0 16px 48px rgba(11,116,255,.18); padding:8px; display:none;
+  }
+  .dropdown.open{display:block}
+  .drop-group{padding:6px}
+  .drop-title{font-size:12px;color:var(--muted);margin:4px 6px 6px}
+  .drop-row{display:flex; gap:6px; flex-wrap:wrap}
+  .drop-item{width:100%; text-align:left; background:#fff; border:1px solid var(--line);
+    border-radius:10px; padding:8px 10px; cursor:pointer; margin:4px 0}
+  .drop-item.primary{background:var(--brand);color:#fff;border-color:transparent}
 
-  .footer{ position:fixed; right:12px; bottom:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:50 }
+  /* Etap rysowania */
+  .pages{ position:relative; }
+  .page{
+    position:relative; margin:18px auto; background:#fff; border:1px solid var(--line);
+    box-shadow:0 8px 26px rgba(15,23,42,.06); width:calc(min(100% - 24px, 1123px)); /* ~A4 w px w poziomie dla landscape rysowania */
+    aspect-ratio: 1.414/1; /* A4 (wys/szer) w pionie — ale używamy wysokiej sekcji */
+    height:calc(1123px * 1.414); /* ~A4 portrait, przewijalna */
+    border-radius:12px; overflow:hidden;
+  }
+  canvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+  .grid, .overlay{pointer-events:none}
 
-  /* edytor tekstu */
+  .footer{ position:fixed; right:12px; bottom:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:40 }
+
+  /* Pole tekstowe inline */
   .text-editor{
-    position:absolute; min-width:60px; min-height:28px; padding:2px 6px; border:1px dashed var(--brand);
-    outline:none; background:rgba(255,255,255,.9); border-radius:6px; color:var(--ink);
-    font: 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    position:absolute; min-width:120px; min-height:28px; padding:6px 8px;
+    border:1.5px dashed var(--brand); border-radius:8px; background:#ffffffcc;
+    outline:0; font: 16px/1.3 ui-sans-serif, system-ui, Arial; color:var(--ink);
   }
 
   @media (max-width: 900px){
-    .left{min-width:unset}
-    .btn{padding:10px 12px}
-    .dropdown{right:8px}
+    .brand{min-width:auto}
+    .btn{padding:10px}
   }
 </style>
 </head>
 <body>
 <header>
-  <!-- LEWA: brand nad narzędziami -->
-  <div class="left">
-    <div class="brand">
-      <div class="mark" aria-hidden="true">
-        <!-- Prosta głowa logo (inline, bez static) -->
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="#fff"/>
-          <path d="M6 10v5c0 1.657 3.343 3 7 3s7-1.343 7-3v-5" stroke="#fff"/>
-        </svg>
-      </div>
-      <div>
-        <div style="font-weight:800">Aliboard</div>
-        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
-      </div>
+  <div class="brand">
+    <div class="mark">
+      <!-- Sama głowa loga (statics) -->
+      <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl">
     </div>
-
-    <div class="toolrow" id="tools" aria-label="Narzędzia">
-      <button class="btn" data-tool="select" title="Kursor (V)">🖱️</button>
-      <button class="btn" data-tool="pen"    title="Ołówek (P)">✏️</button>
-      <button class="btn" data-tool="line"   title="Linia (L)">／</button>
-      <button class="btn" data-tool="eraser" title="Gumka — usuń kreskę (E)">🩹</button>
-      <button class="btn" data-tool="text"   title="Tekst (T)">T</button>
-
-      <label class="btn" title="Kolor pisaka">
-        🎨 <input type="color" id="color" value="#0b74ff">
-      </label>
-      <label class="btn" title="Grubość linii">
-        ↕️
-        <select id="size">
-          <option value="1">1px</option>
-          <option value="3" selected>3px</option>
-          <option value="5">5px</option>
-          <option value="8">8px</option>
-        </select>
-      </label>
-
-      <!-- Ikony: obraz + pdf -->
-      <label class="btn" title="Wstaw obraz">
-        🖼️
-        <input id="imgInput" type="file" accept="image/*" style="display:none">
-      </label>
-      <label class="btn" title="Wstaw PDF">
-        📄
-        <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
-      </label>
-
-      <button class="btn" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
-      <button class="btn" id="redo" title="Ponów (Ctrl+Y)">↷</button>
-      <button class="btn" id="clear" title="Wyczyść">🗑️</button>
+    <div>
+      <div style="font-weight:800">Aliboard</div>
+      <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
     </div>
   </div>
 
-  <!-- PRAWA: MENU -->
+  <div class="toolrow" id="tools" aria-label="Pasek narzędzi" role="toolbar">
+    <button class="btn icon-only" data-tool="select" title="Kursor (V)">🖱️</button>
+    <button class="btn icon-only" data-tool="pen" title="Ołówek (P)">✏️</button>
+    <button class="btn icon-only" data-tool="line" title="Linia (L)">／</button>
+    <button class="btn icon-only" data-tool="eraser" title="Gumka — usuń kreskę (E)">🩹</button>
+    <button class="btn icon-only" data-tool="crop" title="Wycinanie (C)">✂️</button>
+    <button class="btn icon-only" data-tool="text" title="Tekst (T)">T</button>
+
+    <!-- Kolor i grubość -->
+    <label class="btn" title="Kolor pisaka">
+      🎨 <input type="color" id="color" value="#0b74ff" style="width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px;margin-left:6px">
+    </label>
+    <label class="btn" title="Grubość linii">
+      ↕️
+      <select id="size" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;margin-left:6px">
+        <option value="1">1px</option>
+        <option value="3" selected>3px</option>
+        <option value="5">5px</option>
+        <option value="8">8px</option>
+      </select>
+    </label>
+
+    <!-- Obraz + PDF (ikony) -->
+    <label class="btn icon-only" title="Wstaw obraz">
+      🖼️
+      <input id="imgInput" type="file" accept="image/*" style="display:none">
+    </label>
+    <label class="btn icon-only" title="Wstaw PDF">
+      📄
+      <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
+    </label>
+
+    <button class="btn icon-only" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
+    <button class="btn icon-only" id="redo" title="Ponów (Ctrl+Y)">↷</button>
+    <button class="btn icon-only" id="clear" title="Wyczyść">🗑️</button>
+  </div>
+
+  <!-- MENU po prawej -->
   <div class="right">
     <div class="menu-wrap">
-      <button class="btn primary menu-btn" id="menuBtn" aria-expanded="false" aria-controls="dropdown">
-        ☰ Menu
-      </button>
+      <button class="btn primary" id="menuBtn" aria-expanded="false" aria-controls="dropdown">☰ Menu</button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
           <div class="drop-title">Tablica</div>
-          <button class="drop-item" id="newBoard">🆕 Nowa tablica</button>
-        </div>
-        <div class="drop-group">
-          <div class="drop-title">Zapisz</div>
           <div class="drop-row">
-            <button class="drop-item primary" id="savePng">💾 PNG</button>
-            <button class="drop-item" id="saveJpg">🖼️ JPG</button>
-            <button class="drop-item" id="savePdf">📄 PDF</button>
+            <button class="drop-item primary" id="newBoard">➕ Nowa tablica</button>
+            <button class="drop-item" id="newPage">📄 Nowa kartka A4</button>
           </div>
         </div>
         <div class="drop-group">
@@ -173,18 +162,22 @@
             <button class="drop-item" data-grid="32">Duża</button>
           </div>
         </div>
+        <div class="drop-group">
+          <div class="drop-title">Zapisz</div>
+          <div class="drop-row">
+            <button class="drop-item" id="savePng">💾 PNG (bieżąca)</button>
+            <button class="drop-item" id="saveJpg">🖼️ JPG (bieżąca)</button>
+            <button class="drop-item" id="savePdf">📄 PDF (bieżąca)</button>
+            <button class="drop-item" id="savePdfAll">📚 PDF (wszystkie kartki)</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </header>
 
-<div class="wrap">
-  <div class="stage" id="stage">
-    <canvas id="grid"></canvas>
-    <canvas id="board"></canvas>
-    <canvas id="overlay"></canvas>
-  </div>
-</div>
+<!-- PAGES -->
+<main class="pages" id="pages"></main>
 
 <div class="footer">
   <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
@@ -192,698 +185,690 @@
 </div>
 
 <script>
-(function(){
-  // ====== CANVASY ======
-  const stage = document.getElementById('stage');
-  const gridC = document.getElementById('grid');
-  const drawC = document.getElementById('board');
-  const ovlC  = document.getElementById('overlay');
-  const g = gridC.getContext('2d');
-  const ctx = drawC.getContext('2d');
-  const ovl = ovlC.getContext('2d');
-  const stateEl = document.getElementById('state');
+(()=>{
+// ===== Model stron (A4) =====
+const pagesEl = document.getElementById('pages');
+const roomInfo = document.getElementById('roomInfo');
+const qs = new URLSearchParams(location.search);
+roomInfo.textContent = 'room_id: ' + (qs.get('room') || 'local-test');
 
-  // ====== TOOLS ======
-  const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text' };
-  let tool = TOOLS.SELECT;
-  let color = '#0b74ff';
-  let size  = 3;
-  let gridSize = 0;
+const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', CROP:'crop', TEXT:'text' };
+let tool = TOOLS.SELECT;
+let color = '#0b74ff';
+let size  = 3;
+let gridSize = 0;
 
-  // room info
-  const qs = new URLSearchParams(location.search);
-  const roomId = qs.get('room') || 'local-test';
-  document.getElementById('roomInfo').textContent = 'room_id: ' + roomId;
+const stateEl = document.getElementById('state');
+const toolButtons = Array.from(document.querySelectorAll('[data-tool]'));
 
-  // ====== MODEL ======
-  let strokes = []; // wektorowe elementy
-  // obraz/pdf element: {x,y,w,h, src, img:HTMLImageElement}
-  let images = [];
+function setTool(next){
+  tool = next;
+  updateState();
+  toolButtons.forEach(b=> b.classList.toggle('is-active', b.getAttribute('data-tool')===tool));
+}
+function toolLabel(){
+  return tool===TOOLS.SELECT?'Kursor':
+         tool===TOOLS.PEN?'Ołówek':
+         tool===TOOLS.LINE?'Linia':
+         tool===TOOLS.ERASER?'Gumka':
+         tool===TOOLS.CROP?'Wycinanie':'Tekst';
+}
+function updateState(){ stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`; }
 
-  // SELECTION
-  let selection = null;
-  let dragging = null;
-  const HANDLE_SIZE = 10;
+// ===== Struktura strony =====
+function createPage(){
+  const wrap = document.createElement('section');
+  wrap.className = 'page';
+  wrap.innerHTML = `
+    <canvas class="grid"></canvas>
+    <canvas class="draw"></canvas>
+    <canvas class="overlay"></canvas>
+  `;
+  pagesEl.appendChild(wrap);
 
-  // IMAGE CACHE helper
-  function makeImage(src, onload){
-    const el = new Image();
-    el.onload = onload || (()=>{ renderAll(); });
-    el.src = src;
-    return el;
-  }
+  const gridC = wrap.querySelector('.grid');
+  const drawC = wrap.querySelector('.draw');
+  const ovlC  = wrap.querySelector('.overlay');
+  const g  = gridC.getContext('2d');
+  const ctx= drawC.getContext('2d');
+  const ovl= ovlC.getContext('2d');
 
-  // ====== HISTORIA ======
-  const history = []; let redoStack = [];
-  function pushHistory(){
-    redoStack = [];
-    try{
-      const packedImages = images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src}));
-      history.push(JSON.stringify({strokes, images:packedImages}));
-      if(history.length>100) history.shift();
-    }catch(_){}
-  }
-  function restoreHistoryState(json){
-    try{
-      const s = JSON.parse(json);
-      strokes = s.strokes||[];
-      images  = (s.images||[]).map(im=>({ ...im, img: makeImage(im.src) }));
-      renderAll(); drawSelection();
-    }catch(_){}
-  }
-
-  // ====== DPI resize ======
-  function resize(){
-    const {clientWidth:w, clientHeight:h} = stage;
-    const dpr = window.devicePixelRatio || 1;
-    [gridC, drawC, ovlC].forEach(c=>{
-      c.width = Math.floor(w*dpr);
-      c.height = Math.floor(h*dpr);
-      c.style.width = w+'px';
-      c.style.height = h+'px';
-      const c2d = c.getContext('2d');
-      c2d.setTransform(dpr,0,0,dpr,0,0);
-    });
-    drawGrid();
-    renderAll();
-    drawSelection();
-  }
-  window.addEventListener('resize', resize, {passive:true});
-  resize();
-
-  // ====== GRID ======
-  function drawGrid(){
-    const dpr = window.devicePixelRatio || 1;
-    const w = gridC.width / dpr, h = gridC.height / dpr;
-    g.clearRect(0,0,w,h);
-    if(!gridSize) return;
-    g.save(); g.strokeStyle='#e6edff'; g.lineWidth=1;
-    for(let x=0;x<=w;x+=gridSize){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
-    for(let y=0;y<=h;y+=gridSize){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
-    g.restore();
-  }
-
-  // ====== RENDER ======
-  function renderAll(){
-    const dpr = window.devicePixelRatio || 1;
-    const w = drawC.width / dpr, h = drawC.height / dpr;
-    ctx.clearRect(0,0,w,h);
-
-    // 1) obrazy / PDF (tło)
-    for(const im of images){
-      if(im.img && im.img.complete){
-        ctx.drawImage(im.img, im.x, im.y, im.w, im.h);
-      }
-    }
-
-    // 2) wektory (na wierzchu)
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.lineCap='round'; ctx.lineJoin='round';
-    for(const s of strokes){
-      if(s.type==='pen'){
-        ctx.strokeStyle=s.color; ctx.lineWidth=s.size;
-        const pts=s.points; if(!pts.length) continue;
-        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-        for(let i=1;i<pts.length;i++){ ctx.lineTo(pts[i].x, pts[i].y); }
-        ctx.stroke();
-      }else if(s.type==='line'){
-        ctx.strokeStyle=s.color; ctx.lineWidth=s.size;
-        ctx.beginPath(); ctx.moveTo(s.a.x,s.a.y); ctx.lineTo(s.b.x,s.b.y); ctx.stroke();
-      }else if(s.type==='text'){
-        ctx.save(); ctx.fillStyle=s.color;
-        ctx.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`;
-        ctx.textBaseline='top'; ctx.fillText(s.text, s.x, s.y); ctx.restore();
-      }
-    }
-  }
-
-  // ====== STATUS/UX ======
-  function toolLabel(){
-    return tool===TOOLS.SELECT?'Kursor':
-           tool===TOOLS.PEN?'Ołówek':
-           tool===TOOLS.LINE?'Linia':
-           tool===TOOLS.ERASER?'Gumka':'Tekst';
-  }
-  function updateState(){ stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`; }
-  const toolButtons = Array.from(document.querySelectorAll('[data-tool]'));
-  function setTool(next){
-    tool = next; updateState();
-    toolButtons.forEach(b=> b.classList.toggle('is-active', b.getAttribute('data-tool')===tool));
-    clearOverlay();
-    if(tool!==TOOLS.SELECT) selection=null;
-    drawSelection();
-  }
-
-  // PICKERY
-  const colorEl = document.getElementById('color');
-  const sizeEl  = document.getElementById('size');
-  colorEl.addEventListener('input', (e)=>{ color=e.target.value; updateState(); });
-  sizeEl.addEventListener('change', (e)=>{ size=parseInt(e.target.value,10); updateState(); });
-  color = colorEl.value; size = parseInt(sizeEl.value,10);
+  const page = {
+    el: wrap, gridC, drawC, ovlC, g, ctx, ovl,
+    strokes: [], images: [],
+    selection: null, dragging: null, history: [], redo: [],
+    editorEl: null, cropRect: null
+  };
+  pageResize(page);
+  attachEvents(page);
+  drawGrid(page);
+  renderAll(page);
+  return page;
+}
+let PAGES = [];
+function newPage(){ const p = createPage(); PAGES.push(p); return p; }
+function clearBoard(){
+  pagesEl.innerHTML = '';
+  PAGES = [];
+  newPage();
   setTool(TOOLS.SELECT);
+}
+clearBoard();
 
-  // ====== MENU ======
-  const menuBtn = document.getElementById('menuBtn');
-  const dropdown = document.getElementById('dropdown');
-  function toggleMenu(force){
-    const open = typeof force==='boolean' ? force : !dropdown.classList.contains('open');
-    dropdown.classList.toggle('open', open);
-    menuBtn.setAttribute('aria-expanded', String(open));
-  }
-  menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleMenu(); });
-  dropdown.addEventListener('click', (e)=> e.stopPropagation());
-  document.addEventListener('click', ()=> toggleMenu(false));
-
-  dropdown.querySelectorAll('[data-grid]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ gridSize=parseInt(btn.getAttribute('data-grid'),10)||0; drawGrid(); toggleMenu(false); });
+// ===== DPI resize per page =====
+function pageResize(page){
+  const dpr = window.devicePixelRatio || 1;
+  [page.gridC, page.drawC, page.ovlC].forEach(c=>{
+    const rect = page.el.getBoundingClientRect();
+    c.width  = Math.floor(rect.width * dpr);
+    c.height = Math.floor(rect.height * dpr);
+    c.style.width  = rect.width + 'px';
+    c.style.height = rect.height + 'px';
+    c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
   });
+}
+function drawGrid(page){
+  const {gridC,g} = page;
+  const dpr = window.devicePixelRatio || 1;
+  const w = gridC.width / dpr, h = gridC.height / dpr;
+  g.clearRect(0,0,w,h);
+  if(!gridSize) return;
+  g.save(); g.strokeStyle='#e6edff'; g.lineWidth=1;
+  for(let x=0;x<=w;x+=gridSize){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
+  for(let y=0;y<=h;y+=gridSize){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
+  g.restore();
+}
+function renderAll(page){
+  const {drawC, ctx, images, strokes} = page;
+  const dpr = window.devicePixelRatio || 1;
+  const w = drawC.width / dpr, h = drawC.height / dpr;
+  ctx.clearRect(0,0,w,h);
 
-  // Nowa tablica
-  document.getElementById('newBoard').addEventListener('click', ()=>{
-    pushHistory();
-    strokes=[]; images=[]; selection=null;
-    localStorage.removeItem(AUTOSAVE_KEY);
-    renderAll(); clearOverlay(); toggleMenu(false);
-  });
-
-  // ====== OBRAZ ======
-  document.getElementById('imgInput').addEventListener('change', (e)=>{
-    const f = e.target.files[0]; if(!f) return;
-    const url = URL.createObjectURL(f);
-    const el = makeImage(url, ()=>{
-      pushHistory();
-      const dpr = window.devicePixelRatio || 1;
-      const W = drawC.width / dpr, H = drawC.height / dpr;
-      const ratio = Math.min(W/el.width, H/el.height);
-      const w = Math.max(80, el.width * ratio);
-      const h = Math.max(80, el.height * ratio);
-      const x = (W - w)/2, y = (H - h)/2;
-      images.push({x,y,w,h,src:url,img:el});
-      renderAll();
-    });
-  });
-
-  // ====== PDF -> bitmapa ======
-  const pdfInput = document.getElementById('pdfInput');
-  pdfInput.addEventListener('change', async (e)=>{
-    const f = e.target.files[0]; if(!f) return;
-    const arrayBuffer = await f.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-    let pageNum = 1;
-    const ask = prompt(`PDF ma ${pdf.numPages} stron. Wpisz numer strony do wstawienia:`, "1");
-    if(ask){
-      const n = parseInt(ask,10);
-      if(!isNaN(n) && n>=1 && n<=pdf.numPages){ pageNum = n; }
+  // 1) Obrazy najpierw
+  for(const im of images){
+    if(!im._el){
+      im._el = new Image();
+      im._el.src = im.src;
+      // Po załadowaniu jedna repainty
+      im._el.decode?.().then(()=> renderAll(page)).catch(()=> ctx.drawImage(im._el, im.x, im.y, im.w, im.h));
     }
-    const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({scale: 2});
-    const c = document.createElement('canvas');
-    c.width = viewport.width; c.height = viewport.height;
-    const cctx = c.getContext('2d');
-    await page.render({canvasContext: cctx, viewport}).promise;
-    const url = c.toDataURL('image/png');
-
-    const el = makeImage(url, ()=>{
-      pushHistory();
-      const dpr = window.devicePixelRatio || 1;
-      const W = drawC.width / dpr, H = drawC.height / dpr;
-      const ratio = Math.min(W/el.width, H/el.height);
-      const w = Math.max(120, el.width * ratio);
-      const h = Math.max(120, el.height * ratio);
-      const x = (W - w)/2, y = (H - h)/2;
-      images.push({x,y,w,h,src:url,img:el});
-      renderAll();
-    });
-  });
-
-  // ====== EXPORT ======
-  function compositeToCanvas(cb){
-    const dpr = window.devicePixelRatio || 1;
-    const W = drawC.width / dpr, H = drawC.height / dpr;
-    const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H;
-    const tctx = tmp.getContext('2d');
-
-    if(gridSize){
-      tctx.save(); tctx.strokeStyle='#e6edff'; tctx.lineWidth=1;
-      for(let x=0;x<=W;x+=gridSize){ tctx.beginPath(); tctx.moveTo(x,0); tctx.lineTo(x,H); tctx.stroke(); }
-      for(let y=0;y<=H;y+=gridSize){ tctx.beginPath(); tctx.moveTo(0,y); tctx.lineTo(W,y); tctx.stroke(); }
-      tctx.restore();
-    }
-
-    // obrazy async -> po załadowaniu wszystkich rysujemy wektory
-    let pending = images.length;
-    const drawVectors = ()=>{
-      tctx.lineCap='round'; tctx.lineJoin='round';
-      for(const s of strokes){
-        if(s.type==='pen'){
-          tctx.strokeStyle=s.color; tctx.lineWidth=s.size;
-          const pts=s.points; if(!pts.length) continue;
-          tctx.beginPath(); tctx.moveTo(pts[0].x, pts[0].y);
-          for(let i=1;i<pts.length;i++){ tctx.lineTo(pts[i].x, pts[i].y); }
-          tctx.stroke();
-        }else if(s.type==='line'){
-          tctx.strokeStyle=s.color; tctx.lineWidth=s.size;
-          tctx.beginPath(); tctx.moveTo(s.a.x,s.a.y); tctx.lineTo(s.b.x,s.b.y); tctx.stroke();
-        }else if(s.type==='text'){
-          tctx.save(); tctx.fillStyle=s.color;
-          tctx.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`;
-          tctx.textBaseline='top'; tctx.fillText(s.text, s.x, s.y); tctx.restore();
-        }
-      }
-      cb(tmp);
-    };
-
-    if(pending===0) return drawVectors();
-    images.forEach(im=>{
-      if(im.img && im.img.complete){
-        tctx.drawImage(im.img, im.x, im.y, im.w, im.h);
-        if(--pending===0) drawVectors();
-      }else{
-        const el = makeImage(im.src, ()=>{
-          tctx.drawImage(el, im.x, im.y, im.w, im.h);
-          if(--pending===0) drawVectors();
-        });
-      }
-    });
+    try{ ctx.drawImage(im._el, im.x, im.y, im.w, im.h); }catch(_){}
   }
 
-  function downloadURL(url, ext){
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aliboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${ext}`;
-    a.click();
-  }
-
-  document.getElementById('savePng').addEventListener('click', ()=>{
-    compositeToCanvas(c=>{ downloadURL(c.toDataURL('image/png'), 'png'); toggleMenu(false); });
-  });
-  document.getElementById('saveJpg').addEventListener('click', ()=>{
-    compositeToCanvas(c=>{ downloadURL(c.toDataURL('image/jpeg', 0.92), 'jpg'); toggleMenu(false); });
-  });
-  document.getElementById('savePdf').addEventListener('click', ()=>{
-    const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('PDF niezaładowany.'); return; }
-    compositeToCanvas(c=>{
-      const dataUrl = c.toDataURL('image/png');
-      const pdf = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
-      const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
-      const img = new Image();
-      img.onload = ()=>{
-        const ratio = Math.min(pageW/img.width, pageH/img.height);
-        const w = img.width*ratio, h = img.height*ratio;
-        const x=(pageW-w)/2, y=(pageH-h)/2;
-        pdf.addImage(dataUrl,'PNG',x,y,w,h); pdf.save(`aliboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`);
-      };
-      img.src = dataUrl; toggleMenu(false);
-    });
-  });
-
-  // ====== SELEKCJA / TRANSFORM ======
-  function clearOverlay(){ ovl.clearRect(0,0, ovlC.width, ovlC.height); }
-  function bboxOfStroke(s){
+  // 2) Wektory nad obrazami
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(const s of strokes){
     if(s.type==='pen'){
-      const xs=s.points.map(p=>p.x), ys=s.points.map(p=>p.y);
-      const minx=Math.min(...xs), maxx=Math.max(...xs), miny=Math.min(...ys), maxy=Math.max(...ys);
-      return {x:minx,y:miny,w:maxx-minx,h:maxy-miny};
+      const pts=s.points; if(!pts.length) continue;
+      ctx.strokeStyle=s.color; ctx.lineWidth=s.size;
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++){ ctx.lineTo(pts[i].x, pts[i].y); }
+      ctx.stroke();
     }else if(s.type==='line'){
-      const minx=Math.min(s.a.x,s.b.x), maxx=Math.max(s.a.x,s.b.x);
-      const miny=Math.min(s.a.y,s.b.y), maxy=Math.max(s.a.y,s.b.y);
-      return {x:minx,y:miny,w:maxx-minx,h:maxy-miny};
+      ctx.strokeStyle=s.color; ctx.lineWidth=s.size;
+      ctx.beginPath(); ctx.moveTo(s.a.x,s.a.y); ctx.lineTo(s.b.x,s.b.y); ctx.stroke();
     }else if(s.type==='text'){
-      const w = (Math.max(14, s.size*6) * 0.6) * (s.text?.length || 0);
-      const h = Math.max(14, s.size*6);
-      return {x:s.x, y:s.y, w, h};
-    }
-    return {x:0,y:0,w:0,h:0};
-  }
-  function drawSelection(){
-    clearOverlay();
-    if(!selection) return;
-    const b = selection.bbox;
-    ovl.save();
-    ovl.strokeStyle = '#0b74ff'; ovl.lineWidth = 1.5;
-    ovl.setLineDash([6,4]);
-    ovl.strokeRect(b.x, b.y, b.w, b.h);
-    ovl.setLineDash([]);
-    const hs = HANDLE_SIZE;
-    const handles = handlePoints(b);
-    ovl.fillStyle='#fff'; ovl.strokeStyle='#0b74ff'; ovl.lineWidth=2;
-    for(const h of handles){ ovl.beginPath(); ovl.rect(h.x-hs/2, h.y-hs/2, hs, hs); ovl.fill(); ovl.stroke(); }
-    ovl.restore();
-  }
-  function handlePoints(b){
-    const cx=b.x+b.w/2, cy=b.y+b.h/2;
-    return [
-      {x:b.x, y:b.y}, {x:cx, y:b.y}, {x:b.x+b.w, y:b.y},
-      {x:b.x, y:cy},                 {x:b.x+b.w, y:cy},
-      {x:b.x, y:b.y+b.h}, {x:cx, y:b.y+b.h}, {x:b.x+b.w, y:b.y+b.h},
-    ];
-  }
-  function hitHandle(p, b){
-    const hs=HANDLE_SIZE, pts=handlePoints(b);
-    for(let i=0;i<pts.length;i++){
-      if(Math.abs(p.x-pts[i].x)<=hs && Math.abs(p.y-pts[i].y)<=hs) return i;
-    }
-    return -1;
-  }
-
-  function dist(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
-  function distToSegment(p, a, b){
-    const ABx=b.x-a.x, ABy=b.y-a.y, APx=p.x-a.x, APy=p.y-a.y;
-    const ab2=ABx*ABx+ABy*ABy; const t=ab2?Math.max(0,Math.min(1,(APx*ABx+APy*ABy)/ab2)):0;
-    const proj={x:a.x+t*ABx,y:a.y+t*ABy}; return dist(p,proj);
-  }
-  function hitPolyline(pts, p, eps){ for(let i=1;i<pts.length;i++){ if(distToSegment(p, pts[i-1], pts[i])<=eps) return true;} return false; }
-
-  function hitTest(p){
-    for(let i=images.length-1;i>=0;i--){
-      const im=images[i];
-      if(p.x>=im.x && p.x<=im.x+im.w && p.y>=im.y && p.y<=im.y+im.h){
-        return {kind:'image', index:i, bbox:{x:im.x,y:im.y,w:im.w,h:im.h}};
-      }
-    }
-    const eps = Math.max(6, size*2);
-    for(let i=strokes.length-1;i>=0;i--){
-      const s=strokes[i];
-      if(s.type==='pen'){ if(hitPolyline(s.points,p,eps)) return {kind:'stroke',index:i,bbox:bboxOfStroke(s)}; }
-      else if(s.type==='line'){ if(distToSegment(p,s.a,s.b)<=eps) return {kind:'stroke',index:i,bbox:bboxOfStroke(s)}; }
-      else if(s.type==='text'){
-        const b=bboxOfStroke(s);
-        if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h) return {kind:'stroke',index:i,bbox:b};
-      }
-    }
-    return null;
-  }
-
-  function startSelect(x,y){
-    const p={x,y};
-    if(selection){
-      const h = hitHandle(p, selection.bbox);
-      if(h>=0){
-        dragging={mode:'scale', handle:h, startX:x, startY:y};
-        pushHistory(); return;
-      }
-      const b=selection.bbox;
-      if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){
-        dragging={mode:'move', startX:x, startY:y};
-        pushHistory(); return;
-      }
-    }
-    const hit=hitTest(p);
-    if(hit){ selection=hit; drawSelection(); }
-    else { selection=null; drawSelection(); }
-  }
-
-  function applyMove(dx,dy){
-    if(!selection) return;
-    const {kind,index}=selection;
-    if(kind==='image'){
-      const im=images[index]; im.x += dx; im.y += dy;
-      selection.bbox.x += dx; selection.bbox.y += dy;
-    }else{
-      const s=strokes[index];
-      if(s.type==='pen') s.points.forEach(pt=>{pt.x+=dx; pt.y+=dy;});
-      else if(s.type==='line'){ s.a.x+=dx; s.a.y+=dy; s.b.x+=dx; s.b.y+=dy; }
-      else if(s.type==='text'){ s.x+=dx; s.y+=dy; }
-      selection.bbox=bboxOfStroke(s);
-    }
-    renderAll(); drawSelection();
-  }
-
-  function applyScale(handle, dx, dy){
-    if(!selection) return;
-    const {bbox} = selection;
-    let {x,y,w,h} = bbox;
-    const ox = x, oy = y, ow = w, oh = h;
-
-    const minSize=10;
-    if(handle===0){ x += dx; y += dy; w -= dx; h -= dy; }
-    if(handle===1){ y += dy; h -= dy; }
-    if(handle===2){ y += dy; h -= dy; w += dx; }
-    if(handle===3){ x += dx; w -= dx; }
-    if(handle===4){ w += dx; }
-    if(handle===5){ x += dx; w -= dx; h += dy; }
-    if(handle===6){ h += dy; }
-    if(handle===7){ w += dx; h += dy; }
-
-    w = Math.max(minSize, w); h = Math.max(minSize, h);
-
-    const sx = w/ow, sy = h/oh;
-
-    const {kind,index} = selection;
-    if(kind==='image'){
-      const im=images[index];
-      im.x = x; im.y = y; im.w = w; im.h = h;
-    }else{
-      const s=strokes[index];
-      if(s.type==='pen'){
-        s.points = s.points.map(pt=>({x: x + (pt.x-ox)*sx, y: y + (pt.y-oy)*sy}));
-      }else if(s.type==='line'){
-        s.a = {x: x + (s.a.x-ox)*sx, y: y + (s.a.y-oy)*sy};
-        s.b = {x: x + (s.b.x-ox)*sx, y: y + (s.b.y-oy)*sy};
-      }else if(s.type==='text'){
-        s.x = x; s.y = y;
-      }
-    }
-    selection.bbox = {x,y,w,h};
-    renderAll(); drawSelection();
-  }
-
-  // ====== ERASER preview ======
-  function previewErase(p){
-    clearOverlay();
-    if(selection) drawSelection();
-    const eps = Math.max(6,size*2);
-    for(let i=strokes.length-1;i>=0;i--){
-      const s=strokes[i];
-      let hit=false;
-      if(s.type==='pen') hit=hitPolyline(s.points,p,eps);
-      else if(s.type==='line') hit=distToSegment(p,s.a,s.b)<=eps;
-      else if(s.type==='text'){
-        const b=bboxOfStroke(s);
-        hit = (p.x>=b.x && p.x<=b.x+b.w && p.y>=b.y && p.y<=b.y+b.h);
-      }
-      if(hit){
-        ovl.save();
-        ovl.lineCap='round'; ovl.lineJoin='round';
-        if(s.type==='pen'){
-          ovl.strokeStyle='#ff3b3b'; ovl.lineWidth=Math.max(2, s.size+2);
-          const pts=s.points; if(!pts.length){ ovl.restore(); return; }
-          ovl.beginPath(); ovl.moveTo(pts[0].x, pts[0].y);
-          for(let j=1;j<pts.length;j++){ ovl.lineTo(pts[j].x, pts[j].y); }
-          ovl.stroke();
-        }else if(s.type==='line'){
-          ovl.strokeStyle='#ff3b3b'; ovl.lineWidth=Math.max(2, s.size+2);
-          ovl.beginPath(); ovl.moveTo(s.a.x,s.a.y); ovl.lineTo(s.b.x,s.b.y); ovl.stroke();
-        }else if(s.type==='text'){
-          const b=bboxOfStroke(s);
-          ovl.strokeStyle='#ff3b3b'; ovl.lineWidth=2; ovl.setLineDash([5,4]);
-          ovl.strokeRect(b.x,b.y,b.w,b.h); ovl.setLineDash([]);
-        }
-        ovl.restore();
-        return;
-      }
+      ctx.save(); ctx.fillStyle=s.color;
+      ctx.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`;
+      ctx.textBaseline='top'; ctx.fillText(s.text, s.x, s.y); ctx.restore();
     }
   }
+  drawSelection(page);
+}
+function drawSelection(page){
+  const {ovl, ovlC, selection} = page;
+  ovl.clearRect(0,0, ovlC.width, ovlC.height);
+  if(!selection) return;
+  const b = selection.bbox;
+  ovl.save();
+  ovl.strokeStyle = '#0b74ff'; ovl.lineWidth = 1.5; ovl.setLineDash([6,4]);
+  ovl.strokeRect(b.x, b.y, b.w, b.h);
+  ovl.setLineDash([]);
+  // uchwyty
+  const hs = 10;
+  const pts = handlePoints(b);
+  ovl.fillStyle='#fff'; ovl.strokeStyle='#0b74ff'; ovl.lineWidth=2;
+  pts.forEach(p=>{ ovl.beginPath(); ovl.rect(p.x-hs/2,p.y-hs/2,hs,hs); ovl.fill(); ovl.stroke(); });
+  ovl.restore();
+}
+function handlePoints(b){
+  const cx=b.x+b.w/2, cy=b.y+b.h/2;
+  return [
+    {x:b.x, y:b.y}, {x:cx, y:b.y}, {x:b.x+b.w, y:b.y},
+    {x:b.x, y:cy},                {x:b.x+b.w, y:cy},
+    {x:b.x, y:b.y+b.h}, {x:cx, y:b.y+b.h}, {x:b.x+b.w, y:b.y+b.h},
+  ];
+}
+function bboxOfStroke(s){
+  if(s.type==='pen'){
+    const xs=s.points.map(p=>p.x), ys=s.points.map(p=>p.y);
+    return {x:Math.min(...xs), y:Math.min(...ys), w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)};
+  }else if(s.type==='line'){
+    const minx=Math.min(s.a.x,s.b.x), maxx=Math.max(s.a.x,s.b.x);
+    const miny=Math.min(s.a.y,s.b.y), maxy=Math.max(s.a.y,s.b.y);
+    return {x:minx,y=miny,w:maxx-minx,h:maxy-miny};
+  }else if(s.type==='text'){
+    const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
+    const h = Math.max(14, s.size*6);
+    return {x:s.x, y:s.y, w, h};
+  }
+  return {x:0,y:0,w:0,h:0};
+}
 
-  // ====== RYSOWANIE / INTERAKCJE ======
-  let drawing=false, startX=0, startY=0, currentStroke=null;
-  let textEditor = null;
+// ===== Historia =====
+function pushHistory(p){ p.redo = []; p.history.push(JSON.stringify({strokes:p.strokes, images:p.images})); if(p.history.length>80) p.history.shift(); }
+function restoreHistory(p, json){
+  try{
+    const s = JSON.parse(json);
+    p.strokes = s.strokes||[]; p.images = s.images||[];
+    p.selection=null; renderAll(p);
+  }catch(_){}
+}
 
-  function begin(x,y){
-    if(tool===TOOLS.SELECT){ startSelect(x,y); return; }
-    drawing=true; startX=x; startY=y;
-    pushHistory();
+// ===== Hity/odległości =====
+const dist = (a,b)=> Math.hypot(a.x-b.x, a.y-b.y);
+function distToSegment(p, a, b){
+  const ABx=b.x-a.x, ABy=b.y-a.y, APx=p.x-a.x, APy=p.y-a.y;
+  const ab2=ABx*ABx+ABy*ABy; const t=ab2?Math.max(0,Math.min(1,(APx*ABx+APy*ABy)/ab2)):0;
+  const proj={x:a.x+t*ABx,y:a.y+t*ABy}; return dist(p,proj);
+}
+function hitPolyline(pts, p, eps){ for(let i=1;i<pts.length;i++){ if(distToSegment(p, pts[i-1], pts[i])<=eps) return true;} return false; }
+function approxTextWidth(s){ return (Math.max(14, s.size*6)*0.6)*(s.text?.length||0); }
 
+// ===== Interakcje =====
+function attachEvents(p){
+  // resize jednej strony gdy okno się zmienia
+  const ro = new ResizeObserver(()=>{ pageResize(p); drawGrid(p); renderAll(p); });
+  ro.observe(p.el);
+
+  // wskaźnik
+  const getXY = (e)=>{
+    const r = p.drawC.getBoundingClientRect();
+    if(e.touches && e.touches[0]) return { x:e.touches[0].clientX - r.left, y:e.touches[0].clientY - r.top };
+    if(typeof e.clientX==='number') return { x:e.clientX - r.left, y:e.clientY - r.top };
+    if(e.changedTouches && e.changedTouches[0]) return { x:e.changedTouches[0].clientX - r.left, y:e.changedTouches[0].clientY - r.top };
+    return {x:0,y:0};
+  };
+
+  // mousedown/touchstart
+  const onStart = (e)=>{
+    // nie pozwól, by klik menubutton od razu zamykał dropdown
+    if(e.target.closest('#dropdown') || e.target.closest('#menuBtn')) return;
+
+    const {x,y} = getXY(e);
+    if(tool===TOOLS.SELECT){ startSelect(p, x,y); return; }
+    if(tool===TOOLS.ERASER){ pushHistory(p); eraseAt(p,{x,y}); p.dragging=null; return; }
+    if(tool===TOOLS.TEXT){ spawnEditor(p,x,y); return; }
+    if(tool===TOOLS.CROP){ beginCrop(p,x,y); return; }
+
+    // Rysunek
+    pushHistory(p);
+    p.dragging = {mode:'draw', startX:x, startY:y};
     if(tool===TOOLS.PEN){
-      currentStroke = {type:'pen', color, size, points:[{x,y}]};
-      strokes.push(currentStroke); renderAll();
+      p._current = {type:'pen', color, size, points:[{x,y}]};
+      p.strokes.push(p._current);
+      renderAll(p);
     }else if(tool===TOOLS.LINE){
-      currentStroke = {type:'line', color, size, a:{x,y}, b:{x,y}};
-      clearOverlay();
-    }else if(tool===TOOLS.ERASER){
-      eraseAt({x,y}); drawing=false; currentStroke=null; return;
-    }else if(tool===TOOLS.TEXT){
-      // contentEditable pole
-      createTextEditor(x,y);
-      drawing=false; currentStroke=null; return;
+      p._current = {type:'line', color, size, a:{x,y}, b:{x,y}};
     }
-  }
-
-  function createTextEditor(x,y){
-    if(textEditor) textEditor.remove();
-    textEditor = document.createElement('div');
-    textEditor.className='text-editor';
-    textEditor.contentEditable = 'true';
-    textEditor.style.left = x+'px';
-    textEditor.style.top  = y+'px';
-    // estetyka tekstu zgodna z wybranym rozmiarem/kolorem
-    textEditor.style.color = color;
-    textEditor.style.fontSize = Math.max(14, size*6) + 'px';
-    stage.appendChild(textEditor);
-    textEditor.focus();
-
-    function commit(){
-      const txt = textEditor.innerText.replace(/\n+$/,'').trim();
-      if(txt){
-        strokes.push({type:'text', color, size, x, y, text: txt});
-        renderAll();
-      }else{
-        if(history.length){ const last=history.pop(); restoreHistoryState(last); }
-      }
-      cleanup();
-    }
-    function cancel(){
-      if(history.length){ const last=history.pop(); restoreHistoryState(last); }
-      cleanup();
-    }
-    function cleanup(){
-      textEditor.removeEventListener('keydown', onKey);
-      textEditor.removeEventListener('blur', onBlur);
-      textEditor.remove();
-      textEditor=null;
-    }
-    function onKey(e){
-      if(e.key==='Enter'){ e.preventDefault(); commit(); }
-      else if(e.key==='Escape'){ e.preventDefault(); cancel(); }
-    }
-    function onBlur(){ commit(); }
-
-    textEditor.addEventListener('keydown', onKey);
-    textEditor.addEventListener('blur', onBlur);
-  }
-
-  function move(x,y){
+  };
+  const onMove = (e)=>{
+    const {x,y} = getXY(e);
     if(tool===TOOLS.SELECT){
-      if(dragging){
-        const dx=x-dragging.startX, dy=y-dragging.startY;
-        if(dragging.mode==='move') applyMove(dx,dy);
-        if(dragging.mode==='scale') applyScale(dragging.handle, dx, dy);
-        dragging.startX=x; dragging.startY=y;
+      if(p.dragging){
+        const dx=x-p.dragging.startX, dy=y-p.dragging.startY;
+        if(p.dragging.mode==='move') applyMove(p, dx,dy);
+        if(p.dragging.mode==='scale') applyScale(p, p.dragging.handle, dx,dy);
+        p.dragging.startX=x; p.dragging.startY=y;
       }
       return;
     }
-    if(tool===TOOLS.ERASER){ previewErase({x,y}); return; }
-    if(!drawing) return;
+    if(tool===TOOLS.ERASER){ previewErase(p,{x,y}); return; }
+    if(tool===TOOLS.CROP){ moveCrop(p,x,y); return; }
 
+    if(!p.dragging) return;
     if(tool===TOOLS.PEN){
-      currentStroke.points.push({x,y}); renderAll();
+      p._current.points.push({x,y}); renderAll(p);
     }else if(tool===TOOLS.LINE){
-      currentStroke.b = {x,y};
-      clearOverlay();
-      ovl.lineCap='round'; ovl.lineJoin='round';
-      ovl.strokeStyle=color; ovl.lineWidth=size;
-      ovl.beginPath(); ovl.moveTo(startX,startY); ovl.lineTo(x,y); ovl.stroke();
+      p._current.b = {x,y};
+      p.ovl.clearRect(0,0,p.ovlC.width,p.ovlC.height);
+      p.ovl.lineCap='round'; p.ovl.lineJoin='round';
+      p.ovl.strokeStyle=color; p.ovl.lineWidth=size;
+      p.ovl.beginPath(); p.ovl.moveTo(p.dragging.startX,p.dragging.startY); p.ovl.lineTo(x,y); p.ovl.stroke();
     }
-  }
+  };
+  const onEnd = (e)=>{
+    const {x,y} = getXY(e);
+    if(tool===TOOLS.SELECT){ p.dragging=null; return; }
+    if(tool===TOOLS.ERASER){ p.ovl.clearRect(0,0,p.ovlC.width,p.ovlC.height); return; }
+    if(tool===TOOLS.CROP){ endCrop(p,x,y); return; }
 
-  function end(x,y){
-    if(tool===TOOLS.SELECT){ if(dragging){ dragging=null; } return; }
-    if(tool===TOOLS.ERASER){ return; }
-    if(!drawing) return;
+    if(!p.dragging) return;
     if(tool===TOOLS.LINE){
-      clearOverlay();
-      currentStroke.b = {x,y};
-      strokes.push(currentStroke);
-      renderAll();
+      p.ovl.clearRect(0,0,p.ovlC.width,p.ovlC.height);
+      p._current.b = {x,y}; p.strokes.push(p._current); renderAll(p);
     }
-    drawing=false; currentStroke=null;
-  }
+    p.dragging=null; p._current=null;
+  };
 
-  function eraseAt(p){
-    const eps = Math.max(6, size*2);
-    for(let i=strokes.length-1;i>=0;i--){
-      const s = strokes[i];
-      if(s.type==='pen' && hitPolyline(s.points,p,eps)){ strokes.splice(i,1); renderAll(); clearOverlay(); return; }
-      if(s.type==='line' && distToSegment(p,s.a,s.b)<=eps){ strokes.splice(i,1); renderAll(); clearOverlay(); return; }
+  // Eventy — ważne dla mobile: passive:false i preventDefault na touchmove
+  p.drawC.addEventListener('mousedown', onStart, {passive:true});
+  p.drawC.addEventListener('touchstart', (e)=>{ e.preventDefault(); onStart(e); }, {passive:false});
+
+  window.addEventListener('mousemove', onMove, {passive:true});
+  window.addEventListener('touchmove', (e)=>{ e.preventDefault(); onMove(e); }, {passive:false});
+
+  window.addEventListener('mouseup', onEnd, {passive:true});
+  window.addEventListener('touchend', (e)=>{ e.preventDefault(); onEnd(e); }, {passive:false});
+  window.addEventListener('mouseleave', onEnd, {passive:true});
+
+  // Undo/redo/clear dla aktywnej strony
+  document.getElementById('undo').addEventListener('click', ()=>{ if(!p.history.length) return; const last=p.history.pop(); p.redo.push(JSON.stringify({strokes:p.strokes,images:p.images})); restoreHistory(p,last); }, {passive:true});
+  document.getElementById('redo').addEventListener('click', ()=>{ if(!p.redo.length) return; const next=p.redo.pop(); p.history.push(JSON.stringify({strokes:p.strokes,images:p.images})); restoreHistory(p,next); }, {passive:true});
+  document.getElementById('clear').addEventListener('click', ()=>{ pushHistory(p); p.strokes=[]; p.images=[]; p.selection=null; renderAll(p); }, {passive:true});
+
+  // Auto-dodawanie kartki A4 przy dojściu do dołu strony
+  p.el.addEventListener('touchend', ()=> maybeAddPageOnBottom(p), {passive:true});
+  p.el.addEventListener('mouseup',   ()=> maybeAddPageOnBottom(p), {passive:true});
+}
+function maybeAddPageOnBottom(page){
+  const r = page.el.getBoundingClientRect();
+  // jeśli dolny brzeg strony jest w polu widzenia i użytkownik był blisko dołu — dodaj następną
+  if(r.bottom < window.innerHeight + 120){ newPage(); }
+}
+
+// ===== Select / Move / Scale =====
+function startSelect(p,x,y){
+  // uchwyty?
+  if(p.selection){
+    const h = hitHandle({x,y}, p.selection.bbox);
+    if(h>=0){ p.dragging={mode:'scale', handle:h, startX:x, startY:y}; pushHistory(p); return; }
+    const b=p.selection.bbox;
+    if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ p.dragging={mode:'move', startX:x, startY:y}; pushHistory(p); return; }
+  }
+  // nowy hit
+  const hit = hitTest(p,{x,y});
+  p.selection = hit; renderAll(p);
+}
+function hitHandle(pnt, b){
+  const hs=10, pts=handlePoints(b);
+  for(let i=0;i<pts.length;i++){
+    if(Math.abs(pnt.x-pts[i].x)<=hs && Math.abs(pnt.y-pts[i].y)<=hs) return i;
+  }
+  return -1;
+}
+function hitTest(p,pnt){
+  // images najpierw (od góry)
+  for(let i=p.images.length-1;i>=0;i--){
+    const im=p.images[i];
+    if(pnt.x>=im.x && pnt.x<=im.x+im.w && pnt.y>=im.y && pnt.y<=im.y+im.h){
+      return {kind:'image', index:i, bbox:{x:im.x,y:im.y,w:im.w,h:im.h}};
+    }
+  }
+  const eps = Math.max(6, size*2);
+  for(let i=p.strokes.length-1;i>=0;i--){
+    const s=p.strokes[i];
+    if(s.type==='pen'){ if(hitPolyline(s.points,pnt,eps)) return {kind:'stroke',index:i,bbox:bboxOfStroke(s)}; }
+    else if(s.type==='line'){ if(distToSegment(pnt,s.a,s.b)<=eps) return {kind:'stroke',index:i,bbox:bboxOfStroke(s)}; }
+    else if(s.type==='text'){
+      const b=bboxOfStroke(s);
+      if(pnt.x>=b.x&&pnt.x<=b.x+b.w&&pnt.y>=b.y&&pnt.y<=b.y+b.h) return {kind:'stroke',index:i,bbox:b};
+    }
+  }
+  return null;
+}
+function applyMove(p,dx,dy){
+  const sel=p.selection; if(!sel) return;
+  if(sel.kind==='image'){
+    const im=p.images[sel.index]; im.x+=dx; im.y+=dy; sel.bbox.x+=dx; sel.bbox.y+=dy;
+  }else{
+    const s=p.strokes[sel.index];
+    if(s.type==='pen') s.points.forEach(pt=>{pt.x+=dx; pt.y+=dy;});
+    else if(s.type==='line'){ s.a.x+=dx; s.a.y+=dy; s.b.x+=dx; s.b.y+=dy; }
+    else if(s.type==='text'){ s.x+=dx; s.y+=dy; }
+    sel.bbox = bboxOfStroke(s);
+  }
+  renderAll(p);
+}
+function applyScale(p,handle,dx,dy){
+  const sel=p.selection; if(!sel) return;
+  const b = sel.bbox;
+  let {x,y,w,h}=b; const ox=x,oy=y,ow=w,oh=h;
+  const minSize=10;
+  if(handle===0){ x += dx; y += dy; w -= dx; h -= dy; }
+  if(handle===1){ y += dy; h -= dy; }
+  if(handle===2){ y += dy; h -= dy; w += dx; }
+  if(handle===3){ x += dx; w -= dx; }
+  if(handle===4){ w += dx; }
+  if(handle===5){ x += dx; w -= dx; h += dy; }
+  if(handle===6){ h += dy; }
+  if(handle===7){ w += dx; h += dy; }
+  w=Math.max(minSize,w); h=Math.max(minSize,h);
+  const sx=w/ow, sy=h/oh;
+
+  if(sel.kind==='image'){
+    const im=p.images[sel.index]; im.x=x; im.y=y; im.w=w; im.h=h;
+  }else{
+    const s=p.strokes[sel.index];
+    if(s.type==='pen'){ s.points=s.points.map(pt=>({x:x + (pt.x-ox)*sx, y:y + (pt.y-oy)*sy})); }
+    else if(s.type==='line'){ s.a={x:x+(s.a.x-ox)*sx, y:y+(s.a.y-oy)*sy}; s.b={x:x+(s.b.x-ox)*sx, y:y+(s.b.y-oy)*sy}; }
+    else if(s.type==='text'){ s.x=x; s.y=y; }
+  }
+  sel.bbox={x,y,w,h}; renderAll(p);
+}
+
+// ===== Gumka (podświetla cel i kasuje całe kreski/teksty) =====
+function previewErase(p,pnt){
+  const {ovl, ovlC, strokes} = p;
+  ovl.clearRect(0,0,ovlC.width,ovlC.height);
+  if(p.selection) drawSelection(p);
+  const eps = Math.max(6, size*2);
+  for(let i=strokes.length-1;i>=0;i--){
+    const s=strokes[i];
+    let hit=false;
+    if(s.type==='pen') hit=hitPolyline(s.points,pnt,eps);
+    else if(s.type==='line') hit=distToSegment(pnt,s.a,s.b)<=eps;
+    else if(s.type==='text'){
+      const b=bboxOfStroke(s); hit=(pnt.x>=b.x && pnt.x<=b.x+b.w && pnt.y>=b.y && pnt.y<=b.y+b.h);
+    }
+    if(hit){
+      ovl.save();
       if(s.type==='text'){
         const b=bboxOfStroke(s);
-        if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){ strokes.splice(i,1); renderAll(); clearOverlay(); return; }
+        ovl.strokeStyle='#ff3b3b'; ovl.lineWidth=2; ovl.setLineDash([5,4]); ovl.strokeRect(b.x,b.y,b.w,b.h); ovl.setLineDash([]);
+      }else{
+        ovl.strokeStyle='#ff3b3b'; ovl.lineWidth=Math.max(2,s.size+2);
+        ovl.beginPath(); if(s.type==='pen'){ const pts=s.points; ovl.moveTo(pts[0].x,pts[0].y); for(let j=1;j<pts.length;j++) ovl.lineTo(pts[j].x,pts[j].y); }
+        else { ovl.moveTo(s.a.x,s.a.y); ovl.lineTo(s.b.x,s.b.y); }
+        ovl.stroke();
       }
+      ovl.restore(); return;
     }
   }
-
-  // ====== EVENTY ======
-  function getXY(e){
-    const rect = drawC.getBoundingClientRect();
-    if(e.touches && e.touches[0]) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    if(typeof e.clientX==='number') return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    if(e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top };
-    return {x:0,y:0};
+}
+function eraseAt(p,pnt){
+  const eps = Math.max(6, size*2);
+  for(let i=p.strokes.length-1;i>=0;i--){
+    const s=p.strokes[i];
+    if(s.type==='pen' && hitPolyline(s.points,pnt,eps)){ p.strokes.splice(i,1); renderAll(p); p.ovl.clearRect(0,0,p.ovlC.width,p.ovlC.height); return; }
+    if(s.type==='line' && distToSegment(pnt,s.a,s.b)<=eps){ p.strokes.splice(i,1); renderAll(p); p.ovl.clearRect(0,0,p.ovlC.width,p.ovlC.height); return; }
+    if(s.type==='text'){ const b=bboxOfStroke(s); if(pnt.x>=b.x&&pnt.x<=b.x+b.w&&pnt.y>=b.y&&pnt.y<=b.y+b.h){ p.strokes.splice(i,1); renderAll(p); p.ovl.clearRect(0,0,p.ovlC.width,p.ovlC.height); return; } }
   }
+}
 
-  drawC.addEventListener('mousedown', (e)=>{ const {x,y}=getXY(e);
-    // drag z selekcji
-    if(tool===TOOLS.SELECT && selection){
-      const h = hitHandle({x,y}, selection.bbox);
-      if(h>=0){ dragging={mode:'scale', handle:h, startX:x, startY:y}; pushHistory(); return; }
-      const b=selection.bbox;
-      if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ dragging={mode:'move', startX:x, startY:y}; pushHistory(); return; }
+// ===== Tekst inline =====
+function spawnEditor(p,x,y){
+  if(p.editorEl){ p.editorEl.remove(); p.editorEl=null; }
+  const ed = document.createElement('div');
+  ed.className='text-editor';
+  ed.contentEditable='true';
+  ed.style.left = x+'px'; ed.style.top = y+'px';
+  p.el.appendChild(ed);
+  ed.focus();
+
+  const commit = ()=>{
+    const txt = ed.textContent.trim();
+    ed.remove(); p.editorEl=null;
+    if(!txt) return;
+    p.strokes.push({type:'text', color, size, x, y, text:txt});
+    renderAll(p);
+  };
+  ed.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); commit(); }
+    if(e.key==='Escape'){ ed.remove(); p.editorEl=null; }
+  });
+  ed.addEventListener('blur', commit);
+  p.editorEl = ed;
+}
+
+// ===== Wycinanie =====
+function beginCrop(p,x,y){ p.cropRect={x,y,w:0,h:0}; drawCropRect(p); }
+function moveCrop(p,x,y){
+  if(!p.cropRect) return;
+  p.cropRect.w = x - p.cropRect.x;
+  p.cropRect.h = y - p.cropRect.y;
+  drawCropRect(p);
+}
+function endCrop(p,x,y){
+  if(!p.cropRect) return;
+  // znormalizuj
+  let {x:cx,y:cy,w,h} = p.cropRect;
+  if(w<0){ cx=cx+w; w=-w; } if(h<0){ cy=cy+h; h=-h; }
+  drawCropRect(p,true);
+
+  // wytnij z kompozytu strony (obrazy + wektory)
+  const comp = compositePageToCanvas(p);
+  const cut = document.createElement('canvas');
+  cut.width = w; cut.height = h;
+  cut.getContext('2d').drawImage(comp, cx, cy, w, h, 0, 0, w, h);
+  const url = cut.toDataURL('image/png');
+
+  // wklej pod treścią na tej lub nowej kartce (jeśli brak miejsca)
+  const dpr = window.devicePixelRatio || 1;
+  const pageW = p.drawC.width/dpr, pageH = p.drawC.height/dpr;
+  const bottomY = getContentBottomY(p);
+  const margin = 16;
+  let placeY = bottomY + margin;
+  let placeX = margin;
+  let wFit = Math.min(pageW - 2*margin, w), hFit = (h/w)*wFit;
+
+  if(placeY + hFit > pageH - margin){
+    // nowa kartka
+    const np = newPage();
+    placeX = margin; placeY = margin;
+    np.images.push({x:placeX,y:placeY,w:wFit,h:hFit,src:url});
+    renderAll(np);
+  }else{
+    p.images.push({x:placeX,y:placeY,w:wFit,h:hFit,src:url});
+    renderAll(p);
+  }
+  p.cropRect=null;
+}
+function drawCropRect(p, clear=false){
+  const {ovl, ovlC} = p;
+  ovl.clearRect(0,0, ovlC.width, ovlC.height);
+  if(clear || !p.cropRect) return;
+  let {x,y,w,h} = p.cropRect;
+  if(w<0){ x+=w; w=-w; } if(h<0){ y+=h; h=-h; }
+  ovl.save();
+  ovl.setLineDash([6,4]); ovl.strokeStyle='#0b74ff'; ovl.lineWidth=1.5;
+  ovl.strokeRect(x,y,w,h);
+  ovl.restore();
+}
+function getContentBottomY(p){
+  let maxY = 0;
+  p.images.forEach(im=> maxY = Math.max(maxY, im.y+im.h));
+  p.strokes.forEach(s=>{
+    const b=bboxOfStroke(s); maxY = Math.max(maxY, b.y+b.h);
+  });
+  return maxY;
+}
+
+// ===== Kompozyt strony (do wycinania/zapisu) =====
+function compositePageToCanvas(p){
+  const dpr = window.devicePixelRatio || 1;
+  const W = p.drawC.width / dpr, H = p.drawC.height / dpr;
+  const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H;
+  const tctx = tmp.getContext('2d');
+
+  if(gridSize){
+    tctx.save(); tctx.strokeStyle='#e6edff'; tctx.lineWidth=1;
+    for(let x=0;x<=W;x+=gridSize){ tctx.beginPath(); tctx.moveTo(x,0); tctx.lineTo(x,H); tctx.stroke(); }
+    for(let y=0;y<=H;y+=gridSize){ tctx.beginPath(); tctx.moveTo(0,y); tctx.lineTo(W,y); tctx.stroke(); }
+    tctx.restore();
+  }
+  // images
+  for(const im of p.images){
+    if(im._el){ tctx.drawImage(im._el, im.x, im.y, im.w, im.h); }
+    else{
+      const el = new Image(); el.src=im.src; try{ tctx.drawImage(el, im.x, im.y, im.w, im.h); }catch(_){}
     }
-    begin(x,y);
-  });
-  drawC.addEventListener('touchstart', (e)=>{ e.preventDefault(); const {x,y}=getXY(e); begin(x,y); }, {passive:false});
-
-  window.addEventListener('mousemove', (e)=>{ const {x,y}=getXY(e); move(x,y); }, {passive:true});
-  window.addEventListener('touchmove',  (e)=>{ e.preventDefault(); const {x,y}=getXY(e); move(x,y); }, {passive:false});
-
-  window.addEventListener('mouseup',   (e)=>{ const {x,y}=getXY(e); end(x,y); dragging=null; }, {passive:true});
-  window.addEventListener('touchend',  (e)=>{ e.preventDefault(); const {x,y}=getXY(e); end(x,y); dragging=null; }, {passive:false});
-  window.addEventListener('mouseleave',(e)=>{ const {x,y}=getXY(e); end(x,y); dragging=null; }, {passive:true});
-
-  // SKRÓTY
-  document.getElementById('tools').addEventListener('click', (e)=>{
-    const b = e.target.closest('[data-tool]'); if(!b) return; setTool(b.getAttribute('data-tool'));
-  });
-  window.addEventListener('keydown', (e)=>{
-    if(e.key==='v'||e.key==='V') setTool(TOOLS.SELECT);
-    if(e.key==='p'||e.key==='P') setTool(TOOLS.PEN);
-    if(e.key==='l'||e.key==='L') setTool(TOOLS.LINE);
-    if(e.key==='e'||e.key==='E') setTool(TOOLS.ERASER);
-    if(e.key==='t'||e.key==='T') setTool(TOOLS.TEXT);
-    if(e.ctrlKey && e.key==='z'){ document.getElementById('undo').click(); }
-    if(e.ctrlKey && (e.key==='y' || (e.shiftKey && e.key==='Z'))){ document.getElementById('redo').click(); }
-  });
-
-  // UNDO/REDO/CLEAR
-  document.getElementById('undo').addEventListener('click', ()=>{
-    if(!history.length) return;
-    const last = history.pop();
-    const packedImages = images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src}));
-    redoStack.push(JSON.stringify({strokes, images:packedImages}));
-    restoreHistoryState(last);
-  });
-  document.getElementById('redo').addEventListener('click', ()=>{
-    if(!redoStack.length) return;
-    const next = redoStack.pop();
-    const packedImages = images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src}));
-    history.push(JSON.stringify({strokes, images:packedImages}));
-    restoreHistoryState(next);
-  });
-  document.getElementById('clear').addEventListener('click', ()=>{
-    pushHistory(); strokes=[]; images=[]; selection=null; renderAll(); clearOverlay();
-  });
-
-  // AUTOSAVE
-  const AUTOSAVE_KEY = 'aliboard_v23_state';
-  function autosave(){
-    try{
-      const packedImages = images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src}));
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({strokes, images:packedImages}));
-    }catch(_){}
   }
-  setInterval(autosave, 30000);
-  (function restoreLocal(){
-    try{
-      const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if(!raw) return;
-      const s = JSON.parse(raw);
-      strokes = s.strokes||[];
-      images  = (s.images||[]).map(im=>({ ...im, img: makeImage(im.src) }));
-      renderAll();
-    }catch(_){}
-  })();
+  // strokes
+  tctx.lineCap='round'; tctx.lineJoin='round';
+  for(const s of p.strokes){
+    if(s.type==='pen'){
+      tctx.strokeStyle=s.color; tctx.lineWidth=s.size;
+      const pts=s.points; if(!pts.length) continue;
+      tctx.beginPath(); tctx.moveTo(pts[0].x, pts[0].y);
+      for(let i=1;i<pts.length;i++){ tctx.lineTo(pts[i].x, pts[i].y); }
+      tctx.stroke();
+    }else if(s.type==='line'){
+      tctx.strokeStyle=s.color; tctx.lineWidth=s.size;
+      tctx.beginPath(); tctx.moveTo(s.a.x,s.a.y); tctx.lineTo(s.b.x,s.b.y); tctx.stroke();
+    }else if(s.type==='text'){
+      tctx.save(); tctx.fillStyle=s.color;
+      tctx.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`;
+      tctx.textBaseline='top'; tctx.fillText(s.text, s.x, s.y); tctx.restore();
+    }
+  }
+  return tmp;
+}
 
-  updateState();
+// ===== Wstaw obraz / PDF =====
+document.getElementById('imgInput').addEventListener('change', (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const url = URL.createObjectURL(f);
+  const p = PAGES.at(-1);
+  const img = new Image();
+  img.onload = ()=>{
+    const dpr = window.devicePixelRatio||1;
+    const W = p.drawC.width/dpr, H = p.drawC.height/dpr;
+    const ratio = Math.min((W*0.8)/img.width, (H*0.8)/img.height);
+    const w = Math.max(80, img.width*ratio), h=Math.max(80,img.height*ratio);
+    const x=(W-w)/2, y=(H-h)/2;
+    pushHistory(p);
+    p.images.push({x,y,w,h,src:url,_el:img});
+    renderAll(p);
+  };
+  img.src = url;
+});
+
+document.getElementById('pdfInput').addEventListener('change', async (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const buffer = await f.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+  let pageNum = 1;
+  const ask = prompt(`PDF ma ${pdf.numPages} stron. Wpisz numer strony do wstawienia:`, "1");
+  if(ask){ const n = parseInt(ask,10); if(!isNaN(n) && n>=1 && n<=pdf.numPages) pageNum=n; }
+  const page = await pdf.getPage(pageNum);
+  const viewport = page.getViewport({scale: 2});
+  const c = document.createElement('canvas'); c.width=viewport.width; c.height=viewport.height;
+  const cctx = c.getContext('2d');
+  await page.render({canvasContext:cctx, viewport}).promise;
+  const url = c.toDataURL('image/png');
+
+  const p = PAGES.at(-1);
+  const dpr = window.devicePixelRatio||1;
+  const W = p.drawC.width/dpr, H = p.drawC.height/dpr;
+  const ratio = Math.min((W*0.9)/c.width, (H*0.9)/c.height);
+  const w = Math.max(120, c.width*ratio), h=Math.max(120, c.height*ratio);
+  const x=(W-w)/2, y=(H-h)/2;
+  pushHistory(p);
+  const img = new Image(); img.src=url;
+  p.images.push({x,y,w,h,src:url,_el:img, meta:{pdf:true,page:pageNum}});
+  renderAll(p);
+});
+
+// ===== Menu (z naprawą tapów) =====
+const menuBtn = document.getElementById('menuBtn');
+const dropdown = document.getElementById('dropdown');
+function toggleMenu(force){
+  const open = typeof force==='boolean' ? force : !dropdown.classList.contains('open');
+  dropdown.classList.toggle('open', open);
+  menuBtn.setAttribute('aria-expanded', String(open));
+}
+menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleMenu(); }, {passive:true});
+dropdown.addEventListener('click', (e)=> e.stopPropagation(), {passive:true});
+document.addEventListener('click', ()=> toggleMenu(false), {passive:true});
+
+// Nowa tablica / kartka
+document.getElementById('newBoard').addEventListener('click', ()=>{ toggleMenu(false); clearBoard(); }, {passive:true});
+document.getElementById('newPage').addEventListener('click', ()=>{ toggleMenu(false); newPage(); }, {passive:true});
+
+// Siatka
+dropdown.querySelectorAll('[data-grid]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ gridSize=parseInt(btn.getAttribute('data-grid'),10)||0; PAGES.forEach(p=>{ drawGrid(p); renderAll(p); }); toggleMenu(false); }, {passive:true});
+});
+
+// Zapis (bieżąca / wszystkie)
+function downloadURL(url, name){
+  const a = document.createElement('a'); a.href=url; a.download=name; a.click();
+}
+document.getElementById('savePng').addEventListener('click', ()=>{
+  const p=PAGES.at(-1); const c = compositePageToCanvas(p);
+  downloadURL(c.toDataURL('image/png'), `aliboard_${Date.now()}.png`); toggleMenu(false);
+},{passive:true});
+document.getElementById('saveJpg').addEventListener('click', ()=>{
+  const p=PAGES.at(-1); const c = compositePageToCanvas(p);
+  downloadURL(c.toDataURL('image/jpeg',0.92), `aliboard_${Date.now()}.jpg`); toggleMenu(false);
+},{passive:true});
+document.getElementById('savePdf').addEventListener('click', ()=>{
+  const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('PDF niezaładowany.'); return; }
+  const p=PAGES.at(-1); const c = compositePageToCanvas(p); const dataUrl=c.toDataURL('image/png');
+  const pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+  const W=pdf.internal.pageSize.getWidth(), H=pdf.internal.pageSize.getHeight();
+  const img=new Image(); img.onload=()=>{ const r=Math.min(W/img.width,H/img.height); const w=img.width*r,h=img.height*r; const x=(W-w)/2,y=(H-h)/2; pdf.addImage(dataUrl,'PNG',x,y,w,h); pdf.save(`aliboard_${Date.now()}.pdf`);};
+  img.src=dataUrl; toggleMenu(false);
+},{passive:true});
+document.getElementById('savePdfAll').addEventListener('click', ()=>{
+  const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('PDF niezaładowany.'); return; }
+  const pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+  PAGES.forEach((p,idx)=>{
+    const c = compositePageToCanvas(p); const dataUrl=c.toDataURL('image/png');
+    if(idx>0) pdf.addPage();
+    const W=pdf.internal.pageSize.getWidth(), H=pdf.internal.pageSize.getHeight();
+    const img=new Image(); img.onload=()=>{ const r=Math.min(W/img.width,H/img.height); const w=img.width*r,h=img.height*r; const x=(W-w)/2,y=(H-h)/2; pdf.addImage(dataUrl,'PNG',x,y,w,h); if(idx===PAGES.length-1) pdf.save(`aliboard_all_${Date.now()}.pdf`); };
+    img.src=dataUrl;
+  });
+  toggleMenu(false);
+},{passive:true});
+
+// Kolor / grubość
+document.getElementById('color').addEventListener('input', (e)=>{ color=e.target.value; updateState(); }, {passive:true});
+document.getElementById('size').addEventListener('change', (e)=>{ size=parseInt(e.target.value,10); updateState(); }, {passive:true});
+updateState();
+
+// Tools — NAPRAWA mobile: żaden kod nie przełącza narzędzia sam z siebie
+document.getElementById('tools').addEventListener('click', (e)=>{
+  const b = e.target.closest('[data-tool]'); if(!b) return;
+  setTool(b.getAttribute('data-tool'));
+}, {passive:true});
+
+// Skróty
+window.addEventListener('keydown', (e)=>{
+  if(e.key==='v'||e.key==='V') setTool(TOOLS.SELECT);
+  if(e.key==='p'||e.key==='P') setTool(TOOLS.PEN);
+  if(e.key==='l'||e.key==='L') setTool(TOOLS.LINE);
+  if(e.key==='e'||e.key==='E') setTool(TOOLS.ERASER);
+  if(e.key==='c'||e.key==='C') setTool(TOOLS.CROP);
+  if(e.key==='t'||e.key==='T') setTool(TOOLS.TEXT);
+  if(e.ctrlKey && e.key==='z'){ document.getElementById('undo').click(); }
+  if(e.ctrlKey && (e.key==='y' || (e.shiftKey && e.key==='Z'))){ document.getElementById('redo').click(); }
+});
+
+// ===== Autosave lokalny (ostatnia strona) =====
+const KEY='aliboard_v25_state';
+setInterval(()=>{ try{
+  const dump = PAGES.map(p=>({strokes:p.strokes, images:p.images}));
+  localStorage.setItem(KEY, JSON.stringify(dump));
+}catch(_){ }}, 30000);
+// restore
+try{
+  const raw = localStorage.getItem(KEY);
+  if(raw){
+    clearBoard();
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr) && arr.length){
+      pagesEl.innerHTML=''; PAGES=[];
+      arr.forEach((snap,i)=>{
+        const p = newPage();
+        p.strokes = snap.strokes||[]; p.images = snap.images||[];
+        renderAll(p);
+      });
+    }
+  }
+}catch(_){}
 })();
 </script>
 </body>
