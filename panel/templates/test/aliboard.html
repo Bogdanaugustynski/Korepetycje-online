@@ -88,9 +88,38 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
+  /* === PATCH: narzędzia bez obramowań + aktywny stan === */
+.toolrow .btn,
+.toolrow label.btn {
+  border: 0 !important;            /* usuwa obramowania tylko w pasku narzędzi */
+  box-shadow: none !important;
+}
+
+/* stan aktywny: zamiast obrysu — wypełnienie brandowe */
+.toolrow .btn.is-active {
+  outline: none !important;
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+}
+
+/* focus dla dostępności (klawiatura) */
+.toolrow .btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* elementy w labelach (kolor, select) — bez ramek */
+.toolrow .btn input[type="color"],
+.toolrow .btn select {
+  border: 0 !important;            /* nadpisuje inline style w <select> */
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
   @media (max-width: 900px){
     .left{min-width:unset}
-    .toolrow{gap:6px}
+    .toolrow{gap:4px}
     .btn{padding:8px}
   }
 </style>
