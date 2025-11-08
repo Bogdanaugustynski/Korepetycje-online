@@ -718,45 +718,10 @@
       const r = p.drawC.getBoundingClientRect();
       return { x: evt.clientX - r.left, y: evt.clientY - r.top };
     }
-    let drawing=false, startX=0, startY=0, current=null, cropping=false, drawingTool=null;
+    let drawing=false, startX=0, startY=0, current=null, cropping=false;
     const touchPointers = new Set();
     const activePointers = new Set();
-    const pointerPositions = new Map();
-    let multiPan=false, panLastY=null;
-
-    function abortActiveDrawing(){
-      if(!drawing) return;
-      if(drawingTool===TOOLS.PEN && current){
-        const idx = p.state.strokes.lastIndexOf(current);
-        if(idx>=0){ p.state.strokes.splice(idx,1); renderAll(p); }
-      }else if(drawingTool===TOOLS.LINE){
-        clearOverlay(p);
-      }else if(drawingTool===TOOLS.ERASER){
-        clearOverlay(p);
-      }
-      drawing=false;
-      drawingTool=null;
-      current=null;
-      p.state.dragging=null;
-    }
-    function avgTouchY(){
-      let sum=0,count=0;
-      touchPointers.forEach(id=>{
-        const pos = pointerPositions.get(id);
-        if(pos){ sum+=pos.y; count++; }
-      });
-      return count ? sum/count : null;
-    }
-    function updatePanFromTouches(){
-      if(!multiPan || touchPointers.size<2) return;
-      const meanY = avgTouchY();
-      if(meanY===null) return;
-      if(panLastY!==null){
-        wrapEl.scrollTop -= (meanY - panLastY);
-      }
-      panLastY = meanY;
-    }
-    function resetPanState(){ panLastY=null; }
+    let multiPan=false;
 
     function start(x,y){
       if(tool===TOOLS.SELECT){
@@ -787,7 +752,7 @@
       if(tool===TOOLS.TEXT){ openTextEditor(x,y,p); return; }
       if(tool===TOOLS.CROP){ beginCrop(x,y,p); cropping=true; return; }
 
-      drawing=true; drawingTool=tool; startX=x; startY=y; pushHistory(p);
+      drawing=true; startX=x; startY=y; pushHistory(p);
       if(tool===TOOLS.PEN){
         current={type:'pen', color, size, points:[{x,y}]}; p.state.strokes.push(current); renderAll(p);
       }else if(tool===TOOLS.LINE){
@@ -842,14 +807,13 @@
       if(tool===TOOLS.CROP && cropping){ cropping=false; finalizeCrop(x,y,p); return; }
       if(tool===TOOLS.ERASER){
         drawing=false;
-        drawingTool=null;
         clearOverlay(p);
         if(p.state.selection) drawSelection(p);
         return;
       }
       if(!drawing) return;
       if(tool===TOOLS.LINE){ clearOverlay(p); current.b={x,y}; p.state.strokes.push(current); renderAll(p); }
-      drawing=false; drawingTool=null; current=null;
+      drawing=false; current=null;
     }
 
     function trackTouch(e, isDown){
@@ -859,30 +823,18 @@
       const shouldPan = touchPointers.size>=2;
       if(shouldPan && !multiPan){
         multiPan = true;
-        resetPanState();
-        abortActiveDrawing();
-        p.state.dragging=null;
-        if(cropping){ cropCancel(); cropping=false; }
+        drawing=false;
         activePointers.clear();
         try{
           touchPointers.forEach(id=>{ try{ p.drawC.releasePointerCapture(id); }catch(_){} });
         }catch(_){}
-        const seed = avgTouchY();
-        if(seed!==null) panLastY = seed;
       }
-      if(!shouldPan){
-        multiPan=false;
-        resetPanState();
-      }
+      if(!shouldPan) multiPan=false;
     }
 
     p.drawC.addEventListener('pointerdown', (e)=>{
-      if(e.pointerType==='touch'){ pointerPositions.set(e.pointerId,{x:e.clientX,y:e.clientY}); }
       trackTouch(e, true);
-      if(multiPan){
-        updatePanFromTouches();
-        return;
-      }
+      if(multiPan) return;
       e.preventDefault();
       p.drawC.setPointerCapture(e.pointerId);
       const {x,y}=getXY(e);
@@ -890,20 +842,12 @@
       activePointers.add(e.pointerId);
     });
     p.drawC.addEventListener('pointermove', (e)=>{
-      if(e.pointerType==='touch'){ pointerPositions.set(e.pointerId,{x:e.clientX,y:e.clientY}); }
-      if(multiPan){
-        if(e.pointerType==='touch' && touchPointers.has(e.pointerId)){
-          e.preventDefault();
-          updatePanFromTouches();
-        }
-        return;
-      }
+      if(multiPan) return;
       if(tool!==TOOLS.SELECT || e.buttons) e.preventDefault();
       const {x,y}=getXY(e);
       move(x,y);
     });
     function handlePointerRelease(e){
-      pointerPositions.delete(e.pointerId);
       trackTouch(e, false);
       if(multiPan) return;
       if(!activePointers.has(e.pointerId)) return;
