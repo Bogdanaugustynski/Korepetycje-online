@@ -719,6 +719,9 @@
       return { x: evt.clientX - r.left, y: evt.clientY - r.top };
     }
     let drawing=false, startX=0, startY=0, current=null, cropping=false;
+    const touchPointers = new Set();
+    const activePointers = new Set();
+    let multiPan=false;
 
     function start(x,y){
       if(tool===TOOLS.SELECT){
@@ -813,9 +816,49 @@
       drawing=false; current=null;
     }
 
-    p.drawC.addEventListener('pointerdown', (e)=>{ e.preventDefault(); p.drawC.setPointerCapture(e.pointerId); const {x,y}=getXY(e); start(x,y); });
-    p.drawC.addEventListener('pointermove', (e)=>{ if(tool!==TOOLS.SELECT || e.buttons) e.preventDefault(); const {x,y}=getXY(e); move(x,y); });
-    p.drawC.addEventListener('pointerup',   (e)=>{ e.preventDefault(); const {x,y}=getXY(e); end(x,y); try{ p.drawC.releasePointerCapture(e.pointerId);}catch(_){}} );
+    function trackTouch(e, isDown){
+      if(e.pointerType!=='touch') return;
+      if(isDown){ touchPointers.add(e.pointerId); }
+      else{ touchPointers.delete(e.pointerId); }
+      const shouldPan = touchPointers.size>=2;
+      if(shouldPan && !multiPan){
+        multiPan = true;
+        drawing=false;
+        activePointers.clear();
+        try{
+          touchPointers.forEach(id=>{ try{ p.drawC.releasePointerCapture(id); }catch(_){} });
+        }catch(_){}
+      }
+      if(!shouldPan) multiPan=false;
+    }
+
+    p.drawC.addEventListener('pointerdown', (e)=>{
+      trackTouch(e, true);
+      if(multiPan) return;
+      e.preventDefault();
+      p.drawC.setPointerCapture(e.pointerId);
+      const {x,y}=getXY(e);
+      start(x,y);
+      activePointers.add(e.pointerId);
+    });
+    p.drawC.addEventListener('pointermove', (e)=>{
+      if(multiPan) return;
+      if(tool!==TOOLS.SELECT || e.buttons) e.preventDefault();
+      const {x,y}=getXY(e);
+      move(x,y);
+    });
+    function handlePointerRelease(e){
+      trackTouch(e, false);
+      if(multiPan) return;
+      if(!activePointers.has(e.pointerId)) return;
+      activePointers.delete(e.pointerId);
+      e.preventDefault();
+      const {x,y}=getXY(e);
+      end(x,y);
+      try{ p.drawC.releasePointerCapture(e.pointerId);}catch(_){}
+    }
+    p.drawC.addEventListener('pointerup', handlePointerRelease);
+    p.drawC.addEventListener('pointercancel', handlePointerRelease);
   }
 
   /* ---------- UI OGÓLNY ---------- */
