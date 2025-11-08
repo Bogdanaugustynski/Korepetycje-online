@@ -437,6 +437,113 @@
     return null;
   }
 
+  const HANDLE_MIN_SIZE = 12;
+  function cloneStrokeState(stroke){
+    if(!stroke) return null;
+    if(stroke.type==='pen'){
+      return {
+        type:stroke.type,
+        color:stroke.color,
+        size:stroke.size,
+        points: stroke.points.map(pt=>({x:pt.x, y:pt.y}))
+      };
+    }
+    if(stroke.type==='line'){
+      return {
+        type:stroke.type,
+        color:stroke.color,
+        size:stroke.size,
+        a:{...stroke.a},
+        b:{...stroke.b}
+      };
+    }
+    if(stroke.type==='text'){
+      return {...stroke};
+    }
+    return null;
+  }
+  function cloneImageState(im){
+    if(!im) return null;
+    return {x:im.x, y:im.y, w:im.w, h:im.h, meta:im.meta};
+  }
+  function computeScaledBBox(startBBox, handle, x, y){
+    let left = startBBox.x;
+    let right = startBBox.x + startBBox.w;
+    let top = startBBox.y;
+    let bottom = startBBox.y + startBBox.h;
+    switch(handle){
+      case 0: left = x; top = y; break;
+      case 1: top = y; break;
+      case 2: right = x; top = y; break;
+      case 3: left = x; break;
+      case 4: right = x; break;
+      case 5: left = x; bottom = y; break;
+      case 6: bottom = y; break;
+      case 7: right = x; bottom = y; break;
+    }
+    const moveLeft   = (handle===0||handle===3||handle===5);
+    const moveRight  = (handle===2||handle===4||handle===7);
+    const moveTop    = (handle===0||handle===1||handle===2);
+    const moveBottom = (handle===5||handle===6||handle===7);
+    if(right - left < HANDLE_MIN_SIZE){
+      if(moveLeft) left = right - HANDLE_MIN_SIZE;
+      else if(moveRight) right = left + HANDLE_MIN_SIZE;
+    }
+    if(bottom - top < HANDLE_MIN_SIZE){
+      if(moveTop) top = bottom - HANDLE_MIN_SIZE;
+      else if(moveBottom) bottom = top + HANDLE_MIN_SIZE;
+    }
+    const width = Math.max(HANDLE_MIN_SIZE, right - left);
+    const height = Math.max(HANDLE_MIN_SIZE, bottom - top);
+    return { x:left, y:top, w:width, h:height };
+  }
+  function scalePointRelative(pt, startBBox, nextBBox){
+    const rx = startBBox.w ? (pt.x - startBBox.x) / startBBox.w : 0;
+    const ry = startBBox.h ? (pt.y - startBBox.y) / startBBox.h : 0;
+    return {
+      x: nextBBox.x + rx * nextBBox.w,
+      y: nextBBox.y + ry * nextBBox.h
+    };
+  }
+  function computeScaleFactor(startBBox, nextBBox){
+    const vals = [];
+    if(startBBox.w) vals.push(Math.abs(nextBBox.w / startBBox.w));
+    if(startBBox.h) vals.push(Math.abs(nextBBox.h / startBBox.h));
+    if(!vals.length) return 1;
+    const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+    return avg || 1;
+  }
+  function applyScaledSelection(sel, drag, nextBBox, p){
+    if(sel.kind==='image'){
+      const im = p.state.images[sel.index];
+      if(!im) return;
+      im.x = nextBBox.x;
+      im.y = nextBBox.y;
+      im.w = Math.max(1, nextBBox.w);
+      im.h = Math.max(1, nextBBox.h);
+      return;
+    }
+    const stroke = p.state.strokes[sel.index];
+    const original = drag.original;
+    if(!stroke || !original) return;
+    if(stroke.type==='pen'){
+      stroke.points = original.points.map(pt=>scalePointRelative(pt, drag.startBBox, nextBBox));
+    }else if(stroke.type==='line'){
+      stroke.a = scalePointRelative(original.a, drag.startBBox, nextBBox);
+      stroke.b = scalePointRelative(original.b, drag.startBBox, nextBBox);
+    }else if(stroke.type==='text'){
+      const mapped = scalePointRelative({x:original.x, y:original.y}, drag.startBBox, nextBBox);
+      stroke.x = mapped.x;
+      stroke.y = mapped.y;
+    }
+    const factor = computeScaleFactor(drag.startBBox, nextBBox);
+    if(stroke.type==='pen' || stroke.type==='line'){
+      stroke.size = Math.max(0.5, original.size * factor);
+    }else if(stroke.type==='text'){
+      stroke.size = Math.max(1, original.size * factor);
+    }
+  }
+
   /* ---------- GUMKA PODŚWIETLA ---------- */
   function previewErase(pt, p){
     clearOverlay(p); if(p.state.selection) drawSelection(p);
@@ -618,7 +725,22 @@
         const pt={x,y};
         if(p.state.selection){
           const h = hitHandle(pt, p.state.selection.bbox);
-          if(h>=0){ p.state.dragging={mode:'scale', handle:h, startX:x, startY:y}; pushHistory(p); return; }
+          if(h>=0){
+            const sel = p.state.selection;
+            const original = sel.kind==='image'
+              ? cloneImageState(p.state.images[sel.index])
+              : cloneStrokeState(p.state.strokes[sel.index]);
+            p.state.dragging={
+              mode:'scale',
+              handle:h,
+              startX:x,
+              startY:y,
+              startBBox:{...sel.bbox},
+              original
+            };
+            pushHistory(p);
+            return;
+          }
           const b=p.state.selection.bbox;
           if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ p.state.dragging={mode:'move', startX:x, startY:y}; pushHistory(p); return; }
         }
@@ -633,27 +755,41 @@
       }else if(tool===TOOLS.LINE){
         current={type:'line', color, size, a:{x,y}, b:{x,y}}; clearOverlay(p);
       }else if(tool===TOOLS.ERASER){
-        eraseAt({x,y},p); drawing=false; current=null;
+        eraseAt({x,y},p);
+        current=null;
       }
     }
     function move(x,y){
       if(tool===TOOLS.SELECT){
         const d=p.state.dragging;
-        if(d && p.state.selection){
-          const dx=x-d.startX, dy=y-d.startY; d.startX=x; d.startY=y;
-          const sel=p.state.selection;
-          if(sel.kind==='image'){ const im=p.state.images[sel.index]; im.x+=dx; im.y+=dy; sel.bbox.x+=dx; sel.bbox.y+=dy; }
-          else{ const s=p.state.strokes[sel.index];
-                if(s.type==='pen') s.points.forEach(pt=>{pt.x+=dx;pt.y+=dy;});
-                if(s.type==='line'){ s.a.x+=dx; s.a.y+=dy; s.b.x+=dx; s.b.y+=dy; }
-                if(s.type==='text'){ s.x+=dx; s.y+=dy; }
-                sel.bbox=bboxStroke(s); }
+        const sel=p.state.selection;
+        if(d && sel){
+          if(d.mode==='move'){
+            const dx=x-d.startX, dy=y-d.startY; d.startX=x; d.startY=y;
+            if(sel.kind==='image'){
+              const im=p.state.images[sel.index]; im.x+=dx; im.y+=dy; sel.bbox.x+=dx; sel.bbox.y+=dy;
+            }else{
+              const s=p.state.strokes[sel.index];
+              if(s.type==='pen') s.points.forEach(pt=>{pt.x+=dx;pt.y+=dy;});
+              if(s.type==='line'){ s.a.x+=dx; s.a.y+=dy; s.b.x+=dx; s.b.y+=dy; }
+              if(s.type==='text'){ s.x+=dx; s.y+=dy; }
+              sel.bbox=bboxStroke(s);
+            }
+          }else if(d.mode==='scale'){
+            const nextBBox = computeScaledBBox(d.startBBox, d.handle, x, y);
+            applyScaledSelection(sel, d, nextBBox, p);
+            sel.bbox = nextBBox;
+          }
           renderAll(p); drawSelection(p);
         }
         return;
       }
       if(tool===TOOLS.CROP && cropping){ updateCrop(x,y,p); return; }
-      if(tool===TOOLS.ERASER){ previewErase({x,y},p); return; }
+      if(tool===TOOLS.ERASER){
+        if(drawing){ eraseAt({x,y},p); }
+        else{ previewErase({x,y},p); }
+        return;
+      }
       if(!drawing) return;
 
       if(tool===TOOLS.PEN){ current.points.push({x,y}); renderAll(p); }
@@ -666,6 +802,12 @@
     function end(x,y){
       if(tool===TOOLS.SELECT){ p.state.dragging=null; return; }
       if(tool===TOOLS.CROP && cropping){ cropping=false; finalizeCrop(x,y,p); return; }
+      if(tool===TOOLS.ERASER){
+        drawing=false;
+        clearOverlay(p);
+        if(p.state.selection) drawSelection(p);
+        return;
+      }
       if(!drawing) return;
       if(tool===TOOLS.LINE){ clearOverlay(p); current.b={x,y}; p.state.strokes.push(current); renderAll(p); }
       drawing=false; current=null;
