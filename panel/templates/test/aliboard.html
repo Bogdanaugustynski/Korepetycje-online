@@ -251,7 +251,7 @@
   function makeEmptyPageState(){
     return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null };
   }
-  const PAGES = []; // {el, gridC, drawC, ovlC, g, ctx, ovl, state}
+  const PAGES = [];
   function currentPage(){ return PAGES[PAGES.length-1] || null; }
 
   /* ---------- TWORZENIE STRONY ---------- */
@@ -467,7 +467,6 @@
   }
   function eraseAt(pt,p){
     const eps = Math.max(6, size*2);
-    // kasuje wszystkie trafione obiekty (nie tylko pierwszy)
     let removed=false;
     for(let i=p.state.strokes.length-1;i>=0;i--){
       const s = p.state.strokes[i];
@@ -507,26 +506,26 @@
     const dpr = window.devicePixelRatio || 1;
     const W = p.drawC.width / dpr, H = p.drawC.height / dpr;
     const tmp = document.createElement('canvas'); tmp.width=W; tmp.height=H;
-    const tctx = tmp.getContext('2d');
+    theContext = tmp.getContext('2d');
 
     if(gridSize){
-      tctx.save(); tctx.strokeStyle='#e6edff'; tctx.lineWidth=1;
-      for(let x=0;x<=W;x+=gridSize){ tctx.beginPath(); tctx.moveTo(x,0); tctx.lineTo(x,H); tctx.stroke(); }
-      for(let y=0;y<=H;y+=gridSize){ tctx.beginPath(); tctx.moveTo(0,y); tctx.lineTo(W,y); tctx.stroke(); }
-      tctx.restore();
+      theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
+      for(let x=0;x<=W;x+=gridSize){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,H); theContext.stroke(); }
+      for(let y=0;y<=H;y+=gridSize){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(W,y); theContext.stroke(); }
+      theContext.restore();
     }
     await Promise.all(p.state.images.map(im => im.img ? Promise.resolve() : new Promise(res=>{ const el=new Image(); el.onload=()=>{im.img=el; res();}; el.src=im.src; })));
-    for(const im of p.state.images){ if(im.img) tctx.drawImage(im.img, im.x, im.y, im.w, im.h); }
+    for(const im of p.state.images){ if(im.img) theContext.drawImage(im.img, im.x, im.y, im.w, im.h); }
 
-    tctx.lineCap='round'; tctx.lineJoin='round';
+    theContext.lineCap='round'; theContext.lineJoin='round';
     for(const s of p.state.strokes){
       if(s.type==='pen'){
-        tctx.strokeStyle=s.color; tctx.lineWidth=s.size; const pts=s.points; if(!pts.length) continue;
-        tctx.beginPath(); tctx.moveTo(pts[0].x, pts[0].y); for(let i=1;i<pts.length;i++){ tctx.lineTo(pts[i].x, pts[i].y); } tctx.stroke();
+        theContext.strokeStyle=s.color; theContext.lineWidth=s.size; const pts=s.points; if(!pts.length) continue;
+        theContext.beginPath(); theContext.moveTo(pts[0].x, pts[0].y); for(let i=1;i<pts.length;i++){ theContext.lineTo(pts[i].x, pts[i].y); } theContext.stroke();
       }else if(s.type==='line'){
-        tctx.strokeStyle=s.color; tctx.lineWidth=s.size; tctx.beginPath(); tctx.moveTo(s.a.x,s.a.y); tctx.lineTo(s.b.x,s.b.y); tctx.stroke();
+        theContext.strokeStyle=s.color; theContext.lineWidth=s.size; theContext.beginPath(); theContext.moveTo(s.a.x,s.a.y); theContext.lineTo(s.b.x,s.b.y); theContext.stroke();
       }else if(s.type==='text'){
-        tctx.save(); tctx.fillStyle=s.color; tctx.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`; tctx.textBaseline='top'; tctx.fillText(s.text, s.x, s.y); tctx.restore();
+        theContext.save(); theContext.fillStyle=s.color; theContext.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`; theContext.textBaseline='top'; theContext.fillText(s.text, s.x, s.y); theContext.restore();
       }
     }
     return tmp;
@@ -781,9 +780,10 @@
     const url = c.toDataURL('image/png');
     const rect=p.el.getBoundingClientRect();
     const ratio = Math.min(rect.width/c.width, rect.height/c.height);
-    const w = Math.max(120, c.width*ratio), h=Math.max(120, c.height*ratio);
-    const x = (rect.width-w)/2, y=(rect.height-h)/2;
-    addImageFromSrc(url, w, h, x, y, {pdf:true,page:pageNum}, p);
+    theWidth = Math.max(120, c.width*ratio);
+    theHeight=Math.max(120, c.height*ratio);
+    const x = (rect.width-theWidth)/2, y=(rect.height-theHeight)/2;
+    addImageFromSrc(url, theWidth, theHeight, x, y, {pdf:true,page:pageNum}, p);
     e.target.value='';
   });
 
