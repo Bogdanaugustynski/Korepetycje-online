@@ -51,8 +51,18 @@
   .drop-item.primary{background:var(--brand);color:#fff;border-color:transparent}
 
   /* Obszar kartek */
-  .wrap{ height:calc(100% - 64px); overflow:auto; padding:16px; }
-  .pages{ display:flex; flex-direction:column; align-items:center; gap:24px; }
+  .wrap{
+    height:calc(100% - 64px);
+    overflow:auto;
+    padding:16px;
+    overscroll-behavior:contain;
+    overflow-anchor:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .pages{
+    display:flex; flex-direction:column; align-items:center; gap:24px;
+    overflow-anchor:none;
+  }
   .page{
     position:relative; background:#fff; border:1px solid var(--line);
     border-radius:12px; box-shadow:0 8px 30px rgba(11,116,255,.10);
@@ -725,6 +735,17 @@
     let panCentroidY=null;             // poprzedni centroid dotyków (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
 
+    function currentTouchCentroid(){
+      let sumY=0, cnt=0;
+      touchPointers.forEach(id=>{
+        if(pointerPosY.has(id)){
+          sumY += pointerPosY.get(id);
+          cnt++;
+        }
+      });
+      return cnt>=2 ? sumY / cnt : null;
+    }
+
     function start(x,y){
       if(tool===TOOLS.SELECT){
         const pt={x,y};
@@ -832,13 +853,16 @@
         multiPan = true;
         drawing = false;
         activePointers.clear();
-        panCentroidY = null;
+        panCentroidY = currentTouchCentroid();
         try{
           touchPointers.forEach(id=>{ try{ p.drawC.releasePointerCapture(id); }catch(_){} });
         }catch(_){}
       }else if(!shouldPan && multiPan){
         multiPan = false;
         panCentroidY = null;
+      }else if(shouldPan && multiPan){
+        const centroid = currentTouchCentroid();
+        if(centroid!==null){ panCentroidY = centroid; }
       }
     }
 
@@ -856,12 +880,8 @@
       if(multiPan){
         e.preventDefault();
         if(e.pointerType==='touch'){ pointerPosY.set(e.pointerId, e.clientY); }
-        let sumY=0, cnt=0;
-        touchPointers.forEach(id=>{
-          if(pointerPosY.has(id)){ sumY += pointerPosY.get(id); cnt++; }
-        });
-        if(cnt>=2){
-          const cy = sumY / cnt;
+        const cy = currentTouchCentroid();
+        if(cy!==null){
           if(panCentroidY!==null){
             const dy = cy - panCentroidY;
             wrapEl.scrollTop -= dy;
@@ -878,6 +898,8 @@
       trackTouch(e, false);
       if(multiPan){
         pointerPosY.delete(e.pointerId);
+        const cy = currentTouchCentroid();
+        if(cy!==null){ panCentroidY = cy; }
         return;
       }
       if(!activePointers.has(e.pointerId)) return;
@@ -1003,7 +1025,12 @@
   });
 
   // AUTODODAWANIE KARTKI przy przewijaniu
-  wrapEl.addEventListener('scroll', ()=>{ const nearBottom = wrapEl.scrollTop + wrapEl.clientHeight >= wrapEl.scrollHeight - 80; if(nearBottom){ createPage(false); } }, {passive:true});
+  wrapEl.addEventListener('scroll', ()=>{
+    const nearBottom = wrapEl.scrollTop + wrapEl.clientHeight >= wrapEl.scrollHeight - 80;
+    if(nearBottom){
+      createPage(false);
+    }
+  }, {passive:true});
 
   // AUTOSAVE wielostronicowy
   const AUTOSAVE_KEY='aliboard_v25_state';
