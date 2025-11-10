@@ -1082,40 +1082,118 @@
     }catch(_){ return false; }
   }
 
-  // === Mini-menu „⋯ Więcej” (tworzone automatycznie, jeśli nie ma w HTML) ===
+  // [CODEX:BEGIN OVERFLOW_MENU]
   (function setupToolsOverflow(){
-    const afterNode = toolsRow;
-    let moreBtn  = document.getElementById('toolsMoreBtn');
-    let moreBox  = document.getElementById('toolsMorePanel');
+    const toolsRow = document.getElementById('tools');
+    if(!toolsRow) return;
+
+    // 1) Utwórz przycisk „⋯” i panel overflow zaraz obok paska narzędzi, jeśli nie istnieją
+    let moreBtn = document.getElementById('toolsMoreBtn');
+    let moreBox = document.getElementById('toolsMorePanel');
+
     if(!moreBtn){
       moreBtn = document.createElement('button');
-      moreBtn.id = 'toolsMoreBtn'; moreBtn.className = 'btn'; moreBtn.type='button';
-      moreBtn.title='Więcej narzędzi'; moreBtn.textContent='⋯';
-      afterNode.insertAdjacentElement('afterend', moreBtn);
+      moreBtn.id = 'toolsMoreBtn';
+      moreBtn.className = 'btn';
+      moreBtn.type = 'button';
+      moreBtn.title = 'Więcej narzędzi';
+      moreBtn.textContent = '⋯';
+      toolsRow.insertAdjacentElement('afterend', moreBtn);
     }
     if(!moreBox){
       moreBox = document.createElement('div');
-      moreBox.id='toolsMorePanel'; moreBox.className='dropdown'; moreBox.style.left='0'; moreBox.style.right='auto';
+      moreBox.id = 'toolsMorePanel';
+      moreBox.className = 'dropdown';
+      // otwieramy w lewo, obok paska narzędzi
+      moreBox.style.left = '0';
+      moreBox.style.right = 'auto';
       moreBtn.insertAdjacentElement('afterend', moreBox);
     }
 
+    // 2) Oznacz „klejone” (nigdy nie przenoszone) narzędzia – rdzeń paska
+    //    (możesz dopasować listę; domyślnie trzymamy: select, pen, line, eraser)
+    const stickySelectors = [
+      '[data-tool="select"]',
+      '[data-tool="pen"]',
+      '[data-tool="line"]',
+      '[data-tool="eraser"]'
+    ];
+    const stickySet = new Set(
+      stickySelectors
+        .map(sel => toolsRow.querySelector(sel))
+        .filter(Boolean)
+    );
+
+    // 3) Funkcja: przenieś elementy z overflow z powrotem do głównego rzędu
+    function restoreFromOverflow(){
+      // przywróć wszystko co było upchnięte
+      [...moreBox.children].forEach(node => toolsRow.appendChild(node));
+    }
+
+    // 4) Funkcja: wylicz które elementy trzeba schować do „⋯”, aż przestanie się przelewać
     function rebalanceTools(){
       if(!toolsRow) return;
-      [...moreBox.children].forEach(node => toolsRow.appendChild(node));
-      if (toolsRow.scrollWidth <= toolsRow.clientWidth){ moreBtn.style.display='none'; return; }
 
-      const candidates = [...toolsRow.querySelectorAll('[data-overflow="1"]')].reverse();
+      // najpierw przywróć
+      restoreFromOverflow();
+
+      // jeśli wszystko się mieści — ukryj „⋯” i wyjdź
+      if (toolsRow.scrollWidth <= toolsRow.clientWidth){
+        moreBtn.style.display = 'none';
+        moreBox.classList.remove('open');
+        return;
+      }
+
+      // KANDYDACI: wszystkie dzieci z toolsRow oprócz „sticky”, brane od PRAWEJ (ostatnie do pierwszego)
+      const children = [...toolsRow.children];
+      const candidates = [];
+      for(let i = children.length - 1; i >= 0; i--){
+        const el = children[i];
+        if (el === moreBtn) continue; // (gdyby przycisk trafił do paska)
+        if (stickySet.has(el)) continue;
+        candidates.push(el);
+      }
+
+      // przerzucaj po jednym do overflow do momentu aż się zmieści
       for(const el of candidates){
         if (toolsRow.scrollWidth <= toolsRow.clientWidth) break;
         moreBox.appendChild(el);
       }
+
+      // pokaż „⋯”, jeśli cokolwiek trafiło do overflow
       moreBtn.style.display = moreBox.children.length ? 'inline-flex' : 'none';
     }
-    moreBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); e.stopPropagation(); moreBox.classList.toggle('open'); });
-    document.addEventListener('pointerdown', (e)=>{ if(!moreBox.contains(e.target) && e.target!==moreBtn){ moreBox.classList.remove('open'); } });
-    window.addEventListener('load', rebalanceTools, {once:true});
+
+    // 5) Toggling panelu overflow
+    moreBtn.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      moreBox.classList.toggle('open');
+    });
+    document.addEventListener('pointerdown', (e)=>{
+      if(!moreBox.contains(e.target) && e.target !== moreBtn){
+        moreBox.classList.remove('open');
+      }
+    });
+
+    // 6) Rebalans po załadowaniu i na resize
+    window.addEventListener('load', rebalanceTools, { once: true });
     window.addEventListener('resize', rebalanceTools);
+
+    // 7) Obsługa „tap” na elementach przeniesionych do overflow:
+    //    delegujemy kliknięcia, żeby zachowały się identycznie jak w głównym rzędzie
+    moreBox.addEventListener('pointerdown', (e)=>{
+      const btn = e.target.closest('button, label');
+      if(!btn) return;
+      setTimeout(()=> moreBox.classList.remove('open'), 0);
+    });
+
+    // 8) Publiczny hook: gdyby coś dynamicznie dodało narzędzie — spróbuj zbalansować ponownie
+    const ro = new ResizeObserver(()=> rebalanceTools());
+    ro.observe(toolsRow);
+
   })();
+  // [CODEX:END OVERFLOW_MENU]
 
   // START
   if(!restoreLocal()){ createPage(false); }
