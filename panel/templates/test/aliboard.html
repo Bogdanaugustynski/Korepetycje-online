@@ -1169,33 +1169,31 @@
     function rebalanceTools(){
       if(!toolsRow) return;
 
-      // najpierw przywróć
-      restoreFromOverflow();
+      // 1) Oddaj wszystko z powrotem na pasek
+      [...moreBox.children].forEach(node => toolsRow.appendChild(node));
 
-      // jeśli wszystko się mieści — ukryj „⋯” i wyjdź
-      if (toolsRow.scrollWidth <= toolsRow.clientWidth){
+      // 2) Jeśli wszystko się mieści — ukryj „⋯” i wyjdź
+      if (toolsRow.scrollWidth <= toolsRow.clientWidth) {
         moreBtn.style.display = 'none';
         moreBox.classList.remove('open');
         return;
       }
 
-      // KANDYDACI: wszystkie dzieci z toolsRow oprócz „sticky”, brane od PRAWEJ (ostatnie do pierwszego)
-      const children = [...toolsRow.children];
-      const candidates = [];
-      for(let i = children.length - 1; i >= 0; i--){
-        const el = children[i];
-        if (el === moreBtn) continue; // (gdyby przycisk trafił do paska)
-        if (stickySet.has(el)) continue;
-        candidates.push(el);
-      }
+      // 3) Zdefiniuj narzędzia "kluczowe", które zostają na pasku
+      const essential = new Set(['select','pen','line','eraser','text','crop']);
 
-      // przerzucaj po jednym do overflow do momentu aż się zmieści
-      for(const el of candidates){
+      // 4) Weź przyciski w kolejności od prawej do lewej i przenoś nadmiar
+      const items = [...toolsRow.querySelectorAll('[data-tool], label.btn, #color, #size, #imgInput, #pdfInput, #undo, #redo, #clear')];
+      const ordered = items.reverse();
+
+      for (const el of ordered){
+        const t = el.getAttribute && el.getAttribute('data-tool');
+        if (t && essential.has(t)) continue;
+        moreBox.appendChild(el.closest('label.btn') || el);
         if (toolsRow.scrollWidth <= toolsRow.clientWidth) break;
-        moreBox.appendChild(el);
       }
 
-      // pokaż „⋯”, jeśli cokolwiek trafiło do overflow
+      // 5) Pokaż przycisk „⋯” tylko, jeśli coś trafiło do panelu
       moreBtn.style.display = moreBox.children.length ? 'inline-flex' : 'none';
     }
 
