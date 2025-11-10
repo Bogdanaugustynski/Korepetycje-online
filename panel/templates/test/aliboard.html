@@ -734,6 +734,17 @@
     let multiPan=false;                // tryb dwupalczastego scrolla
     let panCentroidY=null;             // poprzedni centroid dotyków (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
+    let panIdleTimer=null;
+    const PAN_IDLE_MS = 350;
+
+    function endMultiPan(reason){
+      multiPan=false;
+      panCentroidY=null;
+      pointerPosY.clear();
+      touchPointers.clear();
+      activePointers.clear();
+      if(panIdleTimer){ clearTimeout(panIdleTimer); panIdleTimer=null; }
+    }
 
     function currentTouchCentroid(){
       let sumY=0, cnt=0;
@@ -854,15 +865,18 @@
         drawing = false;
         activePointers.clear();
         panCentroidY = currentTouchCentroid();
+        if(panIdleTimer) clearTimeout(panIdleTimer);
+        panIdleTimer = setTimeout(()=>{ endMultiPan('idle-start'); }, PAN_IDLE_MS);
         try{
           touchPointers.forEach(id=>{ try{ p.drawC.releasePointerCapture(id); }catch(_){} });
         }catch(_){}
       }else if(!shouldPan && multiPan){
-        multiPan = false;
-        panCentroidY = null;
+        endMultiPan('pointer-drop');
       }else if(shouldPan && multiPan){
         const centroid = currentTouchCentroid();
         if(centroid!==null){ panCentroidY = centroid; }
+        if(panIdleTimer) clearTimeout(panIdleTimer);
+        panIdleTimer = setTimeout(()=>{ endMultiPan('idle-change'); }, PAN_IDLE_MS);
       }
     }
 
@@ -875,7 +889,7 @@
       const {x,y}=getXY(e);
       start(x,y);
       activePointers.add(e.pointerId);
-    });
+    }, {passive:false});
     p.drawC.addEventListener('pointermove', (e)=>{
       if(multiPan){
         e.preventDefault();
@@ -887,13 +901,15 @@
             wrapEl.scrollTop -= dy;
           }
           panCentroidY = cy;
+          if(panIdleTimer) clearTimeout(panIdleTimer);
+          panIdleTimer = setTimeout(()=>{ endMultiPan('idle'); }, PAN_IDLE_MS);
         }
         return;
       }
       if(tool!==TOOLS.SELECT || e.buttons) e.preventDefault();
       const {x,y}=getXY(e);
       move(x,y);
-    });
+    }, {passive:false});
     function handlePointerRelease(e){
       trackTouch(e, false);
       if(multiPan){
@@ -909,8 +925,23 @@
       end(x,y);
       try{ p.drawC.releasePointerCapture(e.pointerId);}catch(_){}
     }
-    p.drawC.addEventListener('pointerup', handlePointerRelease);
-    p.drawC.addEventListener('pointercancel', handlePointerRelease);
+    p.drawC.addEventListener('pointerup', handlePointerRelease, {passive:false});
+    p.drawC.addEventListener('pointercancel', handlePointerRelease, {passive:false});
+
+    function globalTouchCleanup(e, isDown){
+      if(e.pointerType && e.pointerType!=='touch') return;
+      if(isDown) return;
+      if(pointerPosY.has(e.pointerId)) pointerPosY.delete(e.pointerId);
+      if(touchPointers.has(e.pointerId)) touchPointers.delete(e.pointerId);
+      if(touchPointers.size<2 && multiPan){
+        endMultiPan('global-release');
+      }
+    }
+    window.addEventListener('pointerup', (e)=>globalTouchCleanup(e,false), {passive:false});
+    window.addEventListener('pointercancel', (e)=>globalTouchCleanup(e,false), {passive:false});
+    window.addEventListener('touchend', ()=>{ if(multiPan) endMultiPan('touchend'); }, {passive:false});
+    window.addEventListener('touchcancel', ()=>{ if(multiPan) endMultiPan('touchcancel'); }, {passive:false});
+    document.addEventListener('visibilitychange', ()=>{ if(document.hidden && multiPan){ endMultiPan('hidden'); } });
   }
 
   /* ---------- UI OGÓLNY ---------- */
