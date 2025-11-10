@@ -719,9 +719,11 @@
       return { x: evt.clientX - r.left, y: evt.clientY - r.top };
     }
     let drawing=false, startX=0, startY=0, current=null, cropping=false;
-    const touchPointers = new Set();
+    const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
-    let multiPan=false;
+    let multiPan=false;                // tryb dwupalczastego scrolla
+    let panCentroidY=null;             // poprzedni centroid dotyków (Y)
+    const pointerPosY = new Map();     // pointerId -> ostatni clientY
 
     function start(x,y){
       if(tool===TOOLS.SELECT){
@@ -818,18 +820,26 @@
 
     function trackTouch(e, isDown){
       if(e.pointerType!=='touch') return;
-      if(isDown){ touchPointers.add(e.pointerId); }
-      else{ touchPointers.delete(e.pointerId); }
-      const shouldPan = touchPointers.size>=2;
+      if(isDown){
+        touchPointers.add(e.pointerId);
+        pointerPosY.set(e.pointerId, e.clientY);
+      }else{
+        touchPointers.delete(e.pointerId);
+        pointerPosY.delete(e.pointerId);
+      }
+      const shouldPan = touchPointers.size >= 2;
       if(shouldPan && !multiPan){
         multiPan = true;
-        drawing=false;
+        drawing = false;
         activePointers.clear();
+        panCentroidY = null;
         try{
           touchPointers.forEach(id=>{ try{ p.drawC.releasePointerCapture(id); }catch(_){} });
         }catch(_){}
+      }else if(!shouldPan && multiPan){
+        multiPan = false;
+        panCentroidY = null;
       }
-      if(!shouldPan) multiPan=false;
     }
 
     p.drawC.addEventListener('pointerdown', (e)=>{
@@ -837,19 +847,39 @@
       if(multiPan) return;
       e.preventDefault();
       p.drawC.setPointerCapture(e.pointerId);
+      pointerPosY.set(e.pointerId, e.clientY);
       const {x,y}=getXY(e);
       start(x,y);
       activePointers.add(e.pointerId);
     });
     p.drawC.addEventListener('pointermove', (e)=>{
-      if(multiPan) return;
+      if(multiPan){
+        e.preventDefault();
+        if(e.pointerType==='touch'){ pointerPosY.set(e.pointerId, e.clientY); }
+        let sumY=0, cnt=0;
+        touchPointers.forEach(id=>{
+          if(pointerPosY.has(id)){ sumY += pointerPosY.get(id); cnt++; }
+        });
+        if(cnt>=2){
+          const cy = sumY / cnt;
+          if(panCentroidY!==null){
+            const dy = cy - panCentroidY;
+            wrapEl.scrollTop -= dy;
+          }
+          panCentroidY = cy;
+        }
+        return;
+      }
       if(tool!==TOOLS.SELECT || e.buttons) e.preventDefault();
       const {x,y}=getXY(e);
       move(x,y);
     });
     function handlePointerRelease(e){
       trackTouch(e, false);
-      if(multiPan) return;
+      if(multiPan){
+        pointerPosY.delete(e.pointerId);
+        return;
+      }
       if(!activePointers.has(e.pointerId)) return;
       activePointers.delete(e.pointerId);
       e.preventDefault();
