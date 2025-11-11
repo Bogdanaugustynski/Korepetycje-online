@@ -273,16 +273,17 @@
       <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown">☰ Menu</button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
-          <div class="drop-title">Zapisz (aktualna strona)</div>
-          <div class="drop-row">
-            <button class="drop-item primary" type="button" id="savePng">💾 PNG</button>
+          <button class="drop-item primary" type="button" id="saveToggle">Zapisz</button>
+          <div class="drop-row" id="saveRow" style="display:none">
+            <button class="drop-item" type="button" id="savePng">💾 PNG</button>
             <button class="drop-item" type="button" id="saveJpg">🖼️ JPG</button>
             <button class="drop-item" type="button" id="savePdf">📄 PDF</button>
           </div>
         </div>
         <div class="drop-group">
-          <div class="drop-title">Siatka</div>
-          <div class="drop-row">
+          <button class="drop-item" type="button" id="templatesToggle">Szablony</button>
+          <button class="drop-item" type="button" id="gridToggle" style="display:none">Siatka</button>
+          <div class="drop-row" id="templatesRow" style="display:none">
             <button class="drop-item" type="button" data-grid="0">Brak</button>
             <button class="drop-item" type="button" data-grid="16">Mała</button>
             <button class="drop-item" type="button" data-grid="24">Średnia</button>
@@ -326,18 +327,19 @@
   const stateEl = document.getElementById('state');
   let figureBtn = document.querySelector('[data-tool="figure"]');
   let figurePalette = null;
+  let selectionRotateEnabled = false;
 
   function ensureFigurePalette(){
     if(figurePalette) return;
     figurePalette = document.createElement('div');
     figurePalette.className = 'figure-palette';
-  figurePalette.innerHTML = `
-    <button class="shape-btn" data-shape="rect" title="Kwadrat / Prostokąt">▭</button>
-    <button class="shape-btn" data-shape="tri_iso" title="Trójkąt (równoramienny)">▵</button>
-    <button class="shape-btn" data-shape="tri_right" title="Trójkąt prostokątny">◺</button>
-    <button class="shape-btn" data-shape="hex" title="Sześciokąt">⬡</button>
-    <button class="shape-btn" data-shape="circle" title="Koło">◯</button>
-  `;
+    figurePalette.innerHTML = `
+      <button class="shape-btn" data-shape="rect" title="Kwadrat / Prostokąt">▭</button>
+      <button class="shape-btn" data-shape="tri_iso" title="Trójkąt (równoramienny)">▵</button>
+      <button class="shape-btn" data-shape="tri_right" title="Trójkąt prostokątny">◺</button>
+      <button class="shape-btn" data-shape="hex" title="Sześciokąt">⬡</button>
+      <button class="shape-btn" data-shape="circle" title="Koło">◯</button>
+    `;
     document.body.appendChild(figurePalette);
     updateFigurePaletteSelection();
   }
@@ -555,14 +557,29 @@
   }
   function drawSelection(p){
     clearOverlay(p);
-    const sel = p.state.selection; if(!sel) return;
+    const sel = p.state.selection;
+    selectionRotateEnabled = false;
+    if(!sel) return;
     const b = sel.bbox;
+    const canRotate = sel.kind==='stroke' && p.state.strokes[sel.index]?.type==='poly';
+    selectionRotateEnabled = canRotate;
     p.ovl.save();
     p.ovl.strokeStyle = '#0b74ff'; p.ovl.lineWidth = 1.5;
     p.ovl.setLineDash([6,4]); p.ovl.strokeRect(b.x, b.y, b.w, b.h); p.ovl.setLineDash([]);
     const hs = HANDLE_SIZE, pts = handlePoints(b);
     p.ovl.fillStyle='#fff'; p.ovl.strokeStyle='#0b74ff'; p.ovl.lineWidth=2;
     for(const h of pts){ p.ovl.beginPath(); p.ovl.rect(h.x-hs/2, h.y-hs/2, hs, hs); p.ovl.fill(); p.ovl.stroke(); }
+    if(canRotate){
+      const rotate={x:b.x+b.w/2,y:b.y-30};
+      p.ovl.beginPath();
+      p.ovl.moveTo(b.x+b.w/2,b.y);
+      p.ovl.lineTo(rotate.x, rotate.y);
+      p.ovl.stroke();
+      p.ovl.beginPath();
+      p.ovl.arc(rotate.x, rotate.y, hs/1.5, 0, Math.PI*2);
+      p.ovl.fill();
+      p.ovl.stroke();
+    }
     p.ovl.restore();
   }
   function handlePoints(b){
@@ -577,6 +594,10 @@
     const hs=HANDLE_SIZE, pts=handlePoints(b);
     for(let i=0;i<pts.length;i++){
       if(Math.abs(pxy.x-pts[i].x)<=hs && Math.abs(pxy.y-pts[i].y)<=hs) return i;
+    }
+    if(selectionRotateEnabled){
+      const rotate = {x:b.x+b.w/2, y:b.y-30};
+      if(Math.hypot(pxy.x-rotate.x, pxy.y-rotate.y)<=hs) return ROTATE_HANDLE;
     }
     return -1;
   }
@@ -1040,7 +1061,24 @@ function textDimensions(s){
         const pt={x,y};
         if(p.state.selection){
           const h = hitHandle(pt, p.state.selection.bbox);
-          if(h>=0){
+          if(h===ROTATE_HANDLE){
+            const sel = p.state.selection;
+            if(sel.kind==='stroke'){
+              const s = p.state.strokes[sel.index];
+              if(s.type==='poly'){
+                const center = {x: sel.bbox.x + sel.bbox.w/2, y: sel.bbox.y + sel.bbox.h/2};
+                p.state.dragging={
+                  mode:'rotate',
+                  startAngle: Math.atan2(y-center.y, x-center.x),
+                  center,
+                  original: cloneStrokeState(s)
+                };
+                pushHistory(p);
+                return;
+              }
+            }
+            return;
+          }else if(h>=0){
             const sel = p.state.selection;
             const original = sel.kind==='image'
               ? cloneImageState(p.state.images[sel.index])
@@ -1101,6 +1139,16 @@ function textDimensions(s){
             const nextBBox = computeScaledBBox(d.startBBox, d.handle, x, y);
             applyScaledSelection(sel, d, nextBBox, p);
             sel.bbox = nextBBox;
+          }else if(d.mode==='rotate'){
+            if(sel.kind==='stroke'){
+              const s = p.state.strokes[sel.index];
+              if(s && s.type==='poly'){
+                const angle = Math.atan2(y-d.center.y, x-d.center.x);
+                const delta = angle - d.startAngle;
+                s.points = d.original.points.map(pt=>rotatePointAround(pt, d.center, delta));
+                sel.bbox = bboxStroke(s);
+              }
+            }
           }
           renderAll(p); drawSelection(p);
         }
@@ -1275,17 +1323,12 @@ function textDimensions(s){
   toolsRow.addEventListener('pointerdown', (e)=>{
     const b = e.target.closest('[data-tool]'); if(!b) return;
     e.preventDefault();
-    setTool(b.getAttribute('data-tool'));
-  });
-  document.addEventListener('pointerdown', (e)=>{
-    const btn = e.target.closest('[data-tool="figure"]');
-    if(btn){
-      e.preventDefault();
-      e.stopPropagation();
-      figureBtn = btn;
-      setTool(TOOLS.FIGURE);
+    const toolName = b.getAttribute('data-tool');
+    setTool(toolName);
+    if(toolName===TOOLS.FIGURE){
+      figureBtn = b;
       toggleFigurePalette(true);
-    }else if(figurePalette && !figurePalette.contains(e.target)){
+    }else{
       toggleFigurePalette(false);
     }
   });
@@ -1300,6 +1343,10 @@ function textDimensions(s){
     setTool(TOOLS.FIGURE);
     updateState();
   });
+  document.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('[data-tool="figure"]') || (figurePalette && figurePalette.contains(e.target))) return;
+    toggleFigurePalette(false);
+  });
   document.getElementById('color').addEventListener('input', e=>{ color=e.target.value; updateState(); });
   document.getElementById('size').addEventListener('change', e=>{ size=parseInt(e.target.value,10); updateState(); });
 
@@ -1310,7 +1357,11 @@ function textDimensions(s){
     if(e.key==='e'||e.key==='E') setTool(TOOLS.ERASER);
     if(e.key==='t'||e.key==='T') setTool(TOOLS.TEXT);
     if(e.key==='c'||e.key==='C') setTool(TOOLS.CROP);
-    if(e.key==='f'||e.key==='F'){ setTool(TOOLS.FIGURE); toggleFigurePalette(true); }
+    if(e.key==='f'||e.key==='F'){
+      setTool(TOOLS.FIGURE);
+      figureBtn = document.querySelector('[data-tool="figure"]');
+      toggleFigurePalette(true);
+    }
   });
 
   // MENU (po prawej)
@@ -1327,6 +1378,31 @@ function textDimensions(s){
   dropdown.querySelectorAll('[data-grid]').forEach(btn=>{
     btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); gridSize=parseInt(btn.getAttribute('data-grid'),10)||0; PAGES.forEach(p=>{ drawGrid(p); }); toggleMenu(false); });
   });
+  const saveToggle = document.getElementById('saveToggle');
+  const saveRow = document.getElementById('saveRow');
+  if(saveToggle && saveRow){
+    saveToggle.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      saveRow.style.display = saveRow.style.display==='none' ? 'flex' : 'none';
+    });
+  }
+  const templatesToggle = document.getElementById('templatesToggle');
+  const gridToggle = document.getElementById('gridToggle');
+  const templatesRow = document.getElementById('templatesRow');
+  if(templatesToggle && gridToggle && templatesRow){
+    templatesToggle.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      const showGrid = gridToggle.style.display==='none';
+      gridToggle.style.display = showGrid ? 'block' : 'none';
+      if(!showGrid){
+        templatesRow.style.display = 'none';
+      }
+    });
+    gridToggle.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      templatesRow.style.display = templatesRow.style.display==='none' ? 'flex' : 'none';
+    });
+  }
   const addPageBtn = document.getElementById('addPage');
   if(addPageBtn){ addPageBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); createPage(true); toggleMenu(false); }); }
 
@@ -1549,6 +1625,19 @@ function textDimensions(s){
     moreBox.addEventListener('pointerdown', (e)=>{
       const btn = e.target.closest('button, label');
       if(!btn) return;
+      const toolTarget = btn.closest('[data-tool]');
+      if(toolTarget){
+        e.preventDefault();
+        e.stopPropagation();
+        const toolName = toolTarget.getAttribute('data-tool');
+        setTool(toolName);
+        if(toolName===TOOLS.FIGURE){
+          figureBtn = toolTarget;
+          toggleFigurePalette(true);
+        }else{
+          toggleFigurePalette(false);
+        }
+      }
       setTimeout(()=> moreBox.classList.remove('open'), 0);
     });
 
