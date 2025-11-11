@@ -1432,7 +1432,16 @@ function textDimensions(s){
   // UNDO/REDO/CLEAR (aktualna strona)
   document.getElementById('undo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.history.length) return; const last = p.state.history.pop(); p.state.redo.push(snapshotState(p)); restoreHistoryState(p, last); });
   document.getElementById('redo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.redo.length) return; const next = p.state.redo.pop(); p.state.history.push(snapshotState(p)); restoreHistoryState(p, next); });
-  document.getElementById('clear').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p) return; pushHistory(p); p.state.strokes=[]; p.state.images=[]; p.state.selection=null; renderAll(p); clearOverlay(p); });
+  document.getElementById('clear').addEventListener('click', (e)=>{
+    e.preventDefault();
+    const p=currentPage(); if(!p) return;
+    pushHistory(p);
+    p.state.strokes=[];
+    p.state.images=[];
+    p.state.selection=null;
+    renderAll(p);
+    clearOverlay(p);
+  });
 
   // WSTAW OBRAZ/PDF
   document.getElementById('imgInput').addEventListener('change', (e)=>{
