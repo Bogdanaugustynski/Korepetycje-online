@@ -103,6 +103,13 @@
   .page .grid, .page .overlay{ pointer-events:none; }
   .page .board{ touch-action:none; } /* blok gestów przy rysowaniu */
 
+  /* tooltip pod przyciskiem */
+  .btn[title]{position:relative}
+  .btn[title]:hover::after{
+    content:attr(title); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%);
+    background:#111;color:#fff;padding:6px 8px;border-radius:8px;font-size:12px;white-space:nowrap
+  }
+
   /* edytor tekstu inline */
   .text-editor{
     position:absolute; z-index:50; min-width:60px;
@@ -156,11 +163,11 @@
 }
 
 
-@media (max-width: 900px){
-  .left{min-width:unset}
-  .toolrow{gap:4px}
-  .btn{padding:8px}
-}
+  @media (max-width: 900px){
+    .left{min-width:unset}
+    .toolrow{gap:4px}
+    .btn{padding:8px}
+  }
 
 /* [CODEX:BEGIN TOOLROW_MOBILE_OVERFLOW_FIX] */
 @media (max-width: 900px){
@@ -196,24 +203,6 @@
   }
 }
 /* [CODEX:END TOOLROW_MOBILE_OVERFLOW_FIX] */
-
-/* Mini-paleta figur */
-.figure-palette{
-  position:absolute; z-index:26; background:#fff; border:1px solid var(--line);
-  border-radius:12px; box-shadow:0 12px 40px rgba(11,116,255,.12); padding:8px; display:none;
-}
-.figure-palette.open{ display:block; }
-.figure-palette .shape-btn{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:44px; height:36px; margin:4px; border:1px solid var(--line);
-  border-radius:10px; background:#fff; cursor:pointer; font-weight:700;
-}
-.figure-palette .shape-btn.is-active{
-  outline:2px solid var(--brand); outline-offset:2px;
-}
-@media (max-width:900px){
-  .figure-palette{ transform:translateY(6px); }
-}
 </style>
 </head>
 <body>
@@ -238,7 +227,6 @@
       <button class="btn" type="button" data-tool="eraser" title="Gumka (E)">🩹</button>
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">T</button>
       <button class="btn" type="button" data-tool="crop"   title="Wycinanie (C)">✂️</button>
-      <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">⬛︎▵⬡</button>
 
       <label class="btn" title="Kolor pisaka">
         🎨 <input type="color" id="color" value="#0b74ff" style="width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px;margin-left:6px">
@@ -324,54 +312,9 @@
   const wrapEl  = document.getElementById('wrap');
   const pagesEl = document.getElementById('pages');
   const stateEl = document.getElementById('state');
-  let figureBtn = document.querySelector('[data-tool="figure"]');
-  let figurePalette = null;
 
-  function ensureFigurePalette(){
-    if(figurePalette) return;
-    figurePalette = document.createElement('div');
-    figurePalette.className = 'figure-palette';
-  figurePalette.innerHTML = `
-    <button class="shape-btn" data-shape="rect" title="Kwadrat / Prostokąt">▭</button>
-    <button class="shape-btn" data-shape="tri_iso" title="Trójkąt (równoramienny)">▵</button>
-    <button class="shape-btn" data-shape="tri_right" title="Trójkąt prostokątny">◺</button>
-    <button class="shape-btn" data-shape="hex" title="Sześciokąt">⬡</button>
-    <button class="shape-btn" data-shape="circle" title="Koło">◯</button>
-  `;
-    document.body.appendChild(figurePalette);
-    updateFigurePaletteSelection();
-  }
-
-  function positionFigurePalette(){
-    const btn = document.querySelector('[data-tool="figure"]');
-    if(btn) figureBtn = btn;
-    if(!figureBtn || !figurePalette) return;
-    const r = figureBtn.getBoundingClientRect();
-    figurePalette.style.left = r.left + 'px';
-    figurePalette.style.top  = (r.bottom + 8) + 'px';
-  }
-
-  function updateFigurePaletteSelection(){
-    if(!figurePalette) return;
-    figurePalette.querySelectorAll('.shape-btn').forEach(b=>{
-      b.classList.toggle('is-active', b.getAttribute('data-shape')===currentShape);
-    });
-  }
-
-  function toggleFigurePalette(forceOpen){
-    const open = (typeof forceOpen==='boolean') ? forceOpen : !figurePalette?.classList.contains('open');
-    if(open){
-      ensureFigurePalette();
-      positionFigurePalette();
-      figurePalette.classList.add('open');
-    }else if(figurePalette){
-      figurePalette.classList.remove('open');
-    }
-  }
-
-  const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
+  const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
-  let currentShape = 'rect';
 
   // room_id info
   const qs = new URLSearchParams(location.search);
@@ -460,22 +403,6 @@
         p.ctx.save(); p.ctx.fillStyle=s.color;
         p.ctx.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`;
         p.ctx.textBaseline='top'; p.ctx.fillText(s.text, s.x, s.y); p.ctx.restore();
-      }else if(s.type==='poly'){
-        p.ctx.save();
-        p.ctx.strokeStyle = s.color;
-        p.ctx.lineWidth   = s.size;
-        p.ctx.lineCap = 'round';
-        p.ctx.lineJoin = 'round';
-        if(s.points && s.points.length){
-          p.ctx.beginPath();
-          p.ctx.moveTo(s.points[0].x, s.points[0].y);
-          for(let i=1;i<s.points.length;i++){
-            p.ctx.lineTo(s.points[i].x, s.points[i].y);
-          }
-          if(s.closed){ p.ctx.closePath(); }
-          p.ctx.stroke();
-        }
-        p.ctx.restore();
       }
     }
   }
@@ -515,21 +442,6 @@
   /* ---------- SELEKCJA I TRANSFORMACJE ---------- */
   const HANDLE_SIZE=10;
   function clearOverlay(p){ p.ovl.clearRect(0,0, p.ovlC.width, p.ovlC.height); }
-  function drawPolyPreview(p, pts){
-    clearOverlay(p);
-    if(p.state.selection) drawSelection(p);
-    if(!pts || pts.length<2) return;
-    p.ovl.save();
-    p.ovl.strokeStyle = color;
-    p.ovl.lineWidth = Math.max(1, size);
-    p.ovl.setLineDash([6,4]);
-    p.ovl.beginPath();
-    p.ovl.moveTo(pts[0].x, pts[0].y);
-    for(let i=1;i<pts.length;i++){ p.ovl.lineTo(pts[i].x, pts[i].y); }
-    p.ovl.closePath();
-    p.ovl.stroke();
-    p.ovl.restore();
-  }
   function bboxStroke(s){
     if(s.type==='pen'){
       const xs=s.points.map(p=>p.x), ys=s.points.map(p=>p.y);
@@ -543,13 +455,6 @@
       const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
       const h = Math.max(14, s.size*6);
       return {x:s.x, y:s.y, w, h};
-    }else if(s.type==='poly'){
-      if(!s.points || !s.points.length) return {x:0,y:0,w:0,h:0};
-      const xs = s.points.map(pt=>pt.x);
-      const ys = s.points.map(pt=>pt.y);
-      const minx = Math.min(...xs), maxx = Math.max(...xs);
-      const miny = Math.min(...ys), maxy = Math.max(...ys);
-      return {x:minx, y:miny, w:maxx-minx, h:maxy-miny};
     }
     return {x:0,y:0,w:0,h:0};
   }
@@ -602,10 +507,6 @@
       else if(s.type==='text'){
         const b=bboxStroke(s);
         if(pxy.x>=b.x&&pxy.x<=b.x+b.w&&pxy.y>=b.y&&pxy.y<=b.y+b.h) return {kind:'stroke',index:i,bbox:b};
-      }else if(s.type==='poly'){
-        if(s.points && hitPolyline(s.points, pxy, eps)){
-          return {kind:'stroke', index:i, bbox:bboxStroke(s)};
-        }
       }
     }
     return null;
@@ -633,15 +534,6 @@
     }
     if(stroke.type==='text'){
       return {...stroke};
-    }
-    if(stroke.type==='poly'){
-      return {
-        type:stroke.type,
-        color:stroke.color,
-        size:stroke.size,
-        points: stroke.points ? stroke.points.map(pt=>({x:pt.x,y:pt.y})) : [],
-        closed: stroke.closed
-      };
     }
     return null;
   }
@@ -718,8 +610,6 @@
       const mapped = scalePointRelative({x:original.x, y:original.y}, drag.startBBox, nextBBox);
       stroke.x = mapped.x;
       stroke.y = mapped.y;
-    }else if(stroke.type==='poly'){
-      stroke.points = (original.points||[]).map(pt=>scalePointRelative(pt, drag.startBBox, nextBBox));
     }
     const factor = computeScaleFactor(drag.startBBox, nextBBox);
     if(stroke.type==='pen' || stroke.type==='line'){
@@ -738,7 +628,6 @@
       if(s.type==='pen') hit=hitPolyline(s.points,pt,eps);
       else if(s.type==='line') hit=distToSegment(pt,s.a,s.b)<=eps;
       else if(s.type==='text'){ const b=bboxStroke(s); hit=(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h); }
-      else if(s.type==='poly'){ hit = s.points && hitPolyline(s.points, pt, eps); }
       if(hit){
         p.ovl.save(); p.ovl.lineCap='round'; p.ovl.lineJoin='round';
         if(s.type==='pen'){
@@ -753,14 +642,6 @@
         }else if(s.type==='text'){
           const b=bboxStroke(s); p.ovl.strokeStyle='#ff3b3b'; p.ovl.lineWidth=2; p.ovl.setLineDash([5,4]);
           p.ovl.strokeRect(b.x,b.y,b.w,b.h); p.ovl.setLineDash([]);
-        }else if(s.type==='poly' && s.points && s.points.length){
-          p.ovl.strokeStyle='#ff3b3b'; p.ovl.lineWidth=Math.max(2, s.size+2); p.ovl.setLineDash([5,4]);
-          p.ovl.beginPath();
-          p.ovl.moveTo(s.points[0].x, s.points[0].y);
-          for(let k=1;k<s.points.length;k++){ p.ovl.lineTo(s.points[k].x, s.points[k].y); }
-          p.ovl.closePath();
-          p.ovl.stroke();
-          p.ovl.setLineDash([]);
         }
         p.ovl.restore(); return;
       }
@@ -773,7 +654,6 @@
       const s = p.state.strokes[i];
       if(s.type==='pen' && hitPolyline(s.points,pt,eps)){ p.state.strokes.splice(i,1); removed=true; continue; }
       if(s.type==='line' && distToSegment(pt,s.a,s.b)<=eps){ p.state.strokes.splice(i,1); removed=true; continue; }
-      if(s.type==='poly' && s.points && hitPolyline(s.points,pt,eps)){ p.state.strokes.splice(i,1); removed=true; continue; }
       if(s.type==='text'){
         const b=bboxStroke(s);
         if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h){ p.state.strokes.splice(i,1); removed=true; continue; }
@@ -908,99 +788,6 @@
   }
 
   /* ---------- INTERAKCJE (POINTER) ---------- */
-const ROTATE_HANDLE = 99;
-
-function rectToPoly(x0,y0,x1,y1){
-  const left=Math.min(x0,x1), right=Math.max(x0,x1);
-  const top=Math.min(y0,y1), bottom=Math.max(y0,y1);
-  return [
-    {x:left,y:top}, {x:right,y:top}, {x:right,y:bottom}, {x:left,y:bottom}
-  ];
-  }
-  function isoTriangleFromRect(x0,y0,x1,y1){
-    const left=Math.min(x0,x1), right=Math.max(x0,x1);
-    const top=Math.min(y0,y1), bottom=Math.max(y0,y1);
-    const midX = (left+right)/2;
-    return [{x:midX,y:top},{x:right,y:bottom},{x:left,y:bottom}];
-  }
-  function rightTriangleFromRect(x0,y0,x1,y1){
-    const left=Math.min(x0,x1), right=Math.max(x0,x1);
-    const top=Math.min(y0,y1), bottom=Math.max(y0,y1);
-    return [{x:left,y:top},{x:right,y:top},{x:left,y:bottom}];
-  }
-function hexFromRect(x0,y0,x1,y1){
-  const left=Math.min(x0,x1), right=Math.max(x0,x1);
-  const top=Math.min(y0,y1), bottom=Math.max(y0,y1);
-  const w=right-left, h=bottom-top;
-  const cx=left+w/2, cy=top+h/2;
-  const r = Math.min(w, h)/2;
-  const pts=[];
-  for(let i=0;i<6;i++){
-    const a = Math.PI/6 + i * (Math.PI/3);
-    pts.push({x: cx + r*Math.cos(a), y: cy + r*Math.sin(a)});
-  }
-  return pts;
-}
-function circleFromRect(x0,y0,x1,y1){
-  const left=Math.min(x0,x1), right=Math.max(x0,x1);
-  const top=Math.min(y0,y1), bottom=Math.max(y0,y1);
-  const w=right-left, h=bottom-top;
-  const cx=left+w/2, cy=top+h/2;
-  const r = Math.min(w, h)/2;
-  const segments = 24;
-  const pts=[];
-  for(let i=0;i<segments;i++){
-    const a = i*(2*Math.PI/segments);
-    pts.push({x: cx + r*Math.cos(a), y: cy + r*Math.sin(a)});
-  }
-  return pts;
-}
-function shapeFromDrag(shape, x0,y0,x1,y1){
-  if(shape==='rect') return rectToPoly(x0,y0,x1,y1);
-  if(shape==='tri_iso') return isoTriangleFromRect(x0,y0,x1,y1);
-  if(shape==='tri_right') return rightTriangleFromRect(x0,y0,x1,y1);
-  if(shape==='hex') return hexFromRect(x0,y0,x1,y1);
-  if(shape==='circle') return circleFromRect(x0,y0,x1,y1);
-  return rectToPoly(x0,y0,x1,y1);
-}
-function rotatePointAround(pt, center, angle){
-  const dx = pt.x - center.x;
-  const dy = pt.y - center.y;
-  return {
-    x: center.x + dx * Math.cos(angle) - dy * Math.sin(angle),
-    y: center.y + dx * Math.sin(angle) + dy * Math.cos(angle)
-  };
-}
-function rectCorners(x,y,w,h){
-  return [
-    {x, y},
-    {x: x+w, y},
-    {x: x+w, y: y+h},
-    {x, y: y+h}
-  ];
-}
-function axisAlignedBBox(points){
-  const xs = points.map(p=>p.x);
-  const ys = points.map(p=>p.y);
-  const minx = Math.min(...xs), maxx = Math.max(...xs);
-  const miny = Math.min(...ys), maxy = Math.max(...ys);
-  return {x:minx, y:miny, w:maxx-minx, h:maxy-miny};
-}
-function imageBoundingBox(im){
-  if(!im) return {x:0,y:0,w:0,h:0};
-  if(!im.rotation){
-    return {x:im.x, y:im.y, w:im.w, h:im.h};
-  }
-  const center = {x: im.x + im.w/2, y: im.y + im.h/2};
-  const corners = rectCorners(im.x, im.y, im.w, im.h).map(pt=>rotatePointAround(pt, center, im.rotation));
-  return axisAlignedBBox(corners);
-}
-function textDimensions(s){
-  const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
-  const h = Math.max(14, s.size*6);
-  return {w,h};
-}
-
   function bindPage(p){
     function getXY(evt){
       const r = p.drawC.getBoundingClientRect();
@@ -1063,12 +850,6 @@ function textDimensions(s){
       }
       if(tool===TOOLS.TEXT){ openTextEditor(x,y,p); return; }
       if(tool===TOOLS.CROP){ beginCrop(x,y,p); cropping=true; return; }
-      if(tool===TOOLS.FIGURE){
-        drawing=true; startX=x; startY=y; pushHistory(p); clearOverlay(p);
-        const pts = shapeFromDrag(currentShape, startX, startY, x, y);
-        drawPolyPreview(p, pts);
-        return;
-      }
 
       drawing=true; startX=x; startY=y; pushHistory(p);
       if(tool===TOOLS.PEN){
@@ -1094,7 +875,6 @@ function textDimensions(s){
               if(s.type==='pen') s.points.forEach(pt=>{pt.x+=dx;pt.y+=dy;});
               if(s.type==='line'){ s.a.x+=dx; s.a.y+=dy; s.b.x+=dx; s.b.y+=dy; }
               if(s.type==='text'){ s.x+=dx; s.y+=dy; }
-              if(s.type==='poly' && s.points){ s.points.forEach(pt=>{pt.x+=dx;pt.y+=dy;}); }
               sel.bbox=bboxStroke(s);
             }
           }else if(d.mode==='scale'){
@@ -1110,12 +890,6 @@ function textDimensions(s){
       if(tool===TOOLS.ERASER){
         if(drawing){ eraseAt({x,y},p); }
         else{ previewErase({x,y},p); }
-        return;
-      }
-      if(tool===TOOLS.FIGURE){
-        if(!drawing) return;
-        const pts = shapeFromDrag(currentShape, startX, startY, x, y);
-        drawPolyPreview(p, pts);
         return;
       }
       if(!drawing) return;
@@ -1134,15 +908,6 @@ function textDimensions(s){
         drawing=false;
         clearOverlay(p);
         if(p.state.selection) drawSelection(p);
-        return;
-      }
-      if(tool===TOOLS.FIGURE){
-        if(!drawing) return;
-        const pts = shapeFromDrag(currentShape, startX, startY, x, y);
-        clearOverlay(p);
-        p.state.strokes.push({ type:'poly', color, size, points: pts, closed:true });
-        renderAll(p);
-        drawing=false; current=null;
         return;
       }
       if(!drawing) return;
@@ -1250,55 +1015,23 @@ function textDimensions(s){
            tool===TOOLS.PEN?'Ołówek':
            tool===TOOLS.LINE?'Linia':
            tool===TOOLS.ERASER?'Gumka':
-           tool===TOOLS.TEXT?'Tekst':
-           tool===TOOLS.CROP?'Wycinanie':'Figury';
+           tool===TOOLS.TEXT?'Tekst':'Wycinanie';
   }
   function setTool(next){
     tool = next;
-    updateState();
+    stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`;
     document.querySelectorAll('#tools [data-tool]').forEach(b=>{
       b.classList.toggle('is-active', b.getAttribute('data-tool')===tool);
     });
-    if(tool!==TOOLS.FIGURE){ toggleFigurePalette(false); }
-    else { ensureFigurePalette(); updateFigurePaletteSelection(); }
     PAGES.forEach(p=>{ clearOverlay(p); drawSelection(p); });
   }
-  function updateState(){
-    const shapeLabel = tool===TOOLS.FIGURE
-      ? ` • ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
-      : '';
-    stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}${shapeLabel}`;
-    updateFigurePaletteSelection();
-  }
+  function updateState(){ stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}`; }
 
   const toolsRow = document.getElementById('tools');
   toolsRow.addEventListener('pointerdown', (e)=>{
     const b = e.target.closest('[data-tool]'); if(!b) return;
     e.preventDefault();
     setTool(b.getAttribute('data-tool'));
-  });
-  document.addEventListener('pointerdown', (e)=>{
-    const btn = e.target.closest('[data-tool="figure"]');
-    if(btn){
-      e.preventDefault();
-      e.stopPropagation();
-      figureBtn = btn;
-      setTool(TOOLS.FIGURE);
-      toggleFigurePalette(true);
-    }else if(figurePalette && !figurePalette.contains(e.target)){
-      toggleFigurePalette(false);
-    }
-  });
-  document.addEventListener('pointerdown', (e)=>{
-    const sh = e.target.closest('.figure-palette .shape-btn');
-    if(!sh) return;
-    e.preventDefault();
-    e.stopPropagation();
-    currentShape = sh.getAttribute('data-shape') || 'rect';
-    updateFigurePaletteSelection();
-    toggleFigurePalette(false);
-    setTool(TOOLS.FIGURE);
-    updateState();
   });
   document.getElementById('color').addEventListener('input', e=>{ color=e.target.value; updateState(); });
   document.getElementById('size').addEventListener('change', e=>{ size=parseInt(e.target.value,10); updateState(); });
@@ -1310,7 +1043,6 @@ function textDimensions(s){
     if(e.key==='e'||e.key==='E') setTool(TOOLS.ERASER);
     if(e.key==='t'||e.key==='T') setTool(TOOLS.TEXT);
     if(e.key==='c'||e.key==='C') setTool(TOOLS.CROP);
-    if(e.key==='f'||e.key==='F'){ setTool(TOOLS.FIGURE); toggleFigurePalette(true); }
   });
 
   // MENU (po prawej)
