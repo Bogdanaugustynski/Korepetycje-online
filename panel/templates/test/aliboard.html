@@ -38,6 +38,7 @@
     white-space:nowrap;
     align-items:center;
     padding-bottom:4px;
+    position:relative;
   }
   .btn,.seg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
@@ -68,6 +69,7 @@
     color:#fff;
     border:none;
     border-radius:10px;
+    margin-left:8px;
   }
 
   #toolsMorePanel.dropdown{
@@ -1165,7 +1167,7 @@
       moreBtn.type = 'button';
       moreBtn.title = 'Więcej narzędzi';
       moreBtn.textContent = '⋯';
-      toolsRow.insertAdjacentElement('afterend', moreBtn);
+    toolsRow.appendChild(moreBtn);
     }
     if(!moreBox){
       moreBox = document.createElement('div');
@@ -1234,7 +1236,7 @@
 
       const children = [...toolsRow.children];
       const candidates = children
-        .filter(el => !el.matches(essentialSel));
+        .filter(el => !el.matches(essentialSel) && el !== moreBtn);
 
       for (let i = candidates.length - 1; i >= 0 && toolsRow.scrollWidth > toolsRow.clientWidth; i--){
         const el = candidates[i];
