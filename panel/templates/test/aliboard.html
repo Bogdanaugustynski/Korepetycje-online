@@ -30,7 +30,15 @@
   .brand .mark{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:0 0 auto;overflow:hidden}
   .brand .mark img{width:100%;height:100%;object-fit:contain}
   .state{font-size:12px;color:var(--muted)}
-  .toolrow{display:flex;gap:8px;flex-wrap:nowrap; overflow:auto; padding-bottom:4px}
+  .toolrow{
+    display:flex;
+    gap:8px;
+    flex-wrap:nowrap;
+    overflow:hidden !important;
+    white-space:nowrap;
+    align-items:center;
+    padding-bottom:4px;
+  }
   .btn,.seg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
   .btn.is-active{ outline:2px solid var(--brand); outline-offset:2px }
@@ -49,6 +57,26 @@
     border-radius:10px; padding:8px 10px; cursor:pointer; margin:4px 0}
   .drop-row{display:flex; gap:6px; flex-wrap:wrap}
   .drop-item.primary{background:var(--brand);color:#fff;border-color:transparent}
+
+  #toolsMoreBtn{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    height:36px;
+    padding:6px 10px;
+    background:var(--brand);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+  }
+
+  #toolsMorePanel.dropdown{
+    top:42px;
+    right:0;
+    left:auto;
+    min-width:180px;
+    z-index:50;
+  }
 
   /* Obszar kartek */
   .wrap{
@@ -1121,6 +1149,10 @@
   (function setupToolsOverflow(){
     const toolsRow = document.getElementById('tools');
     if(!toolsRow) return;
+    console.debug('[ALIBOARD][overflow] init', {
+      toolsRowExists: !!document.getElementById('tools'),
+      headerExists: !!document.querySelector('header .left'),
+    });
 
     // 1) Utwórz przycisk „⋯” i panel overflow zaraz obok paska narzędzi, jeśli nie istnieją
     let moreBtn = document.getElementById('toolsMoreBtn');
@@ -1169,32 +1201,61 @@
     function rebalanceTools(){
       if(!toolsRow) return;
 
-      // 1) Oddaj wszystko z powrotem na pasek
-      [...moreBox.children].forEach(node => toolsRow.appendChild(node));
+      console.debug('[ALIBOARD][overflow] before', {
+        clientWidth: toolsRow?.clientWidth,
+        scrollWidth: toolsRow?.scrollWidth,
+        childCount: toolsRow?.children?.length,
+        moreBoxChildren: moreBox?.children?.length
+      });
 
-      // 2) Jeśli wszystko się mieści — ukryj „⋯” i wyjdź
+      while (moreBox.firstChild) toolsRow.appendChild(moreBox.firstChild);
+
       if (toolsRow.scrollWidth <= toolsRow.clientWidth) {
         moreBtn.style.display = 'none';
         moreBox.classList.remove('open');
+        console.debug('[ALIBOARD][overflow] after', {
+          clientWidth: toolsRow?.clientWidth,
+          scrollWidth: toolsRow?.scrollWidth,
+          childCount: toolsRow?.children?.length,
+          moreBoxChildren: moreBox?.children?.length,
+          moreBtnDisplay: moreBtn?.style?.display
+        });
         return;
       }
 
-      // 3) Zdefiniuj narzędzia "kluczowe", które zostają na pasku
-      const essential = new Set(['select','pen','line','eraser','text','crop']);
+      const essentialSel = [
+        '[data-tool="select"]',
+        '[data-tool="pen"]',
+        '[data-tool="line"]',
+        '[data-tool="eraser"]',
+        '[data-tool="text"]',
+        '[data-tool="crop"]'
+      ].join(',');
 
-      // 4) Weź przyciski w kolejności od prawej do lewej i przenoś nadmiar
-      const items = [...toolsRow.querySelectorAll('[data-tool], label.btn, #color, #size, #imgInput, #pdfInput, #undo, #redo, #clear')];
-      const ordered = items.reverse();
+      const children = [...toolsRow.children];
+      const candidates = children
+        .filter(el => !el.matches(essentialSel));
 
-      for (const el of ordered){
-        const t = el.getAttribute && el.getAttribute('data-tool');
-        if (t && essential.has(t)) continue;
-        moreBox.appendChild(el.closest('label.btn') || el);
-        if (toolsRow.scrollWidth <= toolsRow.clientWidth) break;
+      for (let i = candidates.length - 1; i >= 0 && toolsRow.scrollWidth > toolsRow.clientWidth; i--){
+        const el = candidates[i];
+        moreBox.appendChild(el);
       }
 
-      // 5) Pokaż przycisk „⋯” tylko, jeśli coś trafiło do panelu
       moreBtn.style.display = moreBox.children.length ? 'inline-flex' : 'none';
+
+      console.debug('[ALIBOARD][overflow] after', {
+        clientWidth: toolsRow?.clientWidth,
+        scrollWidth: toolsRow?.scrollWidth,
+        childCount: toolsRow?.children?.length,
+        moreBoxChildren: moreBox?.children?.length,
+        moreBtnDisplay: moreBtn?.style?.display
+      });
+
+      console.debug('[ALIBOARD][overflow] rebalanced', {
+        clientWidth: toolsRow.clientWidth,
+        scrollWidth: toolsRow.scrollWidth,
+        moved: moreBox.children.length
+      });
     }
 
     // 5) Toggling panelu overflow
@@ -1222,8 +1283,10 @@
     });
 
     // 8) Publiczny hook: gdyby coś dynamicznie dodało narzędzie — spróbuj zbalansować ponownie
-    const ro = new ResizeObserver(()=> rebalanceTools());
+    const ro = new ResizeObserver(rebalanceTools);
     ro.observe(toolsRow);
+    setTimeout(rebalanceTools, 250);
+    setTimeout(rebalanceTools, 800);
 
   })();
   // [CODEX:END OVERFLOW_MENU]
