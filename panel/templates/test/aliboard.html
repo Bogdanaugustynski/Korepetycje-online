@@ -883,6 +883,11 @@
     const x1 = Math.max(cropStart.x, x), y1 = Math.max(cropStart.y, y);
     cropCancel();
 
+    if(!selectionHasContent(p, x0, y0, x1, y1)){
+      alert('Zaznaczony obszar jest pusty - nic nie zostalo wyciete.');
+      return;
+    }
+
     const comp = await compositePageCanvas(p);
     const sx = Math.max(0, Math.floor(x0)), sy = Math.max(0, Math.floor(y0));
     const sw = Math.max(1, Math.floor(x1 - x0)), sh = Math.max(1, Math.floor(y1 - y0));
@@ -891,10 +896,10 @@
     cctx.drawImage(comp, sx, sy, sw, sh, 0, 0, sw, sh);
     const url = cut.toDataURL('image/png');
 
-    const bboxBottom = bottomOfTexts(p);
     const margin = 24;
     const rect = p.el.getBoundingClientRect();
     const pageW = rect.width, pageH = rect.height;
+    const selectionBox = {x:x0, y:y0, w:x1-x0, h:y1-y0};
 
     const maxW = pageW * 0.9;
     const scale = Math.min(1, maxW / sw);
@@ -902,14 +907,25 @@
     const h = Math.max(80, Math.floor(sh * scale));
 
     let targetPage = p;
-    let xPos = Math.floor((pageW - w)/2);
-    let yPos = bboxBottom + margin;
+    let xPos = 0;
+    let yPos = 0;
+    const placeBelow = window.confirm('Gdzie umiescic wyciety fragment?\nOK - przenies go w dol tablicy.\nAnuluj - umiesc obok zaznaczenia.');
 
-    if (yPos + h + margin > pageH){
-      targetPage = createPage();
-      const rect2 = targetPage.el.getBoundingClientRect();
-      xPos = Math.floor((rect2.width - w)/2);
-      yPos = 24;
+    if(placeBelow){
+      const bboxBottom = bottomOfTexts(p);
+      xPos = Math.floor((pageW - w)/2);
+      yPos = bboxBottom + margin;
+
+      if (yPos + h + margin > pageH){
+        targetPage = createPage();
+        const rect2 = targetPage.el.getBoundingClientRect();
+        xPos = Math.floor((rect2.width - w)/2);
+        yPos = 24;
+      }
+    }else{
+      const adj = findAdjacentPosition(selectionBox, w, h, pageW, pageH, margin);
+      xPos = adj.x;
+      yPos = adj.y;
     }
     addImageFromSrc(url, w, h, xPos, yPos, {crop:true}, targetPage);
     targetPage.el.scrollIntoView({behavior:'smooth', block:'center'});
@@ -926,6 +942,39 @@
       if(all.length) bottom = Math.max(...all);
     }
     return bottom;
+  }
+  function selectionHasContent(p, x0, y0, x1, y1){
+    const left = Math.min(x0,x1), right = Math.max(x0,x1);
+    const top = Math.min(y0,y1), bottom = Math.max(y0,y1);
+    const rect = {x:left, y:top, w:Math.max(0,right-left), h:Math.max(0,bottom-top)};
+    if(rect.w===0 || rect.h===0) return false;
+    const overlaps = (box)=> rect.x < box.x + box.w && rect.x + rect.w > box.x && rect.y < box.y + box.h && rect.y + rect.h > box.y;
+    for(const s of p.state.strokes){
+      if((s.type==='pen' || s.type==='poly') && (!s.points || !s.points.length)) continue;
+      const box = bboxStroke(s);
+      if(box.w===0 && box.h===0) continue;
+      if(overlaps(box)){ return true; }
+    }
+    for(const im of (p.state.images||[])){
+      const box = {x:im.x, y:im.y, w:im.w, h:im.h};
+      if(overlaps(box)){ return true; }
+    }
+    return false;
+  }
+  function findAdjacentPosition(selection, w, h, pageW, pageH, margin){
+    const clamp = (val, min, max)=> Math.min(Math.max(val, min), max);
+    const maxX = Math.max(0, pageW - w);
+    const maxY = Math.max(0, pageH - h);
+    let xPos = selection.x + selection.w + margin;
+    if(xPos + w > pageW){
+      xPos = selection.x - w - margin;
+    }
+    xPos = clamp(xPos, 0, maxX);
+    let yPos = clamp(selection.y, 0, maxY);
+    if(yPos + h > pageH){
+      yPos = maxY;
+    }
+    return {x:xPos, y:yPos};
   }
 
   /* ---------- INTERAKCJE (POINTER) ---------- */
