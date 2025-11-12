@@ -115,6 +115,29 @@
   .crop-rect{
     position:absolute; z-index:40; border:2px dashed #0b74ff; background:rgba(11,116,255,.06); pointer-events:none;
   }
+  .crop-choice-backdrop{
+    position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center;
+    z-index:70; opacity:0; transition:opacity .15s ease;
+  }
+  .crop-choice-backdrop.open{ opacity:1; }
+  .crop-choice-dialog{
+    background:#fff; border-radius:16px; padding:20px 24px; max-width:90vw; box-shadow:0 18px 55px rgba(15,23,42,.25);
+    display:flex; flex-direction:column; gap:16px; min-width:280px;
+  }
+  .crop-choice-dialog p{ margin:0; font-size:15px; color:#0b1320; }
+  .crop-choice-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+  .crop-choice-actions button{
+    flex:1 1 120px; border:none; border-radius:10px; font-weight:600; padding:10px 14px; cursor:pointer;
+  }
+  .crop-choice-actions button.primary{ background:var(--brand); color:#fff; }
+  .crop-choice-actions button.secondary{ background:#eef3ff; color:#0b1320; }
+  .crop-busy-toast{
+    position:fixed; top:16px; left:50%; transform:translate(-50%, -10px);
+    background:#0b1320; color:#fff; padding:8px 16px; border-radius:999px;
+    font-size:14px; box-shadow:0 10px 30px rgba(11,19,32,.35);
+    z-index:80; pointer-events:none; opacity:0; transition:opacity .2s ease, transform .2s ease;
+  }
+  .crop-busy-toast.show{ opacity:1; transform:translate(-50%,0); }
 
   .footer{ position:fixed; right:12px; bottom:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:25; }
 
@@ -262,7 +285,6 @@
       </label>
 
       <button class="btn" type="button" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
-      <button class="btn" type="button" id="redo" title="Ponów (Ctrl+Y)">↷</button>
       <button class="btn" type="button" id="clear" title="Wyczyść tę stronę">🗑️</button>
     </div>
   </div>
@@ -288,6 +310,7 @@
             <button class="drop-item" type="button" data-grid="16">Mała</button>
             <button class="drop-item" type="button" data-grid="24">Średnia</button>
             <button class="drop-item" type="button" data-grid="32">Duża</button>
+            <button class="drop-item" type="button" data-grid="8">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
@@ -800,6 +823,14 @@
         if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h){ p.state.strokes.splice(i,1); removed=true; continue; }
       }
     }
+    for(let i=p.state.images.length-1;i>=0;i--){
+      const im = p.state.images[i];
+      if(pt.x>=im.x && pt.x<=im.x+im.w && pt.y>=im.y && pt.y<=im.y+im.h){
+        p.state.images.splice(i,1);
+        removed=true;
+        continue;
+      }
+    }
     if(removed){ renderAll(p); clearOverlay(p); }
   }
 
@@ -849,30 +880,48 @@
         theContext.strokeStyle=s.color; theContext.lineWidth=s.size; theContext.beginPath(); theContext.moveTo(s.a.x,s.a.y); theContext.lineTo(s.b.x,s.b.y); theContext.stroke();
       }else if(s.type==='text'){
         theContext.save(); theContext.fillStyle=s.color; theContext.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`; theContext.textBaseline='top'; theContext.fillText(s.text, s.x, s.y); theContext.restore();
+      }else if(s.type==='poly'){
+        const pts=s.points;
+        if(!pts || !pts.length) continue;
+        theContext.save();
+        theContext.strokeStyle=s.color;
+        theContext.lineWidth=s.size;
+        theContext.lineCap='round';
+        theContext.lineJoin='round';
+        theContext.beginPath();
+        theContext.moveTo(pts[0].x, pts[0].y);
+        for(let i=1;i<pts.length;i++){ theContext.lineTo(pts[i].x, pts[i].y); }
+        if(s.closed){ theContext.closePath(); }
+        theContext.stroke();
+        theContext.restore();
       }
     }
     return tmp;
   }
 
   /* ---------- CROP (wycinanie) ---------- */
-  let cropRectEl=null, cropStart=null;
+  let cropRectEl=null, cropStart=null, cropProcessing=false, cropBusyHintEl=null, cropBusyHintTimer=null;
   function beginCrop(x,y,p){
     cropCancel();
     cropStart = {x,y};
     cropRectEl = document.createElement('div'); cropRectEl.className='crop-rect';
-    const r = p.el.getBoundingClientRect();
-    cropRectEl.style.left = (r.left + x) + 'px';
-    cropRectEl.style.top  = (r.top  + y) + 'px';
+    const r = p.drawC.getBoundingClientRect();
+    const docLeft = r.left + window.scrollX;
+    const docTop  = r.top  + window.scrollY;
+    cropRectEl.style.left = (docLeft + x) + 'px';
+    cropRectEl.style.top  = (docTop  + y) + 'px';
     cropRectEl.style.width='0px'; cropRectEl.style.height='0px';
     document.body.appendChild(cropRectEl);
   }
   function updateCrop(x,y,p){
     if(!cropRectEl || !cropStart) return;
-    const r = p.el.getBoundingClientRect();
+    const r = p.drawC.getBoundingClientRect();
+    const docLeft = r.left + window.scrollX;
+    const docTop  = r.top  + window.scrollY;
     const x0 = Math.min(cropStart.x, x), y0 = Math.min(cropStart.y, y);
     const x1 = Math.max(cropStart.x, x), y1 = Math.max(cropStart.y, y);
-    cropRectEl.style.left = (r.left + x0) + 'px';
-    cropRectEl.style.top  = (r.top  + y0) + 'px';
+    cropRectEl.style.left = (docLeft + x0) + 'px';
+    cropRectEl.style.top  = (docTop  + y0) + 'px';
     cropRectEl.style.width  = (x1 - x0) + 'px';
     cropRectEl.style.height = (y1 - y0) + 'px';
   }
@@ -888,47 +937,55 @@
       return;
     }
 
-    const comp = await compositePageCanvas(p);
-    const sx = Math.max(0, Math.floor(x0)), sy = Math.max(0, Math.floor(y0));
-    const sw = Math.max(1, Math.floor(x1 - x0)), sh = Math.max(1, Math.floor(y1 - y0));
-    const cut = document.createElement('canvas'); cut.width=sw; cut.height=sh;
-    const cctx = cut.getContext('2d');
-    cctx.drawImage(comp, sx, sy, sw, sh, 0, 0, sw, sh);
-    const url = cut.toDataURL('image/png');
+    cropProcessing = true;
+    try{
+      const placement = await askCropPlacement();
 
-    const margin = 24;
-    const rect = p.el.getBoundingClientRect();
-    const pageW = rect.width, pageH = rect.height;
-    const selectionBox = {x:x0, y:y0, w:x1-x0, h:y1-y0};
+      const comp = await compositePageCanvas(p);
+      const sx = Math.max(0, Math.floor(x0)), sy = Math.max(0, Math.floor(y0));
+      const sw = Math.max(1, Math.floor(x1 - x0)), sh = Math.max(1, Math.floor(y1 - y0));
+      const cut = document.createElement('canvas'); cut.width=sw; cut.height=sh;
+      const cctx = cut.getContext('2d');
+      cctx.drawImage(comp, sx, sy, sw, sh, 0, 0, sw, sh);
+      const url = cut.toDataURL('image/png');
 
-    const maxW = pageW * 0.9;
-    const scale = Math.min(1, maxW / sw);
-    const w = Math.max(80, Math.floor(sw * scale));
-    const h = Math.max(80, Math.floor(sh * scale));
+      const margin = 24;
+      const rect = p.el.getBoundingClientRect();
+      const pageW = rect.width, pageH = rect.height;
+      const selectionBox = {x:x0, y:y0, w:x1-x0, h:y1-y0};
 
-    let targetPage = p;
-    let xPos = 0;
-    let yPos = 0;
-    const placeBelow = window.confirm('Gdzie umiescic wyciety fragment?\nOK - przenies go w dol tablicy.\nAnuluj - umiesc obok zaznaczenia.');
+      const maxW = pageW - margin*2;
+      const maxH = pageH - margin*2;
+      const scale = Math.min(1, maxW / sw, maxH / sh);
+      const w = Math.max(1, Math.floor(sw * scale));
+      const h = Math.max(1, Math.floor(sh * scale));
 
-    if(placeBelow){
-      const bboxBottom = bottomOfTexts(p);
-      xPos = Math.floor((pageW - w)/2);
-      yPos = bboxBottom + margin;
+      let targetPage = p;
+      let xPos = 0;
+      let yPos = 0;
+      const placeBelow = placement !== 'adjacent';
 
-      if (yPos + h + margin > pageH){
-        targetPage = createPage();
-        const rect2 = targetPage.el.getBoundingClientRect();
-        xPos = Math.floor((rect2.width - w)/2);
-        yPos = 24;
+      if(placeBelow){
+        const bboxBottom = bottomOfTexts(p);
+        xPos = Math.floor((pageW - w)/2);
+        yPos = bboxBottom + margin;
+
+        if (yPos + h + margin > pageH){
+          targetPage = createPage();
+          const rect2 = targetPage.el.getBoundingClientRect();
+          xPos = Math.floor((rect2.width - w)/2);
+          yPos = 24;
+        }
+      }else{
+        const adj = findAdjacentPosition(selectionBox, w, h, pageW, pageH, margin);
+        xPos = adj.x;
+        yPos = adj.y;
       }
-    }else{
-      const adj = findAdjacentPosition(selectionBox, w, h, pageW, pageH, margin);
-      xPos = adj.x;
-      yPos = adj.y;
+      addImageFromSrc(url, w, h, xPos, yPos, {crop:true}, targetPage);
+      targetPage.el.scrollIntoView({behavior:'smooth', block:'center'});
+    }finally{
+      cropProcessing = false;
     }
-    addImageFromSrc(url, w, h, xPos, yPos, {crop:true}, targetPage);
-    targetPage.el.scrollIntoView({behavior:'smooth', block:'center'});
   }
   function bottomOfTexts(p){
     let bottom = 0;
@@ -975,6 +1032,80 @@
       yPos = maxY;
     }
     return {x:xPos, y:yPos};
+  }
+  function askCropPlacement(){
+    return new Promise(resolve=>{
+      const overlay=document.createElement('div');
+      overlay.className='crop-choice-backdrop';
+      const dialog=document.createElement('div');
+      dialog.className='crop-choice-dialog';
+      const text=document.createElement('p');
+      text.textContent='Gdzie umieścić skopiowany fragment?';
+      const actions=document.createElement('div');
+      actions.className='crop-choice-actions';
+      const btnBelow=document.createElement('button');
+      btnBelow.className='primary';
+      btnBelow.textContent='Kopiuj na dole';
+      const btnAside=document.createElement('button');
+      btnAside.className='secondary';
+      btnAside.textContent='Kopiuj obok';
+
+      let cleaned=false;
+      function cleanup(choice){
+        if(cleaned) return;
+        cleaned=true;
+        document.removeEventListener('keydown', onOverlayKey);
+        overlay.classList.remove('open');
+        let removed=false;
+        const removeNow=()=>{ if(removed) return; removed=true; overlay.remove(); };
+        overlay.addEventListener('transitionend', removeNow, {once:true});
+        setTimeout(removeNow, 220);
+        resolve(choice || 'below');
+      }
+      function onOverlayKey(e){
+        if(e.key==='Escape'){
+          cleanup('below');
+        }
+      }
+
+      btnBelow.addEventListener('click', ()=> cleanup('below'));
+      btnAside.addEventListener('click', ()=> cleanup('adjacent'));
+      overlay.addEventListener('click', (e)=>{
+        if(e.target===overlay){ cleanup('below'); }
+      });
+      document.addEventListener('keydown', onOverlayKey);
+
+      actions.appendChild(btnBelow);
+      actions.appendChild(btnAside);
+      dialog.appendChild(text);
+      dialog.appendChild(actions);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      requestAnimationFrame(()=> overlay.classList.add('open'));
+    });
+  }
+  function showCropBusyHint(){
+    if(cropBusyHintEl){
+      clearTimeout(cropBusyHintTimer);
+      cropBusyHintEl.remove();
+      cropBusyHintEl=null;
+    }
+    const toast=document.createElement('div');
+    toast.className='crop-busy-toast';
+    toast.textContent='Poczekaj na zakończenie kopiowania...';
+    document.body.appendChild(toast);
+    requestAnimationFrame(()=> toast.classList.add('show'));
+    cropBusyHintEl=toast;
+    cropBusyHintTimer=setTimeout(()=>{
+      toast.classList.remove('show');
+      const remove=()=>{
+        toast.removeEventListener('transitionend', remove);
+        if(cropBusyHintEl===toast){ cropBusyHintEl=null; cropBusyHintTimer=null; }
+        toast.remove();
+      };
+      toast.addEventListener('transitionend', remove);
+      setTimeout(remove, 400);
+    }, 2000);
   }
 
   /* ---------- INTERAKCJE (POINTER) ---------- */
@@ -1149,7 +1280,10 @@ function textDimensions(s){
         p.state.selection = hitTest(pt,p) || null; drawSelection(p); return;
       }
       if(tool===TOOLS.TEXT){ openTextEditor(x,y,p); return; }
-      if(tool===TOOLS.CROP){ beginCrop(x,y,p); cropping=true; return; }
+      if(tool===TOOLS.CROP){
+        if(cropProcessing){ showCropBusyHint(); return; }
+        beginCrop(x,y,p); cropping=true; return;
+      }
       if(tool===TOOLS.FIGURE){
         drawing=true; startX=x; startY=y; pushHistory(p); clearOverlay(p);
         const pts = shapeFromDrag(currentShape, startX, startY, x, y);
@@ -1480,7 +1614,6 @@ function textDimensions(s){
 
   // UNDO/REDO/CLEAR (aktualna strona)
   document.getElementById('undo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.history.length) return; const last = p.state.history.pop(); p.state.redo.push(snapshotState(p)); restoreHistoryState(p, last); });
-  document.getElementById('redo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.redo.length) return; const next = p.state.redo.pop(); p.state.history.push(snapshotState(p)); restoreHistoryState(p, next); });
   document.getElementById('clear').addEventListener('click', (e)=>{
     e.preventDefault();
     const p=currentPage(); if(!p) return;
