@@ -43,6 +43,7 @@
   .btn,.seg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700}
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
   .btn.is-active{ outline:2px solid var(--brand); outline-offset:2px }
+  .btn.is-disabled{ opacity:0.4; pointer-events:none; }
   .right{margin-left:auto; display:flex; align-items:flex-start;}
   .menu-wrap{position:relative}
   .menu-btn{display:inline-flex; align-items:center; gap:8px}
@@ -193,6 +194,37 @@
   box-shadow:none !important;
 }
 
+.text-font-btn{ display:none; }
+.text-font-btn.is-visible{ display:inline-flex; }
+.text-font-panel{
+  position:absolute;
+  z-index:45;
+  background:#fff;
+  border-radius:14px;
+  border:1px solid var(--line);
+  box-shadow:0 18px 45px rgba(11,19,32,.25);
+  padding:14px;
+  width:220px;
+  display:none;
+  flex-direction:column;
+  gap:10px;
+}
+.text-font-panel.open{ display:flex; }
+.text-font-panel__header{ font-weight:600; font-size:14px; color:var(--ink); }
+.text-font-panel__value{ font-size:18px; font-weight:700; }
+.text-font-panel__range{ width:100%; accent-color:var(--brand); }
+.text-font-panel__actions{ display:flex; gap:8px; }
+.text-font-panel__actions button{
+  flex:1;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:6px 0;
+  font-weight:600;
+  background:#eef3ff;
+  color:var(--ink);
+  cursor:pointer;
+}
+
 /* ciaśniej tylko na telefonie */
 @media (max-width: 900px){
   .toolrow{ gap:4px; }
@@ -281,6 +313,7 @@
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">／</button>
       <button class="btn" type="button" data-tool="eraser" title="Gumka (E)">🩹</button>
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">T</button>
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">Wielkość czcionki</button>
       <button class="btn" type="button" data-tool="crop"   title="Wycinanie (C)">✂️</button>
       <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">⬛︎▵⬡</button>
 
@@ -306,6 +339,7 @@
       </label>
 
       <button class="btn" type="button" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>Usuń</button>
       <button class="btn" type="button" id="clear" title="Wyczyść tę stronę">🗑️</button>
     </div>
   </div>
@@ -390,6 +424,14 @@
   let figureBtn = document.querySelector('[data-tool="figure"]');
   let figurePalette = null;
   let selectionRotateEnabled = false;
+  const textFontBtn = document.getElementById('textFontBtn');
+  const deleteSelectionBtn = document.getElementById('deleteSelection');
+  let textFontPanel = null;
+  let textFontRange = null;
+  let textFontValueEl = null;
+  const TEXT_FONT_MIN = 14;
+  const TEXT_FONT_MAX = 96;
+  const TEXT_FONT_STEP = 2;
 
   function ensureFigurePalette(){
     if(figurePalette) return;
@@ -435,7 +477,115 @@
 
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
+  let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
+  let lastBrushSize = size;
   let currentShape = 'rect';
+
+  /* ---------- TEKST: ROZMIAR CZCIONKI ---------- */
+  function clampTextFont(px){
+    return Math.max(TEXT_FONT_MIN, Math.min(TEXT_FONT_MAX, px));
+  }
+  function updateTextFontUI(){
+    if(textFontValueEl){ textFontValueEl.textContent = `${Math.round(textFontSizePx)} px`; }
+    if(textFontRange){ textFontRange.value = Math.round(textFontSizePx); }
+  }
+  function ensureTextFontPanel(){
+    if(textFontPanel) return;
+    textFontPanel = document.createElement('div');
+    textFontPanel.className = 'text-font-panel';
+    textFontPanel.innerHTML = `
+      <div class="text-font-panel__header">Wielkość czcionki</div>
+      <div class="text-font-panel__value" data-font-display>24 px</div>
+      <input type="range" class="text-font-panel__range" min="${TEXT_FONT_MIN}" max="${TEXT_FONT_MAX}" step="${TEXT_FONT_STEP}">
+      <div class="text-font-panel__actions">
+        <button type="button" data-step="-${TEXT_FONT_STEP}">–</button>
+        <button type="button" data-step="${TEXT_FONT_STEP}">+</button>
+      </div>
+    `;
+    document.body.appendChild(textFontPanel);
+    textFontRange = textFontPanel.querySelector('.text-font-panel__range');
+    textFontValueEl = textFontPanel.querySelector('[data-font-display]');
+    if(textFontRange){
+      textFontRange.addEventListener('input', ()=>{ setTextFontPx(parseInt(textFontRange.value,10)); });
+    }
+    textFontPanel.querySelectorAll('[data-step]').forEach(btn=>{
+      btn.addEventListener('pointerdown', (e)=>{
+        e.preventDefault();
+        const delta = parseInt(btn.getAttribute('data-step'),10) || 0;
+        setTextFontPx(textFontSizePx + delta);
+      });
+    });
+    updateTextFontUI();
+  }
+  function positionTextFontPanel(){
+    if(!textFontBtn || !textFontPanel) return;
+    const r = textFontBtn.getBoundingClientRect();
+    textFontPanel.style.left = `${r.left}px`;
+    textFontPanel.style.top = `${r.bottom + 8}px`;
+  }
+  function toggleTextFontPanel(force){
+    if(!textFontBtn) return;
+    ensureTextFontPanel();
+    const open = typeof force==='boolean' ? force : !textFontPanel.classList.contains('open');
+    if(open && tool===TOOLS.TEXT){
+      positionTextFontPanel();
+      updateTextFontUI();
+      textFontPanel.classList.add('open');
+    }else if(textFontPanel){
+      textFontPanel.classList.remove('open');
+      if(textFontBtn){ textFontBtn.classList.remove('is-active'); }
+    }
+  }
+  function setTextFontPx(px){
+    textFontSizePx = clampTextFont(px);
+    if(tool===TOOLS.TEXT){
+      size = Math.max(1, textFontSizePx / 6);
+    }
+    updateTextFontUI();
+    updateState();
+  }
+  function handleTextToolToggle(previousTool){
+    const isText = tool===TOOLS.TEXT;
+    if(textFontBtn){
+      textFontBtn.classList.toggle('is-visible', isText);
+      if(!isText){
+        textFontBtn.classList.remove('is-active');
+      }
+    }
+    if(isText){
+      if(previousTool!==TOOLS.TEXT){
+        lastBrushSize = size;
+        size = Math.max(1, textFontSizePx / 6);
+      }
+      updateTextFontUI();
+    }else if(previousTool===TOOLS.TEXT){
+      textFontSizePx = clampTextFont(textFontSizePx);
+      size = lastBrushSize;
+      toggleTextFontPanel(false);
+    }
+  }
+  function updateDeleteButtonState(pageOverride){
+    if(!deleteSelectionBtn) return;
+    const target = pageOverride || currentPage();
+    const hasSelection = Boolean(target && target.state.selection);
+    deleteSelectionBtn.disabled = !hasSelection;
+    deleteSelectionBtn.classList.toggle('is-disabled', !hasSelection);
+  }
+  function deleteCurrentSelection(){
+    const p = currentPage();
+    if(!p || !p.state.selection) return;
+    const sel = p.state.selection;
+    pushHistory(p);
+    if(sel.kind==='image' && p.state.images[sel.index]){
+      p.state.images.splice(sel.index,1);
+    }else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
+      p.state.strokes.splice(sel.index,1);
+    }
+    p.state.selection = null;
+    renderAll(p);
+    clearOverlay(p);
+    updateDeleteButtonState(p);
+  }
 
   // room_id info
   const qs = new URLSearchParams(location.search);
@@ -534,7 +684,10 @@
     PAGES.length = 0;
     pagesEl.innerHTML = '';
   }
-  window.addEventListener('resize', ()=>{ PAGES.forEach(p=>{ resizePage(p); refreshGrid(p); renderAll(p); drawSelection(p); }); });
+  window.addEventListener('resize', ()=>{
+    PAGES.forEach(p=>{ resizePage(p); refreshGrid(p); renderAll(p); drawSelection(p); });
+    if(textFontPanel?.classList.contains('open')){ positionTextFontPanel(); }
+  });
 
   /* ---------- RENDER ---------- */
   function renderAll(p){
@@ -655,6 +808,7 @@
   function drawSelection(p){
     clearOverlay(p);
     const sel = p.state.selection;
+    updateDeleteButtonState(p);
     selectionRotateEnabled = false;
     if(!sel) return;
     const b = sel.bbox;
@@ -1561,7 +1715,9 @@ function textDimensions(s){
            tool===TOOLS.CROP?'Wycinanie':'Figury';
   }
   function setTool(next){
+    const prevTool = tool;
     tool = next;
+    handleTextToolToggle(prevTool);
     updateState();
     document.querySelectorAll('#tools [data-tool]').forEach(b=>{
       b.classList.toggle('is-active', b.getAttribute('data-tool')===tool);
@@ -1574,7 +1730,8 @@ function textDimensions(s){
     const shapeLabel = tool===TOOLS.FIGURE
       ? ` • ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
       : '';
-    stateEl.textContent = `Tryb: ${toolLabel()} • ${size}px • ${color}${shapeLabel}`;
+    const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
+    stateEl.textContent = `Tryb: ${toolLabel()} • ${sizeLabel} • ${color}${shapeLabel}`;
     updateFigurePaletteSelection();
   }
 
@@ -1606,8 +1763,48 @@ function textDimensions(s){
     if(e.target.closest('[data-tool="figure"]') || (figurePalette && figurePalette.contains(e.target))) return;
     toggleFigurePalette(false);
   });
+  if(textFontBtn){
+    textFontBtn.addEventListener('pointerdown', (e)=>{
+      if(tool!==TOOLS.TEXT) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const isOpen = textFontPanel?.classList.contains('open');
+      toggleTextFontPanel(!isOpen);
+      textFontBtn.classList.toggle('is-active', !isOpen);
+    });
+  }
+  document.addEventListener('pointerdown', (e)=>{
+    if(!textFontPanel || !textFontPanel.classList.contains('open')) return;
+    if((textFontBtn && textFontBtn.contains(e.target)) || textFontPanel.contains(e.target)) return;
+    toggleTextFontPanel(false);
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key==='Escape' && textFontPanel && textFontPanel.classList.contains('open')){
+      toggleTextFontPanel(false);
+    }
+  });
   document.getElementById('color').addEventListener('input', e=>{ color=e.target.value; updateState(); });
-  document.getElementById('size').addEventListener('change', e=>{ size=parseInt(e.target.value,10); updateState(); });
+  const sizeSelect = document.getElementById('size');
+  if(sizeSelect){
+    sizeSelect.addEventListener('change', e=>{
+      const nextSize = parseInt(e.target.value,10);
+      if(Number.isNaN(nextSize)) return;
+      size = nextSize;
+      if(tool===TOOLS.TEXT){
+        setTextFontPx(nextSize * 6);
+      }else{
+        lastBrushSize = size;
+        updateState();
+      }
+    });
+  }
+  if(deleteSelectionBtn){
+    deleteSelectionBtn.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      deleteCurrentSelection();
+    });
+  }
+  updateDeleteButtonState();
 
   window.addEventListener('keydown', (e)=>{
     if(e.key==='v'||e.key==='V') setTool(TOOLS.SELECT);
@@ -1754,6 +1951,7 @@ function textDimensions(s){
     p.state.selection=null;
     renderAll(p);
     clearOverlay(p);
+    updateDeleteButtonState(p);
   });
 
   // WSTAW OBRAZ/PDF
