@@ -138,6 +138,27 @@
     z-index:80; pointer-events:none; opacity:0; transition:opacity .2s ease, transform .2s ease;
   }
   .crop-busy-toast.show{ opacity:1; transform:translate(-50%,0); }
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(2,15,46,.55); display:none;
+    align-items:center; justify-content:center; z-index:90;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal{
+    background:#fff; border-radius:18px; padding:24px; width:min(420px, 92vw);
+    box-shadow:0 25px 80px rgba(2,15,46,.35); display:flex; flex-direction:column; gap:16px;
+  }
+  .modal h3{ margin:0; font-size:20px; }
+  .modal p{ margin:0; color:var(--muted); }
+  .modal label{ display:flex; flex-direction:column; gap:6px; font-weight:600; }
+  .modal input[type="text"]{
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:15px;
+  }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
+  .modal-actions .btn{
+    border:none; border-radius:10px; padding:10px 16px; font-weight:600; cursor:pointer;
+  }
+  .modal-actions .btn.secondary{ background:#eef3ff; color:#0b1320; }
+  .modal-actions .btn.primary{ background:var(--brand); color:#fff; }
 
   .footer{ position:fixed; right:12px; bottom:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:25; }
 
@@ -295,6 +316,9 @@
       <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown">☰ Menu</button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
+          <button class="drop-item primary" type="button" id="openBoardBtn">Otwórz</button>
+        </div>
+        <div class="drop-group">
           <button class="drop-item primary" type="button" id="saveToggle">Zapisz</button>
           <div class="drop-row" id="saveRow" style="display:none">
             <button class="drop-item" type="button" id="savePng">💾 PNG</button>
@@ -310,7 +334,7 @@
             <button class="drop-item" type="button" data-grid="16">Mała</button>
             <button class="drop-item" type="button" data-grid="24">Średnia</button>
             <button class="drop-item" type="button" data-grid="32">Duża</button>
-            <button class="drop-item" type="button" data-grid="8">Papier milimetrowy</button>
+            <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
@@ -330,7 +354,22 @@
 
 <div class="footer">
   <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
-  <span class="btn" id="roomInfo" title="Room ID z query string">room_id: —</span>
+  <span class="btn" id="roomInfo" title="Room ID z query string">room_id: -</span>
+</div>
+
+<div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
+    <h3 id="openBoardTitle">Otwórz nową tablicę</h3>
+    <p>Utwórz pustą tablicę. Aktualne karty zostaną zamknięte.</p>
+    <label>
+      Nazwa tablicy (opcjonalnie)
+      <input type="text" id="openBoardName" placeholder="np. Matematyka - lekcja 3">
+    </label>
+    <div class="modal-actions">
+      <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -430,7 +469,7 @@
     const p = { el:page, gridC, drawC, ovlC, g, ctx, ovl, state: makeEmptyPageState() };
     PAGES.push(p);
     resizePage(p);
-    drawGrid(p);
+    refreshGrid(p);
     renderAll(p);
     bindPage(p);
     if(scrollTo) page.scrollIntoView({behavior:'smooth', block:'center'});
@@ -460,7 +499,42 @@
     for(let y=0;y<=h;y+=gridSize){ p.g.beginPath(); p.g.moveTo(0,y); p.g.lineTo(w,y); p.g.stroke(); }
     p.g.restore();
   }
-  window.addEventListener('resize', ()=>{ PAGES.forEach(p=>{ resizePage(p); drawGrid(p); renderAll(p); drawSelection(p); }); });
+  function drawTechGrid(p){
+    const dpr = window.devicePixelRatio || 1;
+    const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
+    drawTechPattern(p.g, w, h);
+  }
+  function drawTechPattern(ctx, w, h){
+    ctx.clearRect(0,0,w,h);
+    ctx.save();
+    const thin = '#e0e6f0';
+    const mid  = '#b5c0d4';
+    const bold = '#7f8ba1';
+    const step = 8;
+    ctx.strokeStyle = thin;
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= w; x += step/2){ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y <= h; y += step/2){ ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    ctx.strokeStyle = mid;
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= w; x += step*5){ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y <= h; y += step*5){ ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    ctx.strokeStyle = bold;
+    ctx.lineWidth = 1.2;
+    for (let x = 0; x <= w; x += step*10){ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y <= h; y += step*10){ ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function refreshGrid(p){
+    if(gridSize==='tech'){ drawTechGrid(p); }
+    else{ drawGrid(p); }
+  }
+  function resetBoard(){
+    PAGES.forEach(p=> p.el.remove());
+    PAGES.length = 0;
+    pagesEl.innerHTML = '';
+  }
+  window.addEventListener('resize', ()=>{ PAGES.forEach(p=>{ resizePage(p); refreshGrid(p); renderAll(p); drawSelection(p); }); });
 
   /* ---------- RENDER ---------- */
   function renderAll(p){
@@ -862,7 +936,9 @@
     const tmp = document.createElement('canvas'); tmp.width=W; tmp.height=H;
     theContext = tmp.getContext('2d');
 
-    if(gridSize){
+    if(gridSize === 'tech'){
+      drawTechPattern(theContext, W, H);
+    }else if(gridSize){
       theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
       for(let x=0;x<=W;x+=gridSize){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,H); theContext.stroke(); }
       for(let y=0;y<=H;y+=gridSize){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(W,y); theContext.stroke(); }
@@ -1550,6 +1626,36 @@ function textDimensions(s){
   // MENU (po prawej)
   const menuBtn = document.getElementById('menuBtn');
   const dropdown = document.getElementById('dropdown');
+  const openBoardModal = document.getElementById('openBoardModal');
+  const openBoardBtn = document.getElementById('openBoardBtn');
+  const openBoardInput = document.getElementById('openBoardName');
+  const openBoardCancel = document.getElementById('openBoardCancel');
+  const openBoardCreate = document.getElementById('openBoardCreate');
+
+  function showOpenBoardModal(){
+    if(!openBoardModal) return;
+    openBoardModal.classList.add('open');
+    openBoardModal.removeAttribute('aria-hidden');
+    if(openBoardInput){
+      openBoardInput.value='';
+      setTimeout(()=> openBoardInput.focus(), 50);
+    }
+  }
+  function hideOpenBoardModal(){
+    if(!openBoardModal) return;
+    openBoardModal.classList.remove('open');
+    openBoardModal.setAttribute('aria-hidden','true');
+  }
+  function handleCreateBoard(){
+    resetBoard();
+    const page = createPage(true);
+    if(openBoardInput){
+      const label = openBoardInput.value.trim();
+      if(label){ page.el.setAttribute('data-board-name', label); }
+    }
+    hideOpenBoardModal();
+  }
+
   function toggleMenu(force){
     const open = typeof force==='boolean' ? force : !dropdown.classList.contains('open');
     dropdown.classList.toggle('open', open);
@@ -1559,8 +1665,33 @@ function textDimensions(s){
   document.addEventListener('pointerdown', (e)=>{ if(!dropdown.contains(e.target) && e.target!==menuBtn){ toggleMenu(false);} });
 
   dropdown.querySelectorAll('[data-grid]').forEach(btn=>{
-    btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); gridSize=parseInt(btn.getAttribute('data-grid'),10)||0; PAGES.forEach(p=>{ drawGrid(p); }); toggleMenu(false); });
+    btn.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      const val = btn.getAttribute('data-grid');
+      if (val === 'tech'){
+        gridSize = 'tech';
+        PAGES.forEach(p=> drawTechGrid(p));
+      } else {
+        gridSize = parseInt(val,10)||0;
+        PAGES.forEach(p=> drawGrid(p));
+      }
+      toggleMenu(false);
+    });
   });
+  if(openBoardBtn){
+    openBoardBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); showOpenBoardModal(); toggleMenu(false); });
+  }
+  if(openBoardCancel){ openBoardCancel.addEventListener('click', hideOpenBoardModal); }
+  if(openBoardCreate){ openBoardCreate.addEventListener('click', handleCreateBoard); }
+  if(openBoardModal){
+    openBoardModal.addEventListener('click', (e)=>{ if(e.target===openBoardModal){ hideOpenBoardModal(); } });
+  }
+  if(openBoardInput){
+    openBoardInput.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); handleCreateBoard(); }
+      if(e.key==='Escape'){ e.preventDefault(); hideOpenBoardModal(); }
+    });
+  }
   const saveToggle = document.getElementById('saveToggle');
   const saveRow = document.getElementById('saveRow');
   if(saveToggle && saveRow){
