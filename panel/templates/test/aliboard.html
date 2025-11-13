@@ -1086,16 +1086,19 @@
   /* ---------- COMPOSITE STRONY ---------- */
   async function compositePageCanvas(p){
     const dpr = window.devicePixelRatio || 1;
-    const W = p.drawC.width / dpr, H = p.drawC.height / dpr;
-    const tmp = document.createElement('canvas'); tmp.width=W; tmp.height=H;
+    const cssW = p.drawC.width / dpr, cssH = p.drawC.height / dpr;
+    const tmp = document.createElement('canvas');
+    tmp.width = Math.ceil(cssW * dpr);
+    tmp.height = Math.ceil(cssH * dpr);
     theContext = tmp.getContext('2d');
+    theContext.scale(dpr, dpr);
 
     if(gridSize === 'tech'){
-      drawTechPattern(theContext, W, H);
+      drawTechPattern(theContext, cssW, cssH);
     }else if(gridSize){
       theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
-      for(let x=0;x<=W;x+=gridSize){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,H); theContext.stroke(); }
-      for(let y=0;y<=H;y+=gridSize){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(W,y); theContext.stroke(); }
+      for(let x=0;x<=cssW;x+=gridSize){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,cssH); theContext.stroke(); }
+      for(let y=0;y<=cssH;y+=gridSize){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(cssW,y); theContext.stroke(); }
       theContext.restore();
     }
     await Promise.all(p.state.images.map(im => im.img ? Promise.resolve() : new Promise(res=>{ const el=new Image(); el.onload=()=>{im.img=el; res();}; el.src=im.src; })));
@@ -1163,7 +1166,6 @@
     cropCancel();
 
     if(!selectionHasContent(p, x0, y0, x1, y1)){
-      alert('Zaznaczony obszar jest pusty - nic nie zostalo wyciete.');
       return;
     }
 
@@ -1172,11 +1174,16 @@
       const placement = await askCropPlacement();
 
       const comp = await compositePageCanvas(p);
-      const sx = Math.max(0, Math.floor(x0)), sy = Math.max(0, Math.floor(y0));
-      const sw = Math.max(1, Math.floor(x1 - x0)), sh = Math.max(1, Math.floor(y1 - y0));
-      const cut = document.createElement('canvas'); cut.width=sw; cut.height=sh;
+      const dpr = window.devicePixelRatio || 1;
+      const cssWidth = Math.max(1, Math.round(x1 - x0));
+      const cssHeight = Math.max(1, Math.round(y1 - y0));
+      const pxWidth = Math.max(1, Math.round(cssWidth * dpr));
+      const pxHeight = Math.max(1, Math.round(cssHeight * dpr));
+      const sx = Math.max(0, Math.floor(x0 * dpr)), sy = Math.max(0, Math.floor(y0 * dpr));
+      const cut = document.createElement('canvas'); cut.width=pxWidth; cut.height=pxHeight;
       const cctx = cut.getContext('2d');
-      cctx.drawImage(comp, sx, sy, sw, sh, 0, 0, sw, sh);
+      cctx.drawImage(comp, sx, sy, pxWidth, pxHeight, 0, 0, pxWidth, pxHeight);
+      cctx.imageSmoothingEnabled = false;
       const url = cut.toDataURL('image/png');
 
       const margin = 24;
@@ -1186,9 +1193,9 @@
 
       const maxW = pageW - margin*2;
       const maxH = pageH - margin*2;
-      const scale = Math.min(1, maxW / sw, maxH / sh);
-      const w = Math.max(1, Math.floor(sw * scale));
-      const h = Math.max(1, Math.floor(sh * scale));
+      const scale = Math.min(1, maxW / cssWidth, maxH / cssHeight);
+      const w = Math.max(1, Math.floor(cssWidth * scale));
+      const h = Math.max(1, Math.floor(cssHeight * scale));
 
       let targetPage = p;
       let xPos = 0;
@@ -1876,7 +1883,7 @@ function textDimensions(s){
     });
   });
   if(openBoardBtn){
-    openBoardBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); showOpenBoardModal(); toggleMenu(false); });
+    openBoardBtn.addEventListener('click', (e)=>{ e.preventDefault(); showOpenBoardModal(); toggleMenu(false); });
   }
   if(openBoardCancel){ openBoardCancel.addEventListener('click', hideOpenBoardModal); }
   if(openBoardCreate){ openBoardCreate.addEventListener('click', handleCreateBoard); }
@@ -1977,8 +1984,8 @@ function textDimensions(s){
     const url = c.toDataURL('image/png');
     const rect=p.el.getBoundingClientRect();
     const ratio = Math.min(rect.width/c.width, rect.height/c.height);
-    theWidth = Math.max(120, c.width*ratio);
-    theHeight=Math.max(120, c.height*ratio);
+    const theWidth = Math.max(120, c.width*ratio);
+    const theHeight=Math.max(120, c.height*ratio);
     const x = (rect.width-theWidth)/2, y=(rect.height-theHeight)/2;
     addImageFromSrc(url, theWidth, theHeight, x, y, {pdf:true,page:pageNum}, p);
     e.target.value='';
