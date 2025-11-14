@@ -429,6 +429,7 @@
   const wrapEl  = document.getElementById('wrap');
   const pagesEl = document.getElementById('pages');
   const stateEl = document.getElementById('state');
+  const sync = window.ALIBOARD_SYNC || null;
   let figureBtn = document.querySelector('[data-tool="figure"]');
   let figurePalette = null;
   let selectionRotateEnabled = false;
@@ -593,6 +594,42 @@
     renderAll(p);
     clearOverlay(p);
     updateDeleteButtonState(p);
+  }
+
+  /* ---------- SYNC (WebSocket) ---------- */
+  function broadcastStrokeAdd(stroke, pageIndex){
+    if(!sync || !stroke || stroke.type!=='pen') return;
+    if(typeof pageIndex!=='number' || pageIndex<0) return;
+    if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
+    sync.send({
+      type:'stroke_add',
+      pageIndex,
+      payload:{
+        tool:'pen',
+        color:stroke.color,
+        size:stroke.size,
+        points: stroke.points.map(pt=>({x:pt.x, y:pt.y}))
+      }
+    });
+  }
+  function applyRemoteEvent(evt){
+    if(!evt || evt.type!=='stroke_add') return;
+    const page = PAGES[evt.pageIndex];
+    if(!page) return;
+    const payload = evt.payload || {};
+    if(payload.tool!=='pen' || !Array.isArray(payload.points)) return;
+    const stroke = {
+      type:'pen',
+      color:payload.color || '#0b74ff',
+      size:payload.size || 3,
+      points: payload.points.map(pt=>({x:pt.x, y:pt.y}))
+    };
+    page.state.strokes.push(stroke);
+    renderAll(page);
+    if(page.state.selection){ drawSelection(page); }
+  }
+  if(sync){
+    sync.onMessage(applyRemoteEvent);
   }
 
   // room_id info
@@ -1604,6 +1641,7 @@ function textDimensions(s){
       }
     }
     function end(x,y){
+      let strokeToSync = null;
       if(tool===TOOLS.SELECT){ p.state.dragging=null; return; }
       if(tool===TOOLS.CROP && cropping){ cropping=false; finalizeCrop(x,y,p); return; }
       if(tool===TOOLS.ERASER){
@@ -1623,7 +1661,12 @@ function textDimensions(s){
       }
       if(!drawing) return;
       if(tool===TOOLS.LINE){ clearOverlay(p); current.b={x,y}; p.state.strokes.push(current); renderAll(p); }
-      drawing=false; current=null;
+      if(tool===TOOLS.PEN){ strokeToSync = current; }
+      drawing=false;
+      if(strokeToSync){
+        broadcastStrokeAdd(strokeToSync, PAGES.indexOf(p));
+      }
+      current=null;
     }
 
     function trackTouch(e, isDown){
