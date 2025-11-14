@@ -86,6 +86,7 @@ from django.http import FileResponse, Http404
 from openai import OpenAI
 from pypdf import PdfReader
 from docx import Document
+import secrets
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2375,3 +2376,10 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
 #TABLICA
 def aliboard_view(request):
     return render(request, "test/aliboard.html")
+
+
+@login_required
+def aliboard_new_room(request):
+    room_id = secrets.token_urlsafe(12)
+    url = reverse("aliboard_view")
+    return redirect(f"{url}?room={room_id}")

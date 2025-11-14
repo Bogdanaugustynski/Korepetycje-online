@@ -406,6 +406,14 @@
   </div>
 </div>
 
+<script src="{% static 'js/aliboard_sync.js' %}"></script>
+<script>
+  window.ALIBOARD_CONFIG = {
+    roomId: "{{ request.GET.room|default:'local-test' }}",
+    wsBase: "{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/aliboard/"
+  };
+</script>
+
 <script>
 (function(){
   /* === PATCH: wstrzyknięcie delikatnego CSS dla paska narzędzi (bez kapsli) === */

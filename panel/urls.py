@@ -1,6 +1,7 @@
 from django.urls import path
 from django.views.generic import TemplateView
 from . import views
+from . import aliboard_views
 from panel.views import strona_glowna_view
 from .views import login_view
 from .views import moje_konto_uczen_view
@@ -105,6 +106,7 @@ urlpatterns = [
 
     #Tablica
     path("aliboard/", views.aliboard_view, name="aliboard"),
+    path("aliboard/new/", aliboard_views.aliboard_new_room, name="aliboard_new_room"),
 
 
 ]
