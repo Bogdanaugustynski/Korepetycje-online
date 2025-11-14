@@ -105,7 +105,12 @@ urlpatterns = [
 
     #Tablica
     path("aliboard/", views.aliboard_view, name="aliboard"),
-    path("aliboard/new/", aliboard_views.aliboard_new_room, name="aliboard_new_room"),
+    # ŚCIEŻKI DO NOWEGO SYSTEMU POKOI ALIBOARD – NA RAZIE WYŁĄCZONE,
+    # BO WIDOKI SĄ NIEDOSTĘPNE NA PRODUKCJI (ŻEBY NIE BLOKOWAĆ DEPLOYU)
+    # path("aliboard/nowy/", aliboard_views.aliboard_nowy_pokój, name="aliboard_nowy_pokój"),
+    # path("aliboard/pokoj/<slug:room_id>/", aliboard_views.aliboard_pokój, name="aliboard_pokój"),
+    # path("aliboard/dolacz/", aliboard_views.aliboard_dolacz, name="aliboard_dolacz"),
+    # path("aliboard/new/", aliboard_views.aliboard_new_room, name="aliboard_new_room"),
 
 
 ]
