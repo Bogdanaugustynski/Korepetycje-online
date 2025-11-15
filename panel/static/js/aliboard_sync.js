@@ -1,113 +1,92 @@
 // static/js/aliboard_sync.js
 
-(function(){
-  const rawRoomId = window.ALIBOARD_ROOM_ID != null ? String(window.ALIBOARD_ROOM_ID).trim() : '';
-  const roomId = rawRoomId || 'demo';
-  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const wsUrl = `${scheme}://${window.location.host}/ws/aliboard/${encodeURIComponent(roomId)}/`;
+(function () {
+  const roomId = window.ALIBOARD_ROOM_ID || "demo";
 
-  function randomId(){
-    if(window.crypto?.getRandomValues){
-      const buf = new Uint8Array(16);
-      window.crypto.getRandomValues(buf);
-      return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    return `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const socketUrl = `${protocol}://${window.location.host}/ws/aliboard/${roomId}/`;
 
-  const clientId = randomId();
-  const listeners = new Set();
   let socket = null;
-  let queue = [];
-  let reconnectTimer = null;
+  const listeners = {}; // { type: [handler, ...] }
+  let reconnectDelay = 1000;
+  const maxReconnectDelay = 10000;
 
-  function flush(){
-    if(!socket || socket.readyState !== WebSocket.OPEN) return;
-    while(queue.length){ socket.send(queue.shift()); }
+  function log(...args) {
+    // console.log("[AliboardSync]", ...args);
   }
 
-  function notify(data){
-    listeners.forEach(fn => {
-      try{
-        fn(data);
-      }catch(err){
-        console.error('[Aliboard Sync] listener error', err);
-      }
-    });
-  }
+  function connect() {
+    log("Connecting to", socketUrl);
+    socket = new WebSocket(socketUrl);
 
-  function scheduleReconnect(){
-    if(reconnectTimer) return;
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      connect();
-    }, 2000);
-  }
+    socket.onopen = () => {
+      log("WebSocket connected");
+      reconnectDelay = 1000;
+    };
 
-  function connect(){
-    try{
-      socket = new WebSocket(wsUrl);
-    }catch(err){
-      console.error('[Aliboard Sync] WebSocket init failed', err);
-      scheduleReconnect();
-      return;
-    }
+    socket.onclose = (event) => {
+      log("WebSocket closed", event.code, event.reason);
+      // try to reconnect (simple backoff)
+      setTimeout(() => {
+        reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
+        connect();
+      }, reconnectDelay);
+    };
 
-    socket.addEventListener('open', ()=>{
-      console.info('[Aliboard Sync] connected to room', roomId);
-      flush();
-    });
+    socket.onerror = (error) => {
+      log("WebSocket error", error);
+    };
 
-    socket.addEventListener('message', (event)=>{
-      let data = null;
-      try{
+    socket.onmessage = (event) => {
+      let data;
+      try {
         data = JSON.parse(event.data);
-      }catch(_err){
-        console.warn('[Aliboard Sync] invalid payload skipped');
+      } catch (e) {
+        log("Cannot parse message", event.data);
         return;
       }
-      if(!data || data.clientId === clientId) return;
-      notify(data);
-    });
 
-    socket.addEventListener('close', ()=>{
-      console.warn('[Aliboard Sync] disconnected, retrying...');
-      scheduleReconnect();
-    });
-
-    socket.addEventListener('error', (err)=>{
-      console.error('[Aliboard Sync] socket error', err);
-      socket.close();
-    });
+      const type = data.type;
+      const payload = data.payload;
+      const handlers = listeners[type] || [];
+      handlers.forEach((h) => {
+        try {
+          h(payload);
+        } catch (e) {
+          console.error("AliboardSync handler error", e);
+        }
+      });
+    };
   }
 
-  function send(payload){
-    if(!payload || typeof payload !== 'object') return;
-    const message = JSON.stringify({ clientId, ...payload });
-    if(socket && socket.readyState === WebSocket.OPEN){
+  function send(type, payload) {
+    const message = JSON.stringify({ type, payload });
+    if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(message);
-    }else{
-      queue.push(message);
+    } else {
+      log("Cannot send, socket not open", type);
     }
   }
 
-  function onMessage(handler){
-    if(typeof handler !== 'function') return ()=>{};
-    listeners.add(handler);
-    return ()=> listeners.delete(handler);
+  function on(type, handler) {
+    if (!listeners[type]) {
+      listeners[type] = [];
+    }
+    listeners[type].push(handler);
+    return () => {
+      const arr = listeners[type];
+      if (!arr) return;
+      const idx = arr.indexOf(handler);
+      if (idx !== -1) arr.splice(idx, 1);
+    };
   }
 
-  if(roomId){
-    connect();
-  }else{
-    console.warn('[Aliboard Sync] roomId missing; realtime disabled');
-  }
-
-  window.ALIBOARD_SYNC = {
-    clientId,
+  // public API
+  window.AliboardSync = {
     send,
-    onMessage,
-    status: ()=> socket ? socket.readyState : WebSocket.CLOSED
+    on,
   };
+
+  connect();
 })();
 
