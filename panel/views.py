@@ -2375,17 +2375,17 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
     return _summarize_locally(text)
 
 #TABLICA
-def aliboard_view(request):
-    return render(request, "test/aliboard.html")
+def aliboard_view(request, room_id="local-test"):
+    # jeśli wejdziesz na /aliboard/ -> użyje "local-test"
+    # jeśli wejdziesz na /aliboard/abcd1234/ -> użyje "abcd1234"
+    context = {
+        "room_id": room_id,
+    }
+    return render(request, "test/aliboard.html", context)
 
 def aliboard_new_room(request):
-    """
-    Tworzy nowy room_id i przekierowuje nauczyciela
-    na URL z konkretnym pokojem.
-    Przykład: /aliboard/pokoj/abc123de/
-    """
-    room_id = uuid.uuid4().hex[:8]  # krótkie, ładne ID
-    return redirect("aliboard_room", room_id=room_id)
+    room_id = uuid.uuid4().hex[:8]  # np. "a3f9c2b1"
+    return redirect("aliboard_room", room_id=room_id
 
 
 def aliboard_room(request, room_id):
@@ -2394,9 +2394,3 @@ def aliboard_room(request, room_id):
     żeby JS wiedział, do jakiego pokoju WebSocket się podpiąć.
     """
     return render(request, "test/aliboard.html", {"room_id": room_id})
-
-@login_required
-def aliboard_new_room(request):
-    room_id = secrets.token_urlsafe(12)
-    url = reverse("aliboard_view")
-    return redirect(f"{url}?room={room_id}")
