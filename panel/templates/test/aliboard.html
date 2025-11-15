@@ -388,7 +388,7 @@
 
 <div class="footer">
   <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
-  <span class="btn" id="roomInfo" title="Room ID z query string">room_id: -</span>
+  <span class="btn" id="roomInfo" title="Room ID z query string">room_id: {{ room_id|default:'local-test' }}</span>
 </div>
 
 <div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
