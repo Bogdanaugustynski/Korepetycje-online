@@ -1,1 +1,1 @@
-web: gunicorn korepetycje_django_gotowy_projekt.wsgi:application
+web: daphne -b 0.0.0.0 -p ${PORT:-8000} korepetycje.asgi:application
