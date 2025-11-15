@@ -350,7 +350,9 @@
       <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown">☰ Menu</button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
-          <button class="drop-item primary" type="button" id="openBoardBtn">Otwórz</button>
+          <a href="{% url 'aliboard_new_room' %}" target="_blank" class="drop-item primary btn-aliboard" id="openBoardBtn">
+            🧠 Otwórz nową tablicę Aliboard
+          </a>
         </div>
         <div class="drop-group">
           <button class="drop-item primary" type="button" id="saveToggle">Zapisz</button>
@@ -1937,7 +1939,7 @@ function textDimensions(s){
       toggleMenu(false);
     });
   });
-  if(openBoardBtn){
+  if(openBoardBtn && openBoardBtn.tagName === 'BUTTON'){
     openBoardBtn.addEventListener('click', (e)=>{ e.preventDefault(); showOpenBoardModal(); toggleMenu(false); });
   }
   if(openBoardCancel){ openBoardCancel.addEventListener('click', hideOpenBoardModal); }
