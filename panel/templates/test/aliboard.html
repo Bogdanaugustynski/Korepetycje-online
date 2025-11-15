@@ -408,10 +408,14 @@
 
 <script src="{% static 'js/aliboard_sync.js' %}"></script>
 <script>
-  window.ALIBOARD_CONFIG = {
-    roomId: "{{ request.GET.room|default:'local-test' }}",
-    wsBase: "{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/aliboard/"
-  };
+  (function(){
+    const roomId = "{{ room_id|default:'local-test' }}";
+    window.ALIBOARD_ROOM_ID = roomId;
+    window.ALIBOARD_CONFIG = {
+      roomId,
+      wsBase: "{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/aliboard/"
+    };
+  })();
 </script>
 
 <script>
@@ -2235,7 +2239,7 @@ function textDimensions(s){
 </script>
 <script>
   // przekazujemy room_id z Django do JS
-  window.ALIBOARD_ROOM_ID = "{{ room_id|default:'demo' }}";
+  window.ALIBOARD_ROOM_ID = "{{ room_id|default:'local-test' }}";
 </script>
 <script src="{% static 'js/aliboard_sync.js' %}"></script>
 </body>
