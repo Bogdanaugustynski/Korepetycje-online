@@ -1,92 +1,88 @@
-// static/js/aliboard_sync.js
-
+// panel/static/js/aliboard_sync.js
 (function () {
-  const roomId = window.ALIBOARD_ROOM_ID || "demo";
-
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const socketUrl = `${protocol}://${window.location.host}/ws/aliboard/${roomId}/`;
-
-  let socket = null;
-  const listeners = {}; // { type: [handler, ...] }
-  let reconnectDelay = 1000;
-  const maxReconnectDelay = 10000;
-
-  function log(...args) {
-    // console.log("[AliboardSync]", ...args);
+  // Bez room_id nie ma co robić
+  const roomId = window.ALIBOARD_ROOM_ID;
+  if (!roomId) {
+    console.warn("Aliboard Sync: brak window.ALIBOARD_ROOM_ID – pomijam WebSocket.");
+    return;
   }
 
+  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = scheme + "://" + window.location.host + "/ws/aliboard/" + roomId + "/";
+
+  // Unikalny identyfikator klienta (żeby nie rysować własnych echo)
+  const clientId =
+    (window.crypto && window.crypto.randomUUID && window.crypto.randomUUID()) ||
+    ("c_" + Math.random().toString(36).slice(2));
+
+  let socket = null;
+
   function connect() {
-    log("Connecting to", socketUrl);
-    socket = new WebSocket(socketUrl);
+    try {
+      socket = new WebSocket(wsUrl);
+    } catch (e) {
+      console.error("Aliboard Sync: błąd tworzenia WebSocket", e);
+      return;
+    }
 
-    socket.onopen = () => {
-      log("WebSocket connected");
-      reconnectDelay = 1000;
+    socket.onopen = function () {
+      console.log("Aliboard Sync: połączono z", wsUrl);
     };
 
-    socket.onclose = (event) => {
-      log("WebSocket closed", event.code, event.reason);
-      // try to reconnect (simple backoff)
-      setTimeout(() => {
-        reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
-        connect();
-      }, reconnectDelay);
+    socket.onclose = function () {
+      console.warn("Aliboard Sync: rozłączono, spróbuję ponownie za 3s");
+      setTimeout(connect, 3000);
     };
 
-    socket.onerror = (error) => {
-      log("WebSocket error", error);
+    socket.onerror = function (err) {
+      console.error("Aliboard Sync: błąd WebSocket", err);
     };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = function (event) {
       let data;
       try {
         data = JSON.parse(event.data);
       } catch (e) {
-        log("Cannot parse message", event.data);
+        console.warn("Aliboard Sync: niepoprawny JSON", event.data);
         return;
       }
 
-      const type = data.type;
-      const payload = data.payload;
-      const handlers = listeners[type] || [];
-      handlers.forEach((h) => {
-        try {
-          h(payload);
-        } catch (e) {
-          console.error("AliboardSync handler error", e);
+      if (!data || data.clientId === clientId) {
+        // moje echo – ignoruj
+        return;
+      }
+
+      if (data.type === "stroke" && data.stroke) {
+        // Rysowanie zdalnej kreski – obsługiwane w głównym skrypcie tablicy
+        if (window.aliboardDrawRemoteStroke) {
+          window.aliboardDrawRemoteStroke(data.stroke);
+        } else {
+          console.warn("Aliboard Sync: brak window.aliboardDrawRemoteStroke");
         }
-      });
+      }
     };
   }
-
-  function send(type, payload) {
-    const message = JSON.stringify({ type, payload });
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(message);
-    } else {
-      log("Cannot send, socket not open", type);
-    }
-  }
-
-  function on(type, handler) {
-    if (!listeners[type]) {
-      listeners[type] = [];
-    }
-    listeners[type].push(handler);
-    return () => {
-      const arr = listeners[type];
-      if (!arr) return;
-      const idx = arr.indexOf(handler);
-      if (idx !== -1) arr.splice(idx, 1);
-    };
-  }
-
-  // public API
-  window.AliboardSync = {
-    send,
-    on,
-  };
 
   connect();
+
+  // Funkcja wywoływana z głównego skryptu tablicy,
+  // kiedy lokalnie zakończymy rysowanie jednej kreski.
+  window.aliboardSendStroke = function (stroke) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      console.warn("Aliboard Sync: socket nie gotowy, stroke nie wysłany");
+      return;
+    }
+    try {
+      socket.send(
+        JSON.stringify({
+          type: "stroke",
+          stroke: stroke,
+          clientId: clientId,
+        })
+      );
+    } catch (e) {
+      console.error("Aliboard Sync: błąd wysyłania stroke", e);
+    }
+  };
 })();
 

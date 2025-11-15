@@ -435,7 +435,6 @@
   const wrapEl  = document.getElementById('wrap');
   const pagesEl = document.getElementById('pages');
   const stateEl = document.getElementById('state');
-  const sync = window.ALIBOARD_SYNC || null;
   let figureBtn = document.querySelector('[data-tool="figure"]');
   let figurePalette = null;
   let selectionRotateEnabled = false;
@@ -603,40 +602,46 @@
   }
 
   /* ---------- SYNC (WebSocket) ---------- */
-  function broadcastStrokeAdd(stroke, pageIndex){
-    if(!sync || !stroke || stroke.type!=='pen') return;
-    if(typeof pageIndex!=='number' || pageIndex<0) return;
+  function emitStrokeRealtime(stroke){
+    if(!stroke || stroke.type!=='pen') return;
     if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
-    sync.send({
-      type:'stroke_add',
-      pageIndex,
-      payload:{
-        tool:'pen',
-        color:stroke.color,
-        size:stroke.size,
-        points: stroke.points.map(pt=>({x:pt.x, y:pt.y}))
-      }
-    });
-  }
-  function applyRemoteEvent(evt){
-    if(!evt || evt.type!=='stroke_add') return;
-    const page = PAGES[evt.pageIndex];
-    if(!page) return;
-    const payload = evt.payload || {};
-    if(payload.tool!=='pen' || !Array.isArray(payload.points)) return;
-    const stroke = {
-      type:'pen',
-      color:payload.color || '#0b74ff',
-      size:payload.size || 3,
-      points: payload.points.map(pt=>({x:pt.x, y:pt.y}))
+    if(!window.aliboardSendStroke) return;
+    const payload = {
+      points: stroke.points.map(pt=>[pt.x, pt.y]),
+      color: stroke.color,
+      width: stroke.size,
+      tool: 'pen'
     };
-    page.state.strokes.push(stroke);
+    try{
+      window.aliboardSendStroke(payload);
+    }catch(err){
+      console.error('[Aliboard] send stroke failed', err);
+    }
+  }
+  window.aliboardDrawRemoteStroke = function(stroke){
+    if(!stroke || !Array.isArray(stroke.points)) return;
+    const mapped = stroke.points.map(pt=>{
+      if(Array.isArray(pt) && pt.length>=2){
+        return {x: Number(pt[0]), y: Number(pt[1])};
+      }
+      if(pt && typeof pt==='object'){
+        return {x: Number(pt.x), y: Number(pt.y)};
+      }
+      return null;
+    }).filter(Boolean);
+    if(mapped.length<2) return;
+    const page = currentPage();
+    if(!page) return;
+    const localStroke = {
+      type: 'pen',
+      color: stroke.color || '#0b74ff',
+      size: stroke.width || stroke.size || 3,
+      points: mapped
+    };
+    page.state.strokes.push(localStroke);
     renderAll(page);
     if(page.state.selection){ drawSelection(page); }
-  }
-  if(sync){
-    sync.onMessage(applyRemoteEvent);
-  }
+  };
 
   // room_id info
   const qs = new URLSearchParams(location.search);
@@ -1670,7 +1675,7 @@ function textDimensions(s){
       if(tool===TOOLS.PEN){ strokeToSync = current; }
       drawing=false;
       if(strokeToSync){
-        broadcastStrokeAdd(strokeToSync, PAGES.indexOf(p));
+        emitStrokeRealtime(strokeToSync);
       }
       current=null;
     }

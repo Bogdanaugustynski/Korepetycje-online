@@ -55,23 +55,24 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
 class AliboardConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
-        self.room_group_name = f"aliboard_{self.room_id}"
+        self.group_name = f"aliboard_{self.room_id}"
 
-        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data=None, bytes_data=None):
-        # Na tym etapie: relay 1:1, nic nie zmieniamy w payload
+        # cokolwiek przyjdzie z frontu, rozsyłamy do grupy
         await self.channel_layer.group_send(
-            self.room_group_name,
+            self.group_name,
             {
                 "type": "aliboard.message",
                 "text": text_data,
-            }
+            },
         )
 
     async def aliboard_message(self, event):
-        await self.send(text_data=event["text"])
+        text = event["text"]
+        await self.send(text_data=text)
