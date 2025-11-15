@@ -1,9 +1,9 @@
-# --- Standard library
+﻿# --- Standard library
 import json
 import logging
 import re
 from decimal import Decimal, InvalidOperation
-from datetime import datetime as DT, date, time, timedelta  # używamy KLASY DT, bez importu modułu 'datetime'
+from datetime import datetime as DT, date, time, timedelta  # uĹĽywamy KLASY DT, bez importu moduĹ‚u 'datetime'
 import calendar
 import hmac, hashlib
 from .models import SiteLegalConfig
@@ -47,7 +47,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie, csrf_protect
 
-# --- Channels (jeśli używasz powiadomień)
+# --- Channels (jeĹ›li uĹĽywasz powiadomieĹ„)
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -90,7 +90,7 @@ import secrets
 import uuid
 
 
-# Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
+# JeĹ›li naprawdÄ™ potrzebujesz modeli z innej aplikacji:
 # from panel.models import PrzedmiotCennik, StawkaNauczyciela
 
 
@@ -106,7 +106,7 @@ def test_publiczny(request):
     return HttpResponse("PUBLIC OK")
 
 
-# --- STRONA GŁÓWNA (lista tylko nauczycieli: profil.is_teacher=True) ---
+# --- STRONA GĹĂ“WNA (lista tylko nauczycieli: profil.is_teacher=True) ---
 
 def strona_glowna_view(request):
     profs = (
@@ -163,9 +163,9 @@ log = logging.getLogger("webrtc")
 # ====== Klucze w cache ======
 def _keys(rez_id: int):
     """
-    Zestaw kluczy powiązanych z jedną sesją (rezerwacją):
-    - offer / answer: ładunki SDP
-    - lock: kto został offererem (anti-race)
+    Zestaw kluczy powiÄ…zanych z jednÄ… sesjÄ… (rezerwacjÄ…):
+    - offer / answer: Ĺ‚adunki SDP
+    - lock: kto zostaĹ‚ offererem (anti-race)
     """
     base = f"webrtc:{rez_id}"
     return {
@@ -174,10 +174,10 @@ def _keys(rez_id: int):
         "lock": f"{base}:lock",
     }
 
-# Stałe czasowe
+# StaĹ‚e czasowe
 OFFER_TTL = 60 * 10   # 10 min
 ANSWER_TTL = 60 * 10  # 10 min
-LOCK_TTL  = 60 * 2    # 2 min – wystarczy, żeby student zdążył odebrać
+LOCK_TTL  = 60 * 2    # 2 min â€“ wystarczy, ĹĽeby student zdÄ…ĹĽyĹ‚ odebraÄ‡
 
 def _no_store(resp: JsonResponse) -> JsonResponse:
     resp["Cache-Control"] = "no-store"
@@ -199,17 +199,17 @@ def webrtc_offer(request, rez_id: int):
             if not isinstance(data, dict) or data.get("type") != "offer" or not isinstance(data.get("sdp"), str):
                 return HttpResponseBadRequest("Invalid SDP payload")
 
-            # Kto pierwszy – ten offerer (SETNX = cache.add)
+            # Kto pierwszy â€“ ten offerer (SETNX = cache.add)
             user_id = getattr(getattr(request, "user", None), "id", None) or "anon"
             claimed = cache.add(lock_key, str(user_id), timeout=LOCK_TTL)
             current_locker = cache.get(lock_key)
 
-            # Jeżeli lock istnieje i nie my go trzymamy – ktoś już dzwoni
+            # JeĹĽeli lock istnieje i nie my go trzymamy â€“ ktoĹ› juĹĽ dzwoni
             if not claimed and str(current_locker) != str(user_id):
                 log.info("OFFER POST blocked by lock rez=%s by=%s", rez_id, current_locker)
                 return JsonResponse({"error": "Offerer already set"}, status=409)
 
-            # Zapisz offer (najnowszy nadpisuje stary); answer czyścimy
+            # Zapisz offer (najnowszy nadpisuje stary); answer czyĹ›cimy
             cache.set(offer_key, {"type": "offer", "sdp": data["sdp"]}, timeout=OFFER_TTL)
             cache.delete(answer_key)
 
@@ -244,12 +244,12 @@ def webrtc_answer(request, rez_id: int):
             if t != "answer" or not isinstance(sdp, str) or not sdp.startswith("v="):
                 return HttpResponseBadRequest("Invalid SDP payload")
 
-            # Odpowiadać można tylko na istniejącą ofertę
+            # OdpowiadaÄ‡ moĹĽna tylko na istniejÄ…cÄ… ofertÄ™
             if not cache.get(offer_key):
                 return HttpResponseNotFound("No offer to answer")
 
             cache.set(answer_key, {"type": "answer", "sdp": sdp}, timeout=ANSWER_TTL)
-            # Po przyjęciu answer kasujemy offer, by watchery nie „dzwoniły” w kółko
+            # Po przyjÄ™ciu answer kasujemy offer, by watchery nie â€ždzwoniĹ‚yâ€ť w kĂłĹ‚ko
             cache.delete(offer_key)
 
             log.info("ANSWER POST rez=%s len=%s", rez_id, len(sdp))
@@ -264,17 +264,17 @@ def webrtc_answer(request, rez_id: int):
         return HttpResponseNotFound("No answer yet")
     return _no_store(JsonResponse(data))
 
-# ====== HANGUP (sprzątanie stanu) ======
+# ====== HANGUP (sprzÄ…tanie stanu) ======
 @csrf_exempt
 @never_cache
 @require_POST
 def webrtc_hangup(request, rez_id: int):
     keys = _keys(rez_id)
     cache.delete_many([keys["offer"], keys["answer"], keys["lock"]])
-    log.info("HANGUP rez=%s – cleared offer/answer/lock", rez_id)
+    log.info("HANGUP rez=%s â€“ cleared offer/answer/lock", rez_id)
     return _no_store(JsonResponse({"ok": True}))
 
-# ====== DEBUG (podgląd kluczy) ======
+# ====== DEBUG (podglÄ…d kluczy) ======
 @csrf_exempt
 @never_cache
 @require_GET
@@ -300,7 +300,7 @@ def webrtc_debug(request, rez_id: int):
     }
     return _no_store(JsonResponse(data))
 
-# ====== Presence (jak u Ciebie – z lekkimi poprawkami cache) ======
+# ====== Presence (jak u Ciebie â€“ z lekkimi poprawkami cache) ======
 
 
 @csrf_exempt
@@ -333,7 +333,7 @@ def check_online_status(request, rezerwacja_id):
     elif request.user == rezerwacja.nauczyciel:
         other_user = rezerwacja.uczen
     else:
-        return HttpResponseForbidden("Brak dostępu do tej rezerwacji")
+        return HttpResponseForbidden("Brak dostÄ™pu do tej rezerwacji")
 
     try:
         online_status = OnlineStatus.objects.get(user=other_user, rezerwacja_id=rezerwacja_id)
@@ -345,19 +345,19 @@ def check_online_status(request, rezerwacja_id):
 
 
 # ==========================
-#      POBIERANIE PLIKÓW
+#      POBIERANIE PLIKĂ“W
 # ==========================
 @login_required
 def pobierz_plik(request, id):
     """
-    Pobieranie pliku dołączonego przy rezerwacji (uczeń -> nauczyciel).
-    Zamiast streamować z Django, przekierowujemy na podpisany URL storage.
+    Pobieranie pliku doĹ‚Ä…czonego przy rezerwacji (uczeĹ„ -> nauczyciel).
+    Zamiast streamowaÄ‡ z Django, przekierowujemy na podpisany URL storage.
     """
     r = get_object_or_404(Rezerwacja, id=id)
 
-    # Dostęp: tylko nauczyciel lub uczeń z tej rezerwacji
+    # DostÄ™p: tylko nauczyciel lub uczeĹ„ z tej rezerwacji
     if request.user != r.nauczyciel and request.user != r.uczen and not request.user.is_staff:
-        raise Http404("Brak dostępu")
+        raise Http404("Brak dostÄ™pu")
 
     if not r.plik:
         raise Http404("Plik nie istnieje")
@@ -366,20 +366,20 @@ def pobierz_plik(request, id):
     try:
         return redirect(r.plik.url)
     except Exception:
-        # np. gdy obiekt został usunięty w koszu OVH lub błąd endpointu
-        raise Http404("Nie można pobrać pliku (brak obiektu w storage)")
+        # np. gdy obiekt zostaĹ‚ usuniÄ™ty w koszu OVH lub bĹ‚Ä…d endpointu
+        raise Http404("Nie moĹĽna pobraÄ‡ pliku (brak obiektu w storage)")
 
 
 @login_required
 def pobierz_material(request, id):
     """
-    Pobieranie materiału dodanego po zajęciach (nauczyciel -> uczeń).
-    Również przekierowanie na podpisany URL.
+    Pobieranie materiaĹ‚u dodanego po zajÄ™ciach (nauczyciel -> uczeĹ„).
+    RĂłwnieĹĽ przekierowanie na podpisany URL.
     """
     r = get_object_or_404(Rezerwacja, id=id)
 
     if request.user != r.nauczyciel and request.user != r.uczen and not request.user.is_staff:
-        raise Http404("Brak dostępu")
+        raise Http404("Brak dostÄ™pu")
 
     if not r.material_po_zajeciach:
         raise Http404("Plik nie istnieje")
@@ -387,7 +387,7 @@ def pobierz_material(request, id):
     try:
         return redirect(r.material_po_zajeciach.url)
     except Exception:
-        raise Http404("Nie można pobrać materiału (brak obiektu w storage)")
+        raise Http404("Nie moĹĽna pobraÄ‡ materiaĹ‚u (brak obiektu w storage)")
 
 
 # ==========================
@@ -409,30 +409,30 @@ def login_view(request):
         # Szukaj po e-mailu case-insensitive (uniknij DoesNotExist/MultipleObjects)
         user = User.objects.filter(email__iexact=email).first()
         if not user:
-            return render(request, "login.html", {"error": "Niepoprawny e-mail lub hasło."})
+            return render(request, "login.html", {"error": "Niepoprawny e-mail lub hasĹ‚o."})
 
         if not user.is_active:
-            return render(request, "login.html", {"error": "Konto jest nieaktywne. Skontaktuj się z administratorem."})
+            return render(request, "login.html", {"error": "Konto jest nieaktywne. Skontaktuj siÄ™ z administratorem."})
 
         user_auth = authenticate(request, username=user.username, password=password)
         if user_auth is None:
-            return render(request, "login.html", {"error": "Niepoprawny e-mail lub hasło."})
+            return render(request, "login.html", {"error": "Niepoprawny e-mail lub hasĹ‚o."})
 
         # Logowanie OK
         login(request, user_auth)
 
-        # „Zapamiętaj mnie”: jeśli zaznaczone, sesja wg SESSION_COOKIE_AGE; jeśli nie, do zamknięcia przeglądarki
+        # â€žZapamiÄ™taj mnieâ€ť: jeĹ›li zaznaczone, sesja wg SESSION_COOKIE_AGE; jeĹ›li nie, do zamkniÄ™cia przeglÄ…darki
         if remember:
-            request.session.set_expiry(None)   # domyślnie np. 1209600 s (14 dni) — ustaw w settings.SESSION_COOKIE_AGE
+            request.session.set_expiry(None)   # domyĹ›lnie np. 1209600 s (14 dni) â€” ustaw w settings.SESSION_COOKIE_AGE
         else:
             request.session.set_expiry(0)
 
-        # Priorytet dla ?next=..., inaczej Twoje role jak dotąd
+        # Priorytet dla ?next=..., inaczej Twoje role jak dotÄ…d
         next_url = request.GET.get("next")
         if next_url:
             return redirect(next_url)
 
-        if user_auth.groups.filter(name="Księgowość").exists():
+        if user_auth.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists():
             return redirect("panel_ksiegowosc")
         elif hasattr(user_auth, "profil") and getattr(user_auth.profil, "is_teacher", False):
             return redirect("panel_nauczyciela")
@@ -462,7 +462,7 @@ def register_view(request):
     # --- walidacje ---
     if not accepted:
         return render(request, "register.html", {
-            "error": "Musisz zaakceptować Regulamin i Politykę Prywatności.",
+            "error": "Musisz zaakceptowaÄ‡ Regulamin i PolitykÄ™ PrywatnoĹ›ci.",
             "form": request.POST,
         })
 
@@ -472,23 +472,23 @@ def register_view(request):
         return render(request, "register.html", {"error": "Podaj poprawny adres e-mail.", "form": request.POST})
 
     if len(password) < 8:
-        return render(request, "register.html", {"error": "Hasło musi mieć co najmniej 8 znaków.", "form": request.POST})
+        return render(request, "register.html", {"error": "HasĹ‚o musi mieÄ‡ co najmniej 8 znakĂłw.", "form": request.POST})
 
     if User.objects.filter(email__iexact=email).exists():
-        return render(request, "register.html", {"error": "Ten e-mail jest już zarejestrowany.", "form": request.POST})
+        return render(request, "register.html", {"error": "Ten e-mail jest juĹĽ zarejestrowany.", "form": request.POST})
 
     # --- utworzenie usera + profilu atomowo, bez duplikatu ---
     try:
         with transaction.atomic():
             user = User.objects.create_user(
-                username=email,  # jeśli używasz emaila jako username
+                username=email,  # jeĹ›li uĹĽywasz emaila jako username
                 email=email,
                 password=password,
                 first_name=first_name,
                 last_name=last_name,
             )
 
-            # PROFIL: używamy get_or_create (gasi UniqueViolation, gdy działa sygnał post_save)
+            # PROFIL: uĹĽywamy get_or_create (gasi UniqueViolation, gdy dziaĹ‚a sygnaĹ‚ post_save)
             profil, created = Profil.objects.get_or_create(
                 user=user,
                 defaults={
@@ -498,7 +498,7 @@ def register_view(request):
                 },
             )
             if not created:
-                # jeżeli profil powstał z sygnału – aktualizujemy brakujące pola
+                # jeĹĽeli profil powstaĹ‚ z sygnaĹ‚u â€“ aktualizujemy brakujÄ…ce pola
                 changed = False
                 if profil.numer_telefonu != phone:
                     profil.numer_telefonu = phone; changed = True
@@ -509,11 +509,11 @@ def register_view(request):
 
     except IntegrityError:
         return render(request, "register.html", {
-            "error": "Wystąpił błąd rejestracji. Spróbuj ponownie.",
+            "error": "WystÄ…piĹ‚ bĹ‚Ä…d rejestracji. SprĂłbuj ponownie.",
             "form": request.POST,
         })
 
-    messages.success(request, "Konto zostało utworzone. Zaloguj się, aby kontynuować.")
+    messages.success(request, "Konto zostaĹ‚o utworzone. Zaloguj siÄ™, aby kontynuowaÄ‡.")
     return redirect("login")
 
 
@@ -534,21 +534,21 @@ def zajecia_online_view(request, rezerwacja_id):
             rezerwacja.save()
             return redirect("zajecia_online", rezerwacja_id=rezerwacja.id)
 
-    # Dostęp jak dotąd...
+    # DostÄ™p jak dotÄ…d...
     if rezerwacja.id != 1:
         if user == rezerwacja.uczen:
             start = rezerwacja.termin
             koniec = start + timedelta(minutes=55)
             okno_start = start - timedelta(minutes=5)
             if not (okno_start <= teraz <= koniec):
-                return HttpResponseForbidden("Dostęp tylko w czasie trwania zajęć.")
+                return HttpResponseForbidden("DostÄ™p tylko w czasie trwania zajÄ™Ä‡.")
         elif user != rezerwacja.nauczyciel:
-            return HttpResponseForbidden("Brak dostępu do tej tablicy.")
+            return HttpResponseForbidden("Brak dostÄ™pu do tej tablicy.")
     else:
         if user not in (rezerwacja.uczen, rezerwacja.nauczyciel):
-            return HttpResponseForbidden("Brak dostępu do tej tablicy.")
+            return HttpResponseForbidden("Brak dostÄ™pu do tej tablicy.")
 
-    # 🔹 HISTORIA: wszystkie zakończone zajęcia tego ucznia (najnowsze na górze)
+    # đź”ą HISTORIA: wszystkie zakoĹ„czone zajÄ™cia tego ucznia (najnowsze na gĂłrze)
     uczen = rezerwacja.uczen
     past_lessons = (
         Rezerwacja.objects
@@ -563,7 +563,7 @@ def zajecia_online_view(request, rezerwacja_id):
             "rezerwacja": rezerwacja,
             "is_teacher": user == rezerwacja.nauczyciel,
             "room_id": f"room-{rezerwacja.id}",
-            "past_lessons": past_lessons,  # ⬅ przekazanie do szablonu
+            "past_lessons": past_lessons,  # â¬… przekazanie do szablonu
         },
     )
 
@@ -591,10 +591,10 @@ async def note_sync(event):
 
 
 # ==========================
-#        KSIĘGOWOŚĆ
+#        KSIÄGOWOĹšÄ†
 # ==========================
 def is_accounting(user):
-    return user.groups.filter(name="Księgowość").exists()
+    return user.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists()
 
 
 @login_required
@@ -655,7 +655,7 @@ def virtual_room(request):
 def dodaj_material_po_zajeciach(request, rezerwacja_id):
     rezerwacja = get_object_or_404(Rezerwacja, id=rezerwacja_id)
     if request.user != rezerwacja.nauczyciel:
-        return HttpResponseForbidden("Brak dostępu.")
+        return HttpResponseForbidden("Brak dostÄ™pu.")
 
     if "material" in request.FILES:
         rezerwacja.material_po_zajeciach = request.FILES["material"]
@@ -668,13 +668,13 @@ def dodaj_material_po_zajeciach(request, rezerwacja_id):
 log = logging.getLogger(__name__)
 
 def _is_accounting(user):
-    """Fallback, jeśli nie masz (albo nie zaimportowałeś) is_accounting()."""
+    """Fallback, jeĹ›li nie masz (albo nie zaimportowaĹ‚eĹ›) is_accounting()."""
     try:
-        # jeśli masz util is_accounting(user) – użyje go
+        # jeĹ›li masz util is_accounting(user) â€“ uĹĽyje go
         return is_accounting(user)  # type: ignore[name-defined]
     except NameError:
-        # sensowny domyślny warunek: staff lub grupa 'ksiegowosc'/'księgowość'
-        return user.is_staff or user.groups.filter(name__in=["ksiegowosc", "księgowość"]).exists()
+        # sensowny domyĹ›lny warunek: staff lub grupa 'ksiegowosc'/'ksiÄ™gowoĹ›Ä‡'
+        return user.is_staff or user.groups.filter(name__in=["ksiegowosc", "ksiÄ™gowoĹ›Ä‡"]).exists()
 
 @login_required
 def cennik_view(request):
@@ -697,7 +697,7 @@ def cennik_view(request):
                     przedmiot.cena = cena
                     przedmiot.save(update_fields=["cena"])
                 except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
-                    log.exception("Błąd zapisu cennika (nauczyciel): %s", e)
+                    log.exception("BĹ‚Ä…d zapisu cennika (nauczyciel): %s", e)
 
             # 2) Zmiana ceny dla ucznia
             elif "zapisz_uczen_id" in request.POST:
@@ -711,15 +711,15 @@ def cennik_view(request):
                     przedmiot.cena_uczen = cena_uczen
                     przedmiot.save(update_fields=["cena_uczen"])
                 except (PrzedmiotCennik.DoesNotExist, InvalidOperation, ValueError) as e:
-                    log.exception("Błąd zapisu cennika (uczeń): %s", e)
+                    log.exception("BĹ‚Ä…d zapisu cennika (uczeĹ„): %s", e)
 
-            # 3) Usunięcie pozycji
+            # 3) UsuniÄ™cie pozycji
             elif "usun_id" in request.POST:
                 try:
                     przedmiot_id = int(request.POST.get("usun_id"))
                     PrzedmiotCennik.objects.select_for_update().get(pk=przedmiot_id).delete()
                 except (PrzedmiotCennik.DoesNotExist, ValueError) as e:
-                    log.exception("Błąd usuwania pozycji cennika: %s", e)
+                    log.exception("BĹ‚Ä…d usuwania pozycji cennika: %s", e)
 
             # 4) Dodanie nowej pozycji
             elif "dodaj_przedmiot" in request.POST:
@@ -741,7 +741,7 @@ def cennik_view(request):
                         nazwa=nazwa, poziom=poziom, cena=cena, cena_uczen=cena_uczen
                     )
                 except (InvalidOperation, ValueError) as e:
-                    log.exception("Błąd dodawania pozycji cennika: %s", e)
+                    log.exception("BĹ‚Ä…d dodawania pozycji cennika: %s", e)
 
     przedmioty = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
     return render(request, "ksiegowosc/cennik.html", {"przedmioty": przedmioty})
@@ -779,49 +779,49 @@ def panel_nauczyciela_view(request):
         return redirect("login")
     return render(request, "panel_nauczyciela.html")
 
-# EDYTUJ CENĘ
+# EDYTUJ CENÄ
 
 def _is_accounting(user):
     """
-    Dostęp tylko dla admina lub grupy 'Księgowość'.
+    DostÄ™p tylko dla admina lub grupy 'KsiÄ™gowoĹ›Ä‡'.
     """
-    return user.is_superuser or user.groups.filter(name="Księgowość").exists()
+    return user.is_superuser or user.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists()
 
 
 @login_required
 @user_passes_test(_is_accounting)
 def edytuj_dane_platnosci_view(request):
     """
-    Formularz EDYCJI DANYCH PŁATNOŚCI (bez edycji ceny):
+    Formularz EDYCJI DANYCH PĹATNOĹšCI (bez edycji ceny):
     - numer_telefonu (BLIK)
     - numer_konta (IBAN/NRB)
-    - wlasciciel_konta (wyświetlany uczniowi)
+    - wlasciciel_konta (wyĹ›wietlany uczniowi)
     """
-    # Pobierz lub załóż rekord ustawień (trzymamy go pod stałym id=1)
+    # Pobierz lub zaĹ‚ĂłĹĽ rekord ustawieĹ„ (trzymamy go pod staĹ‚ym id=1)
     ustawienia, _ = UstawieniaPlatnosci.objects.get_or_create(id=1)
 
     if request.method == "POST":
         telefon = (request.POST.get("telefon") or "").strip()
-        # normalizacja konta: bez spacji i myślników, wielkie litery
+        # normalizacja konta: bez spacji i myĹ›lnikĂłw, wielkie litery
         konto = (request.POST.get("konto") or "").replace(" ", "").replace("-", "").upper().strip()
         wlasciciel = (request.POST.get("wlasciciel") or "").strip()
 
         ustawienia.numer_telefonu = telefon
         ustawienia.numer_konta = konto
         ustawienia.wlasciciel_konta = wlasciciel
-        # kompatybilność wstecz, jeśli gdzieś używane:
+        # kompatybilnoĹ›Ä‡ wstecz, jeĹ›li gdzieĹ› uĹĽywane:
         ustawienia.dane_odbiorcy = wlasciciel
 
-        # WAŻNE: nie dotykamy pola cena_za_godzine
+        # WAĹ»NE: nie dotykamy pola cena_za_godzine
         ustawienia.save()
-        messages.success(request, "Dane płatności zostały zapisane.")
+        messages.success(request, "Dane pĹ‚atnoĹ›ci zostaĹ‚y zapisane.")
         return redirect("panel_ksiegowosc")
 
-    # Używamy ISTNIEJĄCEGO pliku szablonu:
+    # UĹĽywamy ISTNIEJÄ„CEGO pliku szablonu:
     return render(request, "ksiegowosc/edytuj_cene.html", {"ustawienia": ustawienia})
 
 
-# Alias do kompatybilności ze starym URL-em / nazwą.
+# Alias do kompatybilnoĹ›ci ze starym URL-em / nazwÄ….
 @login_required
 @user_passes_test(_is_accounting)
 def edytuj_cene_view(request):
@@ -832,8 +832,8 @@ def edytuj_cene_view(request):
 def _range_for_scope(now, scope: str):
     """
     Zwraca (start_dt, end_dt) jako AWARE datetimes w TZ projektu.
-    Zakresy: 'day' (dziś), 'week' (bieżący tydzień pn-nd), 'month' (bieżący miesiąc),
-             'all' (brak ograniczeń -> (None, None)).
+    Zakresy: 'day' (dziĹ›), 'week' (bieĹĽÄ…cy tydzieĹ„ pn-nd), 'month' (bieĹĽÄ…cy miesiÄ…c),
+             'all' (brak ograniczeĹ„ -> (None, None)).
     """
     tz = timezone.get_current_timezone()
 
@@ -849,14 +849,14 @@ def _range_for_scope(now, scope: str):
         return start, end
 
     if scope == "week":
-        monday = today - timedelta(days=today.weekday())  # poniedziałek
+        monday = today - timedelta(days=today.weekday())  # poniedziaĹ‚ek
         start  = at_start_of_day(monday)
-        end    = start + timedelta(days=7)                # do następnego poniedziałku
+        end    = start + timedelta(days=7)                # do nastÄ™pnego poniedziaĹ‚ku
         return start, end
 
     if scope == "month":
         first = today.replace(day=1)
-        # pierwszy dzień następnego miesiąca
+        # pierwszy dzieĹ„ nastÄ™pnego miesiÄ…ca
         if first.month == 12:
             next_first = first.replace(year=first.year + 1, month=1, day=1)
         else:
@@ -888,7 +888,7 @@ def moje_rezerwacje_ucznia_view(request):
     if start is not None and end is not None:
         base = base.filter(termin__gte=start, termin__lt=end)
 
-    # Rozbicie: nadchodzące i zakończone względem 'now'
+    # Rozbicie: nadchodzÄ…ce i zakoĹ„czone wzglÄ™dem 'now'
     upcoming = base.filter(termin__gte=now).order_by("termin")
     finished = base.filter(termin__lt=now).order_by("-termin")
 
@@ -896,26 +896,26 @@ def moje_rezerwacje_ucznia_view(request):
         "scope": scope,
         "upcoming": upcoming,
         "finished": finished,
-        # dla zgodności wstecz:
+        # dla zgodnoĹ›ci wstecz:
         "rezerwacje": base.order_by("termin"),
     })
 
 
 @login_required
 def moje_konto_view(request):
-    # Modele dynamicznie (bez ryzyka NameError po sprzątaniu importów)
+    # Modele dynamicznie (bez ryzyka NameError po sprzÄ…taniu importĂłw)
     Profil = apps.get_model("panel", "Profil")
     PrzedmiotCennik = apps.get_model("panel", "PrzedmiotCennik")
 
     user = request.user
 
-    # Weź albo utwórz profil użytkownika
+    # WeĹş albo utwĂłrz profil uĹĽytkownika
     profil = getattr(user, "profil", None)
     if profil is None and Profil is not None:
         profil, _ = Profil.objects.get_or_create(user=user)
 
     if request.method == "POST":
-        # proste pola tekstowe (zostawiaj stare wartości, jeśli brak w POST)
+        # proste pola tekstowe (zostawiaj stare wartoĹ›ci, jeĹ›li brak w POST)
         first_name = request.POST.get("first_name")
         last_name = request.POST.get("last_name")
         numer_telefonu = request.POST.get("numer_telefonu")
@@ -950,7 +950,7 @@ def moje_konto_view(request):
 
         return redirect("panel_nauczyciela")
 
-    # GET: lista cenników (jeśli model istnieje)
+    # GET: lista cennikĂłw (jeĹ›li model istnieje)
     cennik = []
     if PrzedmiotCennik is not None:
         cennik = PrzedmiotCennik.objects.all().order_by("nazwa", "poziom")
@@ -967,7 +967,7 @@ def moje_konto_view(request):
 def _redirect_after_booking():
     """
     Bezpieczne przekierowanie po rezerwacji.
-    1) próbuje 'moje_rezerwacje' (jeśli masz taki widok),
+    1) prĂłbuje 'moje_rezerwacje' (jeĹ›li masz taki widok),
     2) fallback do 'panel_ucznia'.
     """
     try:
@@ -996,9 +996,9 @@ def zarezerwuj_zajecia(request):
     if not (termin_txt and nauczyciel_id and temat):
         return HttpResponseBadRequest("Brak danych")
 
-    # Wymuszenie wyboru poziom_nauki, jeśli typ_osoby jest ustawiony
+    # Wymuszenie wyboru poziom_nauki, jeĹ›li typ_osoby jest ustawiony
     if typ_osoby and not poziom_nauki:
-        return HttpResponseBadRequest("Wybierz klasę/rok studiów dla wybranego typu ucznia.")
+        return HttpResponseBadRequest("Wybierz klasÄ™/rok studiĂłw dla wybranego typu ucznia.")
 
     # Parsowanie daty/godziny (bez zmian)
     try:
@@ -1006,11 +1006,11 @@ def zarezerwuj_zajecia(request):
         data    = DT.strptime(data_str, "%Y-%m-%d").date()
         godzina = DT.strptime(godz_str, "%H:%M").time()
     except ValueError:
-        return HttpResponseBadRequest("Zły format terminu")
+        return HttpResponseBadRequest("ZĹ‚y format terminu")
 
     now = timezone.localtime()
     if (data < now.date()) or (data == now.date() and godzina < now.time()):
-        return HttpResponseBadRequest("Nie można rezerwować przeszłych terminów")
+        return HttpResponseBadRequest("Nie moĹĽna rezerwowaÄ‡ przeszĹ‚ych terminĂłw")
 
     # Modele
     User        = apps.get_model("auth", "User")
@@ -1026,13 +1026,13 @@ def zarezerwuj_zajecia(request):
     except Exception:
         pass
 
-    # Dostępność pól
+    # DostÄ™pnoĹ›Ä‡ pĂłl
     rezerwacja_has_przedmiot     = any(f.name == "przedmiot" for f in Rezerwacja._meta.get_fields())
     rezerwacja_has_poziom        = any(f.name == "poziom" for f in Rezerwacja._meta.get_fields())
     rezerwacja_has_typ_osoby     = any(f.name == "typ_osoby" for f in Rezerwacja._meta.get_fields())
     rezerwacja_has_poziom_nauki  = any(f.name == "poziom_nauki" for f in Rezerwacja._meta.get_fields())
 
-    # Domyślne wartości do create()
+    # DomyĹ›lne wartoĹ›ci do create()
     defaults = {
         "uczen": request.user,
         "temat": temat,
@@ -1054,7 +1054,7 @@ def zarezerwuj_zajecia(request):
         naive_dt, timezone.get_current_timezone()
     )
 
-    # Rezerwacja (jak było)
+    # Rezerwacja (jak byĹ‚o)
     if termin_id:
         try:
             slot = (
@@ -1078,7 +1078,7 @@ def zarezerwuj_zajecia(request):
                 defaults=defaults
             )
         if not created:
-            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
+            return HttpResponseBadRequest("Ten termin jest juĹĽ zarezerwowany")
     else:
         try:
             nauczyciel = User.objects.get(id=nauczyciel_id)
@@ -1091,7 +1091,7 @@ def zarezerwuj_zajecia(request):
             defaults=defaults
         )
         if not created:
-            return HttpResponseBadRequest("Ten termin jest już zarezerwowany")
+            return HttpResponseBadRequest("Ten termin jest juĹĽ zarezerwowany")
 
     return _redirect_after_booking()
 
@@ -1099,10 +1099,10 @@ def zarezerwuj_zajecia(request):
 @login_required
 def dostepne_terminy_view(request):
     """
-    Lista dostępnych terminów + kolumny:
+    Lista dostÄ™pnych terminĂłw + kolumny:
     - 'Przedmiot' (z profilu nauczyciela)
     - 'Poziom'  (select z poziomami z profilu; zapis do formularza)
-    - 'Cena [zł/h]' (z cennika PrzedmiotCennik.cena_uczen, zależna od wybranego poziomu)
+    - 'Cena [zĹ‚/h]' (z cennika PrzedmiotCennik.cena_uczen, zaleĹĽna od wybranego poziomu)
     """
     now = timezone.localtime()
 
@@ -1116,7 +1116,7 @@ def dostepne_terminy_view(request):
         .order_by("data", "godzina")
     )
 
-    # Wyklucz zajęte (jak u Ciebie)
+    # Wyklucz zajÄ™te (jak u Ciebie)
     try:
         Rezerwacja = apps.get_model("panel", "Rezerwacja")
     except LookupError:
@@ -1172,7 +1172,7 @@ def dostepne_terminy_view(request):
                         subjects_set.add(item)
 
             if not subjects_set:
-                subjects_set.add("—")
+                subjects_set.add("â€”")
             if not levels_set:
                 levels_set.add("podstawowy")
 
@@ -1181,7 +1181,7 @@ def dostepne_terminy_view(request):
                 "levels": sorted(levels_set, key=lambda x: 0 if x == "podstawowy" else 1),
             }
 
-    # --- CENY z cennika (PrzedmiotCennik.cena_uczen) dla nauczycieli/poziomów ---
+    # --- CENY z cennika (PrzedmiotCennik.cena_uczen) dla nauczycieli/poziomĂłw ---
     try:
         PrzedmiotCennik = apps.get_model("panel", "PrzedmiotCennik")
     except LookupError:
@@ -1189,7 +1189,7 @@ def dostepne_terminy_view(request):
 
     if PrzedmiotCennik:
         for uid, info in teacher_info.items():
-            subjects = [s for s in info.get("subjects", []) if s != "—"]
+            subjects = [s for s in info.get("subjects", []) if s != "â€”"]
             levels = info.get("levels", [])
             prices = {}
 
@@ -1202,24 +1202,24 @@ def dostepne_terminy_view(request):
                     if vals:
                         mn = min(vals)
                         mx = max(vals)
-                        prices[lvln] = f"{mn:.2f} zł" if mn == mx else f"{mn:.2f}–{mx:.2f} zł"
+                        prices[lvln] = f"{mn:.2f} zĹ‚" if mn == mx else f"{mn:.2f}â€“{mx:.2f} zĹ‚"
                     else:
-                        prices[lvln] = "—"
+                        prices[lvln] = "â€”"
             else:
-                prices = {"podstawowy": "—", "rozszerzony": "—"}
+                prices = {"podstawowy": "â€”", "rozszerzony": "â€”"}
 
             info["prices"] = prices
     else:
-        # Brak modelu cennika – zabezpieczenie
+        # Brak modelu cennika â€“ zabezpieczenie
         for info in teacher_info.values():
-            info["prices"] = {"podstawowy": "—", "rozszerzony": "—"}
+            info["prices"] = {"podstawowy": "â€”", "rozszerzony": "â€”"}
 
-    # --- Zbiór dla template ---
+    # --- ZbiĂłr dla template ---
     entries = []
     for t in terminy_qs:
         info = teacher_info.get(
             t.nauczyciel_id,
-            {"subjects": ["—"], "levels": ["podstawowy"], "prices": {"podstawowy": "—", "rozszerzony": "—"}}
+            {"subjects": ["â€”"], "levels": ["podstawowy"], "prices": {"podstawowy": "â€”", "rozszerzony": "â€”"}}
         )
         entries.append({"t": t, "info": info})
 
@@ -1235,43 +1235,43 @@ def dostepne_terminy_view(request):
 def dodaj_wolny_termin(request):
     """
     Dodaje wolny termin dla zalogowanego nauczyciela.
-    Idempotentnie: używa get_or_create(nauczyciel, data, godzina).
+    Idempotentnie: uĹĽywa get_or_create(nauczyciel, data, godzina).
     """
     if not request.user.is_staff and not request.user.groups.filter(name="nauczyciele").exists():
-        return HttpResponseBadRequest("Brak uprawnień")
+        return HttpResponseBadRequest("Brak uprawnieĹ„")
 
     data_str = (request.POST.get("data") or "").strip()        # "YYYY-MM-DD"
     godzina_str = (request.POST.get("godzina") or "").strip()  # "HH:MM"
 
     if not data_str or not godzina_str:
-        return HttpResponseBadRequest("Podaj datę i godzinę")
+        return HttpResponseBadRequest("Podaj datÄ™ i godzinÄ™")
 
     # parsowanie
     try:
         data = DT.strptime(data_str, "%Y-%m-%d").date()
         godzina = DT.strptime(godzina_str, "%H:%M").time()
     except ValueError:
-        return HttpResponseBadRequest("Zły format daty/godziny")
+        return HttpResponseBadRequest("ZĹ‚y format daty/godziny")
 
-    # najważniejsze: idempotencja
+    # najwaĹĽniejsze: idempotencja
     obj, created = WolnyTermin.objects.get_or_create(
         nauczyciel=request.user,
         data=data,
         godzina=godzina,
     )
 
-    # jeśli wywołujesz to fetch’em, możesz zwracać JSON:
+    # jeĹ›li wywoĹ‚ujesz to fetchâ€™em, moĹĽesz zwracaÄ‡ JSON:
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"ok": True, "created": created, "id": obj.id})
 
-    # albo zwykłe przekierowanie po sukcesie
+    # albo zwykĹ‚e przekierowanie po sukcesie
     return HttpResponseRedirect(reverse("panel_nauczyciela_kalendarz"))
 
 @require_POST
 @login_required
 @transaction.atomic
 def dodaj_wiele_wolnych_terminow(request):
-    # zakładamy że przyszły listy: data[] i godzina[]
+    # zakĹ‚adamy ĹĽe przyszĹ‚y listy: data[] i godzina[]
     datas = request.POST.getlist("data[]")      # ["2025-10-05", "2025-10-06", ...]
     godziny = request.POST.getlist("godzina[]") # ["10:00", "11:00", ...]
     slots = set()
@@ -1289,7 +1289,7 @@ def dodaj_wiele_wolnych_terminow(request):
         WolnyTermin(nauczyciel=request.user, data=dt, godzina=tm)
         for (dt, tm) in slots
     ]
-    # klucz: brak duplikatów nawet gdy formularz wyśle się 2x
+    # klucz: brak duplikatĂłw nawet gdy formularz wyĹ›le siÄ™ 2x
     WolnyTermin.objects.bulk_create(objs, ignore_conflicts=True)
 
     return JsonResponse({"ok": True, "added": len(objs)})
@@ -1357,7 +1357,7 @@ def moj_plan_zajec_view(request):
         .order_by("termin")
     )
 
-    # Zakres taki jak robiliśmy wcześniej (Noa)
+    # Zakres taki jak robiliĹ›my wczeĹ›niej (Noa)
     if scope == "day":
         start_d = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_d = start_d + timedelta(days=1)
@@ -1374,10 +1374,10 @@ def moj_plan_zajec_view(request):
         start = timezone.localtime(r.termin)
         end = start + timedelta(minutes=55)
         is_past = now > end
-        status = "Zakończone" if is_past else ("Trwa" if start <= now <= end else "Nadchodzące")
+        status = "ZakoĹ„czone" if is_past else ("Trwa" if start <= now <= end else "NadchodzÄ…ce")
 
         row = {
-            "obj": r,          # w szablonie używamy r= row.obj
+            "obj": r,          # w szablonie uĹĽywamy r= row.obj
             "start": start,
             "end": end,
             "is_past": is_past,
@@ -1409,7 +1409,7 @@ def _is_future(d: date, t: time) -> bool:
 @transaction.atomic
 def wybierz_godziny_view(request):
     if request.method == "GET":
-        # To jest ta strona „Wybierz dzień i godzinę…”
+        # To jest ta strona â€žWybierz dzieĹ„ i godzinÄ™â€¦â€ť
         return render(request, "wybierz_dzien_i_godzine_w_ktorej_poprowadzisz_korepetycje.html")
 
     if request.method != "POST":
@@ -1419,11 +1419,11 @@ def wybierz_godziny_view(request):
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception as e:
-        return JsonResponse({"ok": False, "error": f"Błąd JSON: {e}"}, status=400)
+        return JsonResponse({"ok": False, "error": f"BĹ‚Ä…d JSON: {e}"}, status=400)
 
     items = payload.get("terminy", [])
     if not isinstance(items, list):
-        return JsonResponse({"ok": False, "error": "Pole 'terminy' musi być listą."}, status=400)
+        return JsonResponse({"ok": False, "error": "Pole 'terminy' musi byÄ‡ listÄ…."}, status=400)
 
     nauczyciel = request.user
     to_create, skipped = [], []
@@ -1431,15 +1431,15 @@ def wybierz_godziny_view(request):
     for it in items:
         d = parse_date((it.get("data") or "").strip())
         if not d:
-            skipped.append({"data": it.get("data"), "powod": "zły format daty"})
+            skipped.append({"data": it.get("data"), "powod": "zĹ‚y format daty"})
             continue
         for g_str in it.get("godziny") or []:
             t = parse_time((g_str or "").strip())
             if not t:
-                skipped.append({"data": it.get("data"), "godzina": g_str, "powod": "zły format godziny"})
+                skipped.append({"data": it.get("data"), "godzina": g_str, "powod": "zĹ‚y format godziny"})
                 continue
             if not _is_future(d, t):
-                skipped.append({"data": it.get("data"), "godzina": g_str, "powod": "przeszłość"})
+                skipped.append({"data": it.get("data"), "godzina": g_str, "powod": "przeszĹ‚oĹ›Ä‡"})
                 continue
             to_create.append(WolnyTermin(nauczyciel=nauczyciel, data=d, godzina=t))
 
@@ -1448,10 +1448,10 @@ def wybierz_godziny_view(request):
 
 
 @login_required
-@ensure_csrf_cookie     # upewnia się, że przeglądarka ma cookie CSRF dla kolejnych fetchy
+@ensure_csrf_cookie     # upewnia siÄ™, ĹĽe przeglÄ…darka ma cookie CSRF dla kolejnych fetchy
 @require_http_methods(["GET"])
 def pobierz_terminy_view(request):
-    """Zwraca tylko przyszłe sloty zalogowanego nauczyciela, posortowane."""
+    """Zwraca tylko przyszĹ‚e sloty zalogowanego nauczyciela, posortowane."""
     now = timezone.localtime()
     qs = (WolnyTermin.objects
           .filter(nauczyciel=request.user)
@@ -1484,7 +1484,7 @@ def panel_admina_view(request):
         numer_telefonu = request.POST.get("numer_telefonu")
 
         if User.objects.filter(username=email).exists():
-            return render(request, "admin_panel.html", {"error": "Użytkownik już istnieje!"})
+            return render(request, "admin_panel.html", {"error": "UĹĽytkownik juĹĽ istnieje!"})
 
         user = User.objects.create_user(
             username=email, email=email, password=password, first_name=first_name, last_name=last_name
@@ -1496,7 +1496,7 @@ def panel_admina_view(request):
 
 
 def tylko_ksiegowosc(user):
-    return user.groups.filter(name="Księgowość").exists()
+    return user.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists()
 
 
 @login_required
@@ -1561,7 +1561,7 @@ def moje_konto_uczen_view(request):
 
                 messages.success(request, "Zapisano zmiany w profilu.")
                 return redirect("moje_konto_uczen")
-            messages.error(request, "Sprawdź poprawność pól formularza.")
+            messages.error(request, "SprawdĹş poprawnoĹ›Ä‡ pĂłl formularza.")
 
         elif "password_submit" in request.POST:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
@@ -1571,9 +1571,9 @@ def moje_konto_uczen_view(request):
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
-                messages.success(request, "Hasło zostało zmienione.")
+                messages.success(request, "HasĹ‚o zostaĹ‚o zmienione.")
                 return redirect("moje_konto_uczen")
-            messages.error(request, "Nie udało się zmienić hasła. Sprawdź wprowadzone dane.")
+            messages.error(request, "Nie udaĹ‚o siÄ™ zmieniÄ‡ hasĹ‚a. SprawdĹş wprowadzone dane.")
         else:
             account_form = StudentAccountForm(user=request.user, instance=request.user)
             profile_form = ProfilForm(instance=profil)
@@ -1612,7 +1612,7 @@ class MyAccountView(LoginRequiredMixin, View):
             messages.success(request, "Zapisano zmiany w profilu.")
             return redirect("moje_konto_uczen")
         else:
-            messages.error(request, "Popraw zaznaczone błędy.")
+            messages.error(request, "Popraw zaznaczone bĹ‚Ä™dy.")
         return render(request, "uczen/moje_konto.html", {"user_form": user_form, "profile_form": profile_form})
 
 
@@ -1630,7 +1630,7 @@ def change_password_view(request):
         if form.is_valid():
             form.save()
             update_session_auth_hash(request, form.user)
-            messages.success(request, "Hasło zostało pomyślnie zmienione.")
+            messages.success(request, "HasĹ‚o zostaĹ‚o pomyĹ›lnie zmienione.")
             return redirect("panel_nauczyciela")
     else:
         form = PasswordChangeForm(user=request.user)
@@ -1641,10 +1641,10 @@ def change_password_view(request):
 # --- Helpers ---
 
 def _is_accounting(u):
-    return u.is_superuser or u.groups.filter(name="Księgowość").exists()
+    return u.is_superuser or u.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists()
 
 def pln_format_grosz(g):
-    return f"{decimal.Decimal(g)/100:.2f} zł".replace(".", ",")
+    return f"{decimal.Decimal(g)/100:.2f} zĹ‚".replace(".", ",")
 
 def next_invoice_number():
     today = timezone.localdate()
@@ -1661,13 +1661,13 @@ def next_invoice_number():
 
 def get_seller_defaults():
     return {
-        "name": "Imię i Nazwisko",
+        "name": "ImiÄ™ i Nazwisko",
         "addr": "Ulica 1\n00-000 Miasto",
         "nip": "",
         "iban": "PL00 0000 0000 0000 0000 0000 0000",
         "mail": "kontakt@polubiszto.pl",
         "place": getattr(settings, "INVOICE_PLACE_DEFAULT", "Warszawa"),
-        "rate_grosz_default": 8000,  # 80 zł/h — można nadpisać z rezerwacji
+        "rate_grosz_default": 8000,  # 80 zĹ‚/h â€” moĹĽna nadpisaÄ‡ z rezerwacji
         "hours_default": decimal.Decimal("1.00"),
     }
 
@@ -1699,7 +1699,7 @@ def autopay_webhook_view(request):
     except Exception:
         return HttpResponseBadRequest("Invalid JSON")
 
-    # Przykładowa weryfikacja podpisu HMAC-SHA256 (dopasuj do dokumentacji Autopay)
+    # PrzykĹ‚adowa weryfikacja podpisu HMAC-SHA256 (dopasuj do dokumentacji Autopay)
     signature = request.headers.get("X-Autopay-Signature", "")
     if secret:
         expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
@@ -1748,7 +1748,7 @@ def create_invoice_from_payment(payment: Payment):
     rez = payment.reservation
     hours = getattr(rez, "liczba_godzin", seller["hours_default"])
     rate_grosz = getattr(rez, "stawka_grosz", seller["rate_grosz_default"])
-    description = getattr(rez, "opis", f"Korepetycje online — {hours}h")
+    description = getattr(rez, "opis", f"Korepetycje online â€” {hours}h")
     total_grosz = int(decimal.Decimal(hours) * decimal.Decimal(rate_grosz))
 
     inv = Invoice.objects.create(
@@ -1802,7 +1802,7 @@ def accounting_invoices_view(request):
         "invoices": qs,
         "month_value": f"{y}-{str(m).zfill(2)}",
         "sum_count": qs.count(),
-        "sum_total_pln": f"{sum(i.total_grosz for i in qs)/100:.2f}".replace(".", ",") + " zł",
+        "sum_total_pln": f"{sum(i.total_grosz for i in qs)/100:.2f}".replace(".", ",") + " zĹ‚",
         "sum_paid": qs.filter(payment__status='paid').count(),
     }
     return render(request, "ksiegowosc/ksiegowosc_rachunki.html", ctx)
@@ -1823,7 +1823,7 @@ def accounting_invoices_export_csv(request):
     resp = HttpResponse(content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="rachunki_{ym}.csv"'
     w = csv.writer(resp, delimiter=';')
-    w.writerow(["Nr","Data","Uczeń","Email","Opis","Godziny","Stawka (PLN)","Kwota (PLN)","Status","ID płatności","ID rezerwacji"])
+    w.writerow(["Nr","Data","UczeĹ„","Email","Opis","Godziny","Stawka (PLN)","Kwota (PLN)","Status","ID pĹ‚atnoĹ›ci","ID rezerwacji"])
     for i in qs:
         student_name = getattr(i.student, "get_full_name", lambda: i.student.username)() or i.student.username
         email = getattr(i.student, "email", "") or ""
@@ -1869,19 +1869,19 @@ def render_invoice_pdf(invoice, seller, buyer) -> bytes:
     except Exception:
         pass
 
-    # 2) Fallback: WeasyPrint (jeśli masz Pango/Cairo; jeśli nie, po prostu pominie)
+    # 2) Fallback: WeasyPrint (jeĹ›li masz Pango/Cairo; jeĹ›li nie, po prostu pominie)
     try:
         from weasyprint import HTML
         return HTML(string=html).write_pdf()
     except Exception:
         pass
 
-    # 3) Ostateczny placeholder, żeby nie wywalać 500
+    # 3) Ostateczny placeholder, ĹĽeby nie wywalaÄ‡ 500
     return b"%PDF-1.4\n% placeholder invoice - PDF generator unavailable\n"
 
 
 def test_pdf(request):
-    html = "<h1>PDF działa ✅</h1><p>To jest test pdfkit+wkhtmltopdf.</p>"
+    html = "<h1>PDF dziaĹ‚a âś…</h1><p>To jest test pdfkit+wkhtmltopdf.</p>"
     try:
         import pdfkit, shutil
         path = shutil.which("wkhtmltopdf") or "/usr/bin/wkhtmltopdf"
@@ -1891,16 +1891,16 @@ def test_pdf(request):
         resp["Content-Disposition"] = 'inline; filename="test.pdf"'
         return resp
     except Exception:
-        # fallback na placeholder, żeby endpoint zawsze odpowiadał
+        # fallback na placeholder, ĹĽeby endpoint zawsze odpowiadaĹ‚
         return HttpResponse(b"%PDF-1.4\n% placeholder\n", content_type="application/pdf")
 
 
-#PŁATNOŚCI
+#PĹATNOĹšCI
 
 def _resolve_cena_uczen(rezerwacja: Rezerwacja) -> Decimal:
     """
-    Zwraca cenę dla ucznia z cennika (cena_uczen) dopasowaną po przedmiot + poziom.
-    Fallback: UstawieniaPlatnosci.cena_za_godzine, a jak nie ma – 0.
+    Zwraca cenÄ™ dla ucznia z cennika (cena_uczen) dopasowanÄ… po przedmiot + poziom.
+    Fallback: UstawieniaPlatnosci.cena_za_godzine, a jak nie ma â€“ 0.
     """
     przedmiot = (getattr(rezerwacja, "przedmiot", "") or "").strip()
     poziom = (getattr(rezerwacja, "poziom", "") or getattr(rezerwacja, "poziom_nauki", "") or "").strip()
@@ -1922,13 +1922,13 @@ def _resolve_cena_uczen(rezerwacja: Rezerwacja) -> Decimal:
     return Decimal("0.00")
 
 def is_student(user):
-    return user.groups.filter(name__in=["Uczeń", "Uczen", "Student"]).exists()
+    return user.groups.filter(name__in=["UczeĹ„", "Uczen", "Student"]).exists()
 
 def is_accounting(user):
-    return user.is_superuser or user.groups.filter(name__in=["Księgowość","Ksiegowosc","Accounting"]).exists()
+    return user.is_superuser or user.groups.filter(name__in=["KsiÄ™gowoĹ›Ä‡","Ksiegowosc","Accounting"]).exists()
 
 # =======================
-# U C Z E Ń  —  P Ł A T N O Ś C I
+# U C Z E Ĺ  â€”  P Ĺ A T N O Ĺš C I
 # =======================
 @login_required
 def platnosci_lista_view(request):
@@ -1960,8 +1960,8 @@ def _validate_confirmation_file(f):
 @login_required
 def platnosci_view(request, rez_id: int):
     """
-    Szczegóły płatności (instrukcja) + upload potwierdzenia przelewu przez ucznia.
-    Uczeń NIE dostaje linków do plików — to widoczne tylko w panelu księgowości.
+    SzczegĂłĹ‚y pĹ‚atnoĹ›ci (instrukcja) + upload potwierdzenia przelewu przez ucznia.
+    UczeĹ„ NIE dostaje linkĂłw do plikĂłw â€” to widoczne tylko w panelu ksiÄ™gowoĹ›ci.
     """
     rezerwacja = get_object_or_404(Rezerwacja.objects.select_related("nauczyciel").prefetch_related(), pk=rez_id, uczen=request.user)
     ustawienia = UstawieniaPlatnosci.objects.first()
@@ -1982,10 +1982,10 @@ def platnosci_view(request, rez_id: int):
         PaymentConfirmation.objects.create(
             rezerwacja=rezerwacja, file=f, uploaded_by=request.user, note=note
         )
-        messages.success(request, "Potwierdzenie zostało przesłane. Zobaczysz status płatności w swoim panelu po akceptacji przez księgowość.")
+        messages.success(request, "Potwierdzenie zostaĹ‚o przesĹ‚ane. Zobaczysz status pĹ‚atnoĹ›ci w swoim panelu po akceptacji przez ksiÄ™gowoĹ›Ä‡.")
         return redirect("platnosci_view", rez_id=rezerwacja.id)
 
-    # Nie przesyłamy listy plików do szablonu — widoczne tylko dla księgowości.
+    # Nie przesyĹ‚amy listy plikĂłw do szablonu â€” widoczne tylko dla ksiÄ™gowoĹ›ci.
     return render(request, "uczen/platnosci.html", {
         "rezerwacja": rezerwacja,
         "ustawienia": ustawienia,
@@ -1993,10 +1993,10 @@ def platnosci_view(request, rez_id: int):
     })
 
 # =======================
-# K S I Ę G O W O Ś Ć  —  R Ę C Z N A  A K C E P T A C J A
+# K S I Ä G O W O Ĺš Ä†  â€”  R Ä C Z N A  A K C E P T A C J A
 # =======================
 def is_accounting(user):
-    return user.is_superuser or user.groups.filter(name__in=["Księgowość","Ksiegowosc","Accounting"]).exists()
+    return user.is_superuser or user.groups.filter(name__in=["KsiÄ™gowoĹ›Ä‡","Ksiegowosc","Accounting"]).exists()
 
 @login_required
 @user_passes_test(is_accounting)
@@ -2014,7 +2014,7 @@ def ksiegowosc_platnosci_lista(request):
     return render(request, "ksiegowosc/platnosci_lista.html", {
         "rezerwacje": qs,
         "filtr": filtr,
-        "just": request.GET.get("just"),  # ID właśnie zmienionej rezerwacji (opcjonalny highlight)
+        "just": request.GET.get("just"),  # ID wĹ‚aĹ›nie zmienionej rezerwacji (opcjonalny highlight)
     })
 
 @login_required
@@ -2025,8 +2025,8 @@ def ksiegowosc_oznacz_oplacona(request, rez_id: int):
     r.oplacona = True
     r.odrzucona = False
     r.save(update_fields=["oplacona", "odrzucona"])
-    messages.success(request, f"Rezerwacja #{r.id} oznaczona jako opłacona.")
-    # wróć do listy i podświetl wiersz
+    messages.success(request, f"Rezerwacja #{r.id} oznaczona jako opĹ‚acona.")
+    # wrĂłÄ‡ do listy i podĹ›wietl wiersz
     return redirect(f"{reverse('ksiegowosc_platnosci_lista')}?{urlencode({'filtr':'wszystkie','just':r.id})}")
 
 @login_required
@@ -2044,8 +2044,8 @@ def ksiegowosc_oznacz_odrzucona(request, rez_id: int):
 @user_passes_test(is_accounting)
 def confirmation_download(request, pk: int):
     """
-    Chroniony podgląd/pobranie potwierdzenia przelewu.
-    Działa przy DEBUG=False i nie zależy od serwowania MEDIA przez serwer www.
+    Chroniony podglÄ…d/pobranie potwierdzenia przelewu.
+    DziaĹ‚a przy DEBUG=False i nie zaleĹĽy od serwowania MEDIA przez serwer www.
     """
     p = get_object_or_404(PaymentConfirmation, pk=pk)
     f = p.file
@@ -2054,19 +2054,19 @@ def confirmation_download(request, pk: int):
     try:
         fh = f.open("rb")
     except FileNotFoundError:
-        # plik nie istnieje fizycznie (np. po deployu bez trwałego dysku)
+        # plik nie istnieje fizycznie (np. po deployu bez trwaĹ‚ego dysku)
         raise Http404("Plik nie istnieje na serwerze.")
 
     filename = pathlib.Path(f.name).name
     content_type, _ = mimetypes.guess_type(filename)
-    as_attachment = request.GET.get("dl") == "1"  # ?dl=1 => pobierz; domyślnie podgląd
+    as_attachment = request.GET.get("dl") == "1"  # ?dl=1 => pobierz; domyĹ›lnie podglÄ…d
 
     resp = FileResponse(fh, as_attachment=as_attachment, filename=filename)
     if content_type:
         resp["Content-Type"] = content_type
     return resp
 
-#REGULAMIN I POLITYKA PRYWATNOŚCI
+#REGULAMIN I POLITYKA PRYWATNOĹšCI
 
 def _ctx_from_config(cfg: SiteLegalConfig):
     return {
@@ -2082,7 +2082,7 @@ def _ctx_from_config(cfg: SiteLegalConfig):
     }
 
 def is_accounting(user):
-    return user.is_authenticated and user.groups.filter(name="Księgowość").exists()
+    return user.is_authenticated and user.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists()
 
 @login_required
 @user_passes_test(is_accounting)
@@ -2096,7 +2096,7 @@ def legal_edit_config_view(request):
             cfg.save()
             messages.success(request, "Zapisano zmiany.")
             return redirect("legal_edit_config")
-        messages.error(request, "Sprawdź pola formularza.")
+        messages.error(request, "SprawdĹş pola formularza.")
     else:
         form = SiteLegalConfigForm(instance=cfg)
 
@@ -2131,21 +2131,21 @@ def strefa_ai_home_view(request):
 log = logging.getLogger(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Osobowości (Lyra nie robi live-lintu ani skanowania dużych plików)
+# OsobowoĹ›ci (Lyra nie robi live-lintu ani skanowania duĹĽych plikĂłw)
 PROMPTS = {
-    "Noa": """Jesteś Noa — nauczyciel AI PolubiszTo.pl. Styl: ciepły, rzeczowy, kroki, przykłady, mini-ćwiczenie na koniec.
+    "Noa": """JesteĹ› Noa â€” nauczyciel AI PolubiszTo.pl. Styl: ciepĹ‚y, rzeczowy, kroki, przykĹ‚ady, mini-Ä‡wiczenie na koniec.
 Znane osoby: Ali(UX/styl), Lyra(analiza/QA), Eidos(koordynacja/synteza), Aron(archiwum).
-Twórca X = właściciel projektu. Mów po polsku. Nie wymyślaj faktów. Jeśli czegoś nie wiesz — powiedz i zaproponuj jak sprawdzić.""",
+TwĂłrca X = wĹ‚aĹ›ciciel projektu. MĂłw po polsku. Nie wymyĹ›laj faktĂłw. JeĹ›li czegoĹ› nie wiesz â€” powiedz i zaproponuj jak sprawdziÄ‡.""",
 
-    "Ali": """Jesteś Ali — dyrektor wizualny PolubiszTo.pl. Styl: estetyka, UX, klarowny layout, dostępność, respons.
-Pomagasz w HTML/CSS/JS/UI. Dawaj krótkie code-snippety i wskazówki wizualne. Mów po polsku.""",
+    "Ali": """JesteĹ› Ali â€” dyrektor wizualny PolubiszTo.pl. Styl: estetyka, UX, klarowny layout, dostÄ™pnoĹ›Ä‡, respons.
+Pomagasz w HTML/CSS/JS/UI. Dawaj krĂłtkie code-snippety i wskazĂłwki wizualne. MĂłw po polsku.""",
 
-    "Lyra": """Jesteś Lyra — analiza, QA, bezpieczeństwo. Styl: precyzja, checklisty, wykrywanie błędów, dobre praktyki (Django/CSRF/login_required).
-UWAGA: Nie uruchamiasz lintów ani skanów dużych plików podczas pisania. Jeśli użytkownik wyraźnie poprosi o audyt, robisz go na podstawie skrótów/fragmentów.
-Mów po polsku i dawaj kroki „sprawdź / napraw”.""",
+    "Lyra": """JesteĹ› Lyra â€” analiza, QA, bezpieczeĹ„stwo. Styl: precyzja, checklisty, wykrywanie bĹ‚Ä™dĂłw, dobre praktyki (Django/CSRF/login_required).
+UWAGA: Nie uruchamiasz lintĂłw ani skanĂłw duĹĽych plikĂłw podczas pisania. JeĹ›li uĹĽytkownik wyraĹşnie poprosi o audyt, robisz go na podstawie skrĂłtĂłw/fragmentĂłw.
+MĂłw po polsku i dawaj kroki â€žsprawdĹş / naprawâ€ť.""",
 
-    "Eidos": """Jesteś Eidos — koordynacja, synteza, plan. Styl: mapy drogowe, łączenie Noa/Ali/Lyra, decyzje „co najpierw”, ryzyka.
-Mów po polsku, kończ punktowym planem następnych kroków.""",
+    "Eidos": """JesteĹ› Eidos â€” koordynacja, synteza, plan. Styl: mapy drogowe, Ĺ‚Ä…czenie Noa/Ali/Lyra, decyzje â€žco najpierwâ€ť, ryzyka.
+MĂłw po polsku, koĹ„cz punktowym planem nastÄ™pnych krokĂłw.""",
 }
 
 TEMPS = {"Noa": 0.7, "Ali": 0.6, "Lyra": 0.3, "Eidos": 0.5}
@@ -2153,10 +2153,10 @@ TEMPS = {"Noa": 0.7, "Ali": 0.6, "Lyra": 0.3, "Eidos": 0.5}
 def _user_name(request):
     u = getattr(request, "user", None)
     if not u or not u.is_authenticated:
-        return "Uczeń"
-    base = (u.first_name or u.username or "Uczeń").strip()
-    if base.lower().startswith(("bogdan", "tworca", "twórca")):
-        return "Twórca X"
+        return "UczeĹ„"
+    base = (u.first_name or u.username or "UczeĹ„").strip()
+    if base.lower().startswith(("bogdan", "tworca", "twĂłrca")):
+        return "TwĂłrca X"
     return base
 
 def _key(persona: str) -> str:
@@ -2170,7 +2170,7 @@ def _save_history(request, persona: str, history):
 
 def _media_url(request, rel_path: str) -> str:
     media_url = os.getenv("MEDIA_URL", "/media/").rstrip("/") + "/"
-    # build_absolute_uri zapewnia pełny URL
+    # build_absolute_uri zapewnia peĹ‚ny URL
     return request.build_absolute_uri(posixpath.join(media_url, rel_path))
 
 def _save_uploaded_files(request):
@@ -2222,18 +2222,18 @@ def ai_chat(request):
     if persona == "ALL" and reset:
         for p in PROMPTS.keys():
             _save_history(request, p, [])
-        return JsonResponse({"reply": "Zresetowałem pamięć rozmów (wszystkie persony). ✨"})
+        return JsonResponse({"reply": "ZresetowaĹ‚em pamiÄ™Ä‡ rozmĂłw (wszystkie persony). âś¨"})
 
     if reset:
         _save_history(request, persona, [])
-        return JsonResponse({"reply": f"Zresetowałem pamięć: {persona}. Zacznijmy od nowa ✨"})
+        return JsonResponse({"reply": f"ZresetowaĹ‚em pamiÄ™Ä‡: {persona}. Zacznijmy od nowa âś¨"})
 
     if persona not in PROMPTS:
         return JsonResponse({"error": f"Nieznana persona: {persona}"}, status=400)
     if not prompt:
         return JsonResponse({"error": "Brak pola 'message'."}, status=400)
     if not os.getenv("OPENAI_API_KEY"):
-        return JsonResponse({"error": "Brak OPENAI_API_KEY w środowisku."}, status=500)
+        return JsonResponse({"error": "Brak OPENAI_API_KEY w Ĺ›rodowisku."}, status=500)
 
     attachments = []
     if is_multipart and request.FILES:
@@ -2244,7 +2244,7 @@ def ai_chat(request):
             return JsonResponse({"error": f"UploadError: {e}"}, status=500)
 
     user_name = _user_name(request)
-    system_ctx = f"Rozmawiasz z użytkownikiem: {user_name}. Projekt: PolubiszTo.pl. Jeśli to Twórca X — możesz odwoływać się do zespołu i planu."
+    system_ctx = f"Rozmawiasz z uĹĽytkownikiem: {user_name}. Projekt: PolubiszTo.pl. JeĹ›li to TwĂłrca X â€” moĹĽesz odwoĹ‚ywaÄ‡ siÄ™ do zespoĹ‚u i planu."
 
     messages = [
         {"role": "system", "content": PROMPTS[persona]},
@@ -2255,7 +2255,7 @@ def ai_chat(request):
     for m in history:
         messages.append(m)
 
-    # content użytkownika: tekst + obrazy (vision)
+    # content uĹĽytkownika: tekst + obrazy (vision)
     user_content = [{"type": "text", "text": prompt}]
 
     for att in attachments:
@@ -2266,10 +2266,10 @@ def ai_chat(request):
                 "image_url": {"url": att["url"]}
             })
         elif att.get("text_preview"):
-            # przycięty wyciąg z PDF/DOCX/TXT do kontekstu
+            # przyciÄ™ty wyciÄ…g z PDF/DOCX/TXT do kontekstu
             user_content.append({
                 "type": "text",
-                "text": f"[Wyciąg z pliku: {att['name']}]\n{att['text_preview']}"
+                "text": f"[WyciÄ…g z pliku: {att['name']}]\n{att['text_preview']}"
             })
 
     messages.append({"role": "user", "content": user_content})
@@ -2297,7 +2297,7 @@ def ai_chat(request):
         log.exception("ai_chat error")
         return JsonResponse({"error": f"{type(e).__name__}: {e}"}, status=500)
     
-   # --- Ekstrakcja tekstu z plików ------------------------------------------------
+   # --- Ekstrakcja tekstu z plikĂłw ------------------------------------------------
 MAX_EXTRACT_CHARS = 50_000        # twardy limit surowego ekstraktu/plik
 MAX_SUMMARY_CHARS = 6_000         # finalnie do promptu per plik
 
@@ -2306,7 +2306,7 @@ def _safe_clip(text: str, limit: int) -> str:
         return ""
     if len(text) <= limit:
         return text
-    return text[:limit] + "\n…[przycięto]"
+    return text[:limit] + "\nâ€¦[przyciÄ™to]"
 
 def _extract_text_from_pdf(file_bytes: bytes) -> str:
     try:
@@ -2352,8 +2352,8 @@ def _summarize_locally(text: str) -> str:
     head = text[: (MAX_SUMMARY_CHARS // 2)]
     tail = text[-(MAX_SUMMARY_CHARS // 2):]
     return (
-        "[Zwięzły wyciąg z dłuższego pliku — środek przycięty]\n\n"
-        + head + "\n\n…[środek pominięty]…\n\n" + tail
+        "[ZwiÄ™zĹ‚y wyciÄ…g z dĹ‚uĹĽszego pliku â€” Ĺ›rodek przyciÄ™ty]\n\n"
+        + head + "\n\nâ€¦[Ĺ›rodek pominiÄ™ty]â€¦\n\n" + tail
     )
 
 def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
@@ -2374,23 +2374,16 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
         return ""
     return _summarize_locally(text)
 
-#TABLICA
+# TABLICA
 def aliboard_view(request, room_id="local-test"):
-    # jeśli wejdziesz na /aliboard/ -> użyje "local-test"
-    # jeśli wejdziesz na /aliboard/abcd1234/ -> użyje "abcd1234"
+    # jesli wejdziesz na /aliboard/ -> uzyje "local-test"
+    # jesli wejdziesz na /aliboard/abcd1234/ -> uzyje "abcd1234"
     context = {
         "room_id": room_id,
     }
     return render(request, "test/aliboard.html", context)
 
+
 def aliboard_new_room(request):
     room_id = uuid.uuid4().hex[:8]  # np. "a3f9c2b1"
     return redirect("aliboard_room", room_id=room_id)
-
-
-def aliboard_room(request, room_id):
-    """
-    Ładuje tę samą tablicę, ale z przekazanym room_id,
-    żeby JS wiedział, do jakiego pokoju WebSocket się podpiąć.
-    """
-    return render(request, "test/aliboard.html", {"room_id": room_id})
