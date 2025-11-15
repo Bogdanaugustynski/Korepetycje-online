@@ -408,18 +408,6 @@
   </div>
 </div>
 
-<script src="{% static 'js/aliboard_sync.js' %}"></script>
-<script>
-  (function(){
-    const roomId = "{{ room_id|default:'local-test' }}";
-    window.ALIBOARD_ROOM_ID = roomId;
-    window.ALIBOARD_CONFIG = {
-      roomId,
-      wsBase: "{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/aliboard/"
-    };
-  })();
-</script>
-
 <script>
 (function(){
   /* === PATCH: wstrzyknięcie delikatnego CSS dla paska narzędzi (bez kapsli) === */
@@ -2245,8 +2233,14 @@ function textDimensions(s){
 })();
 </script>
 <script>
-  // przekazujemy room_id z Django do JS
-  window.ALIBOARD_ROOM_ID = "{{ room_id|default:'local-test' }}";
+  (function(){
+    const roomId = "{{ room_id|default:'local-test' }}";
+    window.ALIBOARD_ROOM_ID = roomId;
+    window.ALIBOARD_CONFIG = {
+      roomId,
+      wsBase: "{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/aliboard/"
+    };
+  })();
 </script>
 <script src="{% static 'js/aliboard_sync.js' %}"></script>
 </body>
