@@ -2385,7 +2385,7 @@ def aliboard_view(request, room_id="local-test"):
 
 def aliboard_new_room(request):
     room_id = uuid.uuid4().hex[:8]  # np. "a3f9c2b1"
-    return redirect("aliboard_room", room_id=room_id
+    return redirect("aliboard_room", room_id=room_id)
 
 
 def aliboard_room(request, room_id):
