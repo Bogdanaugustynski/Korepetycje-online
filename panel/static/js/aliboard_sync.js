@@ -1,88 +1,83 @@
 // panel/static/js/aliboard_sync.js
+
 (function () {
-  // Bez room_id nie ma co robić
-  const roomId = window.ALIBOARD_ROOM_ID;
+  console.log("[Aliboard] init sync…");
+
+  // 1. Ustalamy room_id
+  let roomId = null;
+
+  if (window.ALIBOARD_ROOM_ID) {
+    roomId = window.ALIBOARD_ROOM_ID;
+  } else {
+    const root = document.querySelector("[data-room-id]");
+    if (root) {
+      roomId = root.dataset.roomId;
+    }
+  }
+
   if (!roomId) {
-    console.warn("Aliboard Sync: brak window.ALIBOARD_ROOM_ID – pomijam WebSocket.");
-    return;
+    console.warn("[Aliboard] brak roomId – używam local-test");
+    roomId = "local-test";
   }
 
   const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const wsUrl = scheme + "://" + window.location.host + "/ws/aliboard/" + roomId + "/";
+  const socketUrl = `${scheme}://${window.location.host}/ws/aliboard/${roomId}/`;
 
-  // Unikalny identyfikator klienta (żeby nie rysować własnych echo)
-  const clientId =
-    (window.crypto && window.crypto.randomUUID && window.crypto.randomUUID()) ||
-    ("c_" + Math.random().toString(36).slice(2));
+  console.log("[Aliboard] connecting to", socketUrl);
 
-  let socket = null;
+  const socket = new WebSocket(socketUrl);
 
-  function connect() {
+  socket.onopen = function () {
+    console.log("[Aliboard] WebSocket OPEN");
+  };
+
+  socket.onclose = function (event) {
+    console.log(
+      "[Aliboard] WebSocket CLOSE",
+      "code:", event.code,
+      "reason:", event.reason
+    );
+  };
+
+  socket.onerror = function (event) {
+    console.error("[Aliboard] WebSocket ERROR", event);
+  };
+
+  socket.onmessage = function (event) {
     try {
-      socket = new WebSocket(wsUrl);
-    } catch (e) {
-      console.error("Aliboard Sync: błąd tworzenia WebSocket", e);
-      return;
-    }
-
-    socket.onopen = function () {
-      console.log("Aliboard Sync: połączono z", wsUrl);
-    };
-
-    socket.onclose = function () {
-      console.warn("Aliboard Sync: rozłączono, spróbuję ponownie za 3s");
-      setTimeout(connect, 3000);
-    };
-
-    socket.onerror = function (err) {
-      console.error("Aliboard Sync: błąd WebSocket", err);
-    };
-
-    socket.onmessage = function (event) {
-      let data;
-      try {
-        data = JSON.parse(event.data);
-      } catch (e) {
-        console.warn("Aliboard Sync: niepoprawny JSON", event.data);
-        return;
-      }
-
-      if (!data || data.clientId === clientId) {
-        // moje echo – ignoruj
-        return;
-      }
-
-      if (data.type === "stroke" && data.stroke) {
-        // Rysowanie zdalnej kreski – obsługiwane w głównym skrypcie tablicy
-        if (window.aliboardDrawRemoteStroke) {
-          window.aliboardDrawRemoteStroke(data.stroke);
+      const data = JSON.parse(event.data);
+      if (data.type === "board.update") {
+        console.log("[Aliboard] recv board.update");
+        if (typeof window.applyRemoteBoardUpdate === "function") {
+          window.applyRemoteBoardUpdate(data.payload);
         } else {
-          console.warn("Aliboard Sync: brak window.aliboardDrawRemoteStroke");
+          console.warn(
+            "[Aliboard] applyRemoteBoardUpdate nie jest zdefiniowane – update odebrany, ale nie ma jak go narysować."
+          );
         }
+      } else {
+        console.log("[Aliboard] recv message", data);
       }
-    };
-  }
-
-  connect();
-
-  // Funkcja wywoływana z głównego skryptu tablicy,
-  // kiedy lokalnie zakończymy rysowanie jednej kreski.
-  window.aliboardSendStroke = function (stroke) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn("Aliboard Sync: socket nie gotowy, stroke nie wysłany");
-      return;
-    }
-    try {
-      socket.send(
-        JSON.stringify({
-          type: "stroke",
-          stroke: stroke,
-          clientId: clientId,
-        })
-      );
     } catch (e) {
-      console.error("Aliboard Sync: błąd wysyłania stroke", e);
+      console.error("[Aliboard] błąd parsowania message", e, event.data);
     }
   };
+
+  window.AliboardSync = {
+    sendUpdate(payload) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: "board.update",
+          payload: payload,
+        }));
+      } else {
+        console.warn(
+          "[Aliboard] próba wysłania update, ale socket nie jest OPEN:",
+          socket.readyState
+        );
+      }
+    }
+  };
+
 })();
 
