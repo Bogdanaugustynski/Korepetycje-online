@@ -110,7 +110,8 @@ urlpatterns = [
     # path("aliboard/nowy/", aliboard_views.aliboard_nowy_pokój, name="aliboard_nowy_pokój"),
     # path("aliboard/pokoj/<slug:room_id>/", aliboard_views.aliboard_pokój, name="aliboard_pokój"),
     # path("aliboard/dolacz/", aliboard_views.aliboard_dolacz, name="aliboard_dolacz"),
-    # path("aliboard/new/", aliboard_views.aliboard_new_room, name="aliboard_new_room"),
+    path("aliboard/nowy/", views.aliboard_new_room, name="aliboard_new_room"),
+    path("aliboard/pokoj/<slug:room_id>/", views.aliboard_room, name="aliboard_room"),
 
 
 ]

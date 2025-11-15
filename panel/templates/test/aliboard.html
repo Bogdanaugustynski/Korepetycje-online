@@ -2233,5 +2233,10 @@ function textDimensions(s){
   setTool(TOOLS.SELECT);
 })();
 </script>
+<script>
+  // przekazujemy room_id z Django do JS
+  window.ALIBOARD_ROOM_ID = "{{ room_id|default:'demo' }}";
+</script>
+<script src="{% static 'js/aliboard_sync.js' %}"></script>
 </body>
 </html>

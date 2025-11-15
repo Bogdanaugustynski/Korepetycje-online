@@ -87,6 +87,7 @@ from openai import OpenAI
 from pypdf import PdfReader
 from docx import Document
 import secrets
+import uuid
 
 
 # Jeśli naprawdę potrzebujesz modeli z innej aplikacji:
@@ -2377,6 +2378,22 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
 def aliboard_view(request):
     return render(request, "test/aliboard.html")
 
+def aliboard_new_room(request):
+    """
+    Tworzy nowy room_id i przekierowuje nauczyciela
+    na URL z konkretnym pokojem.
+    Przykład: /aliboard/pokoj/abc123de/
+    """
+    room_id = uuid.uuid4().hex[:8]  # krótkie, ładne ID
+    return redirect("aliboard_room", room_id=room_id)
+
+
+def aliboard_room(request, room_id):
+    """
+    Ładuje tę samą tablicę, ale z przekazanym room_id,
+    żeby JS wiedział, do jakiego pokoju WebSocket się podpiąć.
+    """
+    return render(request, "test/aliboard.html", {"room_id": room_id})
 
 @login_required
 def aliboard_new_room(request):
