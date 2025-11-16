@@ -1,5 +1,9 @@
 import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+
+# 🔹 Prosty magazyn stanu tablicy w pamięci (na proces)
+ROOM_STATES = {}  # {room_id: {"state": {}, "version": int}}
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -67,18 +71,66 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
+        room_state = ROOM_STATES.get(self.room_id)
+        if room_state is not None:
+            await self.send_json(
+                {
+                    "type": "sync",
+                    "state": room_state.get("state", {}),
+                    "version": room_state.get("version", 0),
+                }
+            )
+
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive_json(self, content, **kwargs):
-        if content.get("type") == "patch":
+        msg_type = content.get("type")
+
+        if msg_type == "snapshot":
+            board_state = content.get("state") or {}
+            version = (ROOM_STATES.get(self.room_id, {}).get("version") or 0) + 1
+            ROOM_STATES[self.room_id] = {
+                "state": board_state,
+                "version": version,
+            }
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "aliboard.sync",
+                    "state": board_state,
+                    "version": version,
+                    "sender_channel": self.channel_name,
+                },
+            )
+        elif msg_type == "patch":
+            patch = content.get("patch") or {}
             await self.channel_layer.group_send(
                 self.group_name,
                 {
                     "type": "aliboard.patch",
-                    "data": content,
+                    "patch": patch,
+                    "sender_channel": self.channel_name,
                 },
             )
 
+    async def aliboard_sync(self, event):
+        if event.get("sender_channel") == self.channel_name:
+            return
+        await self.send_json(
+            {
+                "type": "sync",
+                "state": event.get("state") or {},
+                "version": event.get("version") or 0,
+            }
+        )
+
     async def aliboard_patch(self, event):
-        await self.send_json(event["data"])
+        if event.get("sender_channel") == self.channel_name:
+            return
+        await self.send_json(
+            {
+                "type": "patch",
+                "patch": event.get("patch") or {},
+            }
+        )

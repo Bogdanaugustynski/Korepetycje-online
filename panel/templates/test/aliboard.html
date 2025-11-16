@@ -599,20 +599,61 @@
     };
   }
 
-  function emitStrokeRealtime(stroke){
-    if(!stroke || stroke.type!=='pen') return;
-    if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.broadcastPatch!=='function') return;
-    try{
-      realtime.broadcastPatch({
-        kind:'stroke',
-        stroke: serializeStrokeForRealtime(stroke)
-      });
-    }catch(err){
-      console.error('[Aliboard] realtime send failed', err);
-    }
+  function cloneStroke(stroke){
+    if(!stroke) return null;
+    return {
+      type: stroke.type || 'pen',
+      color: stroke.color || '#0b74ff',
+      size: stroke.size || 3,
+      points: (stroke.points || []).map(pt=>({ x: Number(pt.x), y: Number(pt.y) })).filter(pt=>Number.isFinite(pt.x)&&Number.isFinite(pt.y))
+    };
   }
+  function cloneImage(image){
+    if(!image) return null;
+    return {
+      x: image.x,
+      y: image.y,
+      w: image.w,
+      h: image.h,
+      src: image.src,
+      meta: image.meta ? {...image.meta} : undefined
+    };
+  }
+  function exportBoardState(){
+    return {
+      pages: PAGES.map(p=>({
+        strokes: (p.state.strokes || []).map(cloneStroke).filter(Boolean),
+        images: (p.state.images || []).map(cloneImage).filter(Boolean)
+      })),
+      generatedAt: Date.now()
+    };
+  }
+  window.aliboardExportState = exportBoardState;
+
+  function rebuildPagesFromState(pagesData){
+    while(PAGES.length){ PAGES.pop(); }
+    pagesEl.innerHTML = '';
+    if(!Array.isArray(pagesData) || !pagesData.length){
+      createPage(false);
+      return;
+    }
+    pagesData.forEach((pageData)=>{
+      const page = createPage(false);
+      page.state.strokes = (pageData.strokes || []).map(cloneStroke).filter(Boolean);
+      page.state.images = (pageData.images || []).map(im=>reviveImage(im, page)).filter(Boolean);
+      renderAll(page);
+      if(page.state.selection){ drawSelection(page); }
+    });
+  }
+
+  function importBoardState(state){
+    if(!state) return;
+    rebuildPagesFromState(state.pages || []);
+    setTool(TOOLS.SELECT);
+    updateDeleteButtonState();
+  }
+  window.aliboardImportState = importBoardState;
+  window.applyRemoteBoardUpdate = importBoardState;
 
   function applyRemoteStrokePatch(stroke){
     if(!stroke || !Array.isArray(stroke.points)) return;
@@ -643,27 +684,58 @@
     if(page.state.selection){ drawSelection(page); }
   }
 
-  function bindRealtimePatches(){
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.onPatch!=='function'){
-      setTimeout(bindRealtimePatches, 600);
-      return;
-    }
-    realtime.onPatch((patch)=>{
-      if(!patch || patch.kind!=='stroke' || !patch.stroke) return;
+  window.aliboardApplyPatch = function(patch){
+    if(!patch) return;
+    if(patch.kind==='stroke' && patch.stroke){
       applyRemoteStrokePatch(patch.stroke);
-    });
-  }
-  bindRealtimePatches();
-
-  window.applyRemoteBoardUpdate = function(payload){
-    if(!payload) return;
-    if(payload.stroke){
-      applyRemoteStrokePatch(payload.stroke);
-    }else if(Array.isArray(payload.strokes)){
-      payload.strokes.forEach(applyRemoteStrokePatch);
     }
   };
+
+  let pendingSnapshotPush = null;
+  function requestSnapshotSync(){
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.sendSnapshot!=='function') return;
+    if(pendingSnapshotPush) clearTimeout(pendingSnapshotPush);
+    pendingSnapshotPush = setTimeout(()=>{
+      pendingSnapshotPush = null;
+      realtime.sendSnapshot();
+    }, 800);
+  }
+
+  function emitStrokeRealtime(stroke){
+    if(!stroke || stroke.type!=='pen') return;
+    if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.broadcastPatch!=='function') return;
+    try{
+      realtime.broadcastPatch({
+        kind:'stroke',
+        stroke: serializeStrokeForRealtime(stroke)
+      });
+      requestSnapshotSync();
+    }catch(err){
+      console.error('[Aliboard] realtime send failed', err);
+    }
+  }
+
+  function setupRealtimeListeners(){
+    const realtime = window.AliboardRealtime;
+    if(!realtime){
+      setTimeout(setupRealtimeListeners, 600);
+      return;
+    }
+    if(typeof realtime.onPatch === 'function'){
+      realtime.onPatch((patch)=>{
+        window.aliboardApplyPatch(patch);
+      });
+    }
+    if(typeof realtime.onSync === 'function'){
+      realtime.onSync((state)=>{
+        if(state) window.aliboardImportState(state);
+      });
+    }
+  }
+  setupRealtimeListeners();
 
   // room_id info
   const qs = new URLSearchParams(location.search);

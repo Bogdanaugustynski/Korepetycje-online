@@ -1,22 +1,15 @@
 // panel/static/js/aliboard_realtime.js
-// Prosta warstwa realtime dla Aliboard (CRDT v1 – operacje stroke)
+// Warstwa realtime (snapshot + patch) dla Aliboard
 
 (function () {
-  // Szukamy room_id z atrybutu data-room-id na <body> lub elemencie tablicy
-  const roomAttrEl =
-    document.getElementById("aliboard-root") ||
-    document.body;
+  const rootEl = document.getElementById("aliboard-root") || document.body;
+  const roomId = rootEl?.getAttribute("data-room-id");
 
-  const roomId = roomAttrEl.getAttribute("data-room-id");
   if (!roomId) {
     console.warn("[AliboardRealtime] Brak data-room-id – realtime wyłączony");
     return;
   }
 
-  // Unikalny identyfikator klienta (do rozróżniania siebie vs innych)
-  const senderId = "client-" + Math.random().toString(36).slice(2);
-
-  // Adres WebSocket – obsługa http/https -> ws/wss
   const loc = window.location;
   const wsScheme = loc.protocol === "https:" ? "wss" : "ws";
   const wsPath = `${wsScheme}://${loc.host}/ws/aliboard/${roomId}/`;
@@ -25,14 +18,51 @@
   let reconnectTimeout = null;
 
   const listeners = {
-    patch: [], // callbacki, które dostaną każdą operację z serwera
+    patch: [],
+    sync: [],
   };
+
+  function getBoardStateOrNull() {
+    if (typeof window.aliboardExportState !== "function") {
+      return null;
+    }
+    try {
+      return window.aliboardExportState();
+    } catch (err) {
+      console.warn("[AliboardRealtime] aliboardExportState error", err);
+      return null;
+    }
+  }
+
+  function sendSnapshot() {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    const state = getBoardStateOrNull();
+    if (!state) return;
+    socket.send(
+      JSON.stringify({
+        type: "snapshot",
+        state,
+      })
+    );
+  }
+
+  function notifyListeners(type, payload) {
+    const list = listeners[type] || [];
+    list.forEach((cb) => {
+      try {
+        cb(payload);
+      } catch (err) {
+        console.error("[AliboardRealtime] listener error", err);
+      }
+    });
+  }
 
   function connect() {
     socket = new WebSocket(wsPath);
 
     socket.onopen = function () {
       console.log("[AliboardRealtime] Połączono", wsPath);
+      sendSnapshot();
     };
 
     socket.onclose = function () {
@@ -54,11 +84,16 @@
         return;
       }
 
-      // Ignorujemy własne wiadomości (żeby nie dublować rysowania)
-      if (data.sender_id && data.sender_id === senderId) return;
-
-      if (data.type === "patch") {
-        listeners.patch.forEach((cb) => cb(data.payload));
+      if (data.type === "sync") {
+        notifyListeners("sync", data.state || {});
+        if (typeof window.aliboardImportState === "function") {
+          window.aliboardImportState(data.state || {});
+        }
+      } else if (data.type === "patch") {
+        notifyListeners("patch", data.patch || {});
+        if (typeof window.aliboardApplyPatch === "function") {
+          window.aliboardApplyPatch(data.patch || {});
+        }
       }
     };
   }
@@ -66,29 +101,33 @@
   connect();
 
   const AliboardRealtime = {
-    // wysyłanie operacji (patchy) na serwer
     broadcastPatch(patch) {
-      const msg = {
-        type: "patch",
-        sender_id: senderId,
-        payload: patch,
-      };
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(msg));
-      } else {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
         console.warn("[AliboardRealtime] Socket niegotowy – odrzucono patch");
+        return;
       }
+      socket.send(
+        JSON.stringify({
+          type: "patch",
+          patch,
+        })
+      );
     },
 
-    // rejestracja callbacka na każdą zdalną operację
     onPatch(callback) {
       if (typeof callback === "function") {
         listeners.patch.push(callback);
       }
     },
+
+    onSync(callback) {
+      if (typeof callback === "function") {
+        listeners.sync.push(callback);
+      }
+    },
+
+    sendSnapshot,
   };
 
-  // Udostępniamy globalnie
   window.AliboardRealtime = AliboardRealtime;
 })();
-
