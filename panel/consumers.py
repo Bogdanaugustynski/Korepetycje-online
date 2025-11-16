@@ -1,32 +1,38 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
+
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        await self.channel_layer.group_add('virtual_room', self.channel_name)
+        await self.channel_layer.group_add("virtual_room", self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard('virtual_room', self.channel_name)
+        await self.channel_layer.group_discard("virtual_room", self.channel_name)
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        if data.get('type') == 'draw':
+        if data.get("type") == "draw":
             await self.channel_layer.group_send(
-                'virtual_room',
+                "virtual_room",
                 {
-                    'type': 'draw_data',
-                    'x': data['x'],
-                    'y': data['y'],
-                }
+                    "type": "draw_data",
+                    "x": data["x"],
+                    "y": data["y"],
+                },
             )
 
     async def draw_data(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'draw',
-            'x': event['x'],
-            'y': event['y']
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "draw",
+                    "x": event["x"],
+                    "y": event["y"],
+                }
+            )
+        )
+
 
 class AudioSignalingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -40,10 +46,10 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data=None, bytes_data=None):
-        # wszystko co przyjdzie od jednej przeglądarki – broadcast do grupy (oprócz nadawcy)
+        # wszystko co przyjdzie od jednej przegladarki -> broadcast do grupy (bez nadawcy)
         await self.channel_layer.group_send(
             self.group_name,
-            {"type": "signal.message", "message": text_data, "sender": self.channel_name}
+            {"type": "signal.message", "message": text_data, "sender": self.channel_name},
         )
 
     async def signal_message(self, event):
@@ -52,7 +58,8 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
             return
         await self.send(text_data=event["message"])
 
-class AliboardConsumer(AsyncWebsocketConsumer):
+
+class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.group_name = f"aliboard_{self.room_id}"
@@ -63,16 +70,15 @@ class AliboardConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-    async def receive(self, text_data=None, bytes_data=None):
-        # cokolwiek przyjdzie z frontu, rozsyłamy do grupy
-        await self.channel_layer.group_send(
-            self.group_name,
-            {
-                "type": "aliboard.message",
-                "text": text_data,
-            },
-        )
+    async def receive_json(self, content, **kwargs):
+        if content.get("type") == "patch":
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "aliboard.patch",
+                    "data": content,
+                },
+            )
 
-    async def aliboard_message(self, event):
-        text = event["text"]
-        await self.send(text_data=text)
+    async def aliboard_patch(self, event):
+        await self.send_json(event["data"])

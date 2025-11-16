@@ -292,7 +292,7 @@
 }
 </style>
 </head>
-<body>
+<body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}">
 <header>
   <!-- LEWA: brand + narzędzia -->
   <div class="left">
@@ -590,30 +590,42 @@
   }
 
   /* ---------- SYNC (WebSocket) ---------- */
+  function serializeStrokeForRealtime(stroke){
+    return {
+      tool: stroke.type || 'pen',
+      color: stroke.color,
+      size: stroke.size,
+      points: stroke.points.map(pt=>({ x: pt.x, y: pt.y }))
+    };
+  }
+
   function emitStrokeRealtime(stroke){
     if(!stroke || stroke.type!=='pen') return;
     if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
-    if(!window.aliboardSendStroke) return;
-    const payload = {
-      points: stroke.points.map(pt=>[pt.x, pt.y]),
-      color: stroke.color,
-      width: stroke.size,
-      tool: 'pen'
-    };
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.broadcastPatch!=='function') return;
     try{
-      window.aliboardSendStroke(payload);
+      realtime.broadcastPatch({
+        kind:'stroke',
+        stroke: serializeStrokeForRealtime(stroke)
+      });
     }catch(err){
-      console.error('[Aliboard] send stroke failed', err);
+      console.error('[Aliboard] realtime send failed', err);
     }
   }
-  window.aliboardDrawRemoteStroke = function(stroke){
+
+  function applyRemoteStrokePatch(stroke){
     if(!stroke || !Array.isArray(stroke.points)) return;
     const mapped = stroke.points.map(pt=>{
       if(Array.isArray(pt) && pt.length>=2){
-        return {x: Number(pt[0]), y: Number(pt[1])};
+        const x = Number(pt[0]);
+        const y = Number(pt[1]);
+        return Number.isFinite(x) && Number.isFinite(y) ? {x,y} : null;
       }
       if(pt && typeof pt==='object'){
-        return {x: Number(pt.x), y: Number(pt.y)};
+        const x = Number('x' in pt ? pt.x : pt[0]);
+        const y = Number('y' in pt ? pt.y : pt[1]);
+        return Number.isFinite(x) && Number.isFinite(y) ? {x,y} : null;
       }
       return null;
     }).filter(Boolean);
@@ -621,14 +633,36 @@
     const page = currentPage();
     if(!page) return;
     const localStroke = {
-      type: 'pen',
+      type: stroke.tool === 'pen' ? 'pen' : (stroke.tool || 'pen'),
       color: stroke.color || '#0b74ff',
-      size: stroke.width || stroke.size || 3,
+      size: stroke.size || stroke.width || 3,
       points: mapped
     };
     page.state.strokes.push(localStroke);
     renderAll(page);
     if(page.state.selection){ drawSelection(page); }
+  }
+
+  function bindRealtimePatches(){
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.onPatch!=='function'){
+      setTimeout(bindRealtimePatches, 600);
+      return;
+    }
+    realtime.onPatch((patch)=>{
+      if(!patch || patch.kind!=='stroke' || !patch.stroke) return;
+      applyRemoteStrokePatch(patch.stroke);
+    });
+  }
+  bindRealtimePatches();
+
+  window.applyRemoteBoardUpdate = function(payload){
+    if(!payload) return;
+    if(payload.stroke){
+      applyRemoteStrokePatch(payload.stroke);
+    }else if(Array.isArray(payload.strokes)){
+      payload.strokes.forEach(applyRemoteStrokePatch);
+    }
   };
 
   // room_id info
@@ -2243,5 +2277,6 @@ function textDimensions(s){
   })();
 </script>
 <script src="{% static 'js/aliboard_sync.js' %}"></script>
+<script src="{% static 'js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
