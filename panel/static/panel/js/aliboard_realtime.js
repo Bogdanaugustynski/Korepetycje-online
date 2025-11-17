@@ -7,24 +7,32 @@
     return;
   }
 
-  const clientId = crypto.randomUUID ? crypto.randomUUID() : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const patchLog = [];
+  const clientId =
+    (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
+    `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
   let socket = null;
   let reconnectTimer = null;
-  let lastCursorSentAt = 0;
+  let cursorThrottleStamp = 0;
   const CURSOR_THROTTLE_MS = 80;
-
-  const listeners = {
-    open: [],
-    close: [],
-  };
+  const messageQueue = [];
 
   const loc = window.location;
   const scheme = loc.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${scheme}://${loc.host}/ws/aliboard/${roomId}/`;
 
-  function notify(name, payload) {
-    (listeners[name] || []).forEach((cb) => {
+  const listeners = {
+    snapshot: [],
+    element_add: [],
+    element_update: [],
+    element_remove: [],
+    cursor: [],
+    open: [],
+    close: [],
+  };
+
+  function notify(event, payload) {
+    (listeners[event] || []).forEach((cb) => {
       try {
         cb(payload);
       } catch (err) {
@@ -33,87 +41,48 @@
     });
   }
 
-  function resetPatchLog(newOps = []) {
-    patchLog.length = 0;
-    if (Array.isArray(newOps)) {
-      newOps.forEach((op) => patchLog.push(op));
-    }
+  function enqueue(payload) {
+    messageQueue.push(JSON.stringify(payload));
   }
 
-  function handleSnapshot(ops) {
-    resetPatchLog(ops);
-    if (typeof window.aliboardResetBoardForSnapshot === "function") {
-      window.aliboardResetBoardForSnapshot();
-    }
-    patchLog.forEach((patch) => {
-      if (typeof window.aliboardApplyPatch === "function") {
-        window.aliboardApplyPatch(patch);
-      }
-    });
-  }
-
-  function handlePatch(patch) {
-    if (!patch) return;
-    patchLog.push(patch);
-    if (typeof window.aliboardApplyPatch === "function") {
-      window.aliboardApplyPatch(patch);
-    }
-  }
-
-  function handleCursor(cursor) {
-    if (!cursor) return;
-    if (cursor.id && cursor.id === clientId) return;
-    if (typeof window.aliboardUpdateRemoteCursor === "function") {
-      window.aliboardUpdateRemoteCursor(cursor);
-    }
-  }
-
-  function sendSnapshot() {
+  function flushQueue() {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(
-      JSON.stringify({
-        type: "snapshot",
-        ops: patchLog,
-      })
-    );
+    while (messageQueue.length) {
+      socket.send(messageQueue.shift());
+    }
   }
 
-  function sendCursorPayload(payload) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(
-      JSON.stringify({
-        type: "cursor",
-        cursor: {
-          ...payload,
-          id: clientId,
-        },
-      })
-    );
+  function send(payload) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      enqueue(payload);
+      return;
+    }
+    socket.send(JSON.stringify(payload));
   }
 
   function connect() {
     try {
       socket = new WebSocket(wsUrl);
     } catch (err) {
-      console.error("[AliboardRealtime] utworzenie WebSocket nie powiodło się", err);
+      console.error("[AliboardRealtime] nie udało się utworzyć WebSocket", err);
       scheduleReconnect();
       return;
     }
 
     socket.onopen = function () {
-      console.log("[AliboardRealtime] połączono", wsUrl);
-      sendSnapshot();
+      console.info("[AliboardRealtime] połączono", wsUrl);
+      flushQueue();
       notify("open");
     };
 
     socket.onclose = function () {
-      console.warn("[AliboardRealtime] rozłączono, ponawiam próbę…");
+      console.warn("[AliboardRealtime] rozłączono – ponawiam próbę…");
       notify("close");
       scheduleReconnect();
     };
 
     socket.onerror = function (err) {
-      console.error("[AliboardRealtime] błąd gniazda", err);
+      console.error("[AliboardRealtime] błąd WebSocket", err);
     };
 
     socket.onmessage = function (event) {
@@ -126,11 +95,15 @@
       }
 
       if (data.type === "snapshot") {
-        handleSnapshot(data.ops || []);
-      } else if (data.type === "patch") {
-        handlePatch(data.patch || null);
+        notify("snapshot", data.elements || []);
+      } else if (data.type === "element_add") {
+        notify("element_add", data.element || null);
+      } else if (data.type === "element_update") {
+        notify("element_update", data.element || null);
+      } else if (data.type === "element_remove") {
+        notify("element_remove", data.id || data.element || null);
       } else if (data.type === "cursor") {
-        handleCursor(data.cursor || null);
+        notify("cursor", data.cursor || null);
       }
     };
   }
@@ -145,52 +118,45 @@
 
   connect();
 
-  const AliboardRealtime = {
+  const api = {
     clientId,
-
-    broadcastPatch(patch) {
-      if (!patch) return;
-      patchLog.push(patch);
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        console.warn("[AliboardRealtime] socket niegotowy, patch odrzucony");
-        return;
-      }
-      socket.send(
-        JSON.stringify({
-          type: "patch",
-          patch,
-        })
-      );
-    },
-
-    sendSnapshot,
-
-    sendCursor(data) {
-      if (!data) return;
-      const now = Date.now();
-      if (now - lastCursorSentAt < CURSOR_THROTTLE_MS) return;
-      lastCursorSentAt = now;
-      sendCursorPayload({
-        label: window.ALIBOARD_USER_LABEL || "Uczestnik",
-        color: window.ALIBOARD_USER_COLOR || "#3b82f6",
-        ...data,
-      });
-    },
-
-    getPatchLog() {
-      return patchLog.slice();
-    },
-
-    on(event, callback) {
+    on(event, handler) {
       if (!listeners[event]) listeners[event] = [];
-      listeners[event].push(callback);
+      listeners[event].push(handler);
       return () => {
-        const idx = listeners[event].indexOf(callback);
+        const idx = listeners[event].indexOf(handler);
         if (idx >= 0) listeners[event].splice(idx, 1);
       };
     },
+    broadcastElementAdd(element) {
+      if (!element || !element.id) return;
+      send({ type: "element_add", element });
+    },
+    broadcastElementUpdate(element) {
+      if (!element || !element.id) return;
+      send({ type: "element_update", element });
+    },
+    broadcastElementRemove(id) {
+      if (!id) return;
+      send({ type: "element_remove", id });
+    },
+    sendCursor(cursor) {
+      if (!cursor) return;
+      const now = Date.now();
+      if (now - cursorThrottleStamp < CURSOR_THROTTLE_MS) return;
+      cursorThrottleStamp = now;
+      send({
+        type: "cursor",
+        cursor: {
+          id: clientId,
+          label: window.ALIBOARD_USER_LABEL || "Uczestnik",
+          color: window.ALIBOARD_USER_COLOR || "#3b82f6",
+          ...cursor,
+        },
+      });
+    },
   };
 
-  window.AliboardRealtime = AliboardRealtime;
+  window.AliboardRealtime = api;
 })();
 

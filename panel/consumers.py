@@ -1,8 +1,9 @@
 import json
+
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
 
-# Prosty magazyn – na potrzeby lekcji, trzymamy patch'e w pamięci procesu
-ROOM_STATE = {}  # room_id -> [patch, patch, ...]
+# Prosty magazyn elementów tablicy (na potrzeby pojedynczej instancji)
+ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -39,7 +40,6 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
 
 class AudioSignalingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # room id z URL: /ws/audio/<rezerwacja_id>/
         self.room_name = self.scope["url_route"]["kwargs"]["rez_id"]
         self.group_name = f"audio_{self.room_name}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -49,14 +49,12 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data=None, bytes_data=None):
-        # wszystko co przyjdzie od jednej przegladarki -> broadcast do grupy (bez nadawcy)
         await self.channel_layer.group_send(
             self.group_name,
             {"type": "signal.message", "message": text_data, "sender": self.channel_name},
         )
 
     async def signal_message(self, event):
-        # nie odsyłaj do nadawcy
         if event.get("sender") == self.channel_name:
             return
         await self.send(text_data=event["message"])
@@ -70,12 +68,12 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
-        ops = ROOM_STATE.get(self.room_id, [])
-        if ops:
+        state = ROOM_STATE.get(self.room_id)
+        if state and state.get("elements"):
             await self.send_json(
                 {
                     "type": "snapshot",
-                    "ops": ops,
+                    "elements": list(state["elements"].values()),
                 }
             )
 
@@ -84,19 +82,48 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
+        state = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
 
-        if msg_type == "snapshot":
-            ops = content.get("ops") or []
-            ROOM_STATE[self.room_id] = list(ops)
-
-        elif msg_type == "patch":
-            patch = content.get("patch") or {}
-            ROOM_STATE.setdefault(self.room_id, []).append(patch)
+        if msg_type == "element_add":
+            element = content.get("element") or {}
+            element_id = element.get("id")
+            if not element_id:
+                return
+            state["elements"][element_id] = element
             await self.channel_layer.group_send(
                 self.group_name,
                 {
-                    "type": "board.patch",
-                    "patch": patch,
+                    "type": "board.element_add",
+                    "element": element,
+                    "sender_channel": self.channel_name,
+                },
+            )
+
+        elif msg_type == "element_update":
+            element = content.get("element") or {}
+            element_id = element.get("id")
+            if not element_id:
+                return
+            state["elements"][element_id] = element
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.element_update",
+                    "element": element,
+                    "sender_channel": self.channel_name,
+                },
+            )
+
+        elif msg_type == "element_remove":
+            element_id = content.get("id")
+            if not element_id:
+                return
+            state["elements"].pop(element_id, None)
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.element_remove",
+                    "id": element_id,
                     "sender_channel": self.channel_name,
                 },
             )
@@ -112,13 +139,33 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-    async def board_patch(self, event):
+    async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
         await self.send_json(
             {
-                "type": "patch",
-                "patch": event.get("patch") or {},
+                "type": "element_add",
+                "element": event.get("element") or {},
+            }
+        )
+
+    async def board_element_update(self, event):
+        if event.get("sender_channel") == self.channel_name:
+            return
+        await self.send_json(
+            {
+                "type": "element_update",
+                "element": event.get("element") or {},
+            }
+        )
+
+    async def board_element_remove(self, event):
+        if event.get("sender_channel") == self.channel_name:
+            return
+        await self.send_json(
+            {
+                "type": "element_remove",
+                "id": event.get("id"),
             }
         )
 

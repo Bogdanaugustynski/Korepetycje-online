@@ -579,9 +579,11 @@
     const sel = p.state.selection;
     pushHistory(p);
     if(sel.kind==='image' && p.state.images[sel.index]){
-      p.state.images.splice(sel.index,1);
+      const removedImage = p.state.images.splice(sel.index,1)[0];
+      if(removedImage?.id){ emitElementRemove(removedImage.id); }
     }else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
-      p.state.strokes.splice(sel.index,1);
+      const removed = p.state.strokes.splice(sel.index,1)[0];
+      if(removed?.id){ emitElementRemove(removed.id); }
     }
     p.state.selection = null;
     renderAll(p);
@@ -609,6 +611,11 @@
   }
   window.aliboardResetBoardForSnapshot = resetBoardForSnapshot;
 
+  function newElementId(){
+    if(window.crypto?.randomUUID){ return window.crypto.randomUUID(); }
+    return 'el_' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+  }
+
   function normalizePoint(pt){
     if(!pt) return null;
     const x = Number(pt.x ?? pt[0]);
@@ -617,100 +624,183 @@
     return { x, y };
   }
 
-  function cloneStrokeForSync(stroke){
+  function serializeStrokeElement(stroke, pageIndex){
     if(!stroke) return null;
-    const type = (stroke.type || stroke.tool || 'pen');
+    const tool = stroke.type || stroke.tool || 'pen';
     const base = {
-      type,
+      id: stroke.id || newElementId(),
+      tool,
+      pageIndex,
       color: stroke.color || '#0b74ff',
       size: stroke.size || stroke.width || 3
     };
-    if(type==='pen'){
-      const pts = (stroke.points || []).map(normalizePoint).filter(Boolean);
+    if(tool==='pen'){
+      const pts = (stroke.points || []).map(pt=>({x:pt.x,y:pt.y}));
       if(pts.length<2) return null;
       base.points = pts;
-    }else if(type==='line'){
-      const a = normalizePoint(stroke.a);
-      const b = normalizePoint(stroke.b);
-      if(!a || !b) return null;
-      base.a = a;
-      base.b = b;
-    }else if(type==='poly'){
-      const pts = (stroke.points || []).map(normalizePoint).filter(Boolean);
+    }else if(tool==='line'){
+      if(!stroke.a || !stroke.b) return null;
+      base.a = {x: stroke.a.x, y: stroke.a.y};
+      base.b = {x: stroke.b.x, y: stroke.b.y};
+    }else if(tool==='poly'){
+      const pts = (stroke.points || []).map(pt=>({x:pt.x,y:pt.y}));
       if(pts.length<2) return null;
       base.points = pts;
       if(stroke.closed) base.closed = true;
+    }else if(tool==='text'){
+      base.text = stroke.text || '';
+      base.x = stroke.x;
+      base.y = stroke.y;
     }else{
       return null;
     }
+    stroke.id = base.id;
     return base;
   }
 
-  function applyRemoteStrokePatch(stroke, pageIndex){
-    if(!stroke) return;
-    const type = stroke.type || stroke.tool || 'pen';
-    const page = ensurePageForPatch(pageIndex) || currentPage();
+  function applyElementAddPayload(element){
+    if(!element || !element.id) return;
+    const tool = element.tool || element.type || 'pen';
+    const page = ensurePageForPatch(element.pageIndex) || currentPage();
     if(!page) return;
-    const localStroke = {
-      type,
-      color: stroke.color || '#0b74ff',
-      size: stroke.size || stroke.width || 3
-    };
-    if(type==='pen'){
-      const mapped = (stroke.points || []).map(normalizePoint).filter(Boolean);
+    if(tool==='pen'){
+      const mapped = (element.points || []).map(normalizePoint).filter(Boolean);
       if(mapped.length<2) return;
-      localStroke.points = mapped;
-    }else if(type==='line'){
-      const a = normalizePoint(stroke.a);
-      const b = normalizePoint(stroke.b);
+      page.state.strokes.push({
+        id: element.id,
+        type:'pen',
+        color: element.color || '#0b74ff',
+        size: element.size || 3,
+        points: mapped
+      });
+    }else if(tool==='line'){
+      const a = normalizePoint(element.a);
+      const b = normalizePoint(element.b);
       if(!a || !b) return;
-      localStroke.a = a;
-      localStroke.b = b;
-    }else if(type==='poly'){
-      const mapped = (stroke.points || []).map(normalizePoint).filter(Boolean);
+      page.state.strokes.push({
+        id: element.id,
+        type:'line',
+        color: element.color || '#0b74ff',
+        size: element.size || 3,
+        a,
+        b
+      });
+    }else if(tool==='poly'){
+      const mapped = (element.points || []).map(normalizePoint).filter(Boolean);
       if(mapped.length<2) return;
-      localStroke.points = mapped;
-      localStroke.closed = Boolean(stroke.closed);
+      page.state.strokes.push({
+        id: element.id,
+        type:'poly',
+        color: element.color || '#0b74ff',
+        size: element.size || 3,
+        points: mapped,
+        closed: Boolean(element.closed)
+      });
+    }else if(tool==='text'){
+      page.state.strokes.push({
+        id: element.id,
+        type:'text',
+        color: element.color || '#0b74ff',
+        size: element.size || 3,
+        x: element.x,
+        y: element.y,
+        text: element.text || ''
+      });
+    }else if(tool==='image'){
+      const revived = reviveImage({
+        id: element.id,
+        src: element.src,
+        w: element.w,
+        h: element.h,
+        x: element.x,
+        y: element.y,
+        meta: element.meta
+      }, page);
+      page.state.images.push(revived);
     }else{
       return;
     }
-    page.state.strokes.push(localStroke);
     renderAll(page);
     if(page.state.selection){ drawSelection(page); }
   }
 
-  window.aliboardApplyPatch = function(patch){
-    if(!patch) return;
-    if(patch.kind==='stroke' && patch.stroke){
-      applyRemoteStrokePatch(patch.stroke, patch.pageIndex);
+  function applySnapshotElements(elements){
+    resetBoardForSnapshot();
+    if(Array.isArray(elements)){
+      elements.forEach(applyElementAddPayload);
     }
-  };
-
-  let snapshotTimer = null;
-  function scheduleSnapshotSync(delay=800){
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.sendSnapshot!=='function') return;
-    if(snapshotTimer) clearTimeout(snapshotTimer);
-    snapshotTimer = setTimeout(()=>{
-      snapshotTimer = null;
-      realtime.sendSnapshot();
-    }, delay);
   }
 
-  function emitStrokeRealtime(stroke, pageIndex){
+  function removeElementById(id){
+    if(!id) return;
+    PAGES.forEach((page)=>{
+      const beforeStrokes = page.state.strokes.length;
+      page.state.strokes = page.state.strokes.filter(st=>st.id!==id);
+      const beforeImages = page.state.images.length;
+      page.state.images = page.state.images.filter(im=>im.id!==id);
+      if(page.state.strokes.length!==beforeStrokes || page.state.images.length!==beforeImages){
+        renderAll(page);
+        if(page.state.selection){ drawSelection(page); }
+      }
+    });
+  }
+
+  function emitElementAddFromStroke(stroke, pageIndex){
     const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.broadcastPatch!=='function') return;
-    const payloadStroke = cloneStrokeForSync(stroke);
-    if(!payloadStroke) return;
-    try{
-      realtime.broadcastPatch({
-        kind:'stroke',
-        pageIndex,
-        stroke: payloadStroke
-      });
-    }catch(err){
-      console.error('[Aliboard] realtime send failed', err);
+    if(!realtime || typeof realtime.broadcastElementAdd!=='function') return;
+    const payload = serializeStrokeElement(stroke, pageIndex);
+    if(!payload) return;
+    realtime.broadcastElementAdd(payload);
+  }
+
+  function emitElementRemove(id){
+    if(!id) return;
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.broadcastElementRemove!=='function') return;
+    realtime.broadcastElementRemove(id);
+  }
+
+  function emitImageElementAdd(image, pageIndex){
+    if(!image) return;
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.broadcastElementAdd!=='function') return;
+    const payload = {
+      id: image.id || newElementId(),
+      tool: 'image',
+      pageIndex,
+      x: image.x,
+      y: image.y,
+      w: image.w,
+      h: image.h,
+      src: image.src,
+      meta: image.meta || null
+    };
+    image.id = payload.id;
+    realtime.broadcastElementAdd(payload);
+  }
+
+  function initRealtimeBridge(){
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.on!=='function'){
+      setTimeout(initRealtimeBridge, 600);
+      return;
     }
+    realtime.on('snapshot', applySnapshotElements);
+    realtime.on('element_add', applyElementAddPayload);
+    realtime.on('element_update', (element)=>{
+      if(!element || !element.id) return;
+      removeElementById(element.id);
+      applyElementAddPayload(element);
+    });
+    realtime.on('element_remove', (payload)=>{
+      const id = typeof payload === 'string' ? payload : payload?.id;
+      removeElementById(id);
+    });
+    realtime.on('cursor', (cursor)=>{
+      if(cursor && cursor.id !== realtime.clientId){
+        window.aliboardUpdateRemoteCursor(cursor);
+      }
+    });
   }
 
   window.aliboardUpdateRemoteCursor = (function(){
@@ -826,6 +916,7 @@
       y: Math.max(0, Math.min(1, relY))
     });
   });
+  initRealtimeBridge();
 
   // room_id info
   const qs = new URLSearchParams(location.search);
@@ -974,31 +1065,39 @@
 
   /* ---------- OBRAZY ---------- */
   function reviveImage(im, p){
-    const obj = {x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta, img:null};
+    const obj = {id: im.id || newElementId(), x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta, img:null};
     const el = new Image();
     el.onload = ()=>{ obj.img = el; renderAll(p); };
     el.src = im.src;
     return obj;
   }
-  function addImageFromSrc(src, w, h, x, y, meta, p){
+  function addImageFromSrc(src, w, h, x, y, meta, p, opts){
     pushHistory(p);
-    const im = reviveImage({src,w,h,x,y,meta}, p);
+    const options = opts || {};
+    const im = reviveImage({id: options.id, src,w,h,x,y,meta}, p);
     p.state.images.push(im);
     renderAll(p);
+    if(!options.silent){
+      emitImageElementAdd(im, PAGES.indexOf(p));
+    }
   }
 
   /* ---------- HISTORIA ---------- */
   function snapshotState(p){
     return JSON.stringify({
       strokes: p.state.strokes,
-      images: p.state.images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta}))
+      images: p.state.images.map(im=>({id: im.id, x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta}))
     });
+  }
+  function ensureStrokeIds(p){
+    (p.state.strokes || []).forEach(st=>{ if(!st.id) st.id = newElementId(); });
   }
   function pushHistory(p){ p.state.redo=[]; try{ p.state.history.push(snapshotState(p)); if(p.state.history.length>100) p.state.history.shift(); }catch(_){} }
   function restoreHistoryState(p, json){
     try{
       const s = JSON.parse(json);
       p.state.strokes = s.strokes||[];
+      ensureStrokeIds(p);
       p.state.images  = (s.images||[]).map(im=>reviveImage(im, p));
       renderAll(p); drawSelection(p);
     }catch(_){}
@@ -1281,20 +1380,29 @@
   function eraseAt(pt,p){
     const eps = Math.max(6, size*2);
     let removed=false;
+    const removedIds=[];
+    const removedImageIds=[];
     for(let i=p.state.strokes.length-1;i>=0;i--){
       const s = p.state.strokes[i];
-      if(s.type==='pen' && hitPolyline(s.points,pt,eps)){ p.state.strokes.splice(i,1); removed=true; continue; }
-      if(s.type==='line' && distToSegment(pt,s.a,s.b)<=eps){ p.state.strokes.splice(i,1); removed=true; continue; }
-      if(s.type==='poly' && s.points && hitPolyline(s.points,pt,eps)){ p.state.strokes.splice(i,1); removed=true; continue; }
-      if(s.type==='text'){
+      let hit=false;
+      if(s.type==='pen' && hitPolyline(s.points,pt,eps)){ hit=true; }
+      else if(s.type==='line' && distToSegment(pt,s.a,s.b)<=eps){ hit=true; }
+      else if(s.type==='poly' && s.points && hitPolyline(s.points,pt,eps)){ hit=true; }
+      else if(s.type==='text'){
         const b=bboxStroke(s);
-        if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h){ p.state.strokes.splice(i,1); removed=true; continue; }
+        if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h){ hit=true; }
+      }
+      if(hit){
+        if(s.id) removedIds.push(s.id);
+        p.state.strokes.splice(i,1);
+        removed=true;
       }
     }
     for(let i=p.state.images.length-1;i>=0;i--){
       const im = p.state.images[i];
       if(pt.x>=im.x && pt.x<=im.x+im.w && pt.y>=im.y && pt.y<=im.y+im.h){
         p.state.images.splice(i,1);
+        if(im.id) removedImageIds.push(im.id);
         removed=true;
         continue;
       }
@@ -1302,7 +1410,7 @@
     if(removed){
       renderAll(p);
       clearOverlay(p);
-      scheduleSnapshotSync();
+      [...removedIds, ...removedImageIds].forEach(id=>emitElementRemove(id));
     }
   }
 
@@ -1324,7 +1432,13 @@
   function closeTextEditor(commit,p,x,y){
     if(!activeEditor){ return; }
     const {el} = activeEditor; const val=el.value.trim(); el.remove(); activeEditor=null;
-    if(commit && p && val){ pushHistory(p); p.state.strokes.push({type:'text', color, size, x, y, text: val}); renderAll(p); }
+    if(commit && p && val){
+      pushHistory(p);
+      const textStroke = { id:newElementId(), type:'text', color, size, x, y, text: val };
+      p.state.strokes.push(textStroke);
+      renderAll(p);
+      emitElementAddFromStroke(textStroke, PAGES.indexOf(p));
+    }
   }
 
   /* ---------- COMPOSITE STRONY ---------- */
@@ -1774,9 +1888,9 @@ function textDimensions(s){
 
       drawing=true; startX=x; startY=y; pushHistory(p);
       if(tool===TOOLS.PEN){
-        current={type:'pen', color, size, points:[{x,y}]}; p.state.strokes.push(current); renderAll(p);
+        current={id:newElementId(), type:'pen', color, size, points:[{x,y}]}; p.state.strokes.push(current); renderAll(p);
       }else if(tool===TOOLS.LINE){
-        current={type:'line', color, size, a:{x,y}, b:{x,y}}; clearOverlay(p);
+        current={id:newElementId(), type:'line', color, size, a:{x,y}, b:{x,y}}; clearOverlay(p);
       }else if(tool===TOOLS.ERASER){
         eraseAt({x,y},p);
         current=null;
@@ -1847,14 +1961,13 @@ function textDimensions(s){
         drawing=false;
         clearOverlay(p);
         if(p.state.selection) drawSelection(p);
-        scheduleSnapshotSync();
         return;
       }
       if(tool===TOOLS.FIGURE){
         if(!drawing) return;
         const pts = shapeFromDrag(currentShape, startX, startY, x, y);
         clearOverlay(p);
-        const polyStroke = { type:'poly', color, size, points: pts, closed:true };
+        const polyStroke = { id:newElementId(), type:'poly', color, size, points: pts, closed:true };
         p.state.strokes.push(polyStroke);
         renderAll(p);
         strokeToSync = polyStroke;
@@ -1875,10 +1988,7 @@ function textDimensions(s){
         drawing=false;
       }
       if(strokeToSync){
-        emitStrokeRealtime(strokeToSync, PAGES.indexOf(p));
-      }else if(tool!==TOOLS.ERASER){
-        // fallback na snapshot dla innych narzędzi
-        scheduleSnapshotSync();
+        emitElementAddFromStroke(strokeToSync, PAGES.indexOf(p));
       }
       current=null;
     }
@@ -2218,13 +2328,15 @@ function textDimensions(s){
     e.preventDefault();
     const p=currentPage(); if(!p) return;
     pushHistory(p);
+    const removedIds = p.state.strokes.map(st=>st.id).filter(Boolean);
+    const removedImageIds = p.state.images.map(im=>im.id).filter(Boolean);
     p.state.strokes=[];
     p.state.images=[];
     p.state.selection=null;
     renderAll(p);
     clearOverlay(p);
     updateDeleteButtonState(p);
-    scheduleSnapshotSync();
+    [...removedIds, ...removedImageIds].forEach(id=>emitElementRemove(id));
   });
 
   // WSTAW OBRAZ/PDF
@@ -2269,7 +2381,10 @@ function textDimensions(s){
   const AUTOSAVE_KEY='aliboard_v25_state';
   function autosave(){
     try{
-      const payload = PAGES.map(p=>({ strokes:p.state.strokes, images: p.state.images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta})) }));
+      const payload = PAGES.map(p=>({
+        strokes:p.state.strokes,
+        images: p.state.images.map(im=>({id: im.id, x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta}))
+      }));
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
     }catch(_){}
   }
@@ -2279,7 +2394,7 @@ function textDimensions(s){
       const raw = localStorage.getItem(AUTOSAVE_KEY);
       if(!raw) return false;
       const arr = JSON.parse(raw); if(!Array.isArray(arr) || !arr.length) return false;
-      arr.forEach((pageData)=>{ const p=createPage(false); p.state.strokes = pageData.strokes||[]; p.state.images  = (pageData.images||[]).map(im=>reviveImage(im,p)); renderAll(p); });
+      arr.forEach((pageData)=>{ const p=createPage(false); p.state.strokes = pageData.strokes||[]; ensureStrokeIds(p); p.state.images  = (pageData.images||[]).map(im=>reviveImage(im,p)); renderAll(p); });
       return true;
     }catch(_){ return false; }
   }
