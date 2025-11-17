@@ -1,9 +1,8 @@
 import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
 
-# 🔹 Prosty magazyn stanu tablicy w pamięci (na proces)
-ROOM_STATES = {}  # {room_id: {"state": {}, "version": int}}
+# Prosty magazyn – na potrzeby lekcji, trzymamy patch'e w pamięci procesu
+ROOM_STATE = {}  # room_id -> [patch, patch, ...]
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -71,13 +70,12 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
-        room_state = ROOM_STATES.get(self.room_id)
-        if room_state is not None:
+        ops = ROOM_STATE.get(self.room_id, [])
+        if ops:
             await self.send_json(
                 {
-                    "type": "sync",
-                    "state": room_state.get("state", {}),
-                    "version": room_state.get("version", 0),
+                    "type": "snapshot",
+                    "ops": ops,
                 }
             )
 
@@ -88,49 +86,48 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         msg_type = content.get("type")
 
         if msg_type == "snapshot":
-            board_state = content.get("state") or {}
-            version = (ROOM_STATES.get(self.room_id, {}).get("version") or 0) + 1
-            ROOM_STATES[self.room_id] = {
-                "state": board_state,
-                "version": version,
-            }
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    "type": "aliboard.sync",
-                    "state": board_state,
-                    "version": version,
-                    "sender_channel": self.channel_name,
-                },
-            )
+            ops = content.get("ops") or []
+            ROOM_STATE[self.room_id] = list(ops)
+
         elif msg_type == "patch":
             patch = content.get("patch") or {}
+            ROOM_STATE.setdefault(self.room_id, []).append(patch)
             await self.channel_layer.group_send(
                 self.group_name,
                 {
-                    "type": "aliboard.patch",
+                    "type": "board.patch",
                     "patch": patch,
                     "sender_channel": self.channel_name,
                 },
             )
 
-    async def aliboard_sync(self, event):
-        if event.get("sender_channel") == self.channel_name:
-            return
-        await self.send_json(
-            {
-                "type": "sync",
-                "state": event.get("state") or {},
-                "version": event.get("version") or 0,
-            }
-        )
+        elif msg_type == "cursor":
+            cursor = content.get("cursor") or {}
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.cursor",
+                    "cursor": cursor,
+                    "sender_channel": self.channel_name,
+                },
+            )
 
-    async def aliboard_patch(self, event):
+    async def board_patch(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
         await self.send_json(
             {
                 "type": "patch",
                 "patch": event.get("patch") or {},
+            }
+        )
+
+    async def board_cursor(self, event):
+        if event.get("sender_channel") == self.channel_name:
+            return
+        await self.send_json(
+            {
+                "type": "cursor",
+                "cursor": event.get("cursor") or {},
             }
         )

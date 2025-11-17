@@ -599,63 +599,26 @@
     };
   }
 
-  function cloneStroke(stroke){
-    if(!stroke) return null;
-    return {
-      type: stroke.type || 'pen',
-      color: stroke.color || '#0b74ff',
-      size: stroke.size || 3,
-      points: (stroke.points || []).map(pt=>({ x: Number(pt.x), y: Number(pt.y) })).filter(pt=>Number.isFinite(pt.x)&&Number.isFinite(pt.y))
-    };
+  function ensurePageForPatch(index){
+    if(typeof index!=='number' || index<0){
+      return currentPage();
+    }
+    while(PAGES.length <= index){
+      createPage(false);
+    }
+    return PAGES[index];
   }
-  function cloneImage(image){
-    if(!image) return null;
-    return {
-      x: image.x,
-      y: image.y,
-      w: image.w,
-      h: image.h,
-      src: image.src,
-      meta: image.meta ? {...image.meta} : undefined
-    };
-  }
-  function exportBoardState(){
-    return {
-      pages: PAGES.map(p=>({
-        strokes: (p.state.strokes || []).map(cloneStroke).filter(Boolean),
-        images: (p.state.images || []).map(cloneImage).filter(Boolean)
-      })),
-      generatedAt: Date.now()
-    };
-  }
-  window.aliboardExportState = exportBoardState;
 
-  function rebuildPagesFromState(pagesData){
+  function resetBoardForSnapshot(){
     while(PAGES.length){ PAGES.pop(); }
     pagesEl.innerHTML = '';
-    if(!Array.isArray(pagesData) || !pagesData.length){
-      createPage(false);
-      return;
-    }
-    pagesData.forEach((pageData)=>{
-      const page = createPage(false);
-      page.state.strokes = (pageData.strokes || []).map(cloneStroke).filter(Boolean);
-      page.state.images = (pageData.images || []).map(im=>reviveImage(im, page)).filter(Boolean);
-      renderAll(page);
-      if(page.state.selection){ drawSelection(page); }
-    });
-  }
-
-  function importBoardState(state){
-    if(!state) return;
-    rebuildPagesFromState(state.pages || []);
+    createPage(false);
     setTool(TOOLS.SELECT);
     updateDeleteButtonState();
   }
-  window.aliboardImportState = importBoardState;
-  window.applyRemoteBoardUpdate = importBoardState;
+  window.aliboardResetBoardForSnapshot = resetBoardForSnapshot;
 
-  function applyRemoteStrokePatch(stroke){
+  function applyRemoteStrokePatch(stroke, pageIndex){
     if(!stroke || !Array.isArray(stroke.points)) return;
     const mapped = stroke.points.map(pt=>{
       if(Array.isArray(pt) && pt.length>=2){
@@ -671,7 +634,7 @@
       return null;
     }).filter(Boolean);
     if(mapped.length<2) return;
-    const page = currentPage();
+    const page = ensurePageForPatch(pageIndex) || currentPage();
     if(!page) return;
     const localStroke = {
       type: stroke.tool === 'pen' ? 'pen' : (stroke.tool || 'pen'),
@@ -687,22 +650,11 @@
   window.aliboardApplyPatch = function(patch){
     if(!patch) return;
     if(patch.kind==='stroke' && patch.stroke){
-      applyRemoteStrokePatch(patch.stroke);
+      applyRemoteStrokePatch(patch.stroke, patch.pageIndex);
     }
   };
 
-  let pendingSnapshotPush = null;
-  function requestSnapshotSync(){
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.sendSnapshot!=='function') return;
-    if(pendingSnapshotPush) clearTimeout(pendingSnapshotPush);
-    pendingSnapshotPush = setTimeout(()=>{
-      pendingSnapshotPush = null;
-      realtime.sendSnapshot();
-    }, 800);
-  }
-
-  function emitStrokeRealtime(stroke){
+  function emitStrokeRealtime(stroke, pageIndex){
     if(!stroke || stroke.type!=='pen') return;
     if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
     const realtime = window.AliboardRealtime;
@@ -710,32 +662,127 @@
     try{
       realtime.broadcastPatch({
         kind:'stroke',
+        pageIndex,
         stroke: serializeStrokeForRealtime(stroke)
       });
-      requestSnapshotSync();
     }catch(err){
       console.error('[Aliboard] realtime send failed', err);
     }
   }
 
-  function setupRealtimeListeners(){
+  window.aliboardUpdateRemoteCursor = (function(){
+    const layer = document.createElement('div');
+    layer.id = 'aliboardCursorLayer';
+    layer.style.position = 'fixed';
+    layer.style.left = '0';
+    layer.style.top = '0';
+    layer.style.width = '100%';
+    layer.style.height = '100%';
+    layer.style.pointerEvents = 'none';
+    layer.style.zIndex = '80';
+    document.body.appendChild(layer);
+
+    const cursorMap = new Map();
+    const ttlMap = new Map();
+
+    function removeCursor(id){
+      const el = cursorMap.get(id);
+      if(el){
+        el.remove();
+        cursorMap.delete(id);
+      }
+      if(ttlMap.has(id)){
+        clearTimeout(ttlMap.get(id));
+        ttlMap.delete(id);
+      }
+    }
+
+    function scheduleRemoval(id){
+      if(ttlMap.has(id)){
+        clearTimeout(ttlMap.get(id));
+      }
+      ttlMap.set(id, setTimeout(()=> removeCursor(id), 5000));
+    }
+
+    function createCursorEl(color, label){
+      const wrapper = document.createElement('div');
+      wrapper.className = 'cursor-ghost';
+      wrapper.style.position = 'absolute';
+      wrapper.style.transform = 'translate(-50%, -50%)';
+      wrapper.style.pointerEvents = 'none';
+
+      const dot = document.createElement('div');
+      dot.style.width = '10px';
+      dot.style.height = '10px';
+      dot.style.borderRadius = '50%';
+      dot.style.background = color || '#3b82f6';
+      dot.style.border = '2px solid #fff';
+      dot.style.boxShadow = '0 2px 6px rgba(0,0,0,.25)';
+
+      const tag = document.createElement('div');
+      tag.textContent = label || 'Uczestnik';
+      tag.style.background = color || '#3b82f6';
+      tag.style.color = '#fff';
+      tag.style.fontSize = '11px';
+      tag.style.padding = '2px 6px';
+      tag.style.borderRadius = '999px';
+      tag.style.marginTop = '6px';
+      tag.style.whiteSpace = 'nowrap';
+      tag.style.boxShadow = '0 2px 6px rgba(0,0,0,.2)';
+
+      wrapper.appendChild(dot);
+      wrapper.appendChild(tag);
+      layer.appendChild(wrapper);
+      return wrapper;
+    }
+
+    return function updateCursor(cursor){
+      if(!cursor) return;
+      const pageIdx = typeof cursor.pageIndex === 'number' ? cursor.pageIndex : -1;
+      const targetPage = pageIdx >=0 ? PAGES[pageIdx] : currentPage();
+      if(!targetPage){
+        removeCursor(cursor.id);
+        return;
+      }
+      const rect = targetPage.el.getBoundingClientRect();
+      const relX = Number(cursor.x ?? 0);
+      const relY = Number(cursor.y ?? 0);
+      const posX = rect.left + Math.max(0, Math.min(1, relX)) * rect.width;
+      const posY = rect.top + Math.max(0, Math.min(1, relY)) * rect.height;
+
+      let el = cursorMap.get(cursor.id);
+      if(!el){
+        el = createCursorEl(cursor.color, cursor.label);
+        cursorMap.set(cursor.id, el);
+      }else{
+        el.querySelector('div:last-child').textContent = cursor.label || 'Uczestnik';
+        el.querySelector('div:first-child').style.background = cursor.color || '#3b82f6';
+        el.querySelector('div:last-child').style.background = cursor.color || '#3b82f6';
+      }
+      el.style.left = `${posX}px`;
+      el.style.top = `${posY}px`;
+      scheduleRemoval(cursor.id);
+    };
+  })();
+
+  pagesEl.addEventListener('pointermove', (e)=>{
     const realtime = window.AliboardRealtime;
-    if(!realtime){
-      setTimeout(setupRealtimeListeners, 600);
-      return;
-    }
-    if(typeof realtime.onPatch === 'function'){
-      realtime.onPatch((patch)=>{
-        window.aliboardApplyPatch(patch);
-      });
-    }
-    if(typeof realtime.onSync === 'function'){
-      realtime.onSync((state)=>{
-        if(state) window.aliboardImportState(state);
-      });
-    }
-  }
-  setupRealtimeListeners();
+    if(!realtime || typeof realtime.sendCursor !== 'function') return;
+    const boardCanvas = e.target.closest('.board');
+    if(!boardCanvas) return;
+    const pageEl = boardCanvas.closest('.page');
+    if(!pageEl) return;
+    const pageIndex = PAGES.findIndex(pg=>pg.el===pageEl);
+    if(pageIndex<0) return;
+    const rect = pageEl.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width;
+    const relY = (e.clientY - rect.top) / rect.height;
+    realtime.sendCursor({
+      pageIndex,
+      x: Math.max(0, Math.min(1, relX)),
+      y: Math.max(0, Math.min(1, relY))
+    });
+  });
 
   // room_id info
   const qs = new URLSearchParams(location.search);
@@ -1769,7 +1816,7 @@ function textDimensions(s){
       if(tool===TOOLS.PEN){ strokeToSync = current; }
       drawing=false;
       if(strokeToSync){
-        emitStrokeRealtime(strokeToSync);
+        emitStrokeRealtime(strokeToSync, PAGES.indexOf(p));
       }
       current=null;
     }
