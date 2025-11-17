@@ -44,6 +44,21 @@
   .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
   .btn.is-active{ outline:2px solid var(--brand); outline-offset:2px }
   .btn.is-disabled{ opacity:0.4; pointer-events:none; }
+  .toolrow .btn[data-tool]{position:relative;font-size:0;}
+  .toolrow .btn[data-tool]::before{
+    content:'';
+    font-size:18px;
+    line-height:1;
+    display:inline-block;
+  }
+  .toolrow .btn[data-tool="select"]::before{ content:"🖱️"; }
+  .toolrow .btn[data-tool="pen"]::before{ content:"✏️"; }
+  .toolrow .btn[data-tool="line"]::before{ content:"📏"; }
+  .toolrow .btn[data-tool="eraser"]::before{ content:"🧽"; }
+  .toolrow .btn[data-tool="text"]{font-size:16px;}
+  .toolrow .btn[data-tool="text"]::before{ content:"T"; font-size:16px; font-weight:700; }
+  .toolrow .btn[data-tool="crop"]::before{ content:"✂️"; }
+  .toolrow .btn[data-tool="figure"]::before{ content:"⬛"; }
   .right{margin-left:auto; display:flex; align-items:flex-start;}
   .menu-wrap{position:relative}
   .menu-btn{display:inline-flex; align-items:center; gap:8px}
