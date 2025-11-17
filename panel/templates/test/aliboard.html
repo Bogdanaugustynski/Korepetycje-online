@@ -305,6 +305,16 @@
 @media (max-width:900px){
   .figure-palette{ transform:translateY(6px); }
 }
+
+/* === FIX: przywrócenie widoczności ikon narzędzi Aliboard === */
+.toolrow .btn[data-tool]{
+  font-size:18px !important;
+  line-height:1;
+}
+.toolrow .btn[data-tool]::before{
+  content:none !important;
+}
+
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}">
