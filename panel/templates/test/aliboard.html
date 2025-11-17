@@ -616,16 +616,49 @@
     return 'el_' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
   }
 
-  function normalizePoint(pt){
-    if(!pt) return null;
+  function getPageRef(pageIndex){
+    if(typeof pageIndex==='number' && pageIndex>=0){
+      return PAGES[pageIndex];
+    }
+    return currentPage();
+  }
+
+  function getPageDimensions(page){
+    const rect = page?.el?.getBoundingClientRect();
+    let width = rect?.width;
+    let height = rect?.height;
+    if(!Number.isFinite(width) || width<=0){ width = page?.drawC?.width || 1; }
+    if(!Number.isFinite(height) || height<=0){ height = page?.drawC?.height || 1; }
+    return { width, height };
+  }
+
+  function toRelativePoint(pt, dims){
+    if(!pt || !dims) return null;
     const x = Number(pt.x ?? pt[0]);
     const y = Number(pt.y ?? pt[1]);
     if(!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return { x, y };
+    return {
+      x: dims.width ? x / dims.width : 0,
+      y: dims.height ? y / dims.height : 0
+    };
+  }
+
+  function fromRelativePoint(pt, dims){
+    if(!pt || !dims) return null;
+    const x = Number(pt.x ?? pt[0]);
+    const y = Number(pt.y ?? pt[1]);
+    if(!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return {
+      x: x * dims.width,
+      y: y * dims.height
+    };
   }
 
   function serializeStrokeElement(stroke, pageIndex){
     if(!stroke) return null;
+    const page = getPageRef(pageIndex);
+    if(!page) return null;
+    const dims = getPageDimensions(page);
     const tool = stroke.type || stroke.tool || 'pen';
     const base = {
       id: stroke.id || newElementId(),
@@ -635,22 +668,27 @@
       size: stroke.size || stroke.width || 3
     };
     if(tool==='pen'){
-      const pts = (stroke.points || []).map(pt=>({x:pt.x,y:pt.y}));
+      const pts = (stroke.points || []).map(pt=>toRelativePoint(pt, dims)).filter(Boolean);
       if(pts.length<2) return null;
       base.points = pts;
     }else if(tool==='line'){
       if(!stroke.a || !stroke.b) return null;
-      base.a = {x: stroke.a.x, y: stroke.a.y};
-      base.b = {x: stroke.b.x, y: stroke.b.y};
+      const relA = toRelativePoint(stroke.a, dims);
+      const relB = toRelativePoint(stroke.b, dims);
+      if(!relA || !relB) return null;
+      base.a = relA;
+      base.b = relB;
     }else if(tool==='poly'){
-      const pts = (stroke.points || []).map(pt=>({x:pt.x,y:pt.y}));
+      const pts = (stroke.points || []).map(pt=>toRelativePoint(pt, dims)).filter(Boolean);
       if(pts.length<2) return null;
       base.points = pts;
       if(stroke.closed) base.closed = true;
     }else if(tool==='text'){
+      const rel = toRelativePoint({x: stroke.x, y: stroke.y}, dims);
+      if(!rel) return null;
       base.text = stroke.text || '';
-      base.x = stroke.x;
-      base.y = stroke.y;
+      base.x = rel.x;
+      base.y = rel.y;
     }else{
       return null;
     }
@@ -663,8 +701,9 @@
     const tool = element.tool || element.type || 'pen';
     const page = ensurePageForPatch(element.pageIndex) || currentPage();
     if(!page) return;
+    const dims = getPageDimensions(page);
     if(tool==='pen'){
-      const mapped = (element.points || []).map(normalizePoint).filter(Boolean);
+      const mapped = (element.points || []).map(pt=>fromRelativePoint(pt, dims)).filter(Boolean);
       if(mapped.length<2) return;
       page.state.strokes.push({
         id: element.id,
@@ -674,8 +713,8 @@
         points: mapped
       });
     }else if(tool==='line'){
-      const a = normalizePoint(element.a);
-      const b = normalizePoint(element.b);
+      const a = fromRelativePoint(element.a, dims);
+      const b = fromRelativePoint(element.b, dims);
       if(!a || !b) return;
       page.state.strokes.push({
         id: element.id,
@@ -686,7 +725,7 @@
         b
       });
     }else if(tool==='poly'){
-      const mapped = (element.points || []).map(normalizePoint).filter(Boolean);
+      const mapped = (element.points || []).map(pt=>fromRelativePoint(pt, dims)).filter(Boolean);
       if(mapped.length<2) return;
       page.state.strokes.push({
         id: element.id,
@@ -697,23 +736,27 @@
         closed: Boolean(element.closed)
       });
     }else if(tool==='text'){
+      const rel = fromRelativePoint({x: element.x, y: element.y}, dims);
+      if(!rel) return;
       page.state.strokes.push({
         id: element.id,
         type:'text',
         color: element.color || '#0b74ff',
         size: element.size || 3,
-        x: element.x,
-        y: element.y,
+        x: rel.x,
+        y: rel.y,
         text: element.text || ''
       });
     }else if(tool==='image'){
+      const relPos = fromRelativePoint({x: element.x, y: element.y}, dims);
+      const relSize = fromRelativePoint({x: element.w, y: element.h}, dims);
       const revived = reviveImage({
         id: element.id,
         src: element.src,
-        w: element.w,
-        h: element.h,
-        x: element.x,
-        y: element.y,
+        w: relSize?.x ?? 0,
+        h: relSize?.y ?? 0,
+        x: relPos?.x ?? 0,
+        y: relPos?.y ?? 0,
         meta: element.meta
       }, page);
       page.state.images.push(revived);
@@ -764,14 +807,17 @@
     if(!image) return;
     const realtime = window.AliboardRealtime;
     if(!realtime || typeof realtime.broadcastElementAdd!=='function') return;
+    const page = getPageRef(pageIndex);
+    if(!page) return;
+    const dims = getPageDimensions(page);
     const payload = {
       id: image.id || newElementId(),
       tool: 'image',
       pageIndex,
-      x: image.x,
-      y: image.y,
-      w: image.w,
-      h: image.h,
+      x: dims.width ? (image.x || 0) / dims.width : 0,
+      y: dims.height ? (image.y || 0) / dims.height : 0,
+      w: dims.width ? (image.w || 0) / dims.width : 0,
+      h: dims.height ? (image.h || 0) / dims.height : 0,
       src: image.src,
       meta: image.meta || null
     };
