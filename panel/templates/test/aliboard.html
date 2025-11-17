@@ -590,15 +590,6 @@
   }
 
   /* ---------- SYNC (WebSocket) ---------- */
-  function serializeStrokeForRealtime(stroke){
-    return {
-      tool: stroke.type || 'pen',
-      color: stroke.color,
-      size: stroke.size,
-      points: stroke.points.map(pt=>({ x: pt.x, y: pt.y }))
-    };
-  }
-
   function ensurePageForPatch(index){
     if(typeof index!=='number' || index<0){
       return currentPage();
@@ -618,30 +609,71 @@
   }
   window.aliboardResetBoardForSnapshot = resetBoardForSnapshot;
 
-  function applyRemoteStrokePatch(stroke, pageIndex){
-    if(!stroke || !Array.isArray(stroke.points)) return;
-    const mapped = stroke.points.map(pt=>{
-      if(Array.isArray(pt) && pt.length>=2){
-        const x = Number(pt[0]);
-        const y = Number(pt[1]);
-        return Number.isFinite(x) && Number.isFinite(y) ? {x,y} : null;
-      }
-      if(pt && typeof pt==='object'){
-        const x = Number('x' in pt ? pt.x : pt[0]);
-        const y = Number('y' in pt ? pt.y : pt[1]);
-        return Number.isFinite(x) && Number.isFinite(y) ? {x,y} : null;
-      }
+  function normalizePoint(pt){
+    if(!pt) return null;
+    const x = Number(pt.x ?? pt[0]);
+    const y = Number(pt.y ?? pt[1]);
+    if(!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { x, y };
+  }
+
+  function cloneStrokeForSync(stroke){
+    if(!stroke) return null;
+    const type = (stroke.type || stroke.tool || 'pen');
+    const base = {
+      type,
+      color: stroke.color || '#0b74ff',
+      size: stroke.size || stroke.width || 3
+    };
+    if(type==='pen'){
+      const pts = (stroke.points || []).map(normalizePoint).filter(Boolean);
+      if(pts.length<2) return null;
+      base.points = pts;
+    }else if(type==='line'){
+      const a = normalizePoint(stroke.a);
+      const b = normalizePoint(stroke.b);
+      if(!a || !b) return null;
+      base.a = a;
+      base.b = b;
+    }else if(type==='poly'){
+      const pts = (stroke.points || []).map(normalizePoint).filter(Boolean);
+      if(pts.length<2) return null;
+      base.points = pts;
+      if(stroke.closed) base.closed = true;
+    }else{
       return null;
-    }).filter(Boolean);
-    if(mapped.length<2) return;
+    }
+    return base;
+  }
+
+  function applyRemoteStrokePatch(stroke, pageIndex){
+    if(!stroke) return;
+    const type = stroke.type || stroke.tool || 'pen';
     const page = ensurePageForPatch(pageIndex) || currentPage();
     if(!page) return;
     const localStroke = {
-      type: stroke.tool === 'pen' ? 'pen' : (stroke.tool || 'pen'),
+      type,
       color: stroke.color || '#0b74ff',
-      size: stroke.size || stroke.width || 3,
-      points: mapped
+      size: stroke.size || stroke.width || 3
     };
+    if(type==='pen'){
+      const mapped = (stroke.points || []).map(normalizePoint).filter(Boolean);
+      if(mapped.length<2) return;
+      localStroke.points = mapped;
+    }else if(type==='line'){
+      const a = normalizePoint(stroke.a);
+      const b = normalizePoint(stroke.b);
+      if(!a || !b) return;
+      localStroke.a = a;
+      localStroke.b = b;
+    }else if(type==='poly'){
+      const mapped = (stroke.points || []).map(normalizePoint).filter(Boolean);
+      if(mapped.length<2) return;
+      localStroke.points = mapped;
+      localStroke.closed = Boolean(stroke.closed);
+    }else{
+      return;
+    }
     page.state.strokes.push(localStroke);
     renderAll(page);
     if(page.state.selection){ drawSelection(page); }
@@ -654,16 +686,27 @@
     }
   };
 
+  let snapshotTimer = null;
+  function scheduleSnapshotSync(delay=800){
+    const realtime = window.AliboardRealtime;
+    if(!realtime || typeof realtime.sendSnapshot!=='function') return;
+    if(snapshotTimer) clearTimeout(snapshotTimer);
+    snapshotTimer = setTimeout(()=>{
+      snapshotTimer = null;
+      realtime.sendSnapshot();
+    }, delay);
+  }
+
   function emitStrokeRealtime(stroke, pageIndex){
-    if(!stroke || stroke.type!=='pen') return;
-    if(!Array.isArray(stroke.points) || stroke.points.length<2) return;
     const realtime = window.AliboardRealtime;
     if(!realtime || typeof realtime.broadcastPatch!=='function') return;
+    const payloadStroke = cloneStrokeForSync(stroke);
+    if(!payloadStroke) return;
     try{
       realtime.broadcastPatch({
         kind:'stroke',
         pageIndex,
-        stroke: serializeStrokeForRealtime(stroke)
+        stroke: payloadStroke
       });
     }catch(err){
       console.error('[Aliboard] realtime send failed', err);
@@ -1256,7 +1299,11 @@
         continue;
       }
     }
-    if(removed){ renderAll(p); clearOverlay(p); }
+    if(removed){
+      renderAll(p);
+      clearOverlay(p);
+      scheduleSnapshotSync();
+    }
   }
 
   /* ---------- TEKST INLINE ---------- */
@@ -1800,23 +1847,38 @@ function textDimensions(s){
         drawing=false;
         clearOverlay(p);
         if(p.state.selection) drawSelection(p);
+        scheduleSnapshotSync();
         return;
       }
       if(tool===TOOLS.FIGURE){
         if(!drawing) return;
         const pts = shapeFromDrag(currentShape, startX, startY, x, y);
         clearOverlay(p);
-        p.state.strokes.push({ type:'poly', color, size, points: pts, closed:true });
+        const polyStroke = { type:'poly', color, size, points: pts, closed:true };
+        p.state.strokes.push(polyStroke);
         renderAll(p);
-        drawing=false; current=null;
-        return;
+        strokeToSync = polyStroke;
+        drawing=false;
+        current=null;
+      }else{
+        if(!drawing) return;
+        if(tool===TOOLS.LINE){
+          clearOverlay(p);
+          current.b={x,y};
+          p.state.strokes.push(current);
+          renderAll(p);
+          strokeToSync = current;
+        }
+        if(tool===TOOLS.PEN){
+          strokeToSync = current;
+        }
+        drawing=false;
       }
-      if(!drawing) return;
-      if(tool===TOOLS.LINE){ clearOverlay(p); current.b={x,y}; p.state.strokes.push(current); renderAll(p); }
-      if(tool===TOOLS.PEN){ strokeToSync = current; }
-      drawing=false;
       if(strokeToSync){
         emitStrokeRealtime(strokeToSync, PAGES.indexOf(p));
+      }else if(tool!==TOOLS.ERASER){
+        // fallback na snapshot dla innych narzędzi
+        scheduleSnapshotSync();
       }
       current=null;
     }
@@ -2162,6 +2224,7 @@ function textDimensions(s){
     renderAll(p);
     clearOverlay(p);
     updateDeleteButtonState(p);
+    scheduleSnapshotSync();
   });
 
   // WSTAW OBRAZ/PDF
