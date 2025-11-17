@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard 2.5 â€” PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 — PolubiszTo.pl (test)</title>
 
 <!-- PDF render -->
 <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
@@ -117,7 +117,7 @@
   }
   .page canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .page .grid, .page .overlay{ pointer-events:none; }
-  .page .board{ touch-action:none; } /* blok gestĂłw przy rysowaniu */
+  .page .board{ touch-action:none; } /* blok gestów przy rysowaniu */
 
   /* edytor tekstu inline */
   .text-editor{
@@ -181,15 +181,15 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* === PATCH(MOBILE): kompaktowe narzÄ™dzia bez "piguĹ‚y" === */
+  /* === PATCH(MOBILE): kompaktowe narzędzia bez "piguły" === */
 .toolrow .btn,
 .toolrow label.btn{
   border:0 !important;
   box-shadow:none !important;
-  background:transparent !important;     /* brak biaĹ‚ych kapsli */
+  background:transparent !important;     /* brak białych kapsli */
 }
 
-/* aktywny â€“ cienki ring zamiast wypeĹ‚nienia */
+/* aktywny – cienki ring zamiast wypełnienia */
 .toolrow .btn.is-active{
   background:transparent !important;
   color:var(--ink) !important;
@@ -198,7 +198,7 @@
   border-radius:10px;
 }
 
-/* hover/focus bez zwiÄ™kszania "pola" */
+/* hover/focus bez zwiększania "pola" */
 .toolrow .btn:focus-visible{ outline:2px solid var(--brand); outline-offset:2px }
 
 /* same kontrolki w labelach */
@@ -240,10 +240,10 @@
   cursor:pointer;
 }
 
-/* ciaĹ›niej tylko na telefonie */
+/* ciaśniej tylko na telefonie */
 @media (max-width: 900px){
   .toolrow{ gap:4px; }
-  .toolrow .btn{ padding:6px 8px; }      /* byĹ‚o 8â€“10px */
+  .toolrow .btn{ padding:6px 8px; }      /* było 8–10px */
 }
 
 
@@ -255,7 +255,7 @@
 
 /* [CODEX:BEGIN TOOLROW_MOBILE_OVERFLOW_FIX] */
 @media (max-width: 900px){
-  /* wyĹ‚Ä…cz autoscroll paska, pozwĂłl JS wykryÄ‡ przepeĹ‚nienie */
+  /* wyłącz autoscroll paska, pozwól JS wykryć przepełnienie */
   .toolrow{
     overflow: hidden !important;
     position: relative;
@@ -278,7 +278,7 @@
     margin: auto;
     height: 36px;
   }
-  /* panel overflow â€“ pojawia siÄ™ obok */
+  /* panel overflow – pojawia się obok */
   #toolsMorePanel.dropdown{
     top: 42px;
     left: auto;
@@ -319,34 +319,34 @@
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}">
 <header>
-  <!-- LEWA: brand + narzÄ™dzia -->
+  <!-- LEWA: brand + narzędzia -->
   <div class="left">
     <div class="brand">
       <div class="mark">
-        <!-- Sama gĹ‚owa loga -->
+        <!-- Sama głowa loga -->
         <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl" />
       </div>
       <div>
         <div style="font-weight:800">Aliboard</div>
-        <div class="state" id="state">Tryb: Kursor â€˘ 3px â€˘ #0b74ff</div>
+        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
       </div>
     </div>
 
     <div class="toolrow" id="tools">
-      <button class="btn" type="button" data-tool="select" title="Kursor (V)">đź–±ď¸Ź</button>
-      <button class="btn" type="button" data-tool="pen"    title="OĹ‚Ăłwek (P)">âśŹď¸Ź</button>
-      <button class="btn" type="button" data-tool="line"   title="Linia (L)">ďĽŹ</button>
-      <button class="btn" type="button" data-tool="eraser" title="Gumka (E)">đź©ą</button>
+      <button class="btn" type="button" data-tool="select" title="Kursor (V)">🖱️</button>
+      <button class="btn" type="button" data-tool="pen"    title="Ołówek (P)">✏️</button>
+      <button class="btn" type="button" data-tool="line"   title="Linia (L)">／</button>
+      <button class="btn" type="button" data-tool="eraser" title="Gumka (E)">🩹</button>
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">T</button>
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="WielkoĹ›Ä‡ czcionki" data-overflow="1">WielkoĹ›Ä‡ czcionki</button>
-      <button class="btn" type="button" data-tool="crop"   title="Wycinanie (C)">âś‚ď¸Ź</button>
-      <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">â¬›ď¸Žâ–µâ¬ˇ</button>
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">Wielkość czcionki</button>
+      <button class="btn" type="button" data-tool="crop"   title="Wycinanie (C)">✂️</button>
+      <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">⬛︎▵⬡</button>
 
       <label class="btn" title="Kolor pisaka">
-        đźŽ¨ <input type="color" id="color" value="#0b74ff" style="width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px;margin-left:6px">
+        🎨 <input type="color" id="color" value="#0b74ff" style="width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px;margin-left:6px">
       </label>
-      <label class="btn" title="GruboĹ›Ä‡ linii">
-        â†•ď¸Ź
+      <label class="btn" title="Grubość linii">
+        ↕️
         <select id="size" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;margin-left:6px">
           <option value="1">1px</option>
           <option value="3" selected>3px</option>
@@ -357,22 +357,22 @@
 
       <!-- Ikony: obraz + pdf -->
       <label class="btn" title="Wstaw obraz">
-        đź–Ľď¸Ź <input id="imgInput" type="file" accept="image/*" style="display:none">
+        🖼️ <input id="imgInput" type="file" accept="image/*" style="display:none">
       </label>
       <label class="btn" title="Wstaw PDF">
-        đź“„ <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
+        📄 <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn" type="button" id="undo" title="Cofnij (Ctrl+Z)">â†¶</button>
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="UsuĹ„ zaznaczony obiekt" disabled>UsuĹ„</button>
-      <button class="btn" type="button" id="clear" title="WyczyĹ›Ä‡ tÄ™ stronÄ™">đź—‘ď¸Ź</button>
+      <button class="btn" type="button" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>Usuń</button>
+      <button class="btn" type="button" id="clear" title="Wyczyść tę stronę">🗑️</button>
     </div>
   </div>
 
   <!-- PRAWA: MENU -->
   <div class="right">
     <div class="menu-wrap">
-      <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown">â° Menu</button>
+      <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown">☰ Menu</button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
           <a href="{% url 'aliboard_new_room' %}" target="_blank" class="drop-item primary btn-aliboard" id="openBoardBtn">
@@ -382,9 +382,9 @@
         <div class="drop-group">
           <button class="drop-item primary" type="button" id="saveToggle">Zapisz</button>
           <div class="drop-row" id="saveRow" style="display:none">
-            <button class="drop-item" type="button" id="savePng">đź’ľ PNG</button>
-            <button class="drop-item" type="button" id="saveJpg">đź–Ľď¸Ź JPG</button>
-            <button class="drop-item" type="button" id="savePdf">đź“„ PDF</button>
+            <button class="drop-item" type="button" id="savePng">💾 PNG</button>
+            <button class="drop-item" type="button" id="saveJpg">🖼️ JPG</button>
+            <button class="drop-item" type="button" id="savePdf">📄 PDF</button>
           </div>
         </div>
         <div class="drop-group">
@@ -392,16 +392,16 @@
           <button class="drop-item" type="button" id="gridToggle" style="display:none">Siatka</button>
           <div class="drop-row" id="templatesRow" style="display:none">
             <button class="drop-item" type="button" data-grid="0">Brak</button>
-            <button class="drop-item" type="button" data-grid="16">MaĹ‚a</button>
-            <button class="drop-item" type="button" data-grid="24">Ĺšrednia</button>
-            <button class="drop-item" type="button" data-grid="32">DuĹĽa</button>
+            <button class="drop-item" type="button" data-grid="16">Mała</button>
+            <button class="drop-item" type="button" data-grid="24">Średnia</button>
+            <button class="drop-item" type="button" data-grid="32">Duża</button>
             <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
           <div class="drop-title">Nowa tablica</div>
           <div class="drop-row">
-            <button class="drop-item" type="button" id="addPage">âž• Dodaj kartkÄ™ A4</button>
+            <button class="drop-item" type="button" id="addPage">➕ Dodaj kartkę A4</button>
           </div>
         </div>
       </div>
@@ -414,28 +414,28 @@
 </div>
 
 <div class="footer">
-  <a href="{% url 'pokoj_testowy' %}" class="btn">â† PowrĂłt do Pokoju Testowego</a>
+  <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
   <span class="btn" id="roomInfo" title="Room ID z query string">room_id: {{ room_id|default:'local-test' }}</span>
 </div>
 
 <div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
-    <h3 id="openBoardTitle">OtwĂłrz nowÄ… tablicÄ™</h3>
-    <p>UtwĂłrz pustÄ… tablicÄ™. Aktualne karty zostanÄ… zamkniÄ™te.</p>
+    <h3 id="openBoardTitle">Otwórz nową tablicę</h3>
+    <p>Utwórz pustą tablicę. Aktualne karty zostaną zamknięte.</p>
     <label>
       Nazwa tablicy (opcjonalnie)
       <input type="text" id="openBoardName" placeholder="np. Matematyka - lekcja 3">
     </label>
     <div class="modal-actions">
       <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
-      <button type="button" class="btn primary" id="openBoardCreate">UtwĂłrz</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
-  /* === PATCH: wstrzykniÄ™cie delikatnego CSS dla paska narzÄ™dzi (bez kapsli) === */
+  /* === PATCH: wstrzyknięcie delikatnego CSS dla paska narzędzi (bez kapsli) === */
   const __css = `
   .toolrow .btn, .toolrow label.btn{border:0 !important;background:transparent !important;box-shadow:none !important}
   .toolrow .btn.is-active{background:transparent !important;color:var(--ink) !important;outline:2px solid var(--brand);outline-offset:2px;border-radius:10px}
@@ -465,11 +465,11 @@
     figurePalette = document.createElement('div');
     figurePalette.className = 'figure-palette';
     figurePalette.innerHTML = `
-      <button class="shape-btn" data-shape="rect" title="Kwadrat / ProstokÄ…t">â–­</button>
-      <button class="shape-btn" data-shape="tri_iso" title="TrĂłjkÄ…t (rĂłwnoramienny)">â–µ</button>
-      <button class="shape-btn" data-shape="tri_right" title="TrĂłjkÄ…t prostokÄ…tny">â—ş</button>
-      <button class="shape-btn" data-shape="hex" title="SzeĹ›ciokÄ…t">â¬ˇ</button>
-      <button class="shape-btn" data-shape="circle" title="KoĹ‚o">â—Ż</button>
+      <button class="shape-btn" data-shape="rect" title="Kwadrat / Prostokąt">▭</button>
+      <button class="shape-btn" data-shape="tri_iso" title="Trójkąt (równoramienny)">▵</button>
+      <button class="shape-btn" data-shape="tri_right" title="Trójkąt prostokątny">◺</button>
+      <button class="shape-btn" data-shape="hex" title="Sześciokąt">⬡</button>
+      <button class="shape-btn" data-shape="circle" title="Koło">◯</button>
     `;
     document.body.appendChild(figurePalette);
     updateFigurePaletteSelection();
@@ -521,11 +521,11 @@
     textFontPanel = document.createElement('div');
     textFontPanel.className = 'text-font-panel';
     textFontPanel.innerHTML = `
-      <div class="text-font-panel__header">WielkoĹ›Ä‡ czcionki</div>
+      <div class="text-font-panel__header">Wielkość czcionki</div>
       <div class="text-font-panel__value" data-font-display>24 px</div>
       <input type="range" class="text-font-panel__range" min="${TEXT_FONT_MIN}" max="${TEXT_FONT_MAX}" step="${TEXT_FONT_STEP}">
       <div class="text-font-panel__actions">
-        <button type="button" data-step="-${TEXT_FONT_STEP}">â€“</button>
+        <button type="button" data-step="-${TEXT_FONT_STEP}">–</button>
         <button type="button" data-step="${TEXT_FONT_STEP}">+</button>
       </div>
     `;
@@ -1493,7 +1493,7 @@
     }
   }
 
-  /* ---------- GUMKA PODĹšWIETLA ---------- */
+  /* ---------- GUMKA PODŚWIETLA ---------- */
   function previewErase(pt, p){
     clearOverlay(p); if(p.state.selection) drawSelection(p);
     const eps = Math.max(6,size*2);
@@ -1576,7 +1576,7 @@
     ed.style.left = (r.left + x) + 'px';
     ed.style.top  = (r.top  + y) + 'px';
     ed.style.fontSize = Math.max(14, size*6) + 'px';
-    ed.placeholder='Wpisz tekstâ€¦';
+    ed.placeholder='Wpisz tekst…';
     document.body.appendChild(ed); ed.focus();
     ed.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); closeTextEditor(true,p,x,y); } if(e.key==='Escape'){ e.preventDefault(); closeTextEditor(false); }});
     ed.addEventListener('blur', ()=>{ closeTextEditor(true,p,x,y); });
@@ -1788,7 +1788,7 @@
       const dialog=document.createElement('div');
       dialog.className='crop-choice-dialog';
       const text=document.createElement('p');
-      text.textContent='Gdzie umieĹ›ciÄ‡ skopiowany fragment?';
+      text.textContent='Gdzie umieścić skopiowany fragment?';
       const actions=document.createElement('div');
       actions.className='crop-choice-actions';
       const btnBelow=document.createElement('button');
@@ -1840,7 +1840,7 @@
     }
     const toast=document.createElement('div');
     toast.className='crop-busy-toast';
-    toast.textContent='Poczekaj na zakoĹ„czenie kopiowania...';
+    toast.textContent='Poczekaj na zakończenie kopiowania...';
     document.body.appendChild(toast);
     requestAnimationFrame(()=> toast.classList.add('show'));
     cropBusyHintEl=toast;
@@ -1959,7 +1959,7 @@ function textDimensions(s){
     const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
     let multiPan=false;                // tryb dwupalczastego scrolla
-    let panCentroidY=null;             // poprzedni centroid dotykĂłw (Y)
+    let panCentroidY=null;             // poprzedni centroid dotyków (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
     let panIdleTimer=null;
     const PAN_IDLE_MS = 350;
@@ -2240,10 +2240,10 @@ function textDimensions(s){
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden && multiPan){ endMultiPan('hidden'); } });
   }
 
-  /* ---------- UI OGĂ“LNY ---------- */
+  /* ---------- UI OGÓLNY ---------- */
   function toolLabel(){
     return tool===TOOLS.SELECT?'Kursor':
-           tool===TOOLS.PEN?'OĹ‚Ăłwek':
+           tool===TOOLS.PEN?'Ołówek':
            tool===TOOLS.LINE?'Linia':
            tool===TOOLS.ERASER?'Gumka':
            tool===TOOLS.TEXT?'Tekst':
@@ -2263,10 +2263,10 @@ function textDimensions(s){
   }
   function updateState(){
     const shapeLabel = tool===TOOLS.FIGURE
-      ? ` â€˘ ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'TrĂłjkÄ…t':currentShape==='tri_right'?'TrĂłjkÄ…t 90Â°':currentShape==='hex'?'SzeĹ›ciokÄ…t':'KoĹ‚o'}`
+      ? ` • ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
       : '';
     const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
-    stateEl.textContent = `Tryb: ${toolLabel()} â€˘ ${sizeLabel} â€˘ ${color}${shapeLabel}`;
+    stateEl.textContent = `Tryb: ${toolLabel()} • ${sizeLabel} • ${color}${shapeLabel}`;
     updateFigurePaletteSelection();
   }
 
@@ -2461,7 +2461,7 @@ function textDimensions(s){
     }else if(ext==='jpg'){
       const a=document.createElement('a'); a.href=c.toDataURL('image/jpeg', .92); a.download=ts('jpg'); a.click();
     }else if(ext==='pdf'){
-      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaĹ‚adowany.');
+      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaładowany.');
       const dataUrl = c.toDataURL('image/png');
       const pdf = new lib({orientation:'portrait', unit:'pt', format:'a4'});
       const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
@@ -2562,7 +2562,7 @@ function textDimensions(s){
       headerExists: !!document.querySelector('header .left'),
     });
 
-    // 1) UtwĂłrz przycisk â€žâ‹Żâ€ť i panel overflow zaraz obok paska narzÄ™dzi, jeĹ›li nie istniejÄ…
+    // 1) Utwórz przycisk „⋯” i panel overflow zaraz obok paska narzędzi, jeśli nie istnieją
     let moreBtn = document.getElementById('toolsMoreBtn');
     let moreBox = document.getElementById('toolsMorePanel');
 
@@ -2571,22 +2571,22 @@ function textDimensions(s){
       moreBtn.id = 'toolsMoreBtn';
       moreBtn.className = 'btn';
       moreBtn.type = 'button';
-      moreBtn.title = 'WiÄ™cej narzÄ™dzi';
-      moreBtn.textContent = 'â‹Ż';
+      moreBtn.title = 'Więcej narzędzi';
+      moreBtn.textContent = '⋯';
     toolsRow.appendChild(moreBtn);
     }
     if(!moreBox){
       moreBox = document.createElement('div');
       moreBox.id = 'toolsMorePanel';
       moreBox.className = 'dropdown';
-      // otwieramy w lewo, obok paska narzÄ™dzi
+      // otwieramy w lewo, obok paska narzędzi
       moreBox.style.left = '0';
       moreBox.style.right = 'auto';
       moreBtn.insertAdjacentElement('afterend', moreBox);
     }
 
-    // 2) Oznacz â€žklejoneâ€ť (nigdy nie przenoszone) narzÄ™dzia â€“ rdzeĹ„ paska
-    //    (moĹĽesz dopasowaÄ‡ listÄ™; domyĹ›lnie trzymamy: select, pen, line, eraser)
+    // 2) Oznacz „klejone” (nigdy nie przenoszone) narzędzia – rdzeń paska
+    //    (możesz dopasować listę; domyślnie trzymamy: select, pen, line, eraser)
     const stickySelectors = [
       '[data-tool="select"]',
       '[data-tool="pen"]',
@@ -2599,13 +2599,13 @@ function textDimensions(s){
         .filter(Boolean)
     );
 
-    // 3) Funkcja: przenieĹ› elementy z overflow z powrotem do gĹ‚Ăłwnego rzÄ™du
+    // 3) Funkcja: przenieś elementy z overflow z powrotem do głównego rzędu
     function restoreFromOverflow(){
-      // przywrĂłÄ‡ wszystko co byĹ‚o upchniÄ™te
+      // przywróć wszystko co było upchnięte
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
     }
 
-    // 4) Funkcja: wylicz ktĂłre elementy trzeba schowaÄ‡ do â€žâ‹Żâ€ť, aĹĽ przestanie siÄ™ przelewaÄ‡
+    // 4) Funkcja: wylicz które elementy trzeba schować do „⋯”, aż przestanie się przelewać
     function rebalanceTools(){
       if(!toolsRow) return;
 
@@ -2678,12 +2678,12 @@ function textDimensions(s){
       }
     });
 
-    // 6) Rebalans po zaĹ‚adowaniu i na resize
+    // 6) Rebalans po załadowaniu i na resize
     window.addEventListener('load', rebalanceTools, { once: true });
     window.addEventListener('resize', rebalanceTools);
 
-    // 7) ObsĹ‚uga â€žtapâ€ť na elementach przeniesionych do overflow:
-    //    delegujemy klikniÄ™cia, ĹĽeby zachowaĹ‚y siÄ™ identycznie jak w gĹ‚Ăłwnym rzÄ™dzie
+    // 7) Obsługa „tap” na elementach przeniesionych do overflow:
+    //    delegujemy kliknięcia, żeby zachowały się identycznie jak w głównym rzędzie
     moreBox.addEventListener('pointerdown', (e)=>{
       const btn = e.target.closest('button, label');
       if(!btn) return;
@@ -2703,7 +2703,7 @@ function textDimensions(s){
       setTimeout(()=> moreBox.classList.remove('open'), 0);
     });
 
-    // 8) Publiczny hook: gdyby coĹ› dynamicznie dodaĹ‚o narzÄ™dzie â€” sprĂłbuj zbalansowaÄ‡ ponownie
+    // 8) Publiczny hook: gdyby coś dynamicznie dodało narzędzie — spróbuj zbalansować ponownie
     const ro = new ResizeObserver(rebalanceTools);
     ro.observe(toolsRow);
     setTimeout(rebalanceTools, 250);
