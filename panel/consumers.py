@@ -2,7 +2,7 @@ import json
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
 
-# Prosty magazyn elementów tablicy (na potrzeby pojedynczej instancji)
+# Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
 
 
@@ -83,8 +83,17 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
         state = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
+        user = self.scope.get("user")
+        if getattr(user, "is_authenticated", False):
+            if getattr(user, "is_teacher", False):
+                server_role = "teacher"
+            else:
+                server_role = "student"
+        else:
+            server_role = "unknown"
 
-        # 🔹 Rysowanie – elementy
+
+        # đź”ą Rysowanie â€“ elementy
         if msg_type == "element_add":
             element = content.get("element") or {}
             element_id = element.get("id")
@@ -96,7 +105,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "board.element_add",
                     "element": element,
-                    "sender_channel": self.channel_name,
                 },
             )
 
@@ -129,7 +137,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-        # 🔹 Kursory
+        # đź”ą Kursory
         elif msg_type == "cursor":
             cursor = content.get("cursor") or {}
             await self.channel_layer.group_send(
@@ -141,26 +149,25 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-        # 🔹 CZAT – NOWE
+        # đź”ą CZAT â€“ NOWE
         elif msg_type == "chat_message":
             text = (content.get("text") or "").strip()
             if not text:
                 return
 
-            author_role = content.get("author_role") or "unknown"
+            author_role = server_role
 
-            # Wysyłamy do wszystkich w pokoju
+            # WysyĹ‚amy do wszystkich w pokoju
             await self.channel_layer.group_send(
                 self.group_name,
                 {
                     "type": "board.chat_message",   # -> metoda board_chat_message
                     "text": text,
                     "author_role": author_role,
-                    "sender_channel": self.channel_name,
                 },
             )
 
-    # 🔹 Handlery rysowania
+    # đź”ą Handlery rysowania
     async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
@@ -201,7 +208,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-    # Ы"� NOWE: handler czatu
+    # Đ«"ďż˝ NOWE: handler czatu
     async def board_chat_message(self, event):
         """
         Odbiera wiadomosc z group_send i rozsyla ja do wszystkich klientow w pokoju,
