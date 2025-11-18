@@ -29,6 +29,7 @@
     cursor: [],
     open: [],
     close: [],
+    chat_message: [],
   };
 
   function notify(event, payload) {
@@ -104,6 +105,8 @@
         notify("element_remove", data.id || data.element || null);
       } else if (data.type === "cursor") {
         notify("cursor", data.cursor || null);
+      } else if (data.type === "chat_message") {
+        notify("chat_message", data);
       }
     };
   }
@@ -155,8 +158,23 @@
         },
       });
     },
+    sendChatMessage(text) {
+      if (!text) return;
+      const payload =
+        typeof text === "string" ? text : text?.toString?.() || "";
+      if (!payload) return;
+      send({
+        type: "chat_message",
+        text: payload,
+      });
+    },
+    sendChatPing() {
+      send({ type: "chat_ping" });
+    },
+    sendChatMicState(isMuted) {
+      send({ type: "chat_mic_state", muted: !!isMuted });
+    },
   };
 
   window.AliboardRealtime = api;
 })();
-
