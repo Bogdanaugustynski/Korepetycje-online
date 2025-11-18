@@ -163,6 +163,21 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        elif msg_type == "call_signal":
+            action = content.get("action") or "ring"
+            from_id = content.get("from_id")
+            from_role = content.get("from_role") or "unknown"
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.call_signal",
+                    "action": action,
+                    "from_id": from_id,
+                    "from_role": from_role,
+                },
+            )
+
     # đź”ą Handlery rysowania
     async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
@@ -216,5 +231,15 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "text": event.get("text") or "",
                 "author_id": event.get("author_id"),
                 "author_role": event.get("author_role") or "unknown",
+            }
+        )
+
+    async def board_call_signal(self, event):
+        await self.send_json(
+            {
+                "type": "call_signal",
+                "action": event.get("action"),
+                "from_id": event.get("from_id"),
+                "from_role": event.get("from_role"),
             }
         )

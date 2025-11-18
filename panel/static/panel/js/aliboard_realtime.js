@@ -30,6 +30,7 @@
     open: [],
     close: [],
     chat_message: [],
+    call_signal: [],
   };
 
   function notify(event, payload) {
@@ -82,6 +83,17 @@
       };
       socket.send(JSON.stringify(payload));
     };
+    window.aliboardChat.sendCallSignal = function (action) {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(
+        JSON.stringify({
+          type: "call_signal",
+          action: action || "ring",
+          from_id: window.ALIBOARD_USER_ID,
+          from_role: window.ALIBOARD_USER_ROLE || "unknown",
+        })
+      );
+    };
 
     socket.onopen = function () {
       console.info("[AliboardRealtime] połączono", wsUrl);
@@ -105,6 +117,17 @@
         data = JSON.parse(event.data);
       } catch (e) {
         console.warn("[AliboardRealtime] niepoprawny JSON", event.data);
+        return;
+      }
+
+      if (data.type === "call_signal") {
+        if (
+          window.aliboardChat &&
+          typeof window.aliboardChat.onCallSignal === "function"
+        ) {
+          window.aliboardChat.onCallSignal(data);
+        }
+        notify("call_signal", data);
         return;
       }
 
@@ -195,6 +218,14 @@
       send({
         type: "chat_message",
         text: payload,
+      });
+    },
+    sendCallSignal(action) {
+      send({
+        type: "call_signal",
+        action: action || "ring",
+        from_id: window.ALIBOARD_USER_ID,
+        from_role: window.ALIBOARD_USER_ROLE || "unknown",
       });
     },
     sendChatPing() {

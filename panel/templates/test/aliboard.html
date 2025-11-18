@@ -514,6 +514,13 @@
   transform:scale(0.94);
   box-shadow:none;
 }
+.aliboard-call-banner{
+  padding:6px 10px;
+  font-size:12px;
+  background:rgba(34,197,94,0.16);
+  color:#bbf7d0;
+  border-bottom:1px solid rgba(34,197,94,0.5);
+}
 .aliboard-chat-icon-btn.is-muted{
   background:rgba(239,68,68,0.2);
   color:#fecaca;
@@ -648,6 +655,9 @@
       <div class="aliboard-chat-actions">
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
           🔔
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
+          📞
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
           🎙️
@@ -2985,6 +2995,7 @@ function textDimensions(s){
     const messagesEl = document.getElementById('aliboard-chat-messages');
     const pingBtn = document.getElementById('aliboard-chat-ping');
     const micBtn = document.getElementById('aliboard-chat-mic');
+    const callBtn = document.getElementById('aliboard-chat-call');
 
     if(!bubble || !panel || !form || !input || !messagesEl){
       return;
@@ -2994,9 +3005,41 @@ function textDimensions(s){
     window.aliboardChat.sendToServer = window.aliboardChat.sendToServer || null;
     window.aliboardChat.sendPing = window.aliboardChat.sendPing || null;
     window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
+    window.aliboardChat.sendCallSignal = window.aliboardChat.sendCallSignal || null;
 
     const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
     let isMicMuted = false;
+    let incomingCallBanner = null;
+
+    function playCallBeep(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }catch(_){
+        // AudioContext niedostepny - ignorujemy
+      }
+    }
+
+    function showIncomingCallBanner(fromRole){
+      if(!panel) return;
+      if(incomingCallBanner && incomingCallBanner.parentNode){
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+      }
+      const banner = document.createElement('div');
+      banner.className = 'aliboard-call-banner';
+      banner.textContent = `Połączenie głosowe od: ${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}`;
+      panel.insertBefore(banner, panel.firstChild);
+      incomingCallBanner = banner;
+      playCallBeep();
+    }
 
     function setPanelOpen(isOpen){
       if(isOpen){
@@ -3082,6 +3125,20 @@ function textDimensions(s){
       });
     }
 
+    if(callBtn){
+      callBtn.addEventListener('click', ()=>{
+        setPanelOpen(true);
+        appendMessage({
+          text: '📞 Próba rozpocznięcia rozmowy głosowej…',
+          author: 'me',
+          timeString: getTimeString(),
+        });
+        if(typeof window.aliboardChat.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal('ring');
+        }
+      });
+    }
+
     if(micBtn){
       micBtn.addEventListener('click', ()=>{
         isMicMuted = !isMicMuted;
@@ -3104,6 +3161,21 @@ function textDimensions(s){
       });
     };
 
+    window.aliboardChat.onCallSignal = function(payload){
+      if(!payload) return;
+      const fromId = payload.from_id;
+      const myId = window.ALIBOARD_USER_ID;
+      if(fromId != null && myId != null && Number(fromId) === Number(myId)){
+        return;
+      }
+      const fromRole = payload.from_role || 'unknown';
+      const action = payload.action;
+      if(action === 'ring'){
+        setPanelOpen(true);
+        showIncomingCallBanner(fromRole);
+      }
+    };
+
     function wireRealtimeBridge(){
       const tryAttach = ()=>{
         const realtime = window.AliboardRealtime;
@@ -3116,6 +3188,9 @@ function textDimensions(s){
         }
         if(typeof realtime.sendChatPing === 'function'){
           window.aliboardChat.sendPing = ()=> realtime.sendChatPing();
+        }
+        if(typeof realtime.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal = (action)=> realtime.sendCallSignal(action);
         }
         if(typeof realtime.sendChatMicState === 'function'){
           window.aliboardChat.toggleMic = (muted)=> realtime.sendChatMicState(muted);
