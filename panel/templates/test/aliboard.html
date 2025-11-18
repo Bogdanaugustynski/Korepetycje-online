@@ -535,7 +535,7 @@
 
 </style>
 </head>
-<body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}">
+<body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-role="{{ user_role|default:'unknown' }}">
 <header>
   <!-- LEWA: brand + narzędzia -->
   <div class="left">
@@ -3140,6 +3140,12 @@ function textDimensions(s){
   if(!restoreLocal()){ createPage(false); }
   setTool(TOOLS.SELECT);
 })();
+</script>
+<script>
+  (function(){
+    const root = document.getElementById('aliboard-root');
+    window.ALIBOARD_USER_ROLE = root ? (root.getAttribute('data-user-role') || 'unknown') : 'unknown';
+  })();
 </script>
 <script>
   (function(){

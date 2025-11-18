@@ -2378,8 +2378,16 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
 def aliboard_view(request, room_id="local-test"):
     # jesli wejdziesz na /aliboard/ -> uzyje "local-test"
     # jesli wejdziesz na /aliboard/abcd1234/ -> uzyje "abcd1234"
+    user_role = "guest"
+    user = getattr(request, "user", None)
+    if getattr(user, "is_authenticated", False):
+        if getattr(user, "is_teacher", False) or getattr(user, "is_staff", False):
+            user_role = "teacher"
+        else:
+            user_role = "student"
     context = {
         "room_id": room_id,
+        "user_role": user_role,
     }
     return render(request, "test/aliboard.html", context)
 
