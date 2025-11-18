@@ -83,14 +83,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
         state = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
-        user = self.scope.get("user")
-        if getattr(user, "is_authenticated", False):
-            if getattr(user, "is_teacher", False):
-                server_role = "teacher"
-            else:
-                server_role = "student"
-        else:
-            server_role = "unknown"
 
 
         # đź”ą Rysowanie â€“ elementy
@@ -150,19 +142,23 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             )
 
         # đź”ą CZAT â€“ NOWE
+        # CZAT -- NOWE
         elif msg_type == "chat_message":
             text = (content.get("text") or "").strip()
             if not text:
                 return
 
-            author_role = server_role
+            user = self.scope.get("user")
+            user_id = user.id if getattr(user, "is_authenticated", False) else None
+            author_role = "teacher" if getattr(user, "is_teacher", False) else "student"
 
-            # WysyĹ‚amy do wszystkich w pokoju
+            # Wysylamy do wszystkich w pokoju
             await self.channel_layer.group_send(
                 self.group_name,
                 {
                     "type": "board.chat_message",   # -> metoda board_chat_message
                     "text": text,
+                    "author_id": user_id,
                     "author_role": author_role,
                 },
             )
@@ -218,6 +214,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             {
                 "type": "chat_message",
                 "text": event.get("text") or "",
+                "author_id": event.get("author_id"),
                 "author_role": event.get("author_role") or "unknown",
             }
         )

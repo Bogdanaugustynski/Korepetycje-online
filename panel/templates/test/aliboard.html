@@ -451,16 +451,18 @@
   word-wrap:break-word;
   white-space:pre-wrap;
 }
+/* JA -> po PRAWEJ */
 .aliboard-chat-message.me{
-  margin-right:auto;
-  background:var(--aliboard-chat-accent);
+  margin-left:auto;
+  background:#0b74ff;
   color:#fff;
 }
+/* DRUGA OSOBA -> po LEWEJ */
 .aliboard-chat-message.other{
-  margin-left:auto;
+  margin-right:auto;
   background:rgba(15,23,42,0.85);
-  color:var(--aliboard-chat-text);
-  border:1px solid var(--aliboard-chat-border);
+  color:#fff;
+  border:1px solid #344155;
 }
 .aliboard-chat-meta{
   display:block;
@@ -535,7 +537,7 @@
 
 </style>
 </head>
-<body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-role="{{ user_role|default:'unknown' }}">
+<body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
 <header>
   <!-- LEWA: brand + narzędzia -->
   <div class="left">
@@ -3090,8 +3092,10 @@ function textDimensions(s){
       });
     }
 
-    window.aliboardChat.onServerMessage = function (text, authorRole) {
-      const isMe = (authorRole === window.ALIBOARD_USER_ROLE);
+    window.aliboardChat.onServerMessage = function (text, authorId) {
+      const myId = window.ALIBOARD_USER_ID;
+      const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
+      const isMe = (myId !== null && myId !== undefined && serverId !== null && serverId === Number(myId));
 
       appendMessage({
         text: text,
@@ -3131,7 +3135,8 @@ function textDimensions(s){
 <script>
   (function(){
     const root = document.getElementById('aliboard-root');
-    window.ALIBOARD_USER_ROLE = root ? (root.getAttribute('data-user-role') || 'unknown') : 'unknown';
+    window.ALIBOARD_USER_ID = Number(root.dataset.userId);
+    window.ALIBOARD_USER_ROLE = root.dataset.userRole || 'unknown';
   })();
 </script>
 <script>

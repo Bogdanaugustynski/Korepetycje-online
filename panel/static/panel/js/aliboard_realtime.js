@@ -113,8 +113,14 @@
           window.aliboardChat &&
           typeof window.aliboardChat.onServerMessage === "function"
         ) {
-          const role = data.author_role || "other";
-          window.aliboardChat.onServerMessage(data.text || "", role);
+          const authorIdRaw = data.author_id;
+          const authorId =
+            typeof authorIdRaw === "number"
+              ? authorIdRaw
+              : authorIdRaw != null
+              ? Number(authorIdRaw)
+              : null;
+          window.aliboardChat.onServerMessage(data.text || "", authorId);
         }
         notify("chat_message", data);
         return;
