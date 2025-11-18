@@ -201,11 +201,11 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-    # Handler czatu
+    # Ы"� NOWE: handler czatu
     async def board_chat_message(self, event):
         """
         Odbiera wiadomosc z group_send i rozsyla ja do wszystkich klientow w pokoju,
-        lacznie z nadawca (kazdy klient czeka na echo z serwera).
+        lacznie z nadawca (front oczekuje na echo z serwera).
         """
         await self.send_json(
             {

@@ -3054,7 +3054,7 @@ function textDimensions(s){
       if (!text.trim()) return;
       const trimmed = text.trim().slice(0, 500);
 
-      // 🔹 NIE dopisujemy lokalnie – tylko wysyłamy na serwer
+      // ❗ tylko wysyłamy na serwer, bez lokalnego dopisywania
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
         window.aliboardChat.sendToServer(trimmed);
       }
@@ -3106,16 +3106,6 @@ function textDimensions(s){
         if(!realtime){
           setTimeout(tryAttach, 600);
           return;
-        }
-        if(typeof realtime.on === 'function'){
-          realtime.on('chat_message', (payload)=>{
-            if(!payload) return;
-            const text = payload.text || payload.message;
-            if(!text) return;
-            const author = payload.author_role || payload.author || 'other';
-            const stamp = payload.time || payload.sent_at || payload.timestamp;
-            window.aliboardChat.onServerMessage(text, author, stamp);
-          });
         }
         if(typeof realtime.sendChatMessage === 'function'){
           window.aliboardChat.sendToServer = (text)=> realtime.sendChatMessage(text);
