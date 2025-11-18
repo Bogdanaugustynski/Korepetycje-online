@@ -84,6 +84,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         msg_type = content.get("type")
         state = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
 
+        # 🔹 Rysowanie – elementy
         if msg_type == "element_add":
             element = content.get("element") or {}
             element_id = element.get("id")
@@ -128,6 +129,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        # 🔹 Kursory
         elif msg_type == "cursor":
             cursor = content.get("cursor") or {}
             await self.channel_layer.group_send(
@@ -139,6 +141,26 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        # 🔹 CZAT – NOWE
+        elif msg_type == "chat_message":
+            text = (content.get("text") or "").strip()
+            if not text:
+                return
+
+            author_role = content.get("author_role") or "unknown"
+
+            # Wysyłamy do wszystkich w pokoju
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.chat_message",   # -> metoda board_chat_message
+                    "text": text,
+                    "author_role": author_role,
+                    "sender_channel": self.channel_name,
+                },
+            )
+
+    # 🔹 Handlery rysowania
     async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
@@ -176,5 +198,22 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             {
                 "type": "cursor",
                 "cursor": event.get("cursor") or {},
+            }
+        )
+
+    # 🔹 NOWE: handler czatu
+    async def board_chat_message(self, event):
+        """
+        Odbiera wiadomość z group_send i wysyła ją do wszystkich klientów w pokoju
+        (oprócz nadawcy – żeby nie dublować tego, co front już sobie dodał lokalnie).
+        """
+        if event.get("sender_channel") == self.channel_name:
+            return
+
+        await self.send_json(
+            {
+                "type": "chat_message",
+                "text": event.get("text") or "",
+                "author_role": event.get("author_role") or "unknown",
             }
         )
