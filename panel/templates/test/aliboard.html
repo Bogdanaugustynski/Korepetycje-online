@@ -452,12 +452,12 @@
   white-space:pre-wrap;
 }
 .aliboard-chat-message.me{
-  margin-left:auto;
+  margin-right:auto;
   background:var(--aliboard-chat-accent);
   color:#fff;
 }
 .aliboard-chat-message.other{
-  margin-right:auto;
+  margin-left:auto;
   background:rgba(15,23,42,0.85);
   color:var(--aliboard-chat-text);
   border:1px solid var(--aliboard-chat-border);
@@ -3050,20 +3050,16 @@ function textDimensions(s){
       }
     }
 
-    function sendChatMessage(rawText){
-      if(!rawText) return;
-      const trimmed = rawText.trim();
-      if(!trimmed) return;
-      const limited = trimmed.slice(0, 500);
-      appendMessage({
-        text: limited,
-        author: 'me',
-        timeString: getTimeString()
-      });
-      if(typeof window.aliboardChat.sendToServer === 'function'){
-        window.aliboardChat.sendToServer(limited);
+    function sendChatMessage(text) {
+      if (!text.trim()) return;
+      const trimmed = text.trim().slice(0, 500);
+
+      // 🔹 NIE dopisujemy lokalnie – tylko wysyłamy na serwer
+      if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
+        window.aliboardChat.sendToServer(trimmed);
       }
-      input.value = '';
+
+      input.value = "";
     }
 
     form.addEventListener('submit', (e)=>{
@@ -3094,12 +3090,13 @@ function textDimensions(s){
       });
     }
 
-    window.aliboardChat.onServerMessage = function(text, authorRole, serverTime){
-      if(!text) return;
+    window.aliboardChat.onServerMessage = function (text, authorRole) {
+      const isMe = (authorRole === window.ALIBOARD_USER_ROLE);
+
       appendMessage({
-        text,
-        author: authorRole === 'me' ? 'me' : 'other',
-        timeString: serverTime || getTimeString()
+        text: text,
+        author: isMe ? "me" : "other",
+        timeString: getTimeString(),
       });
     };
 
