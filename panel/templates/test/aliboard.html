@@ -336,6 +336,7 @@
   justify-content:center;
   width:46px;
   height:46px;
+  position:relative;
   border-radius:999px;
   border:none;
   cursor:pointer;
@@ -558,6 +559,25 @@
 .aliboard-call-accept-btn:active,
 .aliboard-call-end-btn:active{
   transform:scale(0.95);
+}
+.aliboard-chat-badge{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  min-width:16px;
+  height:16px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:10px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.aliboard-chat-badge-hidden{
+  display:none;
 }
 .aliboard-chat-icon-btn.is-muted{
   background:rgba(239,68,68,0.2);
@@ -3051,8 +3071,21 @@ function textDimensions(s){
     const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
     let isMicMuted = false;
     let incomingCallBanner = null;
+    let ringIntervalId = null;
+    let isPanelOpen = false;
+    let unreadCount = 0;
+    let unreadBadgeEl = null;
 
-    function playCallBeep(){
+    function ensureUnreadBadge(){
+      if(!bubble) return;
+      if(unreadBadgeEl) return;
+      unreadBadgeEl = document.createElement('span');
+      unreadBadgeEl.className = 'aliboard-chat-badge aliboard-chat-badge-hidden';
+      unreadBadgeEl.textContent = '';
+      bubble.appendChild(unreadBadgeEl);
+    }
+
+    function playCallBeepOnce(){
       try{
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -3066,6 +3099,36 @@ function textDimensions(s){
         osc.stop(ctx.currentTime + 0.25);
       }catch(_){
         // AudioContext niedostepny - ignorujemy
+      }
+    }
+
+    function startRingTone(){
+      if(ringIntervalId !== null) return;
+      playCallBeepOnce();
+      ringIntervalId = window.setInterval(playCallBeepOnce, 1500);
+    }
+
+    function stopRingTone(){
+      if(ringIntervalId !== null){
+        window.clearInterval(ringIntervalId);
+        ringIntervalId = null;
+      }
+    }
+
+    function playMessageBeep(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = 600;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      }catch(_){
+        // brak dzwieku - ignorujemy
       }
     }
 
@@ -3085,13 +3148,14 @@ function textDimensions(s){
       `;
       panel.insertBefore(banner, panel.firstChild);
       incomingCallBanner = banner;
-      playCallBeep();
+      startRingTone();
 
       const acceptBtn = document.getElementById('aliboard-accept-call-btn');
       const endBtn = document.getElementById('aliboard-end-call-btn');
 
       if(acceptBtn){
         acceptBtn.addEventListener('click', ()=>{
+          stopRingTone();
           if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
             window.aliboardVoice.acceptIncomingCall()
               .catch((err)=>{
@@ -3106,6 +3170,7 @@ function textDimensions(s){
 
       if(endBtn){
         endBtn.addEventListener('click', ()=>{
+          stopRingTone();
           if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
             window.aliboardChat.sendCallSignal('end');
           }
@@ -3117,11 +3182,17 @@ function textDimensions(s){
     }
 
     function setPanelOpen(isOpen){
+      isPanelOpen = !!isOpen;
       if(isOpen){
         panel.classList.add('is-open');
         panel.setAttribute('aria-hidden', 'false');
         try{ localStorage.setItem(CHAT_OPEN_KEY, '1'); }catch(_){}
         setTimeout(()=> input.focus(), 20);
+        unreadCount = 0;
+        if(unreadBadgeEl){
+          unreadBadgeEl.textContent = '';
+          unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
+        }
       }else{
         panel.classList.remove('is-open');
         panel.setAttribute('aria-hidden', 'true');
@@ -3220,6 +3291,14 @@ function textDimensions(s){
         author: isMe ? "me" : "other",
         timeString: getTimeString(),
       });
+
+      if(!isPanelOpen && !isMe){
+        ensureUnreadBadge();
+        unreadCount += 1;
+        unreadBadgeEl.textContent = unreadCount.toString();
+        unreadBadgeEl.classList.remove('aliboard-chat-badge-hidden');
+        playMessageBeep();
+      }
     };
 
     window.aliboardChat.onCallSignal = function(payload){
@@ -3240,6 +3319,7 @@ function textDimensions(s){
       }
 
       if(action === 'end'){
+        stopRingTone();
         if(incomingCallBanner && incomingCallBanner.parentNode){
           incomingCallBanner.parentNode.removeChild(incomingCallBanner);
           incomingCallBanner = null;
@@ -3406,6 +3486,7 @@ function textDimensions(s){
       isCallActive = false;
       isCaller = false;
       pendingOffer = null;
+      stopRingTone();
       if(voicePc){
         voicePc.ontrack = null;
         voicePc.onicecandidate = null;
