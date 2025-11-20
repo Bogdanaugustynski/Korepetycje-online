@@ -60,6 +60,7 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=event["message"])
 
 
+
 class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
@@ -84,8 +85,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         msg_type = content.get("type")
         state = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
 
-
-        # đź”ą Rysowanie â€“ elementy
         if msg_type == "element_add":
             element = content.get("element") or {}
             element_id = element.get("id")
@@ -97,6 +96,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "board.element_add",
                     "element": element,
+                    "sender_channel": self.channel_name,
                 },
             )
 
@@ -129,7 +129,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-        # đź”ą Kursory
         elif msg_type == "cursor":
             cursor = content.get("cursor") or {}
             await self.channel_layer.group_send(
@@ -141,22 +140,19 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-        # đź”ą CZAT â€“ NOWE
-        # CZAT -- NOWE
         elif msg_type == "chat_message":
             text = (content.get("text") or "").strip()
             if not text:
                 return
 
-            user = self.scope.get("user")
-            user_id = user.id if getattr(user, "is_authenticated", False) else None
+            user = self.scope["user"]
+            user_id = user.id if user.is_authenticated else None
             author_role = "teacher" if getattr(user, "is_teacher", False) else "student"
 
-            # Wysylamy do wszystkich w pokoju
             await self.channel_layer.group_send(
                 self.group_name,
                 {
-                    "type": "board.chat_message",   # -> metoda board_chat_message
+                    "type": "board.chat_message",
                     "text": text,
                     "author_id": user_id,
                     "author_role": author_role,
@@ -178,7 +174,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-    # đź”ą Handlery rysowania
     async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
@@ -219,12 +214,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-    # Đ«"ďż˝ NOWE: handler czatu
     async def board_chat_message(self, event):
-        """
-        Odbiera wiadomosc z group_send i rozsyla ja do wszystkich klientow w pokoju,
-        lacznie z nadawca (front oczekuje na echo z serwera).
-        """
         await self.send_json(
             {
                 "type": "chat_message",
@@ -243,3 +233,4 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "from_role": event.get("from_role"),
             }
         )
+
