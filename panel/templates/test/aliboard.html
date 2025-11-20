@@ -520,6 +520,44 @@
   background:rgba(34,197,94,0.16);
   color:#bbf7d0;
   border-bottom:1px solid rgba(34,197,94,0.5);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.aliboard-call-actions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.aliboard-call-accept-btn,
+.aliboard-call-end-btn{
+  padding:4px 8px;
+  border-radius:6px;
+  border:1px solid transparent;
+  font-size:11px;
+  cursor:pointer;
+  transition:background 0.15s ease-out, transform 0.1s ease-out;
+}
+.aliboard-call-accept-btn{
+  background:rgba(34,197,94,0.3);
+  border-color:rgba(34,197,94,0.6);
+  color:#bbf7d0;
+}
+.aliboard-call-accept-btn:hover{
+  background:rgba(34,197,94,0.5);
+}
+.aliboard-call-end-btn{
+  background:rgba(239,68,68,0.25);
+  border-color:rgba(239,68,68,0.5);
+  color:#fecaca;
+}
+.aliboard-call-end-btn:hover{
+  background:rgba(239,68,68,0.4);
+}
+.aliboard-call-accept-btn:active,
+.aliboard-call-end-btn:active{
+  transform:scale(0.95);
 }
 .aliboard-chat-icon-btn.is-muted{
   background:rgba(239,68,68,0.2);
@@ -667,6 +705,9 @@
         </button>
       </div>
     </header>
+
+    <!-- 🔹 Audio remote dla WebRTC -->
+    <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
 
     <div class="aliboard-chat-messages" id="aliboard-chat-messages" aria-live="polite"></div>
 
@@ -3035,10 +3076,44 @@ function textDimensions(s){
       }
       const banner = document.createElement('div');
       banner.className = 'aliboard-call-banner';
-      banner.textContent = `Połączenie głosowe od: ${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}`;
+      banner.innerHTML = `
+        <span>🔊 Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
+        <div class="aliboard-call-actions">
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Dołącz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Rozłącz</button>
+        </div>
+      `;
       panel.insertBefore(banner, panel.firstChild);
       incomingCallBanner = banner;
       playCallBeep();
+
+      const acceptBtn = document.getElementById('aliboard-accept-call-btn');
+      const endBtn = document.getElementById('aliboard-end-call-btn');
+
+      if(acceptBtn){
+        acceptBtn.addEventListener('click', ()=>{
+          if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
+            window.aliboardVoice.acceptIncomingCall()
+              .catch((err)=>{
+                console.error('[AliboardVoice] acceptIncomingCall error', err);
+                if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                  window.aliboardVoice.hangupCall(false);
+                }
+              });
+          }
+        });
+      }
+
+      if(endBtn){
+        endBtn.addEventListener('click', ()=>{
+          if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+            window.aliboardChat.sendCallSignal('end');
+          }
+          if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+            window.aliboardVoice.hangupCall(false);
+          }
+        });
+      }
     }
 
     function setPanelOpen(isOpen){
@@ -3125,21 +3200,7 @@ function textDimensions(s){
       });
     }
 
-    if(callBtn){
-      callBtn.addEventListener('click', ()=>{
-        setPanelOpen(true);
-        appendMessage({
-          text: '📞 Próba rozpocznięcia rozmowy głosowej…',
-          author: 'me',
-          timeString: getTimeString(),
-        });
-        if(typeof window.aliboardChat.sendCallSignal === 'function'){
-          window.aliboardChat.sendCallSignal('ring');
-        }
-      });
-    }
-
-    if(micBtn){
+        if(micBtn){
       micBtn.addEventListener('click', ()=>{
         isMicMuted = !isMicMuted;
         micBtn.classList.toggle('is-muted', isMicMuted);
@@ -3164,17 +3225,227 @@ function textDimensions(s){
     window.aliboardChat.onCallSignal = function(payload){
       if(!payload) return;
       const fromId = payload.from_id;
+      const fromRole = payload.from_role || 'unknown';
+      const action = payload.action;
       const myId = window.ALIBOARD_USER_ID;
+
       if(fromId != null && myId != null && Number(fromId) === Number(myId)){
         return;
       }
-      const fromRole = payload.from_role || 'unknown';
-      const action = payload.action;
+
       if(action === 'ring'){
         setPanelOpen(true);
         showIncomingCallBanner(fromRole);
+        return;
+      }
+
+      if(action === 'end'){
+        if(incomingCallBanner && incomingCallBanner.parentNode){
+          incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+          incomingCallBanner = null;
+        }
+        if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+          window.aliboardVoice.hangupCall(false);
+        }
+        appendMessage({
+          text: '🔴 Połączenie zostało zakończone',
+          author: 'other',
+          timeString: getTimeString(),
+        });
       }
     };
+
+    // 🔹 WebRTC Voice Module
+    window.aliboardVoice = window.aliboardVoice || {};
+    window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
+
+    let voicePc = null;
+    let localStream = null;
+    let isCallActive = false;
+    let isCaller = false;
+    let pendingOffer = null;
+
+    const remoteAudio = document.getElementById('aliboard-remote-audio');
+    const rtcConfig = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    };
+
+    async function ensureLocalStream(){
+      if(localStream) return localStream;
+      try{
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }catch(err){
+        console.error('[AliboardVoice] getUserMedia error', err);
+        throw err;
+      }
+      return localStream;
+    }
+
+    function createPeerConnection(){
+      if(voicePc) return voicePc;
+      voicePc = new RTCPeerConnection(rtcConfig);
+      voicePc.onicecandidate = (event)=>{
+        if(event.candidate){
+          window.aliboardVoice.sendSignal({
+            type: 'webrtc_ice_candidate',
+            candidate: event.candidate,
+          });
+        }
+      };
+      voicePc.ontrack = (event)=>{
+        if(remoteAudio){
+          remoteAudio.srcObject = event.streams[0];
+        }
+      };
+      voicePc.onconnectionstatechange = ()=>{
+        if(!voicePc) return;
+        if(['failed','disconnected','closed'].includes(voicePc.connectionState)){
+          window.aliboardVoice.hangupCall(false);
+        }
+      };
+      return voicePc;
+    }
+
+    async function addLocalTracks(pc){
+      const stream = await ensureLocalStream();
+      stream.getTracks().forEach((track)=>{
+        pc.addTrack(track, stream);
+      });
+    }
+
+    async function processOffer(data){
+      pendingOffer = null;
+      const desc = new RTCSessionDescription(data.sdp);
+      const pc = createPeerConnection();
+      await pc.setRemoteDescription(desc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      window.aliboardVoice.sendSignal({
+        type: 'webrtc_answer',
+        sdp: pc.localDescription,
+      });
+    }
+
+    window.aliboardVoice.startOutgoingCall = async function(){
+      if(isCallActive) return;
+      isCaller = true;
+      isCallActive = true;
+      pendingOffer = null;
+      const pc = createPeerConnection();
+      await addLocalTracks(pc);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      window.aliboardVoice.sendSignal({
+        type: 'webrtc_offer',
+        sdp: pc.localDescription,
+      });
+    };
+
+    window.aliboardVoice.acceptIncomingCall = async function(){
+      if(isCallActive) return;
+      isCaller = false;
+      isCallActive = true;
+      const pc = createPeerConnection();
+      await addLocalTracks(pc);
+      if(pendingOffer){
+        try{
+          await processOffer(pendingOffer);
+        }catch(err){
+          console.error('[AliboardVoice] processOffer error', err);
+          window.aliboardVoice.hangupCall(false);
+          throw err;
+        }
+      }
+    };
+
+    window.aliboardVoice.onOffer = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      pendingOffer = data;
+      if(isCallActive){
+        try{
+          await processOffer(data);
+        }catch(err){
+          console.error('[AliboardVoice] processOffer error', err);
+          window.aliboardVoice.hangupCall(false);
+        }
+      }
+    };
+
+    window.aliboardVoice.onAnswer = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      if(!voicePc) return;
+      try{
+        const desc = new RTCSessionDescription(data.sdp);
+        await voicePc.setRemoteDescription(desc);
+      }catch(err){
+        console.error('[AliboardVoice] setRemoteDescription error', err);
+        window.aliboardVoice.hangupCall(false);
+      }
+    };
+
+    window.aliboardVoice.onIceCandidate = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      if(!voicePc) return;
+      try{
+        await voicePc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }catch(err){
+        console.error('[AliboardVoice] ICE add error', err);
+      }
+    };
+
+    window.aliboardVoice.hangupCall = function(sendSignal = true){
+      isCallActive = false;
+      isCaller = false;
+      pendingOffer = null;
+      if(voicePc){
+        voicePc.ontrack = null;
+        voicePc.onicecandidate = null;
+        voicePc.close();
+        voicePc = null;
+      }
+      if(localStream){
+        localStream.getTracks().forEach((track)=> track.stop());
+        localStream = null;
+      }
+      if(remoteAudio){
+        remoteAudio.srcObject = null;
+      }
+      if(incomingCallBanner && incomingCallBanner.parentNode){
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+        incomingCallBanner = null;
+      }
+      if(sendSignal && window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+        window.aliboardChat.sendCallSignal('end');
+      }
+    };
+
+    if(callBtn){
+      callBtn.addEventListener('click', ()=>{
+        setPanelOpen(true);
+        appendMessage({
+          text: '📞 Próba rozpoczęcia rozmowy głosowej…',
+          author: 'me',
+          timeString: getTimeString(),
+        });
+        if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal('ring');
+        }
+        window.aliboardVoice.startOutgoingCall()
+          .catch((err)=>{
+            console.error('[AliboardVoice] startOutgoingCall error', err);
+            window.aliboardVoice.hangupCall();
+          });
+      });
+    }
 
     function wireRealtimeBridge(){
       const tryAttach = ()=>{

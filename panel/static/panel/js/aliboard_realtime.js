@@ -73,6 +73,7 @@
 
     // Integracja czatu z WebSocketem
     window.aliboardChat = window.aliboardChat || {};
+    window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardChat.sendToServer = function (text) {
       if (!text || !text.trim()) return;
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -93,6 +94,12 @@
           from_role: window.ALIBOARD_USER_ROLE || "unknown",
         })
       );
+    };
+    window.aliboardVoice.sendSignal = function (payload) {
+      if (!payload || typeof payload !== "object" || !payload.type) return;
+      send({
+        ...payload,
+      });
     };
 
     socket.onopen = function () {
@@ -146,6 +153,36 @@
           window.aliboardChat.onServerMessage(data.text || "", authorId);
         }
         notify("chat_message", data);
+        return;
+      }
+
+      if (data.type === "webrtc_offer") {
+        if (
+          window.aliboardVoice &&
+          typeof window.aliboardVoice.onOffer === "function"
+        ) {
+          window.aliboardVoice.onOffer(data);
+        }
+        return;
+      }
+
+      if (data.type === "webrtc_answer") {
+        if (
+          window.aliboardVoice &&
+          typeof window.aliboardVoice.onAnswer === "function"
+        ) {
+          window.aliboardVoice.onAnswer(data);
+        }
+        return;
+      }
+
+      if (data.type === "webrtc_ice_candidate") {
+        if (
+          window.aliboardVoice &&
+          typeof window.aliboardVoice.onIceCandidate === "function"
+        ) {
+          window.aliboardVoice.onIceCandidate(data);
+        }
         return;
       }
 

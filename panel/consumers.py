@@ -174,6 +174,54 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        elif msg_type == "webrtc_offer":
+            sdp = content.get("sdp")
+            if not sdp:
+                return
+            user = self.scope["user"]
+            user_id = user.id if user.is_authenticated else None
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.webrtc_offer",
+                    "sdp": sdp,
+                    "from_id": user_id,
+                },
+            )
+
+        elif msg_type == "webrtc_answer":
+            sdp = content.get("sdp")
+            if not sdp:
+                return
+            user = self.scope["user"]
+            user_id = user.id if user.is_authenticated else None
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.webrtc_answer",
+                    "sdp": sdp,
+                    "from_id": user_id,
+                },
+            )
+
+        elif msg_type == "webrtc_ice_candidate":
+            candidate = content.get("candidate")
+            if not candidate:
+                return
+            user = self.scope["user"]
+            user_id = user.id if user.is_authenticated else None
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "board.webrtc_ice_candidate",
+                    "candidate": candidate,
+                    "from_id": user_id,
+                },
+            )
+
     async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
@@ -231,6 +279,33 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "action": event.get("action"),
                 "from_id": event.get("from_id"),
                 "from_role": event.get("from_role"),
+            }
+        )
+
+    async def board_webrtc_offer(self, event):
+        await self.send_json(
+            {
+                "type": "webrtc_offer",
+                "sdp": event.get("sdp"),
+                "from_id": event.get("from_id"),
+            }
+        )
+
+    async def board_webrtc_answer(self, event):
+        await self.send_json(
+            {
+                "type": "webrtc_answer",
+                "sdp": event.get("sdp"),
+                "from_id": event.get("from_id"),
+            }
+        )
+
+    async def board_webrtc_ice_candidate(self, event):
+        await self.send_json(
+            {
+                "type": "webrtc_ice_candidate",
+                "candidate": event.get("candidate"),
+                "from_id": event.get("from_id"),
             }
         )
 
