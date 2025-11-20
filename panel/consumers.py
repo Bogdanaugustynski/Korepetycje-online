@@ -162,7 +162,12 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         elif msg_type == "call_signal":
             action = content.get("action") or "ring"
             from_id = content.get("from_id")
-            from_role = content.get("from_role") or "unknown"
+
+            user = self.scope["user"]
+            if getattr(user, "is_teacher", False):
+                from_role = "teacher"
+            else:
+                from_role = "student"
 
             await self.channel_layer.group_send(
                 self.group_name,
