@@ -651,6 +651,15 @@
   pointer-events:auto;
 }
 
+/* Ikony obrazkowe w pasku narzędzi */
+.icon-img{
+  width:26px;
+  height:26px;
+  object-fit:contain;
+  display:block;
+  pointer-events:none;
+}
+
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
@@ -670,7 +679,9 @@
 
     <div class="toolrow" id="tools">
       <button class="btn" type="button" data-tool="select" title="Kursor (V)">🖱️</button>
-      <button class="btn" type="button" data-tool="pen"    title="Ołówek (P)">✏️</button>
+      <button class="btn" type="button" data-tool="pen"    title="Ołówek (P)">
+        <img src="{% static 'custom-icons/pen.png' %}" class="icon-img" alt="Ołówek">
+      </button>
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">／</button>
       <button class="btn" type="button" data-tool="eraser" title="Gumka (E)">🩹</button>
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">T</button>
