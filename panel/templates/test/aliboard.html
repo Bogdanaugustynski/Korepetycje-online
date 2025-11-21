@@ -423,11 +423,13 @@
 .aliboard-chat-icon-btn:active{
   transform:scale(0.92);
 }
-.aliboard-chat-messages{
+.aliboard-chat-messages,
+#aliboard-chat-messages{
   flex:1;
   padding:8px 8px 6px;
   display:flex;
   flex-direction:column;
+  align-items:stretch;
   gap:4px;
   overflow-y:auto;
   scrollbar-width:thin;
@@ -444,23 +446,25 @@
   border-radius:999px;
 }
 .aliboard-chat-message{
-  max-width:90%;
-  padding:6px 9px;
+  max-width:80%;
+  padding:6px 10px;
   border-radius:12px;
-  font-size:12px;
+  font-size:13px;
   line-height:1.35;
+  display:inline-block;
+  align-self:flex-start;
   word-wrap:break-word;
   white-space:pre-wrap;
 }
 /* JA -> po PRAWEJ */
 .aliboard-chat-message.me{
-  margin-left:auto;
+  align-self:flex-end;
   background:#0b74ff;
   color:#fff;
 }
 /* DRUGA OSOBA -> po LEWEJ */
 .aliboard-chat-message.other{
-  margin-right:auto;
+  align-self:flex-start;
   background:rgba(15,23,42,0.85);
   color:#fff;
   border:1px solid #344155;
