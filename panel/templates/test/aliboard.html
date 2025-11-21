@@ -675,9 +675,7 @@
         📄 <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn" type="button" id="undo" title="Cofnij (Ctrl+Z)">↶</button>
       <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>Usuń</button>
-      <button class="btn" type="button" id="clear" title="Wyczyść tę stronę">🗑️</button>
     </div>
   </div>
 
@@ -690,6 +688,9 @@
           <a href="{% url 'aliboard_new_room' %}" target="_blank" class="drop-item primary btn-aliboard" id="openBoardBtn">
             Nowa Tablica
           </a>
+        </div>
+        <div class="drop-group">
+          <button class="drop-item" type="button" id="undo" title="Cofnij (Ctrl+Z)">Cofnij</button>
         </div>
         <div class="drop-group">
           <button class="drop-item primary" type="button" id="saveToggle">Zapisz</button>
@@ -2836,22 +2837,8 @@ function textDimensions(s){
   document.getElementById('saveJpg').addEventListener('pointerdown', (e)=>{ e.preventDefault(); exportCurrent('jpg'); toggleMenu(false); });
   document.getElementById('savePdf').addEventListener('pointerdown', (e)=>{ e.preventDefault(); exportCurrent('pdf'); toggleMenu(false); });
 
-  // UNDO/REDO/CLEAR (aktualna strona)
+  // UNDO (aktualna strona)
   document.getElementById('undo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.history.length) return; const last = p.state.history.pop(); p.state.redo.push(snapshotState(p)); restoreHistoryState(p, last); });
-  document.getElementById('clear').addEventListener('click', (e)=>{
-    e.preventDefault();
-    const p=currentPage(); if(!p) return;
-    pushHistory(p);
-    const removedIds = p.state.strokes.map(st=>st.id).filter(Boolean);
-    const removedImageIds = p.state.images.map(im=>im.id).filter(Boolean);
-    p.state.strokes=[];
-    p.state.images=[];
-    p.state.selection=null;
-    renderAll(p);
-    clearOverlay(p);
-    updateDeleteButtonState(p);
-    [...removedIds, ...removedImageIds].forEach(id=>emitElementRemove(id));
-  });
 
   // WSTAW OBRAZ/PDF
   document.getElementById('imgInput').addEventListener('change', (e)=>{
