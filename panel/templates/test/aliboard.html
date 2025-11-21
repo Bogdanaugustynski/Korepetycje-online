@@ -181,27 +181,31 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* === PATCH(MOBILE): kompaktowe narzędzia bez "piguły" === */
+  /* === PATCH: delikatne, małe narzędzia bez “grubej ramki” === */
 .toolrow .btn,
 .toolrow label.btn{
   border:0 !important;
   box-shadow:none !important;
-  background:transparent !important;     /* brak białych kapsli */
-}
-
-/* aktywny – cienki ring zamiast wypełnienia */
-.toolrow .btn.is-active{
   background:transparent !important;
-  color:var(--ink) !important;
-  outline:2px solid var(--brand);
-  outline-offset:2px;
-  border-radius:10px;
+  padding:4px 6px !important;
+  border-radius:8px !important;
 }
 
-/* hover/focus bez zwiększania "pola" */
-.toolrow .btn:focus-visible{ outline:2px solid var(--brand); outline-offset:2px }
+.toolrow .btn:hover{
+  background:rgba(11,116,255,0.08) !important;
+}
 
-/* same kontrolki w labelach */
+.toolrow .btn.is-active{
+  background:rgba(11,116,255,0.18) !important;
+  color:var(--ink) !important;
+  outline:none !important;
+}
+
+.toolrow .btn:focus-visible{
+  outline:1px solid var(--brand) !important;
+  outline-offset:2px !important;
+}
+
 .toolrow .btn input[type="color"],
 .toolrow .btn select{
   border:0 !important;
@@ -209,84 +213,15 @@
   box-shadow:none !important;
 }
 
-.text-font-btn{ display:none; }
-.text-font-btn.is-visible{ display:inline-flex; }
-.text-font-panel{
-  position:absolute;
-  z-index:45;
-  background:#fff;
-  border-radius:14px;
-  border:1px solid var(--line);
-  box-shadow:0 18px 45px rgba(11,19,32,.25);
-  padding:14px;
-  width:220px;
-  display:none;
-  flex-direction:column;
-  gap:10px;
-}
-.text-font-panel.open{ display:flex; }
-.text-font-panel__header{ font-weight:600; font-size:14px; color:var(--ink); }
-.text-font-panel__value{ font-size:18px; font-weight:700; }
-.text-font-panel__range{ width:100%; accent-color:var(--brand); }
-.text-font-panel__actions{ display:flex; gap:8px; }
-.text-font-panel__actions button{
-  flex:1;
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:6px 0;
-  font-weight:600;
-  background:#eef3ff;
-  color:var(--ink);
-  cursor:pointer;
-}
-
-/* ciaśniej tylko na telefonie */
+/* ciaśniejszy pasek narzędzi na telefonie */
 @media (max-width: 900px){
-  .toolrow{ gap:4px; }
-  .toolrow .btn{ padding:6px 8px; }      /* było 8–10px */
-}
-
-
-@media (max-width: 900px){
-  .left{min-width:unset}
-  .toolrow{gap:4px}
-  .btn{padding:8px}
-}
-
-/* [CODEX:BEGIN TOOLROW_MOBILE_OVERFLOW_FIX] */
-@media (max-width: 900px){
-  /* wyłącz autoscroll paska, pozwól JS wykryć przepełnienie */
   .toolrow{
-    overflow: hidden !important;
-    position: relative;
+    gap:4px;
   }
-  /* wymuszony przycisk menu obok paska */
-  #toolsMoreBtn{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    padding: 6px 10px;
-    background: var(--brand);
-    color: #fff;
-    border-radius: 10px;
-    border: none;
-    position: absolute;
-    right: -44px;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-    height: 36px;
-  }
-  /* panel overflow – pojawia się obok */
-  #toolsMorePanel.dropdown{
-    top: 42px;
-    left: auto;
-    right: 0;
-    min-width: 180px;
+  .toolrow .btn{
+    padding:4px 4px !important;
   }
 }
-/* [CODEX:END TOOLROW_MOBILE_OVERFLOW_FIX] */
 
 /* Mini-paleta figur */
 .figure-palette{
