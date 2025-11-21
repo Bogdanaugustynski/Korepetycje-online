@@ -539,6 +539,57 @@
   }
 }
 
+/* === ALIBOARD: wyraźne podświetlenie aktywnego narzędzia === */
+.toolrow .btn[data-tool].is-active{
+  background: rgba(11,116,255,0.14) !important;
+  color: #0b1320 !important;
+  outline: none !important;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--brand);
+}
+
+/* nieaktywne ikony delikatnie przygaszone, żeby aktywne się wyróżniało */
+.toolrow .btn[data-tool]:not(.is-active){
+  opacity: 0.8;
+}
+.toolrow .btn[data-tool]:not(.is-active):hover{
+  opacity: 1;
+}
+
+/* === ALIBOARD: układ narzędzi na telefonie (wszystko widoczne) === */
+@media (max-width: 768px){
+  header{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .left{
+    min-width: 0;
+  }
+
+  .toolrow{
+    flex-wrap: wrap;
+    overflow: visible !important;
+    justify-content: flex-start;
+  }
+
+  #toolsMoreBtn,
+  #toolsMorePanel{
+    display: none !important;
+  }
+
+  .toolrow .btn,
+  .toolrow label.btn{
+    padding: 4px 6px;
+    font-size: 16px;
+  }
+
+  .toolrow label.btn select{
+    max-width: 72px;
+  }
+}
+
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
