@@ -556,35 +556,61 @@
   opacity: 1;
 }
 
-/* === ALIBOARD: układ narzędzi na telefonie (wszystko widoczne) === */
+/* === ALIBOARD: układ nagłówka + narzędzi na telefonie === */
 @media (max-width: 768px){
+
+  /* nagłówek nadal w jednym rzędzie:
+     [logo+Aliboard] po lewej, [Menu] po prawej */
   header{
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-start;
     gap: 8px;
   }
 
+  /* lewa część (logo + pasek narzędzi) może się ścisnąć */
   .left{
+    flex: 1 1 auto;
     min-width: 0;
   }
 
+  /* prawa część – menu przy logo po prawej */
+  .right{
+    margin-left: 8px;
+    flex: 0 0 auto;
+  }
+
+  .menu-wrap{
+    flex-shrink: 0;
+  }
+
+  .menu-btn{
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  /* pasek narzędzi POD logo, może zejść w 2 rzędy */
   .toolrow{
     flex-wrap: wrap;
     overflow: visible !important;
     justify-content: flex-start;
+    margin-top: 4px;
+    gap: 4px;
   }
 
+  /* wszystkie narzędzia mają być widoczne – wyłączamy „⋯” na telefonie */
   #toolsMoreBtn,
   #toolsMorePanel{
     display: none !important;
   }
 
+  /* ciaśniejsze przyciski, żeby wszystko się mieściło */
   .toolrow .btn,
   .toolrow label.btn{
     padding: 4px 6px;
     font-size: 16px;
   }
 
+  /* select z grubością – trochę węższy */
   .toolrow label.btn select{
     max-width: 72px;
   }
