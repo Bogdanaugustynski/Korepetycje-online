@@ -212,6 +212,15 @@
   background:transparent !important;
   box-shadow:none !important;
 }
+.text-font-btn{ display:none; }
+.text-font-btn.is-visible{ display:inline-flex; }
+
+/* === ALIBOARD: Ikona wielkości czcionki (estetyczna) === */
+#textFontBtn{
+  font-size:20px !important;
+  padding:4px 6px !important;
+  line-height:1;
+}
 
 /* ciaśniejszy pasek narzędzi na telefonie */
 @media (max-width: 900px){
@@ -639,7 +648,9 @@
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">／</button>
       <button class="btn" type="button" data-tool="eraser" title="Gumka (E)">🩹</button>
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">T</button>
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">Wielkość czcionki</button>
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">
+        🔤
+      </button>
       <button class="btn" type="button" data-tool="crop"   title="Wycinanie (C)">✂️</button>
       <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">⬛︎▵⬡</button>
 
@@ -3574,6 +3585,24 @@ function textDimensions(s){
   if(!restoreLocal()){ createPage(false); }
   setTool(TOOLS.SELECT);
 })();
+
+/* === ALIBOARD: pokazuj przycisk wielkości czcionki tylko przy narzędziu Tekst === */
+const textFontBtn = document.getElementById("textFontBtn");
+
+function updateFontButtonVisibility(activeTool){
+    if(activeTool === "text"){
+        textFontBtn.classList.add("is-visible");
+    } else {
+        textFontBtn.classList.remove("is-visible");
+    }
+}
+
+document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+        const tool = btn.getAttribute('data-tool');
+        updateFontButtonVisibility(tool);
+    });
+});
 </script>
 <script>
   (function(){
