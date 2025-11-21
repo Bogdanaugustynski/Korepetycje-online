@@ -625,6 +625,13 @@
   }
 }
 
+/* === ALIBOARD: Ikona przycisku Usuń (zaznaczony element) === */
+#deleteSelection{
+  font-size:18px !important;
+  padding:4px 6px !important;
+  line-height:1;
+}
+
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
@@ -675,7 +682,9 @@
         📄 <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>Usuń</button>
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>
+        ❌
+      </button>
     </div>
   </div>
 
