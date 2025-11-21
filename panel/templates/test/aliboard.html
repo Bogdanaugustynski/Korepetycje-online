@@ -632,6 +632,25 @@
   line-height:1;
 }
 
+/* === ALIBOARD: przycisk "Grubość linii" – tylko ikona ↕️, select ukryty === */
+.toolrow label[title="Grubość linii"]{
+  position:relative;
+  padding:6px 8px;
+}
+.toolrow label[title="Grubość linii"] select{
+  position:absolute !important;
+  inset:0;
+  opacity:0;
+  width:100% !important;
+  height:100% !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  pointer-events:auto;
+}
+
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
