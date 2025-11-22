@@ -694,17 +694,22 @@
         <img src="{% static 'img/icons/text_ai.png' %}" class="icon-img" alt="Tekst">
       </button>
       <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">
-        🔤
+        <img src="{% static 'aliboard/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkość czcionki">
       </button>
-      <button class="btn" type="button" data-tool="crop"   title="Kopiuj (C)">✂️</button>
-      <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">⬛︎▵⬡</button>
+      <button class="btn" type="button" data-tool="crop"   title="Kopiuj (C)">
+        <img src="{% static 'img/icons/copy_ai.png' %}" class="icon-img" alt="Kopiuj">
+      </button>
+      <button class="btn" type="button" data-tool="figure" title="Figury (F)" data-overflow="1">
+        <img src="{% static 'aliboard/icons/figure_ai.png' %}" class="icon-img" alt="Figury">
+      </button>
 
       <label class="btn" title="Kolor pisaka">
-        🎨 <input type="color" id="color" value="#0b74ff" style="width:28px;height:28px;border:0;padding:0;background:#fff;border-radius:8px;margin-left:6px">
+        <img src="{% static 'aliboard/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
+        <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
       <label class="btn" title="Grubość linii">
-        ↕️
-        <select id="size" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;margin-left:6px">
+        <img src="{% static 'aliboard/icons/size_ai.png' %}" class="icon-img" alt="Grubość linii">
+        <select id="size" style="display:none;">
           <option value="1">1px</option>
           <option value="3" selected>3px</option>
           <option value="5">5px</option>
@@ -714,10 +719,12 @@
 
       <!-- Ikony: obraz + pdf -->
       <label class="btn" title="Wstaw obraz">
-        🖼️ <input id="imgInput" type="file" accept="image/*" style="display:none">
+        <img src="{% static 'aliboard/icons/image_ai.png' %}" class="icon-img" alt="Wstaw obraz">
+        <input id="imgInput" type="file" accept="image/*" style="display:none">
       </label>
       <label class="btn" title="Wstaw PDF">
-        📄 <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
+        <img src="{% static 'aliboard/icons/pdf_ai.png' %}" class="icon-img" alt="Wstaw PDF">
+        <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
       <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>
@@ -776,7 +783,7 @@
 <!-- 🔹 Aliboard Chat Module -->
 <div class="aliboard-chat-root">
   <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
-    💬
+    <img src="{% static 'aliboard/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
   </button>
 
   <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
