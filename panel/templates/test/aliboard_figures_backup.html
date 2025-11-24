@@ -316,12 +316,38 @@
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
 
-  // room_id info (proste: query -> fallback)
-  const qs = new URLSearchParams(location.search);
-  const roomId = qs.get('room') || 'local-test';
+  // ---- USTALENIE roomId (wspólne z realtime) ----
+  let roomId = null;
+
+  // 1) jeśli już ktoś ustawił globalnie (np. inny skrypt / Django):
+  if (window.ALIBOARD_ROOM_ID) {
+    roomId = window.ALIBOARD_ROOM_ID;
+  }
+
+  // 2) jeśli nie ma – spróbuj odczytać z data-room-id na kontenerze tablicy
+  if (!roomId) {
+    const rootEl =
+      document.getElementById('aliboard-root') ||
+      document.querySelector('[data-room-id]');
+    if (rootEl && rootEl.dataset.roomId) {
+      roomId = rootEl.dataset.roomId;
+    }
+  }
+
+  // 3) jeśli nadal brak – spróbuj z query stringa (?room= / ?room_id=)
+  if (!roomId) {
+    const qs = new URLSearchParams(location.search);
+    roomId = qs.get('room') || qs.get('room_id') || 'local-test';
+  }
+
+  // 4) zapisz globalnie (dla aliboard_realtime.js i innych)
   window.ALIBOARD_ROOM_ID = roomId;
+
+  // info w stopce
   const roomInfoEl = document.getElementById('roomInfo');
-  if(roomInfoEl) roomInfoEl.textContent = 'room_id: ' + roomId;
+  if (roomInfoEl) roomInfoEl.textContent = 'room_id: ' + roomId;
+
+  console.log('[Aliboard] roomId =', roomId);
 
   /* ---------- MODEL STRONY ---------- */
   function makeEmptyPageState(){
@@ -1129,11 +1155,26 @@
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy
-  const AUTOSAVE_KEY=`aliboard_v25_state_${roomId}`;
+  // AUTOSAVE wielostronicowy – osobny klucz na każdy room_id
+  const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
+
+  // (opcjonalnie) Wyczyść stary globalny klucz z czasów "local-test",
+  // żeby nie przeszkadzał w przyszłości:
+  try {
+    if (roomId !== 'local-test') {
+      localStorage.removeItem('aliboard_v25_state');
+    }
+  } catch (_) {}
+
   function autosave(){
     try{
-      const payload = PAGES.map(p=>({ strokes:p.state.strokes, images: p.state.images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta})) }));
+      const payload = PAGES.map(p=>({
+        strokes: p.state.strokes,
+        images: p.state.images.map(im=>({
+          x: im.x, y: im.y, w: im.w, h: im.h,
+          src: im.src, meta: im.meta
+        }))
+      }));
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
     }catch(_){}
   }
