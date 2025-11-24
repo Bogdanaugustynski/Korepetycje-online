@@ -151,8 +151,16 @@
       if (data.type === "grid_state") {
         // podaj dalej do globalnego handlera w Aliboard 2.5
         if (typeof window.aliboardApplyGridState === "function") {
-          const val = typeof data.gridSize === "number" ? data.gridSize : 0;
-          window.aliboardApplyGridState(val);
+          const val =
+            typeof data.gridSize === "number" || data.gridSize === "tech"
+              ? data.gridSize
+              : data.kind === "tech"
+              ? "tech"
+              : 0;
+          window.aliboardApplyGridState({
+            gridSize: val,
+            kind: data.kind,
+          });
         }
         notify("grid_state", data);
         return;
@@ -270,13 +278,18 @@
     // --- SYNC kratki (grid) ---
     sendGridState(state) {
       if (!state) return;
-      const size =
-        typeof state.gridSize === "number"
-          ? state.gridSize
-          : parseInt(state.gridSize, 10) || 0;
+      const isObj = typeof state === "object";
+      const rawSize = isObj ? state.gridSize : state;
+      const isTech = rawSize === "tech";
+      const size = isTech
+        ? "tech"
+        : typeof rawSize === "number"
+        ? rawSize
+        : parseInt(rawSize, 10) || 0;
       send({
         type: "grid_state",
         gridSize: size,
+        kind: isTech ? "tech" : "grid",
       });
     },
     sendChatMessage(text) {

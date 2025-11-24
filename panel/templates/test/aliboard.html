@@ -1582,10 +1582,16 @@
   }
 
   // --- SYNC GRID: handler dla realtime (wywoływany z AliboardRealtime) ---
-  window.aliboardApplyGridState = function(newGridSize){
-    gridSize = newGridSize || 0;
+  window.aliboardApplyGridState = function(newGridState){
+    const val = (newGridState && typeof newGridState === 'object')
+      ? (newGridState.gridSize ?? newGridState.size ?? newGridState)
+      : newGridState;
+    const isTech = val === 'tech';
+    const parsedSize = isTech ? 'tech' : (typeof val === 'number' ? val : parseInt(val,10) || 0);
+    gridSize = parsedSize;
     PAGES.forEach(p => {
-      drawGrid(p);
+      if(isTech){ drawTechGrid(p); }
+      else { drawGrid(p); }
     });
   };
   function drawTechGrid(p){
@@ -2866,8 +2872,7 @@ function textDimensions(s){
 
       // realtime broadcast – jeśli dostępny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
-        const sizeToSend = val === 'tech' ? 0 : newSize;
-        window.AliboardRealtime.sendGridState({ gridSize: sizeToSend });
+        window.AliboardRealtime.sendGridState({ gridSize: newSize });
       }
 
       toggleMenu(false);
