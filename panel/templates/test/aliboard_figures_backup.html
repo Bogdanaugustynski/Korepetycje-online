@@ -316,9 +316,12 @@
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
 
-  // room_id info
+  // room_id info (priorytet: query -> pathname -> templ)
+  const roomFromTpl = "{{ room_id|default:'' }}";
+  const matchPath = location.pathname.match(/\/(\d+)\/?$/);
   const qs = new URLSearchParams(location.search);
-  const roomId = qs.get('room') || 'local-test';
+  const roomFromQuery = qs.get('room');
+  const roomId = roomFromQuery || (matchPath && matchPath[1]) || roomFromTpl || 'local-test';
   const roomInfoEl = document.getElementById('roomInfo');
   if(roomInfoEl) roomInfoEl.textContent = 'room_id: ' + roomId;
 
@@ -1129,7 +1132,7 @@
   }, {passive:true});
 
   // AUTOSAVE wielostronicowy
-  const AUTOSAVE_KEY='aliboard_v25_state';
+  const AUTOSAVE_KEY=`aliboard_v25_state_${roomId}`;
   function autosave(){
     try{
       const payload = PAGES.map(p=>({ strokes:p.state.strokes, images: p.state.images.map(im=>({x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta})) }));
