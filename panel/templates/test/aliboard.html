@@ -3624,6 +3624,48 @@ function textDimensions(s){
     }
 
     wireRealtimeBridge();
+
+    (function enableChatBubbleDrag(){
+      const bubble = document.getElementById('aliboard-chat-bubble');
+      if(!bubble) return;
+
+      let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
+
+      bubble.style.position = 'fixed';
+      bubble.style.right = bubble.style.right || '16px';
+      bubble.style.bottom = bubble.style.bottom || '16px';
+
+      const onMove = (e)=>{
+        if(!dragging) return;
+        const x = e.clientX ?? (e.touches && e.touches[0]?.clientX);
+        const y = e.clientY ?? (e.touches && e.touches[0]?.clientY);
+        if(x==null || y==null) return;
+        const dx = x - startX;
+        const dy = y - startY;
+        bubble.style.right = 'auto';
+        bubble.style.bottom = 'auto';
+        bubble.style.left = `${startLeft + dx}px`;
+        bubble.style.top = `${startTop + dy}px`;
+      };
+
+      const onUp = ()=>{
+        dragging = false;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+
+      bubble.addEventListener('pointerdown', (e)=>{
+        e.preventDefault();
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = bubble.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+    })();
   })();
 
   // START
