@@ -1,11 +1,20 @@
 // panel/static/panel/js/aliboard_realtime.js
 (function () {
-  const root = document.getElementById("aliboard-root") || document.body;
-  const roomId = root?.getAttribute("data-room-id");
-  if (!roomId) {
-    console.warn("[AliboardRealtime] brak room-id, realtime wyłączony");
-    return;
+  // Ustal roomId: global -> data-room-id -> query -> fallback
+  let roomId = null;
+  if (window.ALIBOARD_ROOM_ID) {
+    roomId = window.ALIBOARD_ROOM_ID;
   }
+  if (!roomId) {
+    const root = document.getElementById("aliboard-root") || document.body;
+    const dataVal = root?.getAttribute("data-room-id") || root?.dataset?.roomId;
+    if (dataVal) roomId = dataVal;
+  }
+  if (!roomId) {
+    const qs = new URLSearchParams(window.location.search);
+    roomId = qs.get("room") || qs.get("room_id") || "local-test";
+  }
+  window.ALIBOARD_ROOM_ID = roomId;
 
   const clientId =
     (window.crypto?.randomUUID && window.crypto.randomUUID()) ||

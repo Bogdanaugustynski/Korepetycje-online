@@ -1491,11 +1491,38 @@
   });
   initRealtimeBridge();
 
-  // room_id info
-  const qs = new URLSearchParams(location.search);
-  const roomId = window.ALIBOARD_ROOM_ID || qs.get('room') || 'local-test';
+  // ---- USTALENIE roomId (wspólne z realtime) ----
+  let roomId = null;
+
+  // 1) jeśli już ktoś ustawił globalnie (np. inny skrypt / Django):
+  if (window.ALIBOARD_ROOM_ID) {
+    roomId = window.ALIBOARD_ROOM_ID;
+  }
+
+  // 2) jeśli nie ma – spróbuj odczytać z data-room-id na kontenerze tablicy
+  if (!roomId) {
+    const rootEl =
+      document.getElementById('aliboard-root') ||
+      document.querySelector('[data-room-id]');
+    if (rootEl && rootEl.dataset.roomId) {
+      roomId = rootEl.dataset.roomId;
+    }
+  }
+
+  // 3) jeśli nadal brak – spróbuj z query stringa (?room= / ?room_id=)
+  if (!roomId) {
+    const qs = new URLSearchParams(location.search);
+    roomId = qs.get('room') || qs.get('room_id') || 'local-test';
+  }
+
+  // 4) zapisz globalnie (dla aliboard_realtime.js i innych)
+  window.ALIBOARD_ROOM_ID = roomId;
+
+  // info w stopce
   const roomInfoEl = document.getElementById('roomInfo');
-  if(roomInfoEl) roomInfoEl.textContent = 'room_id: ' + roomId;
+  if (roomInfoEl) roomInfoEl.textContent = 'room_id: ' + roomId;
+
+  console.log('[Aliboard] roomId =', roomId);
 
   /* ---------- MODEL STRONY ---------- */
   function makeEmptyPageState(){
@@ -2936,8 +2963,16 @@ function textDimensions(s){
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy
-  const AUTOSAVE_KEY='aliboard_v25_state';
+  // AUTOSAVE wielostronicowy – osobny klucz na każdy room_id
+  const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
+
+  // (opcjonalnie) wyczyść stary globalny klucz z czasów "local-test"
+  try {
+    if (roomId !== 'local-test') {
+      localStorage.removeItem('aliboard_v25_state');
+    }
+  } catch (_) {}
+
   function autosave(){
     try{
       PAGES.forEach(ensureStrokeIds);
@@ -3700,15 +3735,18 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 </script>
 <script>
   (function(){
-    const roomId = "{{ room_id|default:'local-test' }}";
-    window.ALIBOARD_ROOM_ID = roomId;
+    let roomId = window.ALIBOARD_ROOM_ID;
+    if(!roomId){
+      const root = document.getElementById('aliboard-root') || document.body;
+      roomId = (root && root.dataset.roomId) || "{{ room_id|default:'local-test' }}";
+      window.ALIBOARD_ROOM_ID = roomId;
+    }
     window.ALIBOARD_CONFIG = {
       roomId,
       wsBase: "{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/aliboard/"
     };
   })();
 </script>
-<script src="{% static 'panel/js/aliboard_sync.js' %}"></script>
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
