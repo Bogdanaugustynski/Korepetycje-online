@@ -1583,11 +1583,13 @@
 
   // --- SYNC GRID: handler dla realtime (wywoływany z AliboardRealtime) ---
   window.aliboardApplyGridState = function(newGridState){
-    const val = (newGridState && typeof newGridState === 'object')
-      ? (newGridState.gridSize ?? newGridState.size ?? newGridState)
-      : newGridState;
-    const isTech = val === 'tech';
-    const parsedSize = isTech ? 'tech' : (typeof val === 'number' ? val : parseInt(val,10) || 0);
+    const isObj = newGridState && typeof newGridState === 'object';
+    const kind = isObj ? newGridState.kind : null;
+    const valRaw = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
+    const isTech = kind === 'tech';
+    const parsedSize = isTech
+      ? 'tech'
+      : (typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0);
     gridSize = parsedSize;
     PAGES.forEach(p => {
       if(isTech){ drawTechGrid(p); }
@@ -2872,7 +2874,10 @@ function textDimensions(s){
 
       // realtime broadcast – jeśli dostępny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
-        window.AliboardRealtime.sendGridState({ gridSize: newSize });
+        const payload = val === 'tech'
+          ? { gridSize: 0, kind: 'tech' }
+          : { gridSize: newSize, kind: 'grid' };
+        window.AliboardRealtime.sendGridState(payload);
       }
 
       toggleMenu(false);

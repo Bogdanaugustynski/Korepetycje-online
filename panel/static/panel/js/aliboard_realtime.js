@@ -285,9 +285,9 @@
       if (!state) return;
       const isObj = typeof state === "object";
       const rawSize = isObj ? state.gridSize : state;
-      const isTech = rawSize === "tech";
+      const isTech = rawSize === "tech" || (isObj && state.kind === "tech");
       const size = isTech
-        ? "tech"
+        ? 0
         : typeof rawSize === "number"
         ? rawSize
         : parseInt(rawSize, 10) || 0;
