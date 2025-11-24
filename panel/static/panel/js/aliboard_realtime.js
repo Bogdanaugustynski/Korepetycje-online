@@ -36,6 +36,7 @@
     element_update: [],
     element_remove: [],
     cursor: [],
+    grid_state: [],
     open: [],
     close: [],
     chat_message: [],
@@ -147,6 +148,16 @@
         return;
       }
 
+      if (data.type === "grid_state") {
+        // podaj dalej do globalnego handlera w Aliboard 2.5
+        if (typeof window.aliboardApplyGridState === "function") {
+          const val = typeof data.gridSize === "number" ? data.gridSize : 0;
+          window.aliboardApplyGridState(val);
+        }
+        notify("grid_state", data);
+        return;
+      }
+
       if (data.type === "chat_message") {
         if (
           window.aliboardChat &&
@@ -254,6 +265,18 @@
           color: window.ALIBOARD_USER_COLOR || "#3b82f6",
           ...cursor,
         },
+      });
+    },
+    // --- SYNC kratki (grid) ---
+    sendGridState(state) {
+      if (!state) return;
+      const size =
+        typeof state.gridSize === "number"
+          ? state.gridSize
+          : parseInt(state.gridSize, 10) || 0;
+      send({
+        type: "grid_state",
+        gridSize: size,
       });
     },
     sendChatMessage(text) {

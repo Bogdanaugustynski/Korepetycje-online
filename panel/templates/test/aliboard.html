@@ -1580,6 +1580,14 @@
     for(let y=0;y<=h;y+=gridSize){ p.g.beginPath(); p.g.moveTo(0,y); p.g.lineTo(w,y); p.g.stroke(); }
     p.g.restore();
   }
+
+  // --- SYNC GRID: handler dla realtime (wywoływany z AliboardRealtime) ---
+  window.aliboardApplyGridState = function(newGridSize){
+    gridSize = newGridSize || 0;
+    PAGES.forEach(p => {
+      drawGrid(p);
+    });
+  };
   function drawTechGrid(p){
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
@@ -2847,13 +2855,21 @@ function textDimensions(s){
     btn.addEventListener('pointerdown', (e)=>{
       e.preventDefault();
       const val = btn.getAttribute('data-grid');
+      const newSize = val === 'tech' ? 'tech' : parseInt(val,10) || 0;
+      gridSize = newSize;
+
       if (val === 'tech'){
-        gridSize = 'tech';
         PAGES.forEach(p=> drawTechGrid(p));
       } else {
-        gridSize = parseInt(val,10)||0;
         PAGES.forEach(p=> drawGrid(p));
       }
+
+      // realtime broadcast – jeśli dostępny
+      if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
+        const sizeToSend = val === 'tech' ? 0 : newSize;
+        window.AliboardRealtime.sendGridState({ gridSize: sizeToSend });
+      }
+
       toggleMenu(false);
     });
   });
