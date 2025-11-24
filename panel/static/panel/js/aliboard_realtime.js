@@ -151,12 +151,17 @@
       if (data.type === "grid_state") {
         // podaj dalej do globalnego handlera w Aliboard 2.5
         if (typeof window.aliboardApplyGridState === "function") {
-          const val =
-            typeof data.gridSize === "number" || data.gridSize === "tech"
-              ? data.gridSize
-              : data.kind === "tech"
-              ? "tech"
-              : 0;
+          const raw = data.gridSize;
+          const kind = data.kind;
+          let val;
+          if (raw === "tech" || kind === "tech") {
+            val = "tech";
+          } else if (typeof raw === "number") {
+            val = raw;
+          } else {
+            const parsed = parseInt(raw, 10);
+            val = Number.isFinite(parsed) ? parsed : 0;
+          }
           window.aliboardApplyGridState({
             gridSize: val,
             kind: data.kind,
