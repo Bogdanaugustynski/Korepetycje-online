@@ -256,48 +256,53 @@
   line-height:1;
 }
 
-/* Panel wyboru wielkości czcionki */
-.text-font-panel{
-  position:fixed;
-  top:-9999px;
-  left:-9999px;
-  background:#0f172a;
-  color:#fff;
-  padding:12px 14px;
-  border-radius:12px;
-  box-shadow:0 10px 40px rgba(0,0,0,0.35);
-  display:none;
-  z-index:5000;
-  min-width:180px;
+/* MENU WIELKOŚCI CZCIONKI (AI Neon Premium) */
+.font-size-menu {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  background: rgba(20, 22, 30, 0.65);
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 25px rgba(0, 150, 255, 0.25);
+  backdrop-filter: blur(10px);
+  z-index: 5000;
 }
-.text-font-panel.open{ display:block; }
-.text-font-panel__header{
-  font-weight:700;
-  font-size:13px;
-  margin-bottom:6px;
-}
-.text-font-panel__value{
-  font-size:24px;
-  font-weight:800;
-  margin-bottom:8px;
-}
-.text-font-panel__actions{
+.font-size-menu.open{
   display:flex;
-  gap:8px;
-  margin-top:10px;
 }
-.text-font-panel__actions button{
-  flex:1;
-  border:1px solid rgba(255,255,255,0.2);
-  background:rgba(255,255,255,0.08);
-  color:#fff;
-  border-radius:10px;
-  padding:6px 0;
-  font-weight:700;
-  cursor:pointer;
+
+.font-option {
+  width: 65px;
+  height: 45px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.25s ease;
 }
-.text-font-panel__range{
-  width:100%;
+
+.font-option:hover {
+  background: rgba(0, 150, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 150, 255, 0.35);
+}
+
+.font-option.active {
+  background: rgba(0, 150, 255, 0.35);
+  box-shadow: 0 0 15px rgba(0, 150, 255, 0.55);
+}
+
+.font-preview {
+  color: #0cbcff;
+  font-family: "Arial", sans-serif;
+  font-weight: 600;
+  text-shadow: 0 0 6px rgba(0, 190, 255, 0.65);
+  user-select: none;
 }
 
 /* ciaśniejszy pasek narzędzi na telefonie */
@@ -996,8 +1001,6 @@
   const textFontBtn = document.getElementById('textFontBtn');
   const deleteSelectionBtn = document.getElementById('deleteSelection');
   let textFontPanel = null;
-  let textFontRange = null;
-  let textFontValueEl = null;
   const TEXT_FONT_MIN = 14;
   const TEXT_FONT_MAX = 96;
   const TEXT_FONT_STEP = 2;
@@ -1055,33 +1058,38 @@
     return Math.max(TEXT_FONT_MIN, Math.min(TEXT_FONT_MAX, px));
   }
   function updateTextFontUI(){
-    if(textFontValueEl){ textFontValueEl.textContent = `${Math.round(textFontSizePx)} px`; }
-    if(textFontRange){ textFontRange.value = Math.round(textFontSizePx); }
+    if(!textFontPanel) return;
+    const options = textFontPanel.querySelectorAll('.font-option');
+    options.forEach(opt=>{
+      opt.classList.toggle('active', String(opt.dataset.size) === String(Math.round(textFontSizePx)));
+    });
   }
   function ensureTextFontPanel(){
     if(textFontPanel) return;
     textFontPanel = document.createElement('div');
-    textFontPanel.className = 'text-font-panel';
+    textFontPanel.id = 'fontSizeMenu';
+    textFontPanel.className = 'font-size-menu';
     textFontPanel.innerHTML = `
-      <div class="text-font-panel__header">Wielkość czcionki</div>
-      <div class="text-font-panel__value" data-font-display>24 px</div>
-      <input type="range" class="text-font-panel__range" min="${TEXT_FONT_MIN}" max="${TEXT_FONT_MAX}" step="${TEXT_FONT_STEP}">
-      <div class="text-font-panel__actions">
-        <button type="button" data-step="-${TEXT_FONT_STEP}">–</button>
-        <button type="button" data-step="${TEXT_FONT_STEP}">+</button>
+      <div class="font-option" data-size="16">
+          <span class="font-preview" style="font-size:16px">Aa</span>
+      </div>
+      <div class="font-option" data-size="22">
+          <span class="font-preview" style="font-size:22px">Aa</span>
+      </div>
+      <div class="font-option" data-size="28">
+          <span class="font-preview" style="font-size:28px">Aa</span>
+      </div>
+      <div class="font-option" data-size="36">
+          <span class="font-preview" style="font-size:36px">Aa</span>
       </div>
     `;
     document.body.appendChild(textFontPanel);
-    textFontRange = textFontPanel.querySelector('.text-font-panel__range');
-    textFontValueEl = textFontPanel.querySelector('[data-font-display]');
-    if(textFontRange){
-      textFontRange.addEventListener('input', ()=>{ setTextFontPx(parseInt(textFontRange.value,10)); });
-    }
-    textFontPanel.querySelectorAll('[data-step]').forEach(btn=>{
-      btn.addEventListener('pointerdown', (e)=>{
+    textFontPanel.querySelectorAll('.font-option').forEach(opt=>{
+      opt.addEventListener('pointerdown', (e)=>{
         e.preventDefault();
-        const delta = parseInt(btn.getAttribute('data-step'),10) || 0;
-        setTextFontPx(textFontSizePx + delta);
+        const val = parseInt(opt.dataset.size,10);
+        if(Number.isNaN(val)) return;
+        setTextFontPx(val);
       });
     });
     updateTextFontUI();
