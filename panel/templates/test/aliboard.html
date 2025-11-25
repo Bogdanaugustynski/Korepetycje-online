@@ -2875,13 +2875,11 @@ function textDimensions(s){
 
       // realtime broadcast – jeśli dostępny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
-        if (isTech){
-          window.AliboardRealtime.sendGridState({ gridSize: 0, kind: 'tech' });
-        } else if (typeof window.AliboardRealtime.sendGrid === 'function') {
-          window.AliboardRealtime.sendGrid(newSize);
-        } else {
-          window.AliboardRealtime.sendGridState({ gridSize: newSize, kind: 'grid' });
-        }
+        window.AliboardRealtime.sendGridState(
+          isTech
+            ? { gridSize: 0, kind: 'tech' }
+            : { gridSize: newSize, kind: 'grid' }
+        );
       }
 
       toggleMenu(false);
@@ -3024,14 +3022,12 @@ function textDimensions(s){
     }catch(_){ return false; }
   }
 
-  // --- CRDT: nasłuch zmian siatki przez AliboardRealtime (event "grid") ---
+  // --- CRDT: nasłuch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
-    window.AliboardRealtime.on('grid', (payload)=>{
-      const nextSize = Number(payload && payload.gridSize);
-      if(!Number.isFinite(nextSize)) return;
-      if(nextSize === gridSize) return;
-      gridSize = nextSize;
-      PAGES.forEach(p=> drawGrid(p));
+    window.AliboardRealtime.on('grid_state', (payload)=>{
+      if(typeof window.aliboardApplyGridState === 'function'){
+        window.aliboardApplyGridState(payload);
+      }
     });
   }
 

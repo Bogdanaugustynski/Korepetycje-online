@@ -36,7 +36,6 @@
     element_update: [],
     element_remove: [],
     cursor: [],
-    grid: [],
     grid_state: [],
     open: [],
     close: [],
@@ -138,6 +137,8 @@
         return;
       }
 
+      console.debug("[RT] recv", data.type, data);
+
       if (data.type === "call_signal") {
         if (
           window.aliboardChat &&
@@ -150,21 +151,9 @@
       }
 
       if (data.type === "grid_state") {
-        // podaj dalej do globalnego handlera w Aliboard 2.5
         if (typeof window.aliboardApplyGridState === "function") {
-          const raw = data.gridSize;
-          const kind = data.kind;
-          let val;
-          if (raw === "tech" || kind === "tech") {
-            val = "tech";
-          } else if (typeof raw === "number") {
-            val = raw;
-          } else {
-            const parsed = parseInt(raw, 10);
-            val = Number.isFinite(parsed) ? parsed : 0;
-          }
           window.aliboardApplyGridState({
-            gridSize: val,
+            gridSize: data.gridSize,
             kind: data.kind,
           });
         }
@@ -218,20 +207,12 @@
           window.aliboardVoice.onIceCandidate(data);
         }
         return;
-        }
-  
-        if (data.type === "grid") {
-          notify("grid", {
-            gridSize: data.gridSize,
-            from: data.from_id || null,
-          });
-          return;
-        }
-  
-        if (data.type === "snapshot") {
-          notify("snapshot", data.elements || []);
-        } else if (data.type === "element_add") {
-          notify("element_add", data.element || null);
+      }
+
+      if (data.type === "snapshot") {
+        notify("snapshot", data.elements || []);
+      } else if (data.type === "element_add") {
+        notify("element_add", data.element || null);
       } else if (data.type === "element_update") {
         notify("element_update", data.element || null);
       } else if (data.type === "element_remove") {
@@ -327,20 +308,10 @@
     sendChatPing() {
       send({ type: "chat_ping" });
     },
-      sendChatMicState(isMuted) {
-        send({ type: "chat_mic_state", muted: !!isMuted });
-      },
-      sendGrid(gridSize) {
-        if (gridSize == null) return;
-        const parsed = Number(gridSize);
-        if (!Number.isFinite(parsed)) return;
-        send({
-          type: "grid",
-          gridSize: parsed,
-          from_id: window.ALIBOARD_USER_ID || null,
-        });
-      },
-    };
+    sendChatMicState(isMuted) {
+      send({ type: "chat_mic_state", muted: !!isMuted });
+    },
+  };
 
   window.AliboardRealtime = api;
 })();
