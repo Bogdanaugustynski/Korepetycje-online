@@ -666,23 +666,49 @@
   line-height:1;
 }
 
-/* === ALIBOARD: przycisk "Grubość linii" – tylko ikona ↕️, select ukryty === */
-.toolrow label[title="Grubość linii"]{
-  position:relative;
-  padding:6px 8px;
+/* === ALIBOARD: menu grubości linii (neon) === */
+.line-width-menu {
+  position: absolute;
+  top: 55px;
+  left: 10px;
+  background: rgba(20, 22, 30, 0.65);
+  padding: 10px 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 25px rgba(0, 150, 255, 0.25);
+  backdrop-filter: blur(10px);
+  z-index: 5000;
 }
-.toolrow label[title="Grubość linii"] select{
-  position:absolute !important;
-  inset:0;
-  opacity:0;
-  width:100% !important;
-  height:100% !important;
-  margin:0 !important;
-  padding:0 !important;
-  border:0 !important;
-  background:transparent !important;
-  box-shadow:none !important;
-  pointer-events:auto;
+
+.line-option {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.25s ease;
+}
+
+.line-option:hover {
+  background: rgba(0, 150, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 150, 255, 0.35);
+}
+
+.line-option.active {
+  background: rgba(0, 150, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 150, 255, 0.55);
+}
+
+.line-preview {
+  width: 24px;
+  background: #0cbcff;
+  border-radius: 4px;
+  box-shadow: 0 0 6px #0cbcff;
 }
 
 /* Ikony obrazkowe w pasku narzędzi */
@@ -745,15 +771,26 @@
         <img src="{% static 'img/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
         <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
-      <label class="btn" title="Grubość linii">
-        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubość linii">
-        <select id="size">
-          <option value="1">1px</option>
-          <option value="3" selected>3px</option>
-          <option value="5">5px</option>
-          <option value="8">8px</option>
-        </select>
-      </label>
+      <div class="line-width-menu" id="lineWidthMenu">
+        <div class="line-option" data-size="1">
+          <div class="line-preview" style="height:1px"></div>
+        </div>
+        <div class="line-option" data-size="3">
+          <div class="line-preview" style="height:3px"></div>
+        </div>
+        <div class="line-option" data-size="5">
+          <div class="line-preview" style="height:5px"></div>
+        </div>
+        <div class="line-option" data-size="8">
+          <div class="line-preview" style="height:8px"></div>
+        </div>
+      </div>
+      <select id="size" style="display:none;">
+        <option value="1">1px</option>
+        <option value="3" selected>3px</option>
+        <option value="5">5px</option>
+        <option value="8">8px</option>
+      </select>
 
       <!-- Ikony: obraz + pdf -->
       <label class="btn" title="Wstaw obraz">
@@ -2766,10 +2803,20 @@ function textDimensions(s){
   document.getElementById('color').addEventListener('input', e=>{ color=e.target.value; updateState(); });
   const sizeSelect = document.getElementById('size');
   if(sizeSelect){
+    const lineWidthMenu = document.getElementById('lineWidthMenu');
+    const lineOptions = lineWidthMenu ? Array.from(lineWidthMenu.querySelectorAll('.line-option')) : [];
+
+    function updateLineWidthMenuActive(val){
+      lineOptions.forEach(opt=>{
+        opt.classList.toggle('active', String(opt.dataset.size)===String(val));
+      });
+    }
+
     sizeSelect.addEventListener('change', e=>{
       const nextSize = parseInt(e.target.value,10);
       if(Number.isNaN(nextSize)) return;
       size = nextSize;
+      updateLineWidthMenuActive(nextSize);
       if(tool===TOOLS.TEXT){
         setTextFontPx(nextSize * 6);
       }else{
@@ -2777,6 +2824,18 @@ function textDimensions(s){
         updateState();
       }
     });
+
+    lineOptions.forEach(opt=>{
+      opt.addEventListener('pointerdown', (ev)=>{
+        ev.preventDefault();
+        const val = parseInt(opt.dataset.size,10);
+        if(Number.isNaN(val)) return;
+        sizeSelect.value = String(val);
+        sizeSelect.dispatchEvent(new Event('change', {bubbles:true}));
+      });
+    });
+
+    updateLineWidthMenuActive(sizeSelect.value);
   }
   if(deleteSelectionBtn){
     deleteSelectionBtn.addEventListener('pointerdown', (e)=>{
