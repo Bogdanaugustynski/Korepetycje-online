@@ -36,6 +36,7 @@
     element_update: [],
     element_remove: [],
     cursor: [],
+    grid: [],
     grid_state: [],
     open: [],
     close: [],
@@ -217,12 +218,20 @@
           window.aliboardVoice.onIceCandidate(data);
         }
         return;
-      }
-
-      if (data.type === "snapshot") {
-        notify("snapshot", data.elements || []);
-      } else if (data.type === "element_add") {
-        notify("element_add", data.element || null);
+        }
+  
+        if (data.type === "grid") {
+          notify("grid", {
+            gridSize: data.gridSize,
+            from: data.from_id || null,
+          });
+          return;
+        }
+  
+        if (data.type === "snapshot") {
+          notify("snapshot", data.elements || []);
+        } else if (data.type === "element_add") {
+          notify("element_add", data.element || null);
       } else if (data.type === "element_update") {
         notify("element_update", data.element || null);
       } else if (data.type === "element_remove") {
@@ -318,10 +327,20 @@
     sendChatPing() {
       send({ type: "chat_ping" });
     },
-    sendChatMicState(isMuted) {
-      send({ type: "chat_mic_state", muted: !!isMuted });
-    },
-  };
+      sendChatMicState(isMuted) {
+        send({ type: "chat_mic_state", muted: !!isMuted });
+      },
+      sendGrid(gridSize) {
+        if (gridSize == null) return;
+        const parsed = Number(gridSize);
+        if (!Number.isFinite(parsed)) return;
+        send({
+          type: "grid",
+          gridSize: parsed,
+          from_id: window.ALIBOARD_USER_ID || null,
+        });
+      },
+    };
 
   window.AliboardRealtime = api;
 })();

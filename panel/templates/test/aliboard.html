@@ -2863,10 +2863,11 @@ function textDimensions(s){
     btn.addEventListener('pointerdown', (e)=>{
       e.preventDefault();
       const val = btn.getAttribute('data-grid');
-      const newSize = val === 'tech' ? 'tech' : parseInt(val,10) || 0;
+      const isTech = val === 'tech';
+      const newSize = isTech ? 'tech' : parseInt(val,10) || 0;
       gridSize = newSize;
 
-      if (val === 'tech'){
+      if (isTech){
         PAGES.forEach(p=> drawTechGrid(p));
       } else {
         PAGES.forEach(p=> drawGrid(p));
@@ -2874,10 +2875,13 @@ function textDimensions(s){
 
       // realtime broadcast – jeśli dostępny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
-        const payload = val === 'tech'
-          ? { gridSize: 0, kind: 'tech' }
-          : { gridSize: newSize, kind: 'grid' };
-        window.AliboardRealtime.sendGridState(payload);
+        if (isTech){
+          window.AliboardRealtime.sendGridState({ gridSize: 0, kind: 'tech' });
+        } else if (typeof window.AliboardRealtime.sendGrid === 'function') {
+          window.AliboardRealtime.sendGrid(newSize);
+        } else {
+          window.AliboardRealtime.sendGridState({ gridSize: newSize, kind: 'grid' });
+        }
       }
 
       toggleMenu(false);
@@ -3018,6 +3022,17 @@ function textDimensions(s){
       arr.forEach((pageData)=>{ const p=createPage(false); p.state.strokes = pageData.strokes||[]; ensureStrokeIds(p); p.state.images  = (pageData.images||[]).map(im=>reviveImage(im,p)); renderAll(p); });
       return true;
     }catch(_){ return false; }
+  }
+
+  // --- CRDT: nasłuch zmian siatki przez AliboardRealtime (event "grid") ---
+  if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
+    window.AliboardRealtime.on('grid', (payload)=>{
+      const nextSize = Number(payload && payload.gridSize);
+      if(!Number.isFinite(nextSize)) return;
+      if(nextSize === gridSize) return;
+      gridSize = nextSize;
+      PAGES.forEach(p=> drawGrid(p));
+    });
   }
 
   // [CODEX:BEGIN OVERFLOW_MENU]
