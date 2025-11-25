@@ -667,20 +667,24 @@
 }
 
 /* === ALIBOARD: menu grubości linii (neon) === */
-.line-width-menu {
-  position: absolute;
-  top: 55px;
-  left: 10px;
-  background: rgba(20, 22, 30, 0.65);
-  padding: 10px 12px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 4px 25px rgba(0, 150, 255, 0.25);
-  backdrop-filter: blur(10px);
-  z-index: 5000;
-}
+  .line-width-menu {
+    position: absolute;
+    top: 55px;
+    left: 10px;
+    background: rgba(20, 22, 30, 0.65);
+    padding: 10px 12px;
+    border-radius: 12px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 25px rgba(0, 150, 255, 0.25);
+    backdrop-filter: blur(10px);
+    z-index: 5000;
+  }
+
+  .line-width-menu.open{
+    display:flex;
+  }
 
 .line-option {
   width: 40px;
@@ -771,6 +775,9 @@
         <img src="{% static 'img/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
         <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
+      <button class="btn" type="button" id="lineWidthBtn" title="Grubość linii">
+        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubość linii">
+      </button>
       <div class="line-width-menu" id="lineWidthMenu">
         <div class="line-option" data-size="1">
           <div class="line-preview" style="height:1px"></div>
@@ -2804,6 +2811,7 @@ function textDimensions(s){
   const sizeSelect = document.getElementById('size');
   if(sizeSelect){
     const lineWidthMenu = document.getElementById('lineWidthMenu');
+    const lineWidthBtn = document.getElementById('lineWidthBtn');
     const lineOptions = lineWidthMenu ? Array.from(lineWidthMenu.querySelectorAll('.line-option')) : [];
 
     function updateLineWidthMenuActive(val){
@@ -2832,10 +2840,26 @@ function textDimensions(s){
         if(Number.isNaN(val)) return;
         sizeSelect.value = String(val);
         sizeSelect.dispatchEvent(new Event('change', {bubbles:true}));
+        lineWidthMenu.classList.remove('open');
       });
     });
 
     updateLineWidthMenuActive(sizeSelect.value);
+
+    if(lineWidthBtn && lineWidthMenu){
+      lineWidthBtn.addEventListener('pointerdown', (ev)=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        const isOpen = lineWidthMenu.classList.contains('open');
+        lineWidthMenu.classList.toggle('open', !isOpen);
+      });
+
+      document.addEventListener('pointerdown', (ev)=>{
+        if(!lineWidthMenu.classList.contains('open')) return;
+        if(lineWidthMenu.contains(ev.target) || (lineWidthBtn && lineWidthBtn.contains(ev.target))) return;
+        lineWidthMenu.classList.remove('open');
+      });
+    }
   }
   if(deleteSelectionBtn){
     deleteSelectionBtn.addEventListener('pointerdown', (e)=>{
