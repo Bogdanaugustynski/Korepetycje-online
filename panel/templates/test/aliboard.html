@@ -119,6 +119,30 @@
   .page .grid, .page .overlay{ pointer-events:none; }
   .page .board{ touch-action:none; } /* blok gestów przy rysowaniu */
 
+  /* ZDALNE KURSORY (CRDT) */
+  .remote-cursor{
+    position:absolute;
+    z-index:30;
+    pointer-events:none;
+    transform:translate(-50%,-50%);
+    font-size:11px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .remote-cursor-dot{
+    width:10px;
+    height:10px;
+    border-radius:999px;
+    margin-right:4px;
+    display:inline-block;
+  }
+  .remote-cursor-label{
+    padding:2px 6px;
+    border-radius:999px;
+    background:rgba(15,23,42,.85);
+    color:#fff;
+  }
+
   /* edytor tekstu inline */
   .text-editor{
     position:absolute; z-index:50; min-width:60px;
@@ -1369,126 +1393,8 @@
       const id = typeof payload === 'string' ? payload : payload?.id;
       removeElementById(id);
     });
-    realtime.on('cursor', (cursor)=>{
-      if(cursor && cursor.id !== realtime.clientId){
-        window.aliboardUpdateRemoteCursor(cursor);
-      }
-    });
   }
 
-  window.aliboardUpdateRemoteCursor = (function(){
-    const layer = document.createElement('div');
-    layer.id = 'aliboardCursorLayer';
-    layer.style.position = 'fixed';
-    layer.style.left = '0';
-    layer.style.top = '0';
-    layer.style.width = '100%';
-    layer.style.height = '100%';
-    layer.style.pointerEvents = 'none';
-    layer.style.zIndex = '80';
-    document.body.appendChild(layer);
-
-    const cursorMap = new Map();
-    const ttlMap = new Map();
-
-    function removeCursor(id){
-      const el = cursorMap.get(id);
-      if(el){
-        el.remove();
-        cursorMap.delete(id);
-      }
-      if(ttlMap.has(id)){
-        clearTimeout(ttlMap.get(id));
-        ttlMap.delete(id);
-      }
-    }
-
-    function scheduleRemoval(id){
-      if(ttlMap.has(id)){
-        clearTimeout(ttlMap.get(id));
-      }
-      ttlMap.set(id, setTimeout(()=> removeCursor(id), 5000));
-    }
-
-    function createCursorEl(color, label){
-      const wrapper = document.createElement('div');
-      wrapper.className = 'cursor-ghost';
-      wrapper.style.position = 'absolute';
-      wrapper.style.transform = 'translate(-50%, -50%)';
-      wrapper.style.pointerEvents = 'none';
-
-      const dot = document.createElement('div');
-      dot.style.width = '10px';
-      dot.style.height = '10px';
-      dot.style.borderRadius = '50%';
-      dot.style.background = color || '#3b82f6';
-      dot.style.border = '2px solid #fff';
-      dot.style.boxShadow = '0 2px 6px rgba(0,0,0,.25)';
-
-      const tag = document.createElement('div');
-      tag.textContent = label || 'Uczestnik';
-      tag.style.background = color || '#3b82f6';
-      tag.style.color = '#fff';
-      tag.style.fontSize = '11px';
-      tag.style.padding = '2px 6px';
-      tag.style.borderRadius = '999px';
-      tag.style.marginTop = '6px';
-      tag.style.whiteSpace = 'nowrap';
-      tag.style.boxShadow = '0 2px 6px rgba(0,0,0,.2)';
-
-      wrapper.appendChild(dot);
-      wrapper.appendChild(tag);
-      layer.appendChild(wrapper);
-      return wrapper;
-    }
-
-    return function updateCursor(cursor){
-      if(!cursor) return;
-      const pageIdx = typeof cursor.pageIndex === 'number' ? cursor.pageIndex : -1;
-      const targetPage = pageIdx >=0 ? PAGES[pageIdx] : currentPage();
-      if(!targetPage){
-        removeCursor(cursor.id);
-        return;
-      }
-      const rect = targetPage.el.getBoundingClientRect();
-      const relX = Number(cursor.x ?? 0);
-      const relY = Number(cursor.y ?? 0);
-      const posX = rect.left + Math.max(0, Math.min(1, relX)) * rect.width;
-      const posY = rect.top + Math.max(0, Math.min(1, relY)) * rect.height;
-
-      let el = cursorMap.get(cursor.id);
-      if(!el){
-        el = createCursorEl(cursor.color, cursor.label);
-        cursorMap.set(cursor.id, el);
-      }else{
-        el.querySelector('div:last-child').textContent = cursor.label || 'Uczestnik';
-        el.querySelector('div:first-child').style.background = cursor.color || '#3b82f6';
-        el.querySelector('div:last-child').style.background = cursor.color || '#3b82f6';
-      }
-      el.style.left = `${posX}px`;
-      el.style.top = `${posY}px`;
-      scheduleRemoval(cursor.id);
-    };
-  })();
-
-  pagesEl.addEventListener('pointermove', (e)=>{
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.sendCursor !== 'function') return;
-    const boardCanvas = e.target.closest('.board');
-    if(!boardCanvas) return;
-    const pageEl = boardCanvas.closest('.page');
-    if(!pageEl) return;
-    const pageIndex = PAGES.findIndex(pg=>pg.el===pageEl);
-    if(pageIndex<0) return;
-    const rect = pageEl.getBoundingClientRect();
-    const relX = (e.clientX - rect.left) / rect.width;
-    const relY = (e.clientY - rect.top) / rect.height;
-    realtime.sendCursor({
-      pageIndex,
-      x: Math.max(0, Math.min(1, relX)),
-      y: Math.max(0, Math.min(1, relY))
-    });
-  });
   initRealtimeBridge();
 
   // ---- USTALENIE roomId (wspólne z realtime) ----
@@ -1528,6 +1434,8 @@
   function makeEmptyPageState(){
     return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null };
   }
+  // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
+  const REMOTE_CURSORS = new Map();
   const PAGES = [];
   function currentPage(){ return PAGES[PAGES.length-1] || null; }
 
@@ -1549,6 +1457,7 @@
 
     const p = { el:page, gridC, drawC, ovlC, g, ctx, ovl, state: makeEmptyPageState() };
     PAGES.push(p);
+    p.index = PAGES.length - 1;
     resizePage(p);
     refreshGrid(p);
     renderAll(p);
@@ -2211,6 +2120,55 @@
     }
     return bottom;
   }
+  /* ---------- ZDALNE KURSORY (CRDT) ---------- */
+  function upsertRemoteCursor(cursor){
+    if (!cursor || cursor.id == null) return;
+
+    const pageIndex = cursor.pageIndex;
+    const nx = Number.isFinite(cursor.nx) ? cursor.nx : cursor.x;
+    const ny = Number.isFinite(cursor.ny) ? cursor.ny : cursor.y;
+
+    if (!Number.isFinite(pageIndex) || !Number.isFinite(nx) || !Number.isFinite(ny)) return;
+
+    const p = PAGES[pageIndex];
+    if (!p || !p.el) return;
+
+    let item = REMOTE_CURSORS.get(cursor.id);
+    if (!item) {
+      const el = document.createElement('div');
+      el.className = 'remote-cursor';
+
+      const dot = document.createElement('span');
+      dot.className = 'remote-cursor-dot';
+
+      const label = document.createElement('span');
+      label.className = 'remote-cursor-label';
+
+      el.appendChild(dot);
+      el.appendChild(label);
+      p.el.appendChild(el);
+
+      item = { el, dot, label, pageIndex };
+      REMOTE_CURSORS.set(cursor.id, item);
+    }
+
+    if (item.pageIndex !== pageIndex) {
+      if (item.el.parentNode) {
+        item.el.parentNode.removeChild(item.el);
+      }
+      p.el.appendChild(item.el);
+      item.pageIndex = pageIndex;
+    }
+
+    const color = cursor.color || '#3b82f6';
+    const labelText = cursor.label || 'Uczestnik';
+
+    item.dot.style.backgroundColor = color;
+    item.label.textContent = labelText;
+
+    item.el.style.left = (nx * 100) + '%';
+    item.el.style.top  = (ny * 100) + '%';
+  }
   function selectionHasContent(p, x0, y0, x1, y1){
     const left = Math.min(x0,x1), right = Math.max(x0,x1);
     const top = Math.min(y0,y1), bottom = Math.max(y0,y1);
@@ -2668,6 +2626,20 @@ function textDimensions(s){
       if(tool!==TOOLS.SELECT || e.buttons) e.preventDefault();
       const {x,y}=getXY(e);
       move(x,y);
+
+      // ZDALNY KURSOR: wyślij swoją pozycję (znormalizowaną)
+      if (window.AliboardRealtime && typeof window.AliboardRealtime.sendCursor === "function") {
+        const rect = p.drawC.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          const nx = x / rect.width;
+          const ny = y / rect.height;
+          window.AliboardRealtime.sendCursor({
+            pageIndex: p.index != null ? p.index : PAGES.indexOf(p),
+            nx,
+            ny
+          });
+        }
+      }
     }, {passive:false});
     function handlePointerRelease(e){
       trackTouch(e, false);
@@ -3739,6 +3711,20 @@ function textDimensions(s){
       });
     })();
   })();
+
+  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny)
+  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === "function") {
+    window.AliboardRealtime.on("cursor", function(cursor){
+      try{
+        if (cursor && window.AliboardRealtime && cursor.id === window.AliboardRealtime.clientId) {
+          return;
+        }
+        upsertRemoteCursor(cursor);
+      }catch(err){
+        console.error("[Aliboard][cursor] błąd przy nakładaniu zdalnego kursora", err);
+      }
+    });
+  }
 
   // START
   if(!restoreLocal()){ createPage(false); }
