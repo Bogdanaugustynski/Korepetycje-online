@@ -256,6 +256,50 @@
   line-height:1;
 }
 
+/* Panel wyboru wielkości czcionki */
+.text-font-panel{
+  position:fixed;
+  top:-9999px;
+  left:-9999px;
+  background:#0f172a;
+  color:#fff;
+  padding:12px 14px;
+  border-radius:12px;
+  box-shadow:0 10px 40px rgba(0,0,0,0.35);
+  display:none;
+  z-index:5000;
+  min-width:180px;
+}
+.text-font-panel.open{ display:block; }
+.text-font-panel__header{
+  font-weight:700;
+  font-size:13px;
+  margin-bottom:6px;
+}
+.text-font-panel__value{
+  font-size:24px;
+  font-weight:800;
+  margin-bottom:8px;
+}
+.text-font-panel__actions{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.text-font-panel__actions button{
+  flex:1;
+  border:1px solid rgba(255,255,255,0.2);
+  background:rgba(255,255,255,0.08);
+  color:#fff;
+  border-radius:10px;
+  padding:6px 0;
+  font-weight:700;
+  cursor:pointer;
+}
+.text-font-panel__range{
+  width:100%;
+}
+
 /* ciaśniejszy pasek narzędzi na telefonie */
 @media (max-width: 900px){
   .toolrow{
