@@ -119,28 +119,38 @@
   .page .grid, .page .overlay{ pointer-events:none; }
   .page .board{ touch-action:none; } /* blok gestów przy rysowaniu */
 
-  /* ZDALNE KURSORY (CRDT) */
+  /* ZDALNE KURSORY (CRDT) – kropka dokładnie w miejscu rysowania */
   .remote-cursor{
     position:absolute;
     z-index:30;
     pointer-events:none;
-    transform:translate(-50%,-50%);
+    /* UWAGA: bez translate na kontenerze – kotwica = punkt rysowania */
+    width:0;
+    height:0;
     font-size:11px;
     font-weight:600;
-    white-space:nowrap;
   }
+
   .remote-cursor-dot{
+    position:absolute;
+    left:0;
+    top:0;
     width:10px;
     height:10px;
     border-radius:999px;
-    margin-right:4px;
-    display:inline-block;
+    transform:translate(-50%,-50%);  /* centrum kropki = punkt rysowania */
+    background:#3b82f6;              /* kolor nadpisujemy w JS */
   }
+
   .remote-cursor-label{
+    position:absolute;
+    left:12px;        /* tekst trochę na prawo od kropki */
+    top:-20px;        /* lekko nad kropką */
     padding:2px 6px;
     border-radius:999px;
     background:rgba(15,23,42,.85);
     color:#fff;
+    white-space:nowrap;
   }
 
   /* edytor tekstu inline */
