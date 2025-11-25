@@ -668,9 +668,9 @@
 
 /* === ALIBOARD: menu grubości linii (neon) === */
   .line-width-menu {
-    position: absolute;
-    top: 55px;
-    left: 10px;
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
     background: rgba(20, 22, 30, 0.65);
     padding: 10px 12px;
     border-radius: 12px;
@@ -2851,6 +2851,9 @@ function textDimensions(s){
         ev.preventDefault();
         ev.stopPropagation();
         const isOpen = lineWidthMenu.classList.contains('open');
+        const r = lineWidthBtn.getBoundingClientRect();
+        lineWidthMenu.style.left = `${r.left}px`;
+        lineWidthMenu.style.top = `${r.bottom + 6}px`;
         lineWidthMenu.classList.toggle('open', !isOpen);
       });
 
