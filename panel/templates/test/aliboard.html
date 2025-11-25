@@ -3712,11 +3712,17 @@ function textDimensions(s){
     })();
   })();
 
-  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny)
-  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === "function") {
-    window.AliboardRealtime.on("cursor", function(cursor){
+  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
+  (function attachCursorListener(){
+    const rt = window.AliboardRealtime;
+    if(!rt || typeof rt.on !== 'function'){
+      setTimeout(attachCursorListener, 600);
+      return;
+    }
+    if (attachCursorListener._attached) return;
+    rt.on("cursor", function(cursor){
       try{
-        if (cursor && window.AliboardRealtime && cursor.id === window.AliboardRealtime.clientId) {
+        if (cursor && cursor.id === rt.clientId) {
           return;
         }
         upsertRemoteCursor(cursor);
@@ -3724,7 +3730,8 @@ function textDimensions(s){
         console.error("[Aliboard][cursor] błąd przy nakładaniu zdalnego kursora", err);
       }
     });
-  }
+    attachCursorListener._attached = true;
+  })();
 
   // START
   if(!restoreLocal()){ createPage(false); }
