@@ -867,7 +867,9 @@
   <!-- PRAWA: MENU -->
   <div class="right">
     <div class="menu-wrap">
-      <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown">☰ Menu</button>
+      <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown" title="Menu">
+        <img src="{% static 'panel/img/icons/menu_ai.png' %}" class="icon-img" alt="Menu">
+      </button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
           <a href="{% url 'aliboard_new_room' %}" target="_blank" class="drop-item primary btn-aliboard" id="openBoardBtn">
@@ -3110,12 +3112,13 @@ function textDimensions(s){
     const c = document.createElement('canvas'); c.width=viewport.width; c.height=viewport.height;
     const cctx = c.getContext('2d'); await page.render({canvasContext:cctx, viewport}).promise;
     const url = c.toDataURL('image/png');
-    const rect=p.el.getBoundingClientRect();
+    const targetPage = currentPage() || p;
+    const rect=targetPage.el.getBoundingClientRect();
     const ratio = Math.min(rect.width/c.width, rect.height/c.height);
     const theWidth = Math.max(120, c.width*ratio);
     const theHeight=Math.max(120, c.height*ratio);
     const x = (rect.width-theWidth)/2, y=(rect.height-theHeight)/2;
-    addImageFromSrc(url, theWidth, theHeight, x, y, {pdf:true,page:pageNum}, p);
+    addImageFromSrc(url, theWidth, theHeight, x, y, {pdf:true,page:pageNum}, targetPage);
     e.target.value='';
   });
 
