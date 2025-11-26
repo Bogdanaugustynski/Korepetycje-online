@@ -261,14 +261,13 @@
   position: fixed;
   top: -9999px;
   left: -9999px;
-  background: rgba(20, 22, 30, 0.65);
-  padding: 12px 14px;
-  border-radius: 12px;
+  background: #fff;
+  padding: 7px 8px;
+  border-radius: 7px;
   display: none;
   flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 4px 25px rgba(0, 150, 255, 0.25);
-  backdrop-filter: blur(10px);
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   z-index: 5000;
 }
 .font-size-menu.open{
@@ -276,10 +275,10 @@
 }
 
 .font-option {
-  width: 65px;
-  height: 45px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  width: 39px;
+  height: 27px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.04);
   cursor: pointer;
   display: flex;
   justify-content: center;
@@ -288,20 +287,20 @@
 }
 
 .font-option:hover {
-  background: rgba(0, 150, 255, 0.15);
-  box-shadow: 0 0 12px rgba(0, 150, 255, 0.35);
+  background: rgba(0, 150, 255, 0.12);
+  box-shadow: 0 0 10px rgba(0, 150, 255, 0.2);
 }
 
 .font-option.active {
-  background: rgba(0, 150, 255, 0.35);
-  box-shadow: 0 0 15px rgba(0, 150, 255, 0.55);
+  background: rgba(0, 150, 255, 0.2);
+  box-shadow: 0 0 12px rgba(0, 150, 255, 0.35);
 }
 
 .font-preview {
-  color: #0cbcff;
+  color: #0b74ff;
   font-family: "Arial", sans-serif;
   font-weight: 600;
-  text-shadow: 0 0 6px rgba(0, 190, 255, 0.65);
+  text-shadow: none;
   user-select: none;
 }
 
@@ -356,6 +355,9 @@
   right:16px;
   bottom:16px;
   z-index:9999;
+}
+.aliboard-chat-root.desktop-offset{
+  bottom:72px;
 }
 .aliboard-chat-bubble{
   display:inline-flex;
@@ -676,8 +678,17 @@
   }
 
   .menu-btn{
-    padding: 6px 10px;
-    font-size: 13px;
+    width:46px;
+    height:46px;
+    padding:0;
+    font-size:0;
+    border:none;
+    background:transparent;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+    box-shadow:none;
   }
 
   /* pasek narzędzi POD logo, może zejść w 2 rzędy */
@@ -720,12 +731,12 @@
     position: fixed;
     top: -9999px;
     left: -9999px;
-    background: rgba(20, 22, 30, 0.65);
-    padding: 10px 12px;
-    border-radius: 12px;
+    background: #fff;
+    padding: 6px 7px;
+    border-radius: 8px;
     display: none;
     flex-direction: column;
-    gap: 12px;
+    gap: 7px;
     box-shadow: 0 4px 25px rgba(0, 150, 255, 0.25);
     backdrop-filter: blur(10px);
     z-index: 5000;
@@ -736,9 +747,9 @@
   }
 
 .line-option {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   display: flex;
@@ -758,9 +769,9 @@
 }
 
 .line-preview {
-  width: 24px;
+  width: 14px;
   background: #0cbcff;
-  border-radius: 4px;
+  border-radius: 3px;
   box-shadow: 0 0 6px #0cbcff;
 }
 
@@ -867,7 +878,7 @@
   <!-- PRAWA: MENU -->
   <div class="right">
     <div class="menu-wrap">
-      <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown" title="Menu">
+      <button class="btn menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown" title="Menu">
         <img src="{% static 'img/icons/menu_ai.png' %}" class="icon-img" alt="Menu">
       </button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
@@ -3340,9 +3351,15 @@ function textDimensions(s){
     const pingBtn = document.getElementById('aliboard-chat-ping');
     const micBtn = document.getElementById('aliboard-chat-mic');
     const callBtn = document.getElementById('aliboard-chat-call');
+    const bubbleRoot = bubble ? bubble.closest('.aliboard-chat-root') : null;
 
     if(!bubble || !panel || !form || !input || !messagesEl){
       return;
+    }
+
+    // Na desktopie podnieś dymek czatu, by nie nachodził na room_id
+    if(bubbleRoot && window.matchMedia('(pointer:fine)').matches){
+      bubbleRoot.classList.add('desktop-offset');
     }
 
     window.aliboardChat = window.aliboardChat || {};
@@ -3842,14 +3859,14 @@ function textDimensions(s){
 
       let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
 
-      bubble.style.position = 'fixed';
-      bubble.style.right = bubble.style.right || '16px';
-      bubble.style.bottom = bubble.style.bottom || '16px';
+    bubble.style.position = 'fixed';
+    bubble.style.right = bubble.style.right || '16px';
+    bubble.style.bottom = bubble.style.bottom || '16px';
 
-      const onMove = (e)=>{
-        if(!dragging) return;
-        const x = e.clientX ?? (e.touches && e.touches[0]?.clientX);
-        const y = e.clientY ?? (e.touches && e.touches[0]?.clientY);
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const x = e.clientX ?? (e.touches && e.touches[0]?.clientX);
+      const y = e.clientY ?? (e.touches && e.touches[0]?.clientY);
         if(x==null || y==null) return;
         const dx = x - startX;
         const dy = y - startY;
