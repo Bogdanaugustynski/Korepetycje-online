@@ -314,134 +314,121 @@
   }
 }
 
-/* === FIGURY � nowe, �adniejsze okienko === */
-.figure-palette{
-  position:absolute;
-  z-index:26;
-  background:#ffffff;
-  border:1px solid var(--line);
-  border-radius:14px;
-  box-shadow:0 18px 45px rgba(11,116,255,.20);
-  padding:10px;
-  display:none;
-  min-width:210px;
-}
-
-.figure-palette.open{ display:block; }
-
-.figure-palette-grid{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:8px;
-}
-
-.figure-palette .shape-btn{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:58px;
-  height:46px;
-  border-radius:12px;
-  border:1px solid rgba(148,163,184,0.4);
-  background:linear-gradient(135deg,#f9fbff,#eef3ff);
-  cursor:pointer;
-  padding:0;
-  transition:
-    border-color .15s ease-out,
-    box-shadow .15s ease-out,
-    transform .06s ease-out,
-    background .15s ease-out;
-}
-
-.figure-palette .shape-btn:hover{
-  border-color:var(--brand);
-  box-shadow:0 10px 26px rgba(15,23,42,0.18);
-  transform:translateY(-1px);
-}
-
-.figure-palette .shape-btn.is-active{
-  border-color:var(--brand);
-  box-shadow:0 0 0 1px rgba(11,116,255,0.25);
-}
-
-.figure-palette .shape-icon{
-  position:relative;
-  width:26px;
-  height:26px;
-}
-
-/* Prostok�t */
-.figure-palette .shape-icon--rect{
-  border-radius:6px;
-  border:2.5px solid #0f172a;
-  background:rgba(15,23,42,0.02);
-}
-
-/* Tr�jk�t r�wnoramienny */
-.figure-palette .shape-icon--triangle{
-  width:0;
-  height:0;
-  border-left:13px solid transparent;
-  border-right:13px solid transparent;
-  border-bottom:24px solid #0f172a;
-  transform:translateY(2px);
-}
-
-/* Tr�jk�t prostok�tny */
-.figure-palette .shape-icon--right{
-  width:0;
-  height:0;
-  border-bottom:24px solid #0f172a;
-  border-right:24px solid transparent;
-  transform:translateY(2px);
-}
-
-/* Sze�ciok�t */
-.figure-palette .shape-icon--hex{
-  width:26px;
-  height:15px;
-  background:#0f172a;
-  position:relative;
-}
-.figure-palette .shape-icon--hex::before,
-.figure-palette .shape-icon--hex::after{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  margin:auto;
-  border-left:13px solid transparent;
-  border-right:13px solid transparent;
-}
-.figure-palette .shape-icon--hex::before{
-  top:-9px;
-  border-bottom:9px solid #0f172a;
-}
-.figure-palette .shape-icon--hex::after{
-  bottom:-9px;
-  border-top:9px solid #0f172a;
-}
-
-/* Ko�o */
-.figure-palette .shape-icon--circle{
-  border-radius:999px;
-  border:2.5px solid #0f172a;
-  background:rgba(15,23,42,0.02);
-}
-
-/* drobne �ci�ni�cie na telefonie */
-@media (max-width:900px){
+    /* === FIGURY - nowe, pomniejszone okienko === */
   .figure-palette{
-    transform:translateY(6px);
-    padding:8px;
+    position:absolute;
+    z-index:26;
+    background:#ffffff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:0 14px 32px rgba(11,116,255,.18);
+    padding:6px;
+    display:none;
+    min-width:126px;
+  }
+  .figure-palette.open{ display:block; }
+  .figure-palette-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:5px;
   }
   .figure-palette .shape-btn{
-    width:52px;
-    height:42px;
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:35px;
+    height:28px;
+    border-radius:7px;
+    border:1px solid rgba(148,163,184,0.4);
+    background:linear-gradient(135deg,#f9fbff,#eef3ff);
+    cursor:pointer;
+    padding:0;
+    transition:
+      border-color .15s ease-out,
+      box-shadow .15s ease-out,
+      transform .06s ease-out,
+      background .15s ease-out;
   }
-}
-
+  .figure-palette .shape-btn:hover{
+    border-color:var(--brand);
+    box-shadow:0 8px 18px rgba(15,23,42,0.16);
+    transform:translateY(-1px);
+  }
+  .figure-palette .shape-btn.is-active{
+    border-color:var(--brand);
+    box-shadow:0 0 0 1px rgba(11,116,255,0.25);
+  }
+  .figure-palette .shape-icon{
+    position:relative;
+    width:16px;
+    height:16px;
+  }
+  /* Prostokat */
+  .figure-palette .shape-icon--rect{
+    border-radius:4px;
+    border:1.5px solid #0f172a;
+    background:rgba(15,23,42,0.02);
+  }
+  /* Trojkat rownoramienny */
+  .figure-palette .shape-icon--triangle{
+    width:0;
+    height:0;
+    border-left:8px solid transparent;
+    border-right:8px solid transparent;
+    border-bottom:14px solid #0f172a;
+    transform:translateY(1px);
+  }
+  /* Trojkat prostokatny */
+  .figure-palette .shape-icon--right{
+    width:0;
+    height:0;
+    border-bottom:14px solid #0f172a;
+    border-right:14px solid transparent;
+    transform:translateY(1px);
+  }
+  /* Szesciokat */
+  .figure-palette .shape-icon--hex{
+    width:16px;
+    height:9px;
+    background:#0f172a;
+    position:relative;
+  }
+  .figure-palette .shape-icon--hex::before,
+  .figure-palette .shape-icon--hex::after{
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    margin:auto;
+    border-left:8px solid transparent;
+    border-right:8px solid transparent;
+  }
+  .figure-palette .shape-icon--hex::before{
+    top:-5px;
+    border-bottom:5px solid #0f172a;
+  }
+  .figure-palette .shape-icon--hex::after{
+    bottom:-5px;
+    border-top:5px solid #0f172a;
+  }
+  /* Kolo */
+  .figure-palette .shape-icon--circle{
+    border-radius:999px;
+    border:1.5px solid #0f172a;
+    background:rgba(15,23,42,0.02);
+  }
+  /* drobne scisniecie na telefonie */
+  @media (max-width:900px){
+    .figure-palette{
+      transform:translateY(6px);
+      padding:5px;
+    }
+    .figure-palette .shape-btn{
+      width:31px;
+      height:25px;
+    }
+  }
 /* === FIX: przywr�cenie widoczno�ci ikon narz�dzi Aliboard === */
 .toolrow .btn[data-tool]{
   font-size:18px !important;
@@ -4088,4 +4075,5 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
+
 
