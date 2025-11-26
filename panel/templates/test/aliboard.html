@@ -61,7 +61,19 @@
   .toolrow .btn[data-tool="figure"]::before{ content:""; }
   .right{margin-left:auto; display:flex; align-items:flex-start;}
   .menu-wrap{position:relative}
-  .menu-btn{display:inline-flex; align-items:center; gap:8px}
+  .menu-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+    width:46px;
+    height:46px;
+    padding:0;
+    border:none;
+    background:transparent;
+    box-shadow:none;
+    border-radius:999px;
+  }
     .dropdown{
       position:absolute; right:0; top:calc(100% + 8px); min-width:240px;
       background:#fff; border:1px solid var(--line); border-radius:12px;
@@ -786,7 +798,7 @@
     justify-content:center;
     gap:0;
     box-shadow:none !important;
-    border-radius:12px !important;
+    border-radius:999px !important;
   }
   .menu-btn .icon-img{ width:32px; height:32px; }
 
