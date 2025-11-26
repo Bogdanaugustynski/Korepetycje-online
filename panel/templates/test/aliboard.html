@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard 2.5 — PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 � PolubiszTo.pl (test)</title>
 
 <!-- PDF render -->
 <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
@@ -51,14 +51,14 @@
     line-height:1;
     display:inline-block;
   }
-  .toolrow .btn[data-tool="select"]::before{ content:"🖱️"; }
-  .toolrow .btn[data-tool="pen"]::before{ content:"✏️"; }
-  .toolrow .btn[data-tool="line"]::before{ content:"📏"; }
-  .toolrow .btn[data-tool="eraser"]::before{ content:"🧽"; }
+  .toolrow .btn[data-tool="select"]::before{ content:"???"; }
+  .toolrow .btn[data-tool="pen"]::before{ content:"??"; }
+  .toolrow .btn[data-tool="line"]::before{ content:"??"; }
+  .toolrow .btn[data-tool="eraser"]::before{ content:"??"; }
   .toolrow .btn[data-tool="text"]{font-size:16px;}
   .toolrow .btn[data-tool="text"]::before{ content:"T"; font-size:16px; font-weight:700; }
-  .toolrow .btn[data-tool="crop"]::before{ content:"✂️"; }
-  .toolrow .btn[data-tool="figure"]::before{ content:"⬛"; }
+  .toolrow .btn[data-tool="crop"]::before{ content:"??"; }
+  .toolrow .btn[data-tool="figure"]::before{ content:"?"; }
   .right{margin-left:auto; display:flex; align-items:flex-start;}
   .menu-wrap{position:relative}
   .menu-btn{display:inline-flex; align-items:center; gap:8px}
@@ -117,14 +117,14 @@
   }
   .page canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .page .grid, .page .overlay{ pointer-events:none; }
-  .page .board{ touch-action:none; } /* blok gestów przy rysowaniu */
+  .page .board{ touch-action:none; } /* blok gest�w przy rysowaniu */
 
-  /* ZDALNE KURSORY (CRDT) – kropka dokładnie w miejscu rysowania */
+  /* ZDALNE KURSORY (CRDT) � kropka dok�adnie w miejscu rysowania */
   .remote-cursor{
     position:absolute;
     z-index:30;
     pointer-events:none;
-    /* UWAGA: bez translate na kontenerze – kotwica = punkt rysowania */
+    /* UWAGA: bez translate na kontenerze � kotwica = punkt rysowania */
     width:0;
     height:0;
     font-size:11px;
@@ -144,8 +144,8 @@
 
   .remote-cursor-label{
     position:absolute;
-    left:12px;        /* tekst trochę na prawo od kropki */
-    top:-20px;        /* lekko nad kropką */
+    left:12px;        /* tekst troch� na prawo od kropki */
+    top:-20px;        /* lekko nad kropk� */
     padding:2px 6px;
     border-radius:999px;
     background:rgba(15,23,42,.85);
@@ -215,7 +215,7 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* === PATCH: delikatne, małe narzędzia bez “grubej ramki” === */
+  /* === PATCH: delikatne, ma�e narz�dzia bez �grubej ramki� === */
 .toolrow .btn,
 .toolrow label.btn{
   border:0 !important;
@@ -249,14 +249,14 @@
 .text-font-btn{ display:none; }
 .text-font-btn.is-visible{ display:inline-flex; }
 
-/* === ALIBOARD: Ikona wielkości czcionki (estetyczna) === */
+/* === ALIBOARD: Ikona wielko�ci czcionki (estetyczna) === */
 #textFontBtn{
   font-size:20px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* MENU WIELKOŚCI CZCIONKI (AI Neon Premium) */
+/* MENU WIELKO�CI CZCIONKI (AI Neon Premium) */
 .font-size-menu {
   position: fixed;
   top: -9999px;
@@ -304,7 +304,7 @@
   user-select: none;
 }
 
-/* ciaśniejszy pasek narzędzi na telefonie */
+/* cia�niejszy pasek narz�dzi na telefonie */
 @media (max-width: 900px){
   .toolrow{
     gap:4px;
@@ -314,25 +314,135 @@
   }
 }
 
-/* Mini-paleta figur */
+/* === FIGURY � nowe, �adniejsze okienko === */
 .figure-palette{
-  position:absolute; z-index:26; background:#fff; border:1px solid var(--line);
-  border-radius:12px; box-shadow:0 12px 40px rgba(11,116,255,.12); padding:8px; display:none;
-}
-.figure-palette.open{ display:block; }
-.figure-palette .shape-btn{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:44px; height:36px; margin:4px; border:1px solid var(--line);
-  border-radius:10px; background:#fff; cursor:pointer; font-weight:700;
-}
-.figure-palette .shape-btn.is-active{
-  outline:2px solid var(--brand); outline-offset:2px;
-}
-@media (max-width:900px){
-  .figure-palette{ transform:translateY(6px); }
+  position:absolute;
+  z-index:26;
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:0 18px 45px rgba(11,116,255,.20);
+  padding:10px;
+  display:none;
+  min-width:210px;
 }
 
-/* === FIX: przywrócenie widoczności ikon narzędzi Aliboard === */
+.figure-palette.open{ display:block; }
+
+.figure-palette-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
+}
+
+.figure-palette .shape-btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:58px;
+  height:46px;
+  border-radius:12px;
+  border:1px solid rgba(148,163,184,0.4);
+  background:linear-gradient(135deg,#f9fbff,#eef3ff);
+  cursor:pointer;
+  padding:0;
+  transition:
+    border-color .15s ease-out,
+    box-shadow .15s ease-out,
+    transform .06s ease-out,
+    background .15s ease-out;
+}
+
+.figure-palette .shape-btn:hover{
+  border-color:var(--brand);
+  box-shadow:0 10px 26px rgba(15,23,42,0.18);
+  transform:translateY(-1px);
+}
+
+.figure-palette .shape-btn.is-active{
+  border-color:var(--brand);
+  box-shadow:0 0 0 1px rgba(11,116,255,0.25);
+}
+
+.figure-palette .shape-icon{
+  position:relative;
+  width:26px;
+  height:26px;
+}
+
+/* Prostok�t */
+.figure-palette .shape-icon--rect{
+  border-radius:6px;
+  border:2.5px solid #0f172a;
+  background:rgba(15,23,42,0.02);
+}
+
+/* Tr�jk�t r�wnoramienny */
+.figure-palette .shape-icon--triangle{
+  width:0;
+  height:0;
+  border-left:13px solid transparent;
+  border-right:13px solid transparent;
+  border-bottom:24px solid #0f172a;
+  transform:translateY(2px);
+}
+
+/* Tr�jk�t prostok�tny */
+.figure-palette .shape-icon--right{
+  width:0;
+  height:0;
+  border-bottom:24px solid #0f172a;
+  border-right:24px solid transparent;
+  transform:translateY(2px);
+}
+
+/* Sze�ciok�t */
+.figure-palette .shape-icon--hex{
+  width:26px;
+  height:15px;
+  background:#0f172a;
+  position:relative;
+}
+.figure-palette .shape-icon--hex::before,
+.figure-palette .shape-icon--hex::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  margin:auto;
+  border-left:13px solid transparent;
+  border-right:13px solid transparent;
+}
+.figure-palette .shape-icon--hex::before{
+  top:-9px;
+  border-bottom:9px solid #0f172a;
+}
+.figure-palette .shape-icon--hex::after{
+  bottom:-9px;
+  border-top:9px solid #0f172a;
+}
+
+/* Ko�o */
+.figure-palette .shape-icon--circle{
+  border-radius:999px;
+  border:2.5px solid #0f172a;
+  background:rgba(15,23,42,0.02);
+}
+
+/* drobne �ci�ni�cie na telefonie */
+@media (max-width:900px){
+  .figure-palette{
+    transform:translateY(6px);
+    padding:8px;
+  }
+  .figure-palette .shape-btn{
+    width:52px;
+    height:42px;
+  }
+}
+
+/* === FIX: przywr�cenie widoczno�ci ikon narz�dzi Aliboard === */
 .toolrow .btn[data-tool]{
   font-size:18px !important;
   line-height:1;
@@ -341,7 +451,7 @@
   content:none !important;
 }
 
-/* 🔹 Aliboard Chat – bazowe zmienne */
+/* ?? Aliboard Chat � bazowe zmienne */
 :root{
   --aliboard-chat-bg: rgba(9, 18, 40, 0.96);
   --aliboard-chat-accent: #0b74ff;
@@ -633,7 +743,7 @@
   }
 }
 
-/* === ALIBOARD: wyraźne podświetlenie aktywnego narzędzia === */
+/* === ALIBOARD: wyra�ne pod�wietlenie aktywnego narz�dzia === */
 .toolrow .btn[data-tool].is-active{
   background: rgba(11,116,255,0.14) !important;
   color: #0b1320 !important;
@@ -642,7 +752,7 @@
   box-shadow: 0 0 0 2px var(--brand);
 }
 
-/* nieaktywne ikony delikatnie przygaszone, żeby aktywne się wyróżniało */
+/* nieaktywne ikony delikatnie przygaszone, �eby aktywne si� wyr��nia�o */
 .toolrow .btn[data-tool]:not(.is-active){
   opacity: 0.8;
 }
@@ -650,10 +760,10 @@
   opacity: 1;
 }
 
-/* === ALIBOARD: układ nagłówka + narzędzi na telefonie === */
+/* === ALIBOARD: uk�ad nag��wka + narz�dzi na telefonie === */
 @media (max-width: 768px){
 
-  /* nagłówek nadal w jednym rzędzie:
+  /* nag��wek nadal w jednym rz�dzie:
      [logo+Aliboard] po lewej, [Menu] po prawej */
   header{
     flex-direction: row;
@@ -661,13 +771,13 @@
     gap: 8px;
   }
 
-  /* lewa część (logo + pasek narzędzi) może się ścisnąć */
+  /* lewa cz��� (logo + pasek narz�dzi) mo�e si� �cisn�� */
   .left{
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  /* prawa część – menu przy logo po prawej */
+  /* prawa cz��� � menu przy logo po prawej */
   .right{
     margin-left: 8px;
     flex: 0 0 auto;
@@ -693,7 +803,7 @@
   }
   .menu-btn .icon-img{ width:32px; height:32px; }
 
-  /* pasek narzędzi POD logo, może zejść w 2 rzędy */
+  /* pasek narz�dzi POD logo, mo�e zej�� w 2 rz�dy */
   .toolrow{
     flex-wrap: wrap;
     overflow: visible !important;
@@ -702,33 +812,33 @@
     gap: 4px;
   }
 
-  /* wszystkie narzędzia mają być widoczne – wyłączamy „⋯” na telefonie */
+  /* wszystkie narz�dzia maj� by� widoczne � wy��czamy �?� na telefonie */
   #toolsMoreBtn,
   #toolsMorePanel{
     display: none !important;
   }
 
-  /* ciaśniejsze przyciski, żeby wszystko się mieściło */
+  /* cia�niejsze przyciski, �eby wszystko si� mie�ci�o */
   .toolrow .btn,
   .toolrow label.btn{
     padding: 4px 6px;
     font-size: 16px;
   }
 
-  /* select z grubością – trochę węższy */
+  /* select z grubo�ci� � troch� w��szy */
   .toolrow label.btn select{
     max-width: 72px;
   }
 }
 
-/* === ALIBOARD: Ikona przycisku Usuń (zaznaczony element) === */
+/* === ALIBOARD: Ikona przycisku Usu� (zaznaczony element) === */
 #deleteSelection{
   font-size:18px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* === ALIBOARD: menu grubości linii (neon) === */
+/* === ALIBOARD: menu grubo�ci linii (neon) === */
   .line-width-menu {
     position: fixed;
     top: -9999px;
@@ -777,7 +887,7 @@
   box-shadow: 0 0 6px #0cbcff;
 }
 
-/* Ikony obrazkowe w pasku narzędzi */
+/* Ikony obrazkowe w pasku narz�dzi */
 .icon-img{
   width:26px;
   height:26px;
@@ -794,16 +904,16 @@
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
 <header>
-  <!-- LEWA: brand + narzędzia -->
+  <!-- LEWA: brand + narz�dzia -->
   <div class="left">
     <div class="brand">
       <div class="mark">
-        <!-- Sama głowa loga -->
+        <!-- Sama g�owa loga -->
         <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl" />
       </div>
       <div>
         <div style="font-weight:800">Aliboard</div>
-        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
+        <div class="state" id="state">Tryb: Kursor � 3px � #0b74ff</div>
       </div>
     </div>
 
@@ -811,8 +921,8 @@
       <button class="btn" type="button" data-tool="select" title="Kursor (V)">
         <img src="{% static 'img/icons/cursor_ai.png' %}" class="icon-img" alt="Kursor">
       </button>
-      <button class="btn" type="button" data-tool="pen"    title="Ołówek (P)">
-        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="Ołówek">
+      <button class="btn" type="button" data-tool="pen"    title="O��wek (P)">
+        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="O��wek">
       </button>
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">
         <img src="{% static 'img/icons/line_ai.png' %}" class="icon-img" alt="Linia">
@@ -823,8 +933,8 @@
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">
         <img src="{% static 'img/icons/text_ai.png' %}" class="icon-img" alt="Tekst">
       </button>
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">
-        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkość czcionki">
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielko�� czcionki" data-overflow="1">
+        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielko�� czcionki">
       </button>
       <button class="btn" type="button" data-tool="crop"   title="Kopiuj (C)">
         <img src="{% static 'img/icons/copy_ai.png' %}" class="icon-img" alt="Kopiuj">
@@ -837,8 +947,8 @@
         <img src="{% static 'img/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
         <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
-      <button class="btn" type="button" id="lineWidthBtn" title="Grubość linii">
-        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubość linii">
+      <button class="btn" type="button" id="lineWidthBtn" title="Grubo�� linii">
+        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubo�� linii">
       </button>
       <div class="line-width-menu" id="lineWidthMenu">
         <div class="line-option" data-size="1">
@@ -871,8 +981,8 @@
         <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>
-        ❌
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usu� zaznaczony obiekt" disabled>
+        ?
       </button>
     </div>
   </div>
@@ -895,9 +1005,9 @@
         <div class="drop-group">
           <button class="drop-item" type="button" id="saveToggle">Zapisz</button>
           <div class="drop-row" id="saveRow" style="display:none">
-            <button class="drop-item" type="button" id="savePng">💾 PNG</button>
-            <button class="drop-item" type="button" id="saveJpg">🖼️ JPG</button>
-            <button class="drop-item" type="button" id="savePdf">📄 PDF</button>
+            <button class="drop-item" type="button" id="savePng">?? PNG</button>
+            <button class="drop-item" type="button" id="saveJpg">??? JPG</button>
+            <button class="drop-item" type="button" id="savePdf">?? PDF</button>
           </div>
         </div>
         <div class="drop-group">
@@ -905,16 +1015,16 @@
           <button class="drop-item" type="button" id="gridToggle" style="display:none">Siatka</button>
           <div class="drop-row" id="templatesRow" style="display:none">
             <button class="drop-item" type="button" data-grid="0">Brak</button>
-            <button class="drop-item" type="button" data-grid="16">Mała</button>
-            <button class="drop-item" type="button" data-grid="24">Średnia</button>
-            <button class="drop-item" type="button" data-grid="32">Duża</button>
+            <button class="drop-item" type="button" data-grid="16">Ma�a</button>
+            <button class="drop-item" type="button" data-grid="24">�rednia</button>
+            <button class="drop-item" type="button" data-grid="32">Du�a</button>
             <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
           <div class="drop-title">Nowa tablica</div>
           <div class="drop-row">
-            <button class="drop-item" type="button" id="addPage">➕ Dodaj kartkę A4</button>
+            <button class="drop-item" type="button" id="addPage">? Dodaj kartk� A4</button>
           </div>
         </div>
       </div>
@@ -926,35 +1036,35 @@
   <div class="pages" id="pages"></div>
 </div>
 
-<!-- 🔹 Aliboard Chat Module -->
+<!-- ?? Aliboard Chat Module -->
 <div class="aliboard-chat-root">
-  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otw�rz czat">
     <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
   </button>
 
   <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
     <header class="aliboard-chat-header">
       <div class="aliboard-chat-title">
-        <span class="aliboard-chat-title-main">Czat zajęć</span>
+        <span class="aliboard-chat-title-main">Czat zaj��</span>
         <span class="aliboard-chat-title-sub">Aliboard</span>
       </div>
       <div class="aliboard-chat-actions">
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
-          🔔
+          ??
         </button>
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
-          📞
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa g�osowa">
+          ??
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
-          🎙️
+          ???
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
-          ✕
+          ?
         </button>
       </div>
     </header>
 
-    <!-- 🔹 Audio remote dla WebRTC -->
+    <!-- ?? Audio remote dla WebRTC -->
     <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
 
     <div class="aliboard-chat-messages" id="aliboard-chat-messages" aria-live="polite"></div>
@@ -964,40 +1074,40 @@
         type="text"
         id="aliboard-chat-input"
         class="aliboard-chat-input"
-        placeholder="Napisz wiadomość…"
+        placeholder="Napisz wiadomo���"
         maxlength="500"
       />
       <button type="submit" class="aliboard-chat-send-btn">
-        Wyślij
+        Wy�lij
       </button>
     </form>
   </section>
 </div>
-<!-- 🔹 koniec: Aliboard Chat Module -->
+<!-- ?? koniec: Aliboard Chat Module -->
 
 <div class="footer">
-  <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
+  <a href="{% url 'pokoj_testowy' %}" class="btn">� Powr�t do Pokoju Testowego</a>
   <span class="btn" id="roomInfo" title="Room ID z query string">room_id: {{ room_id|default:'local-test' }}</span>
 </div>
 
 <div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
-    <h3 id="openBoardTitle">Otwórz nową tablicę</h3>
-    <p>Utwórz pustą tablicę. Aktualne karty zostaną zamknięte.</p>
+    <h3 id="openBoardTitle">Otw�rz now� tablic�</h3>
+    <p>Utw�rz pust� tablic�. Aktualne karty zostan� zamkni�te.</p>
     <label>
       Nazwa tablicy (opcjonalnie)
       <input type="text" id="openBoardName" placeholder="np. Matematyka - lekcja 3">
     </label>
     <div class="modal-actions">
       <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
-      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utw�rz</button>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
-  /* === PATCH: wstrzyknięcie delikatnego CSS dla paska narzędzi (bez kapsli) === */
+  /* === PATCH: wstrzykni�cie delikatnego CSS dla paska narz�dzi (bez kapsli) === */
   const __css = `
   .toolrow .btn, .toolrow label.btn{border:0 !important;background:transparent !important;box-shadow:none !important}
   .toolrow .btn.is-active{background:transparent !important;color:var(--ink) !important;outline:2px solid var(--brand);outline-offset:2px;border-radius:10px}
@@ -1020,16 +1130,28 @@
   const TEXT_FONT_MAX = 96;
   const TEXT_FONT_STEP = 2;
 
-  function ensureFigurePalette(){
+    function ensureFigurePalette(){
     if(figurePalette) return;
     figurePalette = document.createElement('div');
     figurePalette.className = 'figure-palette';
     figurePalette.innerHTML = `
-      <button class="shape-btn" data-shape="rect" title="Kwadrat / Prostokąt">▭</button>
-      <button class="shape-btn" data-shape="tri_iso" title="Trójkąt (równoramienny)">▵</button>
-      <button class="shape-btn" data-shape="tri_right" title="Trójkąt prostokątny">◺</button>
-      <button class="shape-btn" data-shape="hex" title="Sześciokąt">⬡</button>
-      <button class="shape-btn" data-shape="circle" title="Koło">◯</button>
+      <div class="figure-palette-grid">
+        <button class="shape-btn" type="button" data-shape="rect" title="Prostokąt">
+          <div class="shape-icon shape-icon--rect"></div>
+        </button>
+        <button class="shape-btn" type="button" data-shape="tri_iso" title="Trójkąt równoramienny">
+          <div class="shape-icon shape-icon--triangle"></div>
+        </button>
+        <button class="shape-btn" type="button" data-shape="tri_right" title="Trójkąt prostokątny">
+          <div class="shape-icon shape-icon--right"></div>
+        </button>
+        <button class="shape-btn" type="button" data-shape="hex" title="Sześciokąt">
+          <div class="shape-icon shape-icon--hex"></div>
+        </button>
+        <button class="shape-btn" type="button" data-shape="circle" title="Koło">
+          <div class="shape-icon shape-icon--circle"></div>
+        </button>
+      </div>
     `;
     document.body.appendChild(figurePalette);
     updateFigurePaletteSelection();
@@ -1518,15 +1640,15 @@
 
   initRealtimeBridge();
 
-  // ---- USTALENIE roomId (wspólne z realtime) ----
+  // ---- USTALENIE roomId (wsp�lne z realtime) ----
   let roomId = null;
 
-  // 1) jeśli już ktoś ustawił globalnie (np. inny skrypt / Django):
+  // 1) je�li ju� kto� ustawi� globalnie (np. inny skrypt / Django):
   if (window.ALIBOARD_ROOM_ID) {
     roomId = window.ALIBOARD_ROOM_ID;
   }
 
-  // 2) jeśli nie ma – spróbuj odczytać z data-room-id na kontenerze tablicy
+  // 2) je�li nie ma � spr�buj odczyta� z data-room-id na kontenerze tablicy
   if (!roomId) {
     const rootEl =
       document.getElementById('aliboard-root') ||
@@ -1536,7 +1658,7 @@
     }
   }
 
-  // 3) jeśli nadal brak – spróbuj z query stringa (?room= / ?room_id=)
+  // 3) je�li nadal brak � spr�buj z query stringa (?room= / ?room_id=)
   if (!roomId) {
     const qs = new URLSearchParams(location.search);
     roomId = qs.get('room') || qs.get('room_id') || 'local-test';
@@ -1627,7 +1749,7 @@
     p.g.restore();
   }
 
-  // --- SYNC GRID: handler dla realtime (wywoływany z AliboardRealtime) ---
+  // --- SYNC GRID: handler dla realtime (wywo�ywany z AliboardRealtime) ---
   window.aliboardApplyGridState = function(newGridState){
     const isObj = newGridState && typeof newGridState === 'object';
     const kind = isObj ? newGridState.kind : null;
@@ -2002,7 +2124,7 @@
     }
   }
 
-  /* ---------- GUMKA PODŚWIETLA ---------- */
+  /* ---------- GUMKA POD�WIETLA ---------- */
   function previewErase(pt, p){
     clearOverlay(p); if(p.state.selection) drawSelection(p);
     const eps = Math.max(6,size*2);
@@ -2085,7 +2207,7 @@
     ed.style.left = (r.left + x) + 'px';
     ed.style.top  = (r.top  + y) + 'px';
     ed.style.fontSize = Math.max(14, size*6) + 'px';
-    ed.placeholder='Wpisz tekst…';
+    ed.placeholder='Wpisz tekst�';
     document.body.appendChild(ed); ed.focus();
     ed.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); closeTextEditor(true,p,x,y); } if(e.key==='Escape'){ e.preventDefault(); closeTextEditor(false); }});
     ed.addEventListener('blur', ()=>{ closeTextEditor(true,p,x,y); });
@@ -2346,7 +2468,7 @@
       const dialog=document.createElement('div');
       dialog.className='crop-choice-dialog';
       const text=document.createElement('p');
-      text.textContent='Gdzie umieścić skopiowany fragment?';
+      text.textContent='Gdzie umie�ci� skopiowany fragment?';
       const actions=document.createElement('div');
       actions.className='crop-choice-actions';
       const btnBelow=document.createElement('button');
@@ -2398,7 +2520,7 @@
     }
     const toast=document.createElement('div');
     toast.className='crop-busy-toast';
-    toast.textContent='Poczekaj na zakończenie kopiowania...';
+    toast.textContent='Poczekaj na zako�czenie kopiowania...';
     document.body.appendChild(toast);
     requestAnimationFrame(()=> toast.classList.add('show'));
     cropBusyHintEl=toast;
@@ -2517,7 +2639,7 @@ function textDimensions(s){
     const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
     let multiPan=false;                // tryb dwupalczastego scrolla
-    let panCentroidY=null;             // poprzedni centroid dotyków (Y)
+    let panCentroidY=null;             // poprzedni centroid dotyk�w (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
     let panIdleTimer=null;
     const PAN_IDLE_MS = 350;
@@ -2764,7 +2886,7 @@ function textDimensions(s){
       const {x,y}=getXY(e);
       move(x,y);
 
-      // ZDALNY KURSOR: wyślij swoją pozycję (znormalizowaną)
+      // ZDALNY KURSOR: wy�lij swoj� pozycj� (znormalizowan�)
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendCursor === "function") {
         const rect = p.drawC.getBoundingClientRect();
         if (rect.width && rect.height) {
@@ -2812,10 +2934,10 @@ function textDimensions(s){
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden && multiPan){ endMultiPan('hidden'); } });
   }
 
-  /* ---------- UI OGÓLNY ---------- */
+  /* ---------- UI OG�LNY ---------- */
   function toolLabel(){
     return tool===TOOLS.SELECT?'Kursor':
-           tool===TOOLS.PEN?'Ołówek':
+           tool===TOOLS.PEN?'O��wek':
            tool===TOOLS.LINE?'Linia':
            tool===TOOLS.ERASER?'Gumka':
            tool===TOOLS.TEXT?'Tekst':
@@ -2835,10 +2957,10 @@ function textDimensions(s){
   }
   function updateState(){
     const shapeLabel = tool===TOOLS.FIGURE
-      ? ` • ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
+      ? ` � ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Tr�jk�t':currentShape==='tri_right'?'Tr�jk�t 90�':currentShape==='hex'?'Sze�ciok�t':'Ko�o'}`
       : '';
     const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
-    stateEl.textContent = `Tryb: ${toolLabel()} • ${sizeLabel} • ${color}${shapeLabel}`;
+    stateEl.textContent = `Tryb: ${toolLabel()} � ${sizeLabel} � ${color}${shapeLabel}`;
     updateFigurePaletteSelection();
   }
 
@@ -3024,7 +3146,7 @@ function textDimensions(s){
         PAGES.forEach(p=> drawGrid(p));
       }
 
-      // realtime broadcast – jeśli dostępny
+      // realtime broadcast � je�li dost�pny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
         window.AliboardRealtime.sendGridState(
           isTech
@@ -3087,7 +3209,7 @@ function textDimensions(s){
     }else if(ext==='jpg'){
       const a=document.createElement('a'); a.href=c.toDataURL('image/jpeg', .92); a.download=ts('jpg'); a.click();
     }else if(ext==='pdf'){
-      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaładowany.');
+      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF nieza�adowany.');
       const dataUrl = c.toDataURL('image/png');
       const pdf = new lib({orientation:'portrait', unit:'pt', format:'a4'});
       const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
@@ -3143,10 +3265,10 @@ function textDimensions(s){
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy – osobny klucz na każdy room_id
+  // AUTOSAVE wielostronicowy � osobny klucz na ka�dy room_id
   const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
 
-  // (opcjonalnie) wyczyść stary globalny klucz z czasów "local-test"
+  // (opcjonalnie) wyczy�� stary globalny klucz z czas�w "local-test"
   try {
     if (roomId !== 'local-test') {
       localStorage.removeItem('aliboard_v25_state');
@@ -3174,7 +3296,7 @@ function textDimensions(s){
     }catch(_){ return false; }
   }
 
-  // --- CRDT: nasłuch zmian siatki przez AliboardRealtime (event "grid_state") ---
+  // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
     window.AliboardRealtime.on('grid_state', (payload)=>{
       if(typeof window.aliboardApplyGridState === 'function'){
@@ -3192,7 +3314,7 @@ function textDimensions(s){
       headerExists: !!document.querySelector('header .left'),
     });
 
-    // 1) Utwórz przycisk „⋯” i panel overflow zaraz obok paska narzędzi, jeśli nie istnieją
+    // 1) Utw�rz przycisk �?� i panel overflow zaraz obok paska narz�dzi, je�li nie istniej�
     let moreBtn = document.getElementById('toolsMoreBtn');
     let moreBox = document.getElementById('toolsMorePanel');
 
@@ -3201,22 +3323,22 @@ function textDimensions(s){
       moreBtn.id = 'toolsMoreBtn';
       moreBtn.className = 'btn';
       moreBtn.type = 'button';
-      moreBtn.title = 'Więcej narzędzi';
-      moreBtn.textContent = '⋯';
+      moreBtn.title = 'Wi�cej narz�dzi';
+      moreBtn.textContent = '?';
     toolsRow.appendChild(moreBtn);
     }
     if(!moreBox){
       moreBox = document.createElement('div');
       moreBox.id = 'toolsMorePanel';
       moreBox.className = 'dropdown';
-      // otwieramy w lewo, obok paska narzędzi
+      // otwieramy w lewo, obok paska narz�dzi
       moreBox.style.left = '0';
       moreBox.style.right = 'auto';
       moreBtn.insertAdjacentElement('afterend', moreBox);
     }
 
-    // 2) Oznacz „klejone” (nigdy nie przenoszone) narzędzia – rdzeń paska
-    //    (możesz dopasować listę; domyślnie trzymamy: select, pen, line, eraser)
+    // 2) Oznacz �klejone� (nigdy nie przenoszone) narz�dzia � rdze� paska
+    //    (mo�esz dopasowa� list�; domy�lnie trzymamy: select, pen, line, eraser)
     const stickySelectors = [
       '[data-tool="select"]',
       '[data-tool="pen"]',
@@ -3229,13 +3351,13 @@ function textDimensions(s){
         .filter(Boolean)
     );
 
-    // 3) Funkcja: przenieś elementy z overflow z powrotem do głównego rzędu
+    // 3) Funkcja: przenie� elementy z overflow z powrotem do g��wnego rz�du
     function restoreFromOverflow(){
-      // przywróć wszystko co było upchnięte
+      // przywr�� wszystko co by�o upchni�te
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
     }
 
-    // 4) Funkcja: wylicz które elementy trzeba schować do „⋯”, aż przestanie się przelewać
+    // 4) Funkcja: wylicz kt�re elementy trzeba schowa� do �?�, a� przestanie si� przelewa�
     function rebalanceTools(){
       if(!toolsRow) return;
 
@@ -3308,12 +3430,12 @@ function textDimensions(s){
       }
     });
 
-    // 6) Rebalans po załadowaniu i na resize
+    // 6) Rebalans po za�adowaniu i na resize
     window.addEventListener('load', rebalanceTools, { once: true });
     window.addEventListener('resize', rebalanceTools);
 
-    // 7) Obsługa „tap” na elementach przeniesionych do overflow:
-    //    delegujemy kliknięcia, żeby zachowały się identycznie jak w głównym rzędzie
+    // 7) Obs�uga �tap� na elementach przeniesionych do overflow:
+    //    delegujemy klikni�cia, �eby zachowa�y si� identycznie jak w g��wnym rz�dzie
     moreBox.addEventListener('pointerdown', (e)=>{
       const btn = e.target.closest('button, label');
       if(!btn) return;
@@ -3333,7 +3455,7 @@ function textDimensions(s){
       setTimeout(()=> moreBox.classList.remove('open'), 0);
     });
 
-    // 8) Publiczny hook: gdyby coś dynamicznie dodało narzędzie — spróbuj zbalansować ponownie
+    // 8) Publiczny hook: gdyby co� dynamicznie doda�o narz�dzie � spr�buj zbalansowa� ponownie
     const ro = new ResizeObserver(rebalanceTools);
     ro.observe(toolsRow);
     setTimeout(rebalanceTools, 250);
@@ -3342,7 +3464,7 @@ function textDimensions(s){
   })();
   // [CODEX:END OVERFLOW_MENU]
 
-  // 🔹 Aliboard Chat Module – logika czatu
+  // ?? Aliboard Chat Module � logika czatu
   (function initAliboardChatModule(){
     const bubble = document.getElementById('aliboard-chat-bubble');
     const panel = document.getElementById('aliboard-chat-panel');
@@ -3359,7 +3481,7 @@ function textDimensions(s){
       return;
     }
 
-    // Na desktopie podnieś dymek czatu, by nie nachodził na room_id
+    // Na desktopie podnie� dymek czatu, by nie nachodzi� na room_id
     if(bubbleRoot && window.matchMedia('(pointer:fine)').matches){
       bubbleRoot.classList.add('desktop-offset');
     }
@@ -3442,10 +3564,10 @@ function textDimensions(s){
       const banner = document.createElement('div');
       banner.className = 'aliboard-call-banner';
       banner.innerHTML = `
-        <span>🔊 Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
+        <span>?? Po��czenie g�osowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Ucze�'}</strong></span>
         <div class="aliboard-call-actions">
-          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Dołącz</button>
-          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Rozłącz</button>
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Do��cz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Roz��cz</button>
         </div>
       `;
       panel.insertBefore(banner, panel.firstChild);
@@ -3547,7 +3669,7 @@ function textDimensions(s){
       if (!text.trim()) return;
       const trimmed = text.trim().slice(0, 500);
 
-      // ❗ tylko wysyłamy na serwer, bez lokalnego dopisywania
+      // ? tylko wysy�amy na serwer, bez lokalnego dopisywania
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
         window.aliboardChat.sendToServer(trimmed);
       }
@@ -3563,7 +3685,7 @@ function textDimensions(s){
     if(pingBtn){
       pingBtn.addEventListener('click', ()=>{
         appendMessage({
-          text: '🔔 Wysłałeś zaczepienie (ping).',
+          text: '?? Wys�a�e� zaczepienie (ping).',
           author: 'me',
           timeString: getTimeString()
         });
@@ -3630,14 +3752,14 @@ function textDimensions(s){
           window.aliboardVoice.hangupCall(false);
         }
         appendMessage({
-          text: '🔴 Połączenie zostało zakończone',
+          text: '?? Po��czenie zosta�o zako�czone',
           author: 'other',
           timeString: getTimeString(),
         });
       }
     };
 
-    // 🔹 WebRTC Voice Module
+    // ?? WebRTC Voice Module
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
@@ -3815,7 +3937,7 @@ function textDimensions(s){
       callBtn.addEventListener('click', ()=>{
         setPanelOpen(true);
         appendMessage({
-          text: '📞 Próba rozpoczęcia rozmowy głosowej…',
+          text: '?? Pr�ba rozpocz�cia rozmowy g�osowej�',
           author: 'me',
           timeString: getTimeString(),
         });
@@ -3898,7 +4020,7 @@ function textDimensions(s){
     })();
   })();
 
-  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
+  // PODPINAMY SI� DO ALIBOARD REALTIME (je�li dost�pny) � retry a� do skutku
   (function attachCursorListener(){
     const rt = window.AliboardRealtime;
     if(!rt || typeof rt.on !== 'function'){
@@ -3913,7 +4035,7 @@ function textDimensions(s){
         }
         upsertRemoteCursor(cursor);
       }catch(err){
-        console.error("[Aliboard][cursor] błąd przy nakładaniu zdalnego kursora", err);
+        console.error("[Aliboard][cursor] b��d przy nak�adaniu zdalnego kursora", err);
       }
     });
     attachCursorListener._attached = true;
@@ -3924,7 +4046,7 @@ function textDimensions(s){
   setTool(TOOLS.SELECT);
 })();
 
-/* === ALIBOARD: pokazuj przycisk wielkości czcionki tylko przy narzędziu Tekst === */
+/* === ALIBOARD: pokazuj przycisk wielko�ci czcionki tylko przy narz�dziu Tekst === */
 const textFontBtn = document.getElementById("textFontBtn");
 
 function updateFontButtonVisibility(activeTool){
@@ -3966,3 +4088,4 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
+
