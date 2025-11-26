@@ -62,18 +62,18 @@
   .right{margin-left:auto; display:flex; align-items:flex-start;}
   .menu-wrap{position:relative}
   .menu-btn{display:inline-flex; align-items:center; gap:8px}
-  .dropdown{
-    position:absolute; right:0; top:calc(100% + 8px); min-width:240px;
-    background:#fff; border:1px solid var(--line); border-radius:12px;
-    box-shadow:0 12px 40px rgba(11,116,255,.12); padding:8px; display:none; z-index:30;
-  }
+    .dropdown{
+      position:absolute; right:0; top:calc(100% + 8px); min-width:240px;
+      background:#fff; border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 12px 40px rgba(11,116,255,.12); padding:8px; display:none; z-index:30;
+    }
   .dropdown.open{display:block}
-  .drop-group{padding:6px 6px}
-  .drop-title{font-size:12px; color:var(--muted); margin:4px 6px 6px}
-  .drop-item{width:100%; text-align:left; background:#fff; border:1px solid var(--line);
-    border-radius:10px; padding:8px 10px; cursor:pointer; margin:4px 0}
-  .drop-row{display:flex; gap:6px; flex-wrap:wrap}
-  .drop-item.primary{background:var(--brand);color:#fff;border-color:transparent}
+    .drop-group{padding:6px 6px}
+    .drop-title{font-size:12px; color:var(--muted); margin:4px 6px 6px}
+    .drop-item{width:100%; text-align:left; background:#fff; border:1px solid var(--line);
+      border-radius:10px; padding:8px 10px; cursor:pointer; margin:4px 0; text-decoration:none; color:inherit}
+    .drop-row{display:flex; gap:6px; flex-wrap:wrap}
+    .drop-item.primary{background:var(--brand);color:#fff;border-color:transparent}
 
   #toolsMoreBtn{
     display:none;
@@ -868,11 +868,11 @@
   <div class="right">
     <div class="menu-wrap">
       <button class="btn primary menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="dropdown" title="Menu">
-        <img src="{% static 'panel/img/icons/menu_ai.png' %}" class="icon-img" alt="Menu">
+        <img src="{% static 'img/icons/menu_ai.png' %}" class="icon-img" alt="Menu">
       </button>
       <div class="dropdown" id="dropdown" role="menu" aria-labelledby="menuBtn">
         <div class="drop-group">
-          <a href="{% url 'aliboard_new_room' %}" target="_blank" class="drop-item primary btn-aliboard" id="openBoardBtn">
+          <a href="{% url 'aliboard_new_room' %}" target="_blank" class="drop-item btn-aliboard" id="openBoardBtn">
             Nowa Tablica
           </a>
         </div>
@@ -880,7 +880,7 @@
           <button class="drop-item" type="button" id="undo" title="Cofnij (Ctrl+Z)">Cofnij</button>
         </div>
         <div class="drop-group">
-          <button class="drop-item primary" type="button" id="saveToggle">Zapisz</button>
+          <button class="drop-item" type="button" id="saveToggle">Zapisz</button>
           <div class="drop-row" id="saveRow" style="display:none">
             <button class="drop-item" type="button" id="savePng">💾 PNG</button>
             <button class="drop-item" type="button" id="saveJpg">🖼️ JPG</button>
