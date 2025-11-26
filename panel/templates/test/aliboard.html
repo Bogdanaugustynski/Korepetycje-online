@@ -3263,46 +3263,45 @@ function textDimensions(s){
   document.getElementById('undo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.history.length) return; const last = p.state.history.pop(); p.state.redo.push(snapshotState(p)); restoreHistoryState(p, last); });
 
   // WSTAW OBRAZ/PDF
-  // WSTAW OBRAZ – teraz jako dataURL + CRDT
+  // WSTAW OBRAZ – DataURL zamiast blob URL (CRDT-friendly)
   document.getElementById('imgInput').addEventListener('change', (e)=>{
     const f = e.target.files[0];
     if (!f) return;
+
     const p = currentPage();
     if (!p) return;
 
-    const objectUrl = URL.createObjectURL(f);
-    const temp = new Image();
-    temp.onload = ()=>{
-      const rect = p.el.getBoundingClientRect();
-      const ratio = Math.min(rect.width / temp.width, rect.height / temp.height);
-      const w = Math.max(80, temp.width * ratio);
-      const h = Math.max(80, temp.height * ratio);
-      const x = (rect.width - w) / 2;
-      const y = (rect.height - h) / 2;
+    // Czytamy plik jako DataURL, żeby druga strona dostała komplet danych
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const dataUrl = ev.target?.result;
+      if(!dataUrl) return;
 
-      // 🔁 KONWERSJA DO dataURL (base64), żeby inne urządzenia też mogły zobaczyć obraz
-      const off = document.createElement('canvas');
-      off.width = temp.width;
-      off.height = temp.height;
-      const offCtx = off.getContext('2d');
-      offCtx.drawImage(temp, 0, 0);
-      const dataUrl = off.toDataURL('image/png');
+      const temp = new Image();
+      temp.onload = ()=>{
+        const rect = p.el.getBoundingClientRect();
+        const ratio = Math.min(rect.width / temp.width, rect.height / temp.height);
 
-      // lokal + CRDT broadcast
-      addImageFromSrc(
-        dataUrl,
-        w,
-        h,
-        x,
-        y,
-        { file:true, name:f.name },
-        p,
-        { broadcast:true }
-      );
+        const w = Math.max(80, temp.width  * ratio);
+        const h = Math.max(80, temp.height * ratio);
+        const x = (rect.width  - w) / 2;
+        const y = (rect.height - h) / 2;
 
-      URL.revokeObjectURL(objectUrl);
+        addImageFromSrc(
+          dataUrl,
+          w,
+          h,
+          x,
+          y,
+          { file:true, name:f.name },
+          p,
+          { broadcast:true }
+        );
+      };
+      temp.src = dataUrl;
     };
-    temp.src = objectUrl;
+
+    reader.readAsDataURL(f);
     e.target.value = '';
   });
   document.getElementById('pdfInput').addEventListener('change', async (e)=>{
