@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard 2.5 � PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 – PolubiszTo.pl (test)</title>
 
 <!-- PDF render -->
 <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
@@ -51,14 +51,14 @@
     line-height:1;
     display:inline-block;
   }
-  .toolrow .btn[data-tool="select"]::before{ content:"???"; }
-  .toolrow .btn[data-tool="pen"]::before{ content:"??"; }
-  .toolrow .btn[data-tool="line"]::before{ content:"??"; }
-  .toolrow .btn[data-tool="eraser"]::before{ content:"??"; }
+  .toolrow .btn[data-tool="select"]::before{ content:""; }
+  .toolrow .btn[data-tool="pen"]::before{ content:""; }
+  .toolrow .btn[data-tool="line"]::before{ content:""; }
+  .toolrow .btn[data-tool="eraser"]::before{ content:""; }
   .toolrow .btn[data-tool="text"]{font-size:16px;}
   .toolrow .btn[data-tool="text"]::before{ content:"T"; font-size:16px; font-weight:700; }
-  .toolrow .btn[data-tool="crop"]::before{ content:"??"; }
-  .toolrow .btn[data-tool="figure"]::before{ content:"?"; }
+  .toolrow .btn[data-tool="crop"]::before{ content:""; }
+  .toolrow .btn[data-tool="figure"]::before{ content:""; }
   .right{margin-left:auto; display:flex; align-items:flex-start;}
   .menu-wrap{position:relative}
   .menu-btn{display:inline-flex; align-items:center; gap:8px}
@@ -438,7 +438,7 @@
   content:none !important;
 }
 
-/* ?? Aliboard Chat � bazowe zmienne */
+/* Aliboard Chat – bazowe zmienne */
 :root{
   --aliboard-chat-bg: rgba(9, 18, 40, 0.96);
   --aliboard-chat-accent: #0b74ff;
@@ -799,7 +799,7 @@
     gap: 4px;
   }
 
-  /* wszystkie narz�dzia maj� by� widoczne � wy��czamy �?� na telefonie */
+  /* wszystkie narzędzia mają być widoczne – wyłączamy overflow na telefonie */
   #toolsMoreBtn,
   #toolsMorePanel{
     display: none !important;
@@ -900,7 +900,7 @@
       </div>
       <div>
         <div style="font-weight:800">Aliboard</div>
-        <div class="state" id="state">Tryb: Kursor � 3px � #0b74ff</div>
+        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
       </div>
     </div>
 
@@ -908,8 +908,8 @@
       <button class="btn" type="button" data-tool="select" title="Kursor (V)">
         <img src="{% static 'img/icons/cursor_ai.png' %}" class="icon-img" alt="Kursor">
       </button>
-      <button class="btn" type="button" data-tool="pen"    title="O��wek (P)">
-        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="O��wek">
+      <button class="btn" type="button" data-tool="pen"    title="Ołówek (P)">
+        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="Ołówek">
       </button>
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">
         <img src="{% static 'img/icons/line_ai.png' %}" class="icon-img" alt="Linia">
@@ -920,8 +920,8 @@
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">
         <img src="{% static 'img/icons/text_ai.png' %}" class="icon-img" alt="Tekst">
       </button>
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielko�� czcionki" data-overflow="1">
-        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielko�� czcionki">
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">
+        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkość czcionki">
       </button>
       <button class="btn" type="button" data-tool="crop"   title="Kopiuj (C)">
         <img src="{% static 'img/icons/copy_ai.png' %}" class="icon-img" alt="Kopiuj">
@@ -934,8 +934,8 @@
         <img src="{% static 'img/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
         <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
-      <button class="btn" type="button" id="lineWidthBtn" title="Grubo�� linii">
-        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubo�� linii">
+      <button class="btn" type="button" id="lineWidthBtn" title="Grubość linii">
+        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubość linii">
       </button>
       <div class="line-width-menu" id="lineWidthMenu">
         <div class="line-option" data-size="1">
@@ -968,8 +968,8 @@
         <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usu� zaznaczony obiekt" disabled>
-        ?
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>
+        X
       </button>
     </div>
   </div>
@@ -992,9 +992,9 @@
         <div class="drop-group">
           <button class="drop-item" type="button" id="saveToggle">Zapisz</button>
           <div class="drop-row" id="saveRow" style="display:none">
-            <button class="drop-item" type="button" id="savePng">?? PNG</button>
-            <button class="drop-item" type="button" id="saveJpg">??? JPG</button>
-            <button class="drop-item" type="button" id="savePdf">?? PDF</button>
+            <button class="drop-item" type="button" id="savePng">PNG</button>
+            <button class="drop-item" type="button" id="saveJpg">JPG</button>
+            <button class="drop-item" type="button" id="savePdf">PDF</button>
           </div>
         </div>
         <div class="drop-group">
@@ -1002,16 +1002,16 @@
           <button class="drop-item" type="button" id="gridToggle" style="display:none">Siatka</button>
           <div class="drop-row" id="templatesRow" style="display:none">
             <button class="drop-item" type="button" data-grid="0">Brak</button>
-            <button class="drop-item" type="button" data-grid="16">Ma�a</button>
-            <button class="drop-item" type="button" data-grid="24">�rednia</button>
-            <button class="drop-item" type="button" data-grid="32">Du�a</button>
+            <button class="drop-item" type="button" data-grid="16">Mała</button>
+            <button class="drop-item" type="button" data-grid="24">Średnia</button>
+            <button class="drop-item" type="button" data-grid="32">Duża</button>
             <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
           <div class="drop-title">Nowa tablica</div>
           <div class="drop-row">
-            <button class="drop-item" type="button" id="addPage">? Dodaj kartk� A4</button>
+            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkę A4</button>
           </div>
         </div>
       </div>
@@ -1023,35 +1023,35 @@
   <div class="pages" id="pages"></div>
 </div>
 
-<!-- ?? Aliboard Chat Module -->
+<!-- Aliboard Chat Module -->
 <div class="aliboard-chat-root">
-  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otw�rz czat">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
     <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
   </button>
 
   <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
     <header class="aliboard-chat-header">
       <div class="aliboard-chat-title">
-        <span class="aliboard-chat-title-main">Czat zaj��</span>
+        <span class="aliboard-chat-title-main">Czat zajęć</span>
         <span class="aliboard-chat-title-sub">Aliboard</span>
       </div>
       <div class="aliboard-chat-actions">
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
-          ??
+          &#128276;
         </button>
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa g�osowa">
-          ??
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
+          &#128222;
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
-          ???
+          &#127908;
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
-          ?
+          &#10006;
         </button>
       </div>
     </header>
 
-    <!-- ?? Audio remote dla WebRTC -->
+    <!-- Audio remote dla WebRTC -->
     <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
 
     <div class="aliboard-chat-messages" id="aliboard-chat-messages" aria-live="polite"></div>
@@ -1061,33 +1061,33 @@
         type="text"
         id="aliboard-chat-input"
         class="aliboard-chat-input"
-        placeholder="Napisz wiadomo���"
+        placeholder="Napisz wiadomość"
         maxlength="500"
       />
       <button type="submit" class="aliboard-chat-send-btn">
-        Wy�lij
+        Wyślij
       </button>
     </form>
   </section>
 </div>
-<!-- ?? koniec: Aliboard Chat Module -->
+<!-- koniec: Aliboard Chat Module -->
 
 <div class="footer">
-  <a href="{% url 'pokoj_testowy' %}" class="btn">� Powr�t do Pokoju Testowego</a>
+  <a href="{% url 'pokoj_testowy' %}" class="btn">← Powrót do Pokoju Testowego</a>
   <span class="btn" id="roomInfo" title="Room ID z query string">room_id: {{ room_id|default:'local-test' }}</span>
 </div>
 
 <div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
-    <h3 id="openBoardTitle">Otw�rz now� tablic�</h3>
-    <p>Utw�rz pust� tablic�. Aktualne karty zostan� zamkni�te.</p>
+    <h3 id="openBoardTitle">Otwórz nową tablicę</h3>
+    <p>Utwórz pustą tablicę. Aktualne karty zostaną zamknięte.</p>
     <label>
       Nazwa tablicy (opcjonalnie)
       <input type="text" id="openBoardName" placeholder="np. Matematyka - lekcja 3">
     </label>
     <div class="modal-actions">
       <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
-      <button type="button" class="btn primary" id="openBoardCreate">Utw�rz</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
     </div>
   </div>
 </div>
@@ -1645,7 +1645,7 @@
     }
   }
 
-  // 3) je�li nadal brak � spr�buj z query stringa (?room= / ?room_id=)
+  // 3) jeśli nadal brak — spróbuj z query stringa (?room= / ?room_id=)
   if (!roomId) {
     const qs = new URLSearchParams(location.search);
     roomId = qs.get('room') || qs.get('room_id') || 'local-test';
@@ -2454,8 +2454,8 @@
       overlay.className='crop-choice-backdrop';
       const dialog=document.createElement('div');
       dialog.className='crop-choice-dialog';
-      const text=document.createElement('p');
-      text.textContent='Gdzie umie�ci� skopiowany fragment?';
+    const text=document.createElement('p');
+    text.textContent='Gdzie umieścić skopiowany fragment?';
       const actions=document.createElement('div');
       actions.className='crop-choice-actions';
       const btnBelow=document.createElement('button');
@@ -2921,10 +2921,10 @@ function textDimensions(s){
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden && multiPan){ endMultiPan('hidden'); } });
   }
 
-  /* ---------- UI OG�LNY ---------- */
+  /* ---------- UI OGÓLNY ---------- */
   function toolLabel(){
     return tool===TOOLS.SELECT?'Kursor':
-           tool===TOOLS.PEN?'O��wek':
+           tool===TOOLS.PEN?'Ołówek':
            tool===TOOLS.LINE?'Linia':
            tool===TOOLS.ERASER?'Gumka':
            tool===TOOLS.TEXT?'Tekst':
@@ -2944,10 +2944,10 @@ function textDimensions(s){
   }
   function updateState(){
     const shapeLabel = tool===TOOLS.FIGURE
-      ? ` � ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Tr�jk�t':currentShape==='tri_right'?'Tr�jk�t 90�':currentShape==='hex'?'Sze�ciok�t':'Ko�o'}`
+      ? ` • ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
       : '';
     const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
-    stateEl.textContent = `Tryb: ${toolLabel()} � ${sizeLabel} � ${color}${shapeLabel}`;
+    stateEl.textContent = `Tryb: ${toolLabel()} • ${sizeLabel} • ${color}${shapeLabel}`;
     updateFigurePaletteSelection();
   }
 
@@ -3196,7 +3196,7 @@ function textDimensions(s){
     }else if(ext==='jpg'){
       const a=document.createElement('a'); a.href=c.toDataURL('image/jpeg', .92); a.download=ts('jpg'); a.click();
     }else if(ext==='pdf'){
-      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF nieza�adowany.');
+      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaładowany.');
       const dataUrl = c.toDataURL('image/png');
       const pdf = new lib({orientation:'portrait', unit:'pt', format:'a4'});
       const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
@@ -3301,7 +3301,7 @@ function textDimensions(s){
       headerExists: !!document.querySelector('header .left'),
     });
 
-    // 1) Utw�rz przycisk �?� i panel overflow zaraz obok paska narz�dzi, je�li nie istniej�
+    // 1) Utwórz przycisk „…” i panel overflow zaraz obok paska narzędzi, jeżeli nie istnieją
     let moreBtn = document.getElementById('toolsMoreBtn');
     let moreBox = document.getElementById('toolsMorePanel');
 
@@ -3310,8 +3310,8 @@ function textDimensions(s){
       moreBtn.id = 'toolsMoreBtn';
       moreBtn.className = 'btn';
       moreBtn.type = 'button';
-      moreBtn.title = 'Wi�cej narz�dzi';
-      moreBtn.textContent = '?';
+      moreBtn.title = 'Więcej narzędzi';
+      moreBtn.textContent = '…';
     toolsRow.appendChild(moreBtn);
     }
     if(!moreBox){
@@ -3340,11 +3340,11 @@ function textDimensions(s){
 
     // 3) Funkcja: przenie� elementy z overflow z powrotem do g��wnego rz�du
     function restoreFromOverflow(){
-      // przywr�� wszystko co by�o upchni�te
+      // przywróć wszystko co było upchnięte
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
     }
 
-    // 4) Funkcja: wylicz kt�re elementy trzeba schowa� do �?�, a� przestanie si� przelewa�
+    // 4) Funkcja: wylicz które elementy trzeba schować do „…”, aż przestanie się przelewać
     function rebalanceTools(){
       if(!toolsRow) return;
 
@@ -3451,7 +3451,7 @@ function textDimensions(s){
   })();
   // [CODEX:END OVERFLOW_MENU]
 
-  // ?? Aliboard Chat Module � logika czatu
+  // Aliboard Chat Module – logika czatu
   (function initAliboardChatModule(){
     const bubble = document.getElementById('aliboard-chat-bubble');
     const panel = document.getElementById('aliboard-chat-panel');
@@ -3551,10 +3551,10 @@ function textDimensions(s){
       const banner = document.createElement('div');
       banner.className = 'aliboard-call-banner';
       banner.innerHTML = `
-        <span>?? Po��czenie g�osowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Ucze�'}</strong></span>
+        <span>📞 Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
         <div class="aliboard-call-actions">
-          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Do��cz</button>
-          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Roz��cz</button>
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Dołącz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Rozłącz</button>
         </div>
       `;
       panel.insertBefore(banner, panel.firstChild);
@@ -3656,7 +3656,7 @@ function textDimensions(s){
       if (!text.trim()) return;
       const trimmed = text.trim().slice(0, 500);
 
-      // ? tylko wysy�amy na serwer, bez lokalnego dopisywania
+      // Ping tylko wysyłamy na serwer, bez lokalnego dopisywania
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
         window.aliboardChat.sendToServer(trimmed);
       }
@@ -3672,7 +3672,7 @@ function textDimensions(s){
     if(pingBtn){
       pingBtn.addEventListener('click', ()=>{
         appendMessage({
-          text: '?? Wys�a�e� zaczepienie (ping).',
+          text: '🔔 Wysłałeś zaczepienie (ping).',
           author: 'me',
           timeString: getTimeString()
         });
@@ -3739,14 +3739,14 @@ function textDimensions(s){
           window.aliboardVoice.hangupCall(false);
         }
         appendMessage({
-          text: '?? Po��czenie zosta�o zako�czone',
+          text: '📴 Połączenie zostało zakończone',
           author: 'other',
           timeString: getTimeString(),
         });
       }
     };
 
-    // ?? WebRTC Voice Module
+    // WebRTC Voice Module
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
@@ -3924,7 +3924,7 @@ function textDimensions(s){
       callBtn.addEventListener('click', ()=>{
         setPanelOpen(true);
         appendMessage({
-          text: '?? Pr�ba rozpocz�cia rozmowy g�osowej�',
+          text: '📞 Próba rozpoczęcia rozmowy głosowej…',
           author: 'me',
           timeString: getTimeString(),
         });
