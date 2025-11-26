@@ -1543,7 +1543,23 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
   const PAGES = [];
-  function currentPage(){ return PAGES[PAGES.length-1] || null; }
+  function currentPage(){
+    if(!PAGES.length) return null;
+    if(wrapEl){
+      const center = wrapEl.scrollTop + wrapEl.clientHeight/2;
+      let best = null, bestDist = Infinity;
+      PAGES.forEach(p=>{
+        const mid = p.el.offsetTop + p.el.offsetHeight/2;
+        const dist = Math.abs(mid - center);
+        if(dist < bestDist){
+          bestDist = dist;
+          best = p;
+        }
+      });
+      if(best) return best;
+    }
+    return PAGES[PAGES.length-1] || null;
+  }
 
   /* ---------- TWORZENIE STRONY ---------- */
   function createPage(scrollTo=true){
