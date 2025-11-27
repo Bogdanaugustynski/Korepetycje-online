@@ -3263,7 +3263,6 @@ function textDimensions(s){
   document.getElementById('undo').addEventListener('pointerdown', (e)=>{ e.preventDefault(); const p=currentPage(); if(!p || !p.state.history.length) return; const last = p.state.history.pop(); p.state.redo.push(snapshotState(p)); restoreHistoryState(p, last); });
 
   // WSTAW OBRAZ/PDF
-  // WSTAW OBRAZ – DataURL zamiast blob URL (CRDT-friendly)
   document.getElementById('imgInput').addEventListener('change', (e)=>{
     const f = e.target.files[0];
     if (!f) return;
@@ -3271,15 +3270,13 @@ function textDimensions(s){
     const p = currentPage();
     if (!p) return;
 
-    // Czytamy plik jako DataURL, żeby druga strona dostała komplet danych
     const reader = new FileReader();
-    reader.onload = function(ev){
-      const dataUrl = ev.target?.result;
-      if(!dataUrl) return;
+    reader.onload = function(ev) {
+      const dataUrl = ev.target.result;   // data:image/…;base64,…
 
       const temp = new Image();
-      temp.onload = ()=>{
-        const rect = p.el.getBoundingClientRect();
+      temp.onload = () => {
+        const rect  = p.el.getBoundingClientRect();
         const ratio = Math.min(rect.width / temp.width, rect.height / temp.height);
 
         const w = Math.max(80, temp.width  * ratio);
@@ -3287,16 +3284,26 @@ function textDimensions(s){
         const x = (rect.width  - w) / 2;
         const y = (rect.height - h) / 2;
 
-        addImageFromSrc(
-          dataUrl,
-          w,
-          h,
-          x,
-          y,
-          { file:true, name:f.name },
-          p,
-          { broadcast:true }
-        );
+        // meta z id — przyda się dla CRDT
+        const meta = {
+          file: true,
+          id: 'img-' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2)
+        };
+
+        addImageFromSrc(dataUrl, w, h, x, y, meta, p);
+
+        // Jeśli jest dostępny AliboardRealtime – wyślij obraz do innych
+        if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === 'function') {
+          const pageIndex = PAGES.indexOf(p);
+          window.AliboardRealtime.broadcastElementAdd({
+            id: meta.id,
+            kind: 'image',
+            pageIndex: pageIndex,
+            src: dataUrl,
+            x, y, w, h,
+            meta
+          });
+        }
       };
       temp.src = dataUrl;
     };
@@ -3334,35 +3341,40 @@ function textDimensions(s){
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy � osobny klucz na ka�dy room_id
-  const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
-
-  // (opcjonalnie) wyczy�� stary globalny klucz z czas�w "local-test"
-  try {
-    if (roomId !== 'local-test') {
-      localStorage.removeItem('aliboard_v25_state');
-    }
-  } catch (_) {}
+  // AUTOSAVE wielostronicowy — per room_id, BEZ obrazów (tylko rysunki/tekst)
+  const AUTOSAVE_KEY = 'aliboard_v25_state_' + roomId;
 
   function autosave(){
-    try{
-      PAGES.forEach(ensureStrokeIds);
-      const payload = PAGES.map(p=>({
-        strokes:p.state.strokes,
-        images: p.state.images.map(im=>({id: im.id, x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,meta:im.meta}))
+    try {
+      const payload = PAGES.map(p => ({
+        strokes: p.state.strokes,     // linie, tekst itd.
+        // obrazów nie zapisujemy w localStorage, bo DataURL są za ciężkie
+        images: []                    // zostawiamy puste, żeby nie zjadać pamięci
       }));
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
-    }catch(_){}
+    } catch (_) {
+      // jeśli localStorage wywali quota, po prostu ignorujemy
+    }
   }
   setInterval(autosave, 30000);
+
   function restoreLocal(){
     try{
       const raw = localStorage.getItem(AUTOSAVE_KEY);
       if(!raw) return false;
-      const arr = JSON.parse(raw); if(!Array.isArray(arr) || !arr.length) return false;
-      arr.forEach((pageData)=>{ const p=createPage(false); p.state.strokes = pageData.strokes||[]; ensureStrokeIds(p); p.state.images  = (pageData.images||[]).map(im=>reviveImage(im,p)); renderAll(p); });
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr) || !arr.length) return false;
+
+      arr.forEach((pageData)=>{
+        const p = createPage(false);
+        p.state.strokes = pageData.strokes || [];
+        p.state.images  = [];   // obrazy i tak nie były zapisywane
+        renderAll(p);
+      });
       return true;
-    }catch(_){ return false; }
+    }catch(_){
+      return false;
+    }
   }
 
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
@@ -4110,89 +4122,63 @@ function textDimensions(s){
     attachCursorListener._attached = true;
   })();
 
-  // === CRDT obrazów: odbiór z AliboardRealtime (element_add + snapshot) ===
+  // ===== CRDT: OBRAZY (element_add / element_remove) =====
   if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
-    const myClientId = window.AliboardRealtime.clientId || null;
+    // Dodanie obrazu z innego klienta
+    window.AliboardRealtime.on('element_add', (element) => {
+      try {
+        if (!element || element.kind !== 'image') return;
 
-    function ensurePage(index){
-      let idx = typeof index === 'number' ? index : 0;
-      if (idx < 0) idx = 0;
-      while (PAGES.length <= idx){
-        createPage(false);
-      }
-      return PAGES[idx];
-    }
+        const pageIndex = typeof element.pageIndex === 'number'
+          ? element.pageIndex
+          : (PAGES.length ? PAGES.length - 1 : 0);
 
-    // 1) Nowy obraz od innego użytkownika
-    window.AliboardRealtime.on('element_add', (element)=>{
-      if (!element || element.kind !== 'image') return;
-
-      // jeśli to nasz własny element (odbity z serwera) – ignorujemy
-      if (element.clientId && myClientId && element.clientId === myClientId) {
-        return;
-      }
-
-      const pageIndex = typeof element.pageIndex === 'number' ? element.pageIndex : 0;
-      const p = ensurePage(pageIndex);
-      const rect = p.el.getBoundingClientRect();
-
-      const w = element.nw && rect.width  ? element.nw * rect.width  : element.w;
-      const h = element.nh && rect.height ? element.nh * rect.height : element.h;
-      const x = element.nx && rect.width  ? element.nx * rect.width  : (element.x || 0);
-      const y = element.ny && rect.height ? element.ny * rect.height : (element.y || 0);
-
-      addImageFromSrc(
-        element.src,
-        Math.max(1, w || 120),
-        Math.max(1, h || 120),
-        x,
-        y,
-        element.meta || null,
-        p,
-        {
-          broadcast: false,      // już przyszło z serwera, nie rozsyłamy ponownie
-          id: element.id
+        // Upewnij się, że mamy odpowiednią kartkę
+        while (PAGES.length <= pageIndex) {
+          createPage(false);
         }
-      );
-    });
+        const p = PAGES[pageIndex];
 
-    // 2) Pełny snapshot (np. gdy ktoś dołącza do pokoju)
-    window.AliboardRealtime.on('snapshot', (elements)=>{
-      if (!Array.isArray(elements)) return;
+        // Jeśli obraz o tym id już istnieje (np. nasza własna akcja) – pomiń
+        const exists = p.state.images.some(im => im.meta && im.meta.id === element.id);
+        if (exists) return;
 
-      // Czyścimy tylko obrazy, resztę rysunków zostawiamy na razie lokalnie
-      PAGES.forEach(p => {
-        p.state.images = [];
-      });
-
-      elements.forEach(el => {
-        if (!el || el.kind !== 'image') return;
-
-        const pageIndex = typeof el.pageIndex === 'number' ? el.pageIndex : 0;
-        const p = ensurePage(pageIndex);
-        const rect = p.el.getBoundingClientRect();
-
-        const w = el.nw && rect.width  ? el.nw * rect.width  : el.w;
-        const h = el.nh && rect.height ? el.nh * rect.height : el.h;
-        const x = el.nx && rect.width  ? el.nx * rect.width  : (el.x || 0);
-        const y = el.ny && rect.height ? el.ny * rect.height : (el.y || 0);
+        const meta = element.meta || {};
+        meta.id = element.id;
 
         addImageFromSrc(
-          el.src,
-          Math.max(1, w || 120),
-          Math.max(1, h || 120),
-          x,
-          y,
-          el.meta || null,
-          p,
-          {
-            broadcast: false,
-            id: el.id
-          }
+          element.src,
+          element.w,
+          element.h,
+          element.x,
+          element.y,
+          meta,
+          p
         );
-      });
+      } catch (err) {
+        console.error('[Aliboard][CRDT image] element_add error', err);
+      }
+    });
 
-      PAGES.forEach(p => renderAll(p));
+    // Usuwanie obrazu po id (opcjonalnie, jeśli później dorobimy broadcast remove)
+    window.AliboardRealtime.on('element_remove', (idOrElement) => {
+      try {
+        const id = typeof idOrElement === 'string'
+          ? idOrElement
+          : idOrElement?.id;
+
+        if (!id) return;
+
+        PAGES.forEach(p => {
+          const before = p.state.images.length;
+          p.state.images = p.state.images.filter(im => !(im.meta && im.meta.id === id));
+          if (p.state.images.length !== before) {
+            renderAll(p);
+          }
+        });
+      } catch (err) {
+        console.error('[Aliboard][CRDT image] element_remove error', err);
+      }
     });
   }
 
