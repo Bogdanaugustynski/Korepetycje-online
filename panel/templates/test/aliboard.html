@@ -3284,7 +3284,6 @@ function textDimensions(s){
         const x = (rect.width  - w) / 2;
         const y = (rect.height - h) / 2;
 
-        // meta z id — przyda się dla CRDT
         const meta = {
           file: true,
           id: 'img-' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2)
@@ -3292,7 +3291,7 @@ function textDimensions(s){
 
         addImageFromSrc(dataUrl, w, h, x, y, meta, p);
 
-        // Jeśli jest dostępny AliboardRealtime – wyślij obraz do innych
+        // CRDT: wyślij obraz do innych
         if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === 'function') {
           const pageIndex = PAGES.indexOf(p);
           window.AliboardRealtime.broadcastElementAdd({
@@ -3311,6 +3310,7 @@ function textDimensions(s){
     reader.readAsDataURL(f);
     e.target.value = '';
   });
+
   document.getElementById('pdfInput').addEventListener('change', async (e)=>{
     const f=e.target.files[0]; if(!f) return;
     const p=currentPage(); if(!p) return;
@@ -3341,41 +3341,51 @@ function textDimensions(s){
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy — per room_id, BEZ obrazów (tylko rysunki/tekst)
+  // AUTOSAVE wielostronicowy — per room_id (żeby nie było „local-test” między pokojami)
   const AUTOSAVE_KEY = 'aliboard_v25_state_' + roomId;
 
-  function autosave(){
+  function autosave() {
     try {
       const payload = PAGES.map(p => ({
-        strokes: p.state.strokes,     // linie, tekst itd.
-        // obrazów nie zapisujemy w localStorage, bo DataURL są za ciężkie
-        images: []                    // zostawiamy puste, żeby nie zjadać pamięci
+        strokes: p.state.strokes,
+        images: p.state.images.map(im => ({
+          x: im.x,
+          y: im.y,
+          w: im.w,
+          h: im.h,
+          src: im.src,
+          meta: im.meta
+        }))
       }));
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
-    } catch (_) {
-      // jeśli localStorage wywali quota, po prostu ignorujemy
+    } catch (e) {
+      console.warn('[Aliboard][autosave] błąd / limit localStorage', e);
     }
   }
   setInterval(autosave, 30000);
 
-  function restoreLocal(){
-    try{
+  function restoreLocal() {
+    try {
       const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if(!raw) return false;
-      const arr = JSON.parse(raw);
-      if(!Array.isArray(arr) || !arr.length) return false;
+      if (!raw) return false;
 
-      arr.forEach((pageData)=>{
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || !arr.length) return false;
+
+      arr.forEach(pageData => {
         const p = createPage(false);
         p.state.strokes = pageData.strokes || [];
-        p.state.images  = [];   // obrazy i tak nie były zapisywane
+        p.state.images  = (pageData.images || []).map(im => reviveImage(im, p));
         renderAll(p);
       });
+
       return true;
-    }catch(_){
+    } catch (e) {
+      console.warn('[Aliboard][autosave] błąd restore', e);
       return false;
     }
   }
+
 
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
@@ -4123,7 +4133,11 @@ function textDimensions(s){
   })();
 
   // ===== CRDT: OBRAZY (element_add / element_remove) =====
-  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
+  function setupRealtimeImages() {
+    if (!window.AliboardRealtime || typeof window.AliboardRealtime.on !== 'function') {
+      return false;
+    }
+
     // Dodanie obrazu z innego klienta
     window.AliboardRealtime.on('element_add', (element) => {
       try {
@@ -4160,7 +4174,7 @@ function textDimensions(s){
       }
     });
 
-    // Usuwanie obrazu po id (opcjonalnie, jeśli później dorobimy broadcast remove)
+    // Usuwanie obrazu po id (jeśli kiedyś dorobimy broadcast remove przy kasowaniu)
     window.AliboardRealtime.on('element_remove', (idOrElement) => {
       try {
         const id = typeof idOrElement === 'string'
@@ -4180,7 +4194,24 @@ function textDimensions(s){
         console.error('[Aliboard][CRDT image] element_remove error', err);
       }
     });
+
+    console.info('[Aliboard][CRDT image] realtime handlers attached');
+    return true;
   }
+
+  // Spróbuj od razu
+  if (!setupRealtimeImages()) {
+    // Jeżeli AliboardRealtime jeszcze nie istnieje – próbujemy kilka razy w tle
+    const rtInterval = setInterval(() => {
+      if (setupRealtimeImages()) {
+        clearInterval(rtInterval);
+      }
+    }, 500);
+
+    // Po 10 sekundach przestajemy próbować
+    setTimeout(() => clearInterval(rtInterval), 10000);
+  }
+
 
   // START
   if(!restoreLocal()){ createPage(false); }
