@@ -1870,7 +1870,11 @@
   function addImageFromSrc(src, w, h, x, y, meta, p, opts){
     opts = opts || {};
     const pageIndex = typeof opts.pageIndex === 'number' ? opts.pageIndex : PAGES.indexOf(p);
-    const id = opts.id || `img-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    // --- [CRDT_IMAGE_ID] gwarantujemy unikalne ID obrazka ---
+    meta = meta || {};
+    const id = meta.id || opts.id || (window.crypto?.randomUUID?.() || `img_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+    meta.id = id;
 
     pushHistory(p);
     const im = reviveImage({id, src, w, h, x, y, meta}, p);
@@ -3354,7 +3358,7 @@ function textDimensions(s){
 
   // USUŃ ZAZNACZONY OBIEKT (przycisk "Usuń zaznaczony obiekt")
   (function setupDeleteSelectionButton(){
-    const btn = document.getElementById('deleteSelection'); // ← PODMIEŃ ID jeśli masz inne
+    const btn = document.getElementById('deleteSelection'); // ← PODMIEŃ ID jeśli inny
     if (!btn) return;
 
     btn.addEventListener('pointerdown', (e) => {
@@ -3370,19 +3374,19 @@ function textDimensions(s){
         const im = p.state.images[sel.index];
         if (!im) return;
 
+        const id = im.meta && im.meta.id;
         pushHistory(p);
 
-        // LOCAL: usuń z tablicy
-        const removed = p.state.images.splice(sel.index, 1)[0];
+        // lokalnie
+        p.state.images.splice(sel.index, 1);
         p.state.selection = null;
         renderAll(p);
         clearOverlay(p);
 
-        // CRDT: wyślij element_remove do innych klientów
-        if (removed && removed.meta && removed.meta.id &&
-            window.AliboardRealtime &&
+        // CRDT: powiadamiamy inne klienty
+        if (id && window.AliboardRealtime &&
             typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
-          window.AliboardRealtime.broadcastElementRemove(removed.meta.id);
+          window.AliboardRealtime.broadcastElementRemove(id);
         }
       }
 
@@ -4430,6 +4434,34 @@ function textDimensions(s){
     setTimeout(() => clearInterval(rtInterval), 10000);
   }
 
+
+  // --- CRDT: odbieranie usuwania obraz?w z innych urz?dze? ---
+  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
+    window.AliboardRealtime.on('element_remove', (id) => {
+      if (!id) return;
+
+      let changed = false;
+
+      // Szukamy po wszystkich kartkach
+      for (const p of PAGES) {
+        const idx = p.state.images.findIndex(
+          (im) => im.meta && im.meta.id === id
+        );
+        if (idx !== -1) {
+          p.state.images.splice(idx, 1);
+          changed = true;
+          // nie break ? w teorii ten sam ID powinien by? raz, ale lecimy dla pewno?ci
+        }
+      }
+
+      if (changed) {
+        PAGES.forEach((p) => {
+          renderAll(p);
+          clearOverlay(p);
+        });
+      }
+    });
+  }
 
   // START
   if(!restoreLocal()){ createPage(false); }
