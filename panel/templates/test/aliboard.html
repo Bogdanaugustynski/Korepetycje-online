@@ -3352,6 +3352,58 @@ function textDimensions(s){
     });
   }
 
+  // USUŃ ZAZNACZONY OBIEKT (przycisk "Usuń zaznaczony obiekt")
+  (function setupDeleteSelectionButton(){
+    const btn = document.getElementById('deleteSelection'); // ← PODMIEŃ ID jeśli masz inne
+    if (!btn) return;
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+
+      const p = currentPage();
+      if (!p || !p.state.selection) return;
+
+      const sel = p.state.selection;
+
+      // 1) Obraz – usuwamy lokalnie i przez CRDT
+      if (sel.kind === 'image') {
+        const im = p.state.images[sel.index];
+        if (!im) return;
+
+        pushHistory(p);
+
+        // LOCAL: usuń z tablicy
+        const removed = p.state.images.splice(sel.index, 1)[0];
+        p.state.selection = null;
+        renderAll(p);
+        clearOverlay(p);
+
+        // CRDT: wyślij element_remove do innych klientów
+        if (removed && removed.meta && removed.meta.id &&
+            window.AliboardRealtime &&
+            typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
+          window.AliboardRealtime.broadcastElementRemove(removed.meta.id);
+        }
+      }
+
+      // 2) (opcjonalnie) Stroke – na razie można usuwać tylko lokalnie
+      /*
+      if (sel.kind === 'stroke') {
+        const s = p.state.strokes[sel.index];
+        if (!s) return;
+
+        pushHistory(p);
+        p.state.strokes.splice(sel.index, 1);
+        p.state.selection = null;
+        renderAll(p);
+        clearOverlay(p);
+
+        // Jeśli kiedyś zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
+      }
+      */
+    });
+  })();
+
   // WSTAW OBRAZ/PDF
   document.getElementById('imgInput').addEventListener('change', (e)=>{
     const f = e.target.files[0];
