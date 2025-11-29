@@ -1628,6 +1628,9 @@
     realtime.on('element_add', applyElementAddPayload);
     realtime.on('element_update', (element)=>{
       if(!element || !element.id) return;
+      // Obrazy obsługuje dedykowany handler niżej (CRDT images); tutaj je pomijamy,
+      // żeby nie usuwać i nie dodawać ich ponownie z błędnym tool.
+      if(element.kind === 'image' || element.tool === 'image' || element.type === 'image') return;
       removeElementById(element.id);
       applyElementAddPayload(element);
     });
