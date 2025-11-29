@@ -1905,23 +1905,37 @@
     if (!element) return;
     if (element.kind !== 'image') return;
 
-    // ID z payloadu
     const id = element.id || element?.meta?.id;
     if (!id) {
       console.warn('[ALIBOARD][CRDT] image update bez ID, ignoruję', element);
       return;
     }
 
-    // na razie zakładamy, że obraz jest na bieżącej stronie (ostatniej)
     const p = currentPage();
     if (!p) return;
 
-    // szukamy obrazu po ID
-    const idx = p.state.images.findIndex(
+    // 1) Szukamy po ID
+    let idx = p.state.images.findIndex(
       (im) => im.id === id || im.meta?.id === id
     );
 
-    // dane bazowe z payloadu
+    // 2) Jeśli nie ma po ID – spróbuj dopasować po src dla lokalnie wstawionego obrazu
+    if (idx === -1 && element.src) {
+      const altIdx = p.state.images.findIndex(
+        (im) =>
+          !im.id &&
+          !im.meta?.id &&
+          im.src === element.src
+      );
+      if (altIdx !== -1) {
+        idx = altIdx;
+        // nadajemy temu istniejącemu obrazowi ID z CRDT
+        const im = p.state.images[altIdx];
+        im.id = id;
+        im.meta = { ...(im.meta || {}), id };
+      }
+    }
+
     const base = {
       id,
       x: element.x ?? 0,
@@ -1936,18 +1950,18 @@
     };
 
     if (idx === -1) {
-      // obraz nie istniał – tworzymy nowy
+      // 3) Obraz jeszcze nie istnieje – tworzymy nowy (np. uczeń dołącza później)
       const im = reviveImage(base, p);
+      im.id = id;
       p.state.images.push(im);
     } else {
-      // obraz istnieje – aktualizujemy tylko parametry, nie wyrzucamy go
+      // 4) Obraz istnieje – aktualizujemy tylko parametry, NIE usuwamy
       const im = p.state.images[idx];
       im.x = base.x;
       im.y = base.y;
       im.w = base.w;
       im.h = base.h;
 
-      // jeśli z jakiegoś powodu zmienił się src – odświeżamy
       if (base.src && base.src !== im.src) {
         im.src = base.src;
         im.img = null;
@@ -4357,81 +4371,75 @@ function textDimensions(s){
     attachCursorListener._attached = true;
   })();
 
-  // ===== CRDT: OBRAZY (element_add / element_remove) =====
-  function setupRealtimeImages() {
-    if (!window.AliboardRealtime || typeof window.AliboardRealtime.on !== 'function') {
-      return false;
+  // === CRDT: obs?uga obraz?w ===
+if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
+
+  // 1) NOWE OBRAZY ? proste odtworzenie 1:1 (tak jak wcze?niej dzia?a?o dobrze)
+  window.AliboardRealtime.on('element_add', (element) => {
+    if (!element || element.kind !== 'image') return;
+    console.log('[ALIBOARD][CRDT] element_add (image)', element);
+
+    const p = currentPage();
+    if (!p) return;
+
+    const imgId = element.id || element.meta?.id || null;
+
+    const data = {
+      x: element.x ?? 0,
+      y: element.y ?? 0,
+      w: element.w ?? 100,
+      h: element.h ?? 100,
+      src: element.src,
+      meta: {
+        ...(element.meta || {}),
+        ...(imgId ? { id: imgId } : {}),
+      },
+    };
+
+    const im = reviveImage(data, p);
+    if (imgId) {
+      im.id = imgId;
+      im.meta = { ...(im.meta || {}), id: imgId };
     }
-    if (setupRealtimeImages._attached) return true;
 
-    // ?? Dodanie obrazu z innego klienta
-    window.AliboardRealtime.on('element_add', (element) => {
-      try {
-        if (!element || element.kind !== 'image') return;
-        console.log('[ALIBOARD][CRDT] element_add (image)', element);
-        upsertRemoteImage(element);
-      } catch (err) {
-        console.error('[Aliboard][CRDT image] element_add error', err);
+    p.state.images.push(im);
+    renderAll(p);
+    clearOverlay(p);
+    drawSelection(p);
+  });
+
+  // 2) RUCH / SKALA OBRAZU ? u?ywamy UPsertu
+  window.AliboardRealtime.on('element_update', (element) => {
+    if (!element || element.kind !== 'image') return;
+    console.log('[ALIBOARD][CRDT] element_update (image)', element);
+    upsertRemoteImage(element);
+  });
+
+  // 3) USUWANIE ? zostawiamy jak by?o wcze?niej (to co ju? dzia?a)
+  window.AliboardRealtime.on('element_remove', (payloadId) => {
+    const id = typeof payloadId === 'object' ? payloadId.id : payloadId;
+    if (!id) return;
+
+    console.log('[ALIBOARD][CRDT] element_remove dla ID:', id);
+
+    PAGES.forEach((p) => {
+      const idx = p.state.images.findIndex(
+        (im) => im.id === id || im.meta?.id === id
+      );
+      if (idx >= 0) {
+        p.state.images.splice(idx, 1);
+        if (p.state.selection && p.state.selection.kind === 'image' && p.state.selection.index === idx) {
+          p.state.selection = null;
+        }
+        renderAll(p);
+        clearOverlay(p);
+        drawSelection(p);
       }
     });
+  });
+}
 
-    // ?? Aktualizacja pozycji / rozmiaru z innego klienta
-    window.AliboardRealtime.on('element_update', (element) => {
-      try {
-        if (!element || element.kind !== 'image') return;
-        console.log('[ALIBOARD][CRDT] element_update (image)', element);
-        upsertRemoteImage(element);
-      } catch (err) {
-        console.error('[Aliboard][CRDT image] element_update error', err);
-      }
-    });
-
-    // ?? Usuwanie obrazu po id
-    window.AliboardRealtime.on('element_remove', (payloadId) => {
-      try {
-        const id = typeof payloadId === 'object' ? payloadId.id : payloadId;
-        if (!id) return;
-
-        console.log('[ALIBOARD][CRDT] element_remove dla ID:', id);
-
-        PAGES.forEach((p) => {
-          const idx = p.state.images.findIndex(
-            (im) => im.id === id || im.meta?.id === id
-          );
-          if (idx >= 0) {
-            p.state.images.splice(idx, 1);
-            if (p.state.selection && p.state.selection.kind === 'image' && p.state.selection.index === idx) {
-              p.state.selection = null;
-            }
-            renderAll(p);
-            clearOverlay(p);
-            drawSelection(p);
-          }
-        });
-      } catch (err) {
-        console.error('[Aliboard][CRDT image] element_remove error', err);
-      }
-    });
-
-    setupRealtimeImages._attached = true;
-    console.info('[Aliboard][CRDT image] realtime handlers attached');
-    return true;
-  }
-
-  // Spr?buj od razu
-  if (!setupRealtimeImages()) {
-    // Je?eli AliboardRealtime jeszcze nie istnieje ? pr?bujemy kilka razy w tle
-    const rtInterval = setInterval(() => {
-      if (setupRealtimeImages()) {
-        clearInterval(rtInterval);
-      }
-    }, 500);
-
-    // Po 10 sekundach przestajemy pr?bowa?
-    setTimeout(() => clearInterval(rtInterval), 10000);
-  }
-
- // START
+// START
   if(!restoreLocal()){ createPage(false); }
   setTool(TOOLS.SELECT);
 })();
