@@ -1881,6 +1881,88 @@
     return obj;
   }
 
+  function serializeImageForCRDT(im) {
+    const id = im.id || im.meta?.id;
+    if (!id) return null;
+
+    return {
+      id,
+      kind: 'image',
+      x: im.x,
+      y: im.y,
+      w: im.w,
+      h: im.h,
+      src: im.src,
+      meta: {
+        ...(im.meta || {}),
+        id,
+      },
+    };
+  }
+
+  // === CRDT: bezpieczna aktualizacja obrazów z sieci (UPsert) ===
+  function upsertRemoteImage(element) {
+    if (!element) return;
+    if (element.kind !== 'image') return;
+
+    // ID z payloadu
+    const id = element.id || element?.meta?.id;
+    if (!id) {
+      console.warn('[ALIBOARD][CRDT] image update bez ID, ignoruję', element);
+      return;
+    }
+
+    // na razie zakładamy, że obraz jest na bieżącej stronie (ostatniej)
+    const p = currentPage();
+    if (!p) return;
+
+    // szukamy obrazu po ID
+    const idx = p.state.images.findIndex(
+      (im) => im.id === id || im.meta?.id === id
+    );
+
+    // dane bazowe z payloadu
+    const base = {
+      id,
+      x: element.x ?? 0,
+      y: element.y ?? 0,
+      w: element.w ?? 100,
+      h: element.h ?? 100,
+      src: element.src,
+      meta: {
+        ...(element.meta || {}),
+        id,
+      },
+    };
+
+    if (idx === -1) {
+      // obraz nie istniał – tworzymy nowy
+      const im = reviveImage(base, p);
+      p.state.images.push(im);
+    } else {
+      // obraz istnieje – aktualizujemy tylko parametry, nie wyrzucamy go
+      const im = p.state.images[idx];
+      im.x = base.x;
+      im.y = base.y;
+      im.w = base.w;
+      im.h = base.h;
+
+      // jeśli z jakiegoś powodu zmienił się src – odświeżamy
+      if (base.src && base.src !== im.src) {
+        im.src = base.src;
+        im.img = null;
+        const refreshed = reviveImage(base, p);
+        im.img = refreshed.img || im.img;
+      }
+
+      im.meta = base.meta;
+    }
+
+    renderAll(p);
+    clearOverlay(p);
+    drawSelection(p);
+  }
+
   // addImageFromSrc = JEDYNE miejsce, które dodaje obraz do strony
   // opts: { broadcast: true/false, id, pageIndex, nx, ny, nw, nh }
   function addImageFromSrc(src, w, h, x, y, meta, p, opts){
@@ -2809,29 +2891,6 @@ function textDimensions(s){
               im.y += dy;
               sel.bbox.x += dx;
               sel.bbox.y += dy;
-
-              // 🔄 CRDT: broadcast przesunięcia obrazu
-              if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function' && im.meta && im.meta.id){
-                const pageIndex = PAGES.indexOf(p);
-                if (pageIndex >= 0){
-                  const rect = p.el.getBoundingClientRect();
-                  const nx = im.x / rect.width;
-                  const ny = im.y / rect.height;
-                  const nw = im.w / rect.width;
-                  const nh = im.h / rect.height;
-
-                  window.AliboardRealtime.broadcastElementUpdate({
-                    id: im.meta.id,
-                    kind: 'image',
-                    pageIndex,
-                    x: im.x,
-                    y: im.y,
-                    w: im.w,
-                    h: im.h,
-                    nx, ny, nw, nh
-                  });
-                }
-              }
             } else {
               const s = p.state.strokes[sel.index];
               if (!s) return;
@@ -2846,35 +2905,6 @@ function textDimensions(s){
             const nextBBox = computeScaledBBox(d.startBBox, d.handle, x, y);
             applyScaledSelection(sel, d, nextBBox, p);
             sel.bbox = nextBBox;
-
-            // 🔄 CRDT: broadcast zmiany rozmiaru obrazu
-            if (sel.kind === 'image'){
-              const im = p.state.images[sel.index];
-              if (im && im.meta && im.meta.id &&
-                  window.AliboardRealtime &&
-                  typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
-
-                const pageIndex = PAGES.indexOf(p);
-                if (pageIndex >= 0){
-                  const rect = p.el.getBoundingClientRect();
-                  const nx = im.x / rect.width;
-                  const ny = im.y / rect.height;
-                  const nw = im.w / rect.width;
-                  const nh = im.h / rect.height;
-
-                  window.AliboardRealtime.broadcastElementUpdate({
-                    id: im.meta.id,
-                    kind: 'image',
-                    pageIndex,
-                    x: im.x,
-                    y: im.y,
-                    w: im.w,
-                    h: im.h,
-                    nx, ny, nw, nh
-                  });
-                }
-              }
-            }
           }else if(d.mode==='rotate'){
             if(sel.kind==='stroke'){
               const s = p.state.strokes[sel.index];
@@ -2886,7 +2916,23 @@ function textDimensions(s){
               }
             }
           }
-          renderAll(p); drawSelection(p);
+          renderAll(p);
+          drawSelection(p);
+
+          // 🔄 CRDT update dla obrazów
+          if (
+            sel.kind === 'image' &&
+            window.AliboardRealtime &&
+            typeof window.AliboardRealtime.broadcastElementUpdate === 'function'
+          ) {
+            const im = p.state.images[sel.index];
+            if (im) {
+              const payload = serializeImageForCRDT(im);
+              if (payload) {
+                window.AliboardRealtime.broadcastElementUpdate(payload);
+              }
+            }
+          }
         }
         return;
       }
@@ -4316,57 +4362,14 @@ function textDimensions(s){
     if (!window.AliboardRealtime || typeof window.AliboardRealtime.on !== 'function') {
       return false;
     }
+    if (setupRealtimeImages._attached) return true;
 
     // ?? Dodanie obrazu z innego klienta
     window.AliboardRealtime.on('element_add', (element) => {
       try {
         if (!element || element.kind !== 'image') return;
-
-        const pageIndex = typeof element.pageIndex === 'number'
-          ? element.pageIndex
-          : (PAGES.length ? PAGES.length - 1 : 0);
-
-        // Upewnij si?, ?e mamy odpowiedni? kartk?
-        while (PAGES.length <= pageIndex) {
-          createPage(false);
-        }
-        const p = PAGES[pageIndex];
-
-        // Je?li obraz o tym id ju? istnieje ? nie duplikujemy
-        const exists = p.state.images.some(im => im.meta && im.meta.id === element.id);
-        if (exists) return;
-
-        const meta = element.meta || {};
-        meta.id = element.id;
-
-        const rect = p.el.getBoundingClientRect();
-        let x, y, w, h;
-
-        // Preferuj wsp??rz?dne znormalizowane (nx,ny,nw,nh)
-        if (typeof element.nx === 'number' &&
-            typeof element.ny === 'number' &&
-            typeof element.nw === 'number' &&
-            typeof element.nh === 'number') {
-
-          x = element.nx * rect.width;
-          y = element.ny * rect.height;
-          w = element.nw * rect.width;
-          h = element.nh * rect.height;
-
-        } else {
-          // Fallback ? stare pola w px (na wypadek starszej wersji)
-          x = element.x ?? 0;
-          y = element.y ?? 0;
-          w = element.w ?? (rect.width * 0.5);
-          h = element.h ?? (rect.height * 0.5);
-        }
-
-        addImageFromSrc(
-          element.src,
-          w, h, x, y,
-          meta,
-          p
-        );
+        console.log('[ALIBOARD][CRDT] element_add (image)', element);
+        upsertRemoteImage(element);
       } catch (err) {
         console.error('[Aliboard][CRDT image] element_add error', err);
       }
@@ -4376,63 +4379,33 @@ function textDimensions(s){
     window.AliboardRealtime.on('element_update', (element) => {
       try {
         if (!element || element.kind !== 'image') return;
-
-        const pageIndex = typeof element.pageIndex === 'number'
-          ? element.pageIndex
-          : (PAGES.length ? PAGES.length - 1 : 0);
-
-        if (pageIndex < 0 || pageIndex >= PAGES.length) return;
-        const p = PAGES[pageIndex];
-
-        const im = p.state.images.find(im => im.meta && im.meta.id === element.id);
-        if (!im) return;
-
-        const rect = p.el.getBoundingClientRect();
-        let x, y, w, h;
-
-        if (typeof element.nx === 'number' &&
-            typeof element.ny === 'number' &&
-            typeof element.nw === 'number' &&
-            typeof element.nh === 'number') {
-
-          x = element.nx * rect.width;
-          y = element.ny * rect.height;
-          w = element.nw * rect.width;
-          h = element.nh * rect.height;
-
-        } else {
-          x = element.x ?? im.x;
-          y = element.y ?? im.y;
-          w = element.w ?? im.w;
-          h = element.h ?? im.h;
-        }
-
-        im.x = x;
-        im.y = y;
-        im.w = w;
-        im.h = h;
-
-        renderAll(p);
-        drawSelection(p);
+        console.log('[ALIBOARD][CRDT] element_update (image)', element);
+        upsertRemoteImage(element);
       } catch (err) {
         console.error('[Aliboard][CRDT image] element_update error', err);
       }
     });
 
-    // ?? Usuwanie obrazu po id (je?li kiedy? dorobimy broadcast remove przy kasowaniu)
-    window.AliboardRealtime.on('element_remove', (idOrElement) => {
+    // ?? Usuwanie obrazu po id
+    window.AliboardRealtime.on('element_remove', (payloadId) => {
       try {
-        const id = typeof idOrElement === 'string'
-          ? idOrElement
-          : idOrElement?.id;
-
+        const id = typeof payloadId === 'object' ? payloadId.id : payloadId;
         if (!id) return;
 
-        PAGES.forEach(p => {
-          const before = p.state.images.length;
-          p.state.images = p.state.images.filter(im => !(im.meta && im.meta.id === id));
-          if (p.state.images.length !== before) {
+        console.log('[ALIBOARD][CRDT] element_remove dla ID:', id);
+
+        PAGES.forEach((p) => {
+          const idx = p.state.images.findIndex(
+            (im) => im.id === id || im.meta?.id === id
+          );
+          if (idx >= 0) {
+            p.state.images.splice(idx, 1);
+            if (p.state.selection && p.state.selection.kind === 'image' && p.state.selection.index === idx) {
+              p.state.selection = null;
+            }
             renderAll(p);
+            clearOverlay(p);
+            drawSelection(p);
           }
         });
       } catch (err) {
@@ -4440,6 +4413,7 @@ function textDimensions(s){
       }
     });
 
+    setupRealtimeImages._attached = true;
     console.info('[Aliboard][CRDT image] realtime handlers attached');
     return true;
   }
@@ -4457,33 +4431,7 @@ function textDimensions(s){
     setTimeout(() => clearInterval(rtInterval), 10000);
   }
 
-
-  // === CRDT: reagowanie na element_remove (obrazy) ===
-  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
-    window.AliboardRealtime.on('element_remove', (payloadId) => {
-      const id = typeof payloadId === 'object' ? payloadId.id : payloadId;
-      if (!id) return;
-
-      console.log('[ALIBOARD][CRDT] element_remove dla ID:', id);
-
-      PAGES.forEach((p) => {
-        const idx = p.state.images.findIndex(
-          (im) => im.id === id || im.meta?.id === id
-        );
-        if (idx >= 0) {
-          p.state.images.splice(idx, 1);
-          if (p.state.selection && p.state.selection.kind === 'image' && p.state.selection.index === idx) {
-            p.state.selection = null;
-          }
-          renderAll(p);
-          clearOverlay(p);
-          drawSelection(p);
-        }
-      });
-    });
-  }
-
-  // START
+ // START
   if(!restoreLocal()){ createPage(false); }
   setTool(TOOLS.SELECT);
 })();
