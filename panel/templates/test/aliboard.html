@@ -1849,19 +1849,35 @@
   /* ---------- OBRAZY ---------- */
   // --- OBRAZY: lokalny model + opcjonalny CRDT (element_add) ---
   function reviveImage(im, p){
+    // 1) ustalamy stabilne ID
+    const idFromPayload = im.id || im?.meta?.id;
+    const id = idFromPayload || `img_${Math.random().toString(16).slice(2)}`;
+
+    // 2) dbamy, żeby meta zawsze miało id
+    const meta = {
+      ...(im.meta || {}),
+      id
+    };
+
+    // 3) obiekt obrazu w stanie
     const obj = {
-      id: im.id || null,
+      id,          // <-- KLUCZOWE: wspólne ID po obu stronach
       x: im.x,
       y: im.y,
       w: im.w,
       h: im.h,
       src: im.src,
-      meta: im.meta,
+      meta,
       img: null,
     };
+
     const el = new Image();
-    el.onload = ()=>{ obj.img = el; renderAll(p); };
+    el.onload = () => {
+      obj.img = el;
+      renderAll(p);
+    };
     el.src = im.src;
+
     return obj;
   }
 
@@ -3356,55 +3372,62 @@ function textDimensions(s){
     });
   }
 
-  // USUŃ ZAZNACZONY OBIEKT (przycisk "Usuń zaznaczony obiekt")
+  // === USUŃ ZAZNACZONY OBIEKT (lokalnie + CRDT) ===
   (function setupDeleteSelectionButton(){
-    const btn = document.getElementById('deleteSelection'); // ← PODMIEŃ ID jeśli inny
-    if (!btn) return;
+    const btn = document.getElementById('deleteSelection'); // <-- dopasuj ID jeśli inne
+    if (!btn) {
+      console.warn('[ALIBOARD] Nie znaleziono przycisku deleteSelection');
+      return;
+    }
 
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
 
       const p = currentPage();
-      if (!p || !p.state.selection) return;
+      if (!p) return;
 
       const sel = p.state.selection;
+      if (!sel) {
+        console.warn('[ALIBOARD] Brak zaznaczenia do usunięcia');
+        return;
+      }
 
-      // 1) Obraz – usuwamy lokalnie i przez CRDT
-      if (sel.kind === 'image') {
-        const im = p.state.images[sel.index];
-        if (!im) return;
+      const { kind, index } = sel;
+      console.log('[ALIBOARD] Usuwanie zaznaczenia:', sel);
 
-        const id = im.meta && im.meta.id;
+      // 🖼 OBRAZ
+      if (kind === 'image' && p.state.images[index]) {
+        const im = p.state.images[index];
+
+        // ID obrazu – używamy zarówno im.id jak i im.meta.id (na wszelki wypadek)
+        const elementId = im.id || im.meta?.id;
+
         pushHistory(p);
-
-        // lokalnie
-        p.state.images.splice(sel.index, 1);
+        p.state.images.splice(index, 1);
         p.state.selection = null;
         renderAll(p);
         clearOverlay(p);
 
-        // CRDT: powiadamiamy inne klienty
-        if (id && window.AliboardRealtime &&
-            typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
-          window.AliboardRealtime.broadcastElementRemove(id);
+        // CRDT – powiadamiamy inne urządzenia, jeśli mamy ID
+        if (elementId && window.AliboardRealtime?.broadcastElementRemove) {
+          window.AliboardRealtime.broadcastElementRemove(elementId);
         }
+
+        return;
       }
 
-      // 2) (opcjonalnie) Stroke – na razie można usuwać tylko lokalnie
-      /*
-      if (sel.kind === 'stroke') {
-        const s = p.state.strokes[sel.index];
-        if (!s) return;
-
+      // ✏️ RYSUNEK / TEKST
+      if (kind === 'stroke' && p.state.strokes[index]) {
         pushHistory(p);
-        p.state.strokes.splice(sel.index, 1);
+        p.state.strokes.splice(index, 1);
         p.state.selection = null;
         renderAll(p);
         clearOverlay(p);
-
-        // Jeśli kiedyś zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
+        // tu na razie nie robimy CRDT, chyba że później dodamy elementy-strokes
+        return;
       }
-      */
+
+      console.warn('[ALIBOARD] Nieznany typ zaznaczenia do usunięcia:', kind);
     });
   })();
 
@@ -4435,31 +4458,28 @@ function textDimensions(s){
   }
 
 
-  // --- CRDT: odbieranie usuwania obraz?w z innych urz?dze? ---
+  // === CRDT: reagowanie na element_remove (obrazy) ===
   if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
-    window.AliboardRealtime.on('element_remove', (id) => {
+    window.AliboardRealtime.on('element_remove', (payloadId) => {
+      const id = typeof payloadId === 'object' ? payloadId.id : payloadId;
       if (!id) return;
 
-      let changed = false;
+      console.log('[ALIBOARD][CRDT] element_remove dla ID:', id);
 
-      // Szukamy po wszystkich kartkach
-      for (const p of PAGES) {
+      PAGES.forEach((p) => {
         const idx = p.state.images.findIndex(
-          (im) => im.meta && im.meta.id === id
+          (im) => im.id === id || im.meta?.id === id
         );
-        if (idx !== -1) {
+        if (idx >= 0) {
           p.state.images.splice(idx, 1);
-          changed = true;
-          // nie break ? w teorii ten sam ID powinien by? raz, ale lecimy dla pewno?ci
-        }
-      }
-
-      if (changed) {
-        PAGES.forEach((p) => {
+          if (p.state.selection && p.state.selection.kind === 'image' && p.state.selection.index === idx) {
+            p.state.selection = null;
+          }
           renderAll(p);
           clearOverlay(p);
-        });
-      }
+          drawSelection(p);
+        }
+      });
     });
   }
 
