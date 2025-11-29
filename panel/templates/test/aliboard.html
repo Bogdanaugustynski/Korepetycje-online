@@ -2229,15 +2229,8 @@
         removed=true;
       }
     }
-    for(let i=p.state.images.length-1;i>=0;i--){
-      const im = p.state.images[i];
-      if(pt.x>=im.x && pt.x<=im.x+im.w && pt.y>=im.y && pt.y<=im.y+im.h){
-        p.state.images.splice(i,1);
-        if(im.id) removedImageIds.push(im.id);
-        removed=true;
-        continue;
-      }
-    }
+    // Gumka nie rusza obrazów – ich kasowanie zostawiamy selekcji/koszowi.
+    // (Kiedyś można dodać tryb, ale domyślnie chronimy obrazki przed przypadkowym usunięciem.)
     if(removed){
       renderAll(p);
       clearOverlay(p);
