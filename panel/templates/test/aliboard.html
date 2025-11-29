@@ -2997,16 +2997,13 @@ function textDimensions(s){
   function end(x,y){
     let strokeToSync = null;
     if(tool===TOOLS.SELECT){
-      const drag = p.state.dragging;
+      const sel = p.state.selection;
       p.state.dragging = null;
 
-      // je?li zaznaczony jest obraz ? po zako?czeniu ruchu/skalowania wy?lij update
-      const sel = p.state.selection;
       if (sel && sel.kind === 'image') {
         const im = p.state.images[sel.index];
         if (im && im.id) {
-          const pageIndex = PAGES.indexOf(p);
-          broadcastImageUpdate(im, pageIndex);
+          broadcastImageUpdate(im, PAGES.indexOf(p));
         }
       }
       return;
@@ -3038,7 +3035,7 @@ function textDimensions(s){
     current=null;
   }
 
-    function trackTouch(e, isDown){
+  function trackTouch(e, isDown){
       if(e.pointerType!=='touch') return;
       if(isDown){
         touchPointers.add(e.pointerId);
