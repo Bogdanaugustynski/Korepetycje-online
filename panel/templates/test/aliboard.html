@@ -1700,7 +1700,7 @@
     return PAGES[PAGES.length-1] || null;
   }
 
-  /* ---------- CRDT: współdzielone rysowanie PEN + LINE ---------- */
+  /* ---------- CRDT: wspoldzielone rysowanie PEN + LINE (z normalizacja) ---------- */
   const AliboardCRDT = (function(){
     const elementsById = new Map(); // id -> { pageIndex, type }
 
@@ -1711,8 +1711,13 @@
       return stroke._crdtId;
     }
 
-    function strokeToElement(stroke, pageIndex){
-      if (!stroke) return null;
+    // KONWERSJA stroke -> element (wspolrzedne ZNORMALIZOWANE 0-1)
+    function strokeToElement(stroke, pageIndex, page){
+      if (!stroke || !page) return null;
+      const rect = page.drawC.getBoundingClientRect();
+      const W = rect.width  || 1;
+      const H = rect.height || 1;
+
       const base = {
         id: stroke._crdtId || null,
         type: stroke.type,
@@ -1720,32 +1725,38 @@
         color: stroke.color,
         size: stroke.size || 1,
       };
+
       if (stroke.type === 'pen'){
-        base.points = (stroke.points || []).map(pt => ({ x: pt.x, y: pt.y }));
+        base.points = (stroke.points || []).map(pt => ({
+          x: pt.x / W,
+          y: pt.y / H,
+        }));
       } else if (stroke.type === 'line'){
-        base.a = stroke.a ? { x: stroke.a.x, y: stroke.a.y } : null;
-        base.b = stroke.b ? { x: stroke.b.x, y: stroke.b.y } : null;
+        base.a = stroke.a ? { x: stroke.a.x / W, y: stroke.a.y / H } : null;
+        base.b = stroke.b ? { x: stroke.b.x / W, y: stroke.b.y / H } : null;
       } else {
         return null;
       }
       return base;
     }
 
+    // Zastosowanie elementu na stronie (denormalizacja współrzędnych)
     function applyElement(element){
       if (!element || typeof element.pageIndex !== 'number') return;
       const pageIndex = element.pageIndex;
 
-      // Upewniamy się, że mamy tę stronę
       while (PAGES.length <= pageIndex){
         createPage(false);
       }
       const p = PAGES[pageIndex];
       if (!p) return;
 
-      // Znajdź istniejący stroke CRDT po id
+      const rect = p.drawC.getBoundingClientRect();
+      const W = rect.width  || 1;
+      const H = rect.height || 1;
+
       let stroke = p.state.strokes.find(s => s._crdtId === element.id);
 
-      // Jeśli nie istnieje – utwórz
       if (!stroke){
         if (element.type === 'pen'){
           stroke = {
@@ -1759,8 +1770,8 @@
             type: 'line',
             color: element.color,
             size: element.size,
-            a: element.a ? { x: element.a.x, y: element.a.y } : { x: 0, y: 0 },
-            b: element.b ? { x: element.b.x, y: element.b.y } : { x: 0, y: 0 },
+            a: { x: 0, y: 0 },
+            b: { x: 0, y: 0 },
           };
         } else {
           return;
@@ -1769,19 +1780,21 @@
         p.state.strokes.push(stroke);
       }
 
-      // Aktualizacja właściwości
       stroke.color = element.color;
       stroke.size  = element.size;
 
       if (stroke.type === 'pen' && Array.isArray(element.points)){
-        stroke.points = element.points.map(pt => ({ x: pt.x, y: pt.y }));
+        stroke.points = element.points.map(pt => ({
+          x: pt.x * W,
+          y: pt.y * H,
+        }));
       } else if (stroke.type === 'line' && element.a && element.b){
-        stroke.a = { x: element.a.x, y: element.a.y };
-        stroke.b = { x: element.b.x, y: element.b.y };
+        stroke.a = { x: element.a.x * W, y: element.a.y * H };
+        stroke.b = { x: element.b.x * W, y: element.b.y * H };
       }
 
       elementsById.set(element.id, { pageIndex, type: element.type });
-      renderAll(p); // KLUCZ: każda aktualizacja od razu odrysowuje stronę
+      renderAll(p);
     }
 
     function removeElement(id){
@@ -1799,19 +1812,19 @@
       elementsById.delete(id);
     }
 
-    function startLocalStroke(stroke, pageIndex){
+    function startLocalStroke(stroke, pageIndex, page){
       if (!window.AliboardRealtime) return;
       const id = ensureId(stroke);
-      const el = strokeToElement(stroke, pageIndex);
+      const el = strokeToElement(stroke, pageIndex, page);
       if (!el) return;
       el.id = id;
       elementsById.set(id, { pageIndex, type: stroke.type });
       window.AliboardRealtime.broadcastElementAdd(el);
     }
 
-    function updateLocalStroke(stroke, pageIndex){
+    function updateLocalStroke(stroke, pageIndex, page){
       if (!window.AliboardRealtime || !stroke || !stroke._crdtId) return;
-      const el = strokeToElement(stroke, pageIndex);
+      const el = strokeToElement(stroke, pageIndex, page);
       if (!el) return;
       el.id = stroke._crdtId;
       window.AliboardRealtime.broadcastElementUpdate(el);
@@ -1830,20 +1843,22 @@
         return;
       }
 
-      // Pełny snapshot – np. nowy klient dołącza do pokoju
+      // CRDT przejmuje stery → kasujemy ewentualny stary autosave
+      try {
+        const key = `aliboard_v25_state_${window.ALIBOARD_ROOM_ID || 'local-test'}`;
+        localStorage.removeItem(key);
+      } catch (_) {}
+
       window.AliboardRealtime.on('snapshot', (elements) => {
         if (!Array.isArray(elements)) return;
         elements.forEach(el => applyElement(el));
       });
-      // Na żywo: dodanie nowego elementu
       window.AliboardRealtime.on('element_add', (el) => {
         applyElement(el);
       });
-      // Na żywo: aktualizacja istniejącego elementu (każdy ruch!)
       window.AliboardRealtime.on('element_update', (el) => {
         applyElement(el);
       });
-      // Na żywo: usunięcie (np. gumka)
       window.AliboardRealtime.on('element_remove', (id) => {
         removeElement(id);
       });
@@ -1859,6 +1874,7 @@
     };
   })();
   window.AliboardCRDT = AliboardCRDT;
+
 
   /* ---------- TWORZENIE STRONY ---------- */
   function createPage(scrollTo=true){
@@ -2370,34 +2386,36 @@
   }
   function eraseAt(pt,p){
     const eps = Math.max(6, size*2);
+    let removed = false;
     const removedStrokes = [];
 
-    for (let i = p.state.strokes.length - 1; i >= 0; i--){
+    for(let i = p.state.strokes.length - 1; i >= 0; i--){
       const s = p.state.strokes[i];
       let hit = false;
 
-      if (s.type === 'pen') {
-        hit = hitPolyline(s.points, pt, eps);
-      } else if (s.type === 'line') {
-        hit = distToSegment(pt, s.a, s.b) <= eps;
-      } else if (s.type === 'text') {
+      if (s.type === 'pen' && hitPolyline(s.points, pt, eps)){
+        hit = true;
+      } else if (s.type === 'line' && distToSegment(pt, s.a, s.b) <= eps){
+        hit = true;
+      } else if (s.type === 'text'){
         const b = bboxStroke(s);
-        hit = (pt.x>=b.x && pt.x<=b.x+b.w && pt.y>=b.y && pt.y<=b.y+b.h);
+        if (pt.x>=b.x && pt.x<=b.x+b.w && pt.y>=b.y && pt.y<=b.y+b.h){
+          hit = true;
+        }
       }
 
       if (hit){
+        removed = true;
         removedStrokes.push(s);
-        p.state.strokes.splice(i, 1);
+        p.state.strokes.splice(i,1);
       }
     }
 
-    if (removedStrokes.length){
-      // CRDT: zgłoś usunięcie po id
+    if (removed){
       if (window.AliboardRealtime && window.AliboardCRDT){
-        const pageIndex = PAGES.indexOf(p);
         removedStrokes.forEach(st => {
           if (st._crdtId){
-            AliboardCRDT.removeLocalStroke(st, pageIndex);
+            AliboardCRDT.removeLocalStroke(st);
           }
         });
       }
@@ -2405,6 +2423,7 @@
       clearOverlay(p);
     }
   }
+
 
 
   /* ---------- TEKST INLINE ---------- */
@@ -2937,7 +2956,7 @@ function textDimensions(s){
 
         // CRDT: od razu zgłoś nowy stroke
         if (window.AliboardRealtime && window.AliboardCRDT){
-          AliboardCRDT.startLocalStroke(current, pageIndex);
+          AliboardCRDT.startLocalStroke(current, pageIndex, p);
         }
 
       } else if (tool === TOOLS.LINE){
@@ -2946,7 +2965,7 @@ function textDimensions(s){
 
         // CRDT: od razu zgłoś nową linię z punktem startowym
         if (window.AliboardRealtime && window.AliboardCRDT){
-          AliboardCRDT.startLocalStroke(current, pageIndex);
+          AliboardCRDT.startLocalStroke(current, pageIndex, p);
         }
 
       } else if(tool===TOOLS.ERASER){
@@ -3075,7 +3094,7 @@ function textDimensions(s){
 
         // CRDT: każdy ruch = element_update
         if (window.AliboardRealtime && window.AliboardCRDT){
-          AliboardCRDT.updateLocalStroke(current, pageIndex);
+          AliboardCRDT.updateLocalStroke(current, pageIndex, p);
         }
 
       } else if (tool === TOOLS.LINE){
@@ -3087,7 +3106,7 @@ function textDimensions(s){
 
         // CRDT: aktualizuj linię w locie
         if (window.AliboardRealtime && window.AliboardCRDT){
-          AliboardCRDT.updateLocalStroke(current, pageIndex);
+          AliboardCRDT.updateLocalStroke(current, pageIndex, p);
         }
       }
     }
@@ -3717,6 +3736,11 @@ function textDimensions(s){
   setInterval(autosave, 30000);
 
   function restoreLocal() {
+    // Je?li korzystamy z realtime/CRDT ? nie przywracamy lokalnego autosave
+    if (window.AliboardRealtime){
+      try { localStorage.removeItem(AUTOSAVE_KEY); } catch(_) {}
+      return false;
+    }
     try {
       const raw = localStorage.getItem(AUTOSAVE_KEY);
       if (!raw) return false;
@@ -3733,10 +3757,13 @@ function textDimensions(s){
 
       return true;
     } catch (e) {
-      console.warn('[Aliboard][autosave] błąd restore', e);
+      console.warn('[Aliboard][autosave] b??d restore', e);
       return false;
     }
   }
+
+
+
 
 
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
@@ -4668,12 +4695,15 @@ function textDimensions(s){
   function initCrdtWhenReady(){
     if (window.AliboardRealtime && !window.ALIBOARD_CRDT_READY){
       window.ALIBOARD_CRDT_READY = true;
-      AliboardCRDT.init();
+      if (window.AliboardCRDT && typeof AliboardCRDT.init === 'function'){
+        AliboardCRDT.init();
+      }
     } else if (!window.ALIBOARD_CRDT_READY){
       setTimeout(initCrdtWhenReady, 300);
     }
   }
   initCrdtWhenReady();
+
 })();
 
 /* === ALIBOARD: pokazuj przycisk wielko�ci czcionki tylko przy narz�dziu Tekst === */
