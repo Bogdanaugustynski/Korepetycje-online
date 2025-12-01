@@ -1700,6 +1700,164 @@
     return PAGES[PAGES.length-1] || null;
   }
 
+  /* ---------- CRDT: współdzielone rysowanie (ołówek + linia) ---------- */
+  const AliboardCRDT = (function(){
+    const elements = new Map(); // id -> { pageIndex, stroke }
+
+    function rt(){
+      return window.AliboardRealtime || null;
+    }
+
+    function makeId(){
+      const base = (window.AliboardRealtime && window.AliboardRealtime.clientId) || 'local';
+      return `st_${base}_${Date.now().toString(36)}_${Math.random().toString(16).slice(2)}`;
+    }
+
+    function attachMeta(stroke, pageIndex){
+      if (stroke._crdtId) return stroke._crdtId;
+      const id = makeId();
+      stroke.id = id;
+      stroke._crdtId = id;
+      stroke._crdtRev = 0;
+      elements.set(id, { pageIndex, stroke });
+      return id;
+    }
+
+    function strokeToElement(stroke, pageIndex){
+      return {
+        id: stroke._crdtId || stroke.id,
+        kind: 'stroke',
+        tool: stroke.type,         // 'pen' albo 'line'
+        pageIndex,
+        color: stroke.color,
+        size: stroke.size,
+        points: stroke.type === 'pen' ? stroke.points : undefined,
+        a: stroke.type === 'line' ? stroke.a : undefined,
+        b: stroke.type === 'line' ? stroke.b : undefined,
+        rev: stroke._crdtRev || 0
+      };
+    }
+
+    function startLocalStroke(stroke, pageIndex){
+      const r = rt(); if(!r) return;
+      attachMeta(stroke, pageIndex);
+      stroke._crdtRev = (stroke._crdtRev || 0) + 1;
+      r.broadcastElementAdd(strokeToElement(stroke, pageIndex));
+    }
+
+    function updateLocalStroke(stroke, pageIndex){
+      const r = rt(); if(!r) return;
+      if(!stroke._crdtId) return;
+      stroke._crdtRev = (stroke._crdtRev || 0) + 1;
+      r.broadcastElementUpdate(strokeToElement(stroke, pageIndex));
+    }
+
+    function removeLocalStroke(stroke){
+      const r = rt(); if(!r) return;
+      if(!stroke || !stroke._crdtId) return;
+      r.broadcastElementRemove(stroke._crdtId);
+    }
+
+    function ensurePage(pageIndex){
+      while (PAGES.length <= pageIndex){
+        createPage(false);
+      }
+      return PAGES[pageIndex];
+    }
+
+    function applyRemoteElement(el){
+      if(!el || el.kind !== 'stroke') return;
+      const pageIndex = typeof el.pageIndex === 'number' ? el.pageIndex : 0;
+      const p = ensurePage(pageIndex);
+      const existing = elements.get(el.id);
+
+      if(!existing){
+        // nowy element z sieci
+        const stroke = el.tool === 'line'
+          ? {
+              type:'line',
+              color:el.color || '#0b74ff',
+              size:el.size || 3,
+              a:el.a || {x:0,y:0},
+              b:el.b || {x:0,y:0},
+            }
+          : {
+              type:'pen',
+              color:el.color || '#0b74ff',
+              size:el.size || 3,
+              points:Array.isArray(el.points) ? el.points.slice() : [],
+            };
+
+        stroke.id = el.id;
+        stroke._crdtId = el.id;
+        stroke._crdtRev = el.rev || 0;
+
+        p.state.strokes.push(stroke);
+        elements.set(el.id, { pageIndex, stroke });
+        renderAll(p);
+        return;
+      }
+
+      const { stroke, pageIndex: idx } = existing;
+      if(typeof el.rev === 'number' && (stroke._crdtRev || 0) >= el.rev){
+        return; // mamy nowszą wersję lokalną
+      }
+
+      stroke._crdtRev = el.rev || ((stroke._crdtRev || 0) + 1);
+      stroke.color = el.color || stroke.color;
+      stroke.size  = el.size  || stroke.size;
+
+      if(stroke.type === 'pen' && Array.isArray(el.points)){
+        stroke.points = el.points.slice();
+      }else if(stroke.type === 'line' && el.a && el.b){
+        stroke.a = el.a;
+        stroke.b = el.b;
+      }
+
+      const p2 = PAGES[idx] || ensurePage(idx);
+      renderAll(p2);
+    }
+
+    function applyRemoteRemove(id){
+      if(!id) return;
+      const entry = elements.get(id);
+      if(!entry) return;
+      const { stroke, pageIndex } = entry;
+      const p = PAGES[pageIndex]; if(!p) return;
+
+      const idx = p.state.strokes.indexOf(stroke);
+      if(idx >= 0){
+        p.state.strokes.splice(idx,1);
+        renderAll(p);
+      }
+      elements.delete(id);
+    }
+
+    function initFromRealtime(){
+      const r = rt(); if(!r) return;
+      r.on('element_add', el => applyRemoteElement(el));
+      r.on('element_update', el => applyRemoteElement(el));
+      r.on('element_remove', id => applyRemoteRemove(id));
+
+      r.on('snapshot', (elementsArr)=>{
+        if(!Array.isArray(elementsArr)) return;
+        PAGES.forEach(p => {
+          p.state.strokes = p.state.strokes.filter(s => !s._crdtId);
+          renderAll(p);
+        });
+        elements.clear();
+        elementsArr.forEach(el => applyRemoteElement(el));
+      });
+    }
+
+    return {
+      startLocalStroke,
+      updateLocalStroke,
+      removeLocalStroke,
+      initFromRealtime
+    };
+  })();
+
   /* ---------- TWORZENIE STRONY ---------- */
   function createPage(scrollTo=true){
     const page = document.createElement('div');
@@ -2208,35 +2366,42 @@
       }
     }
   }
-  function eraseAt(pt,p){
+    function eraseAt(pt,p){
     const eps = Math.max(6, size*2);
     let removed=false;
-    const removedIds=[];
-    const removedImageIds=[];
+    const removedStrokes = [];
+
     for(let i=p.state.strokes.length-1;i>=0;i--){
       const s = p.state.strokes[i];
-      let hit=false;
-      if(s.type==='pen' && hitPolyline(s.points,pt,eps)){ hit=true; }
-      else if(s.type==='line' && distToSegment(pt,s.a,s.b)<=eps){ hit=true; }
-      else if(s.type==='poly' && s.points && hitPolyline(s.points,pt,eps)){ hit=true; }
-      else if(s.type==='text'){
+      let hit = false;
+
+      if(s.type==='pen' && hitPolyline(s.points,pt,eps)) hit = true;
+      if(s.type==='line' && distToSegment(pt,s.a,s.b)<=eps) hit = true;
+      if(s.type==='text'){
         const b=bboxStroke(s);
-        if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h){ hit=true; }
+        if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h) hit = true;
       }
+
       if(hit){
-        if(s.id) removedIds.push(s.id);
+        removed = true;
+        removedStrokes.push(s);
         p.state.strokes.splice(i,1);
-        removed=true;
       }
     }
-    // Gumka nie rusza obrazów – ich kasowanie zostawiamy selekcji/koszowi.
-    // (Kiedyś można dodać tryb, ale domyślnie chronimy obrazki przed przypadkowym usunięciem.)
+
     if(removed){
       renderAll(p);
       clearOverlay(p);
-      [...removedIds, ...removedImageIds].forEach(id=>emitElementRemove(id));
+      const pageIndex = PAGES.indexOf(p);
+      removedStrokes.forEach(s => {
+        // tylko stroke'y, kt?re s? elementami CRDT (o??wek/linia)
+        if(s._crdtId && (s.type === 'pen' || s.type === 'line')){
+          AliboardCRDT.removeLocalStroke(s, pageIndex);
+        }
+      });
     }
   }
+
 
   /* ---------- TEKST INLINE ---------- */
   let activeEditor=null;
@@ -2760,10 +2925,18 @@ function textDimensions(s){
       }
 
       drawing=true; startX=x; startY=y; pushHistory(p);
+      const pageIndex = PAGES.indexOf(p);
+
       if(tool===TOOLS.PEN){
-        current={id:newElementId(), type:'pen', color, size, points:[{x,y}]}; p.state.strokes.push(current); renderAll(p);
-      }else if(tool===TOOLS.LINE){
-        current={id:newElementId(), type:'line', color, size, a:{x,y}, b:{x,y}}; clearOverlay(p);
+        current = { type:'pen', color, size, points:[{x,y}] };
+        p.state.strokes.push(current);
+        renderAll(p);
+        AliboardCRDT.startLocalStroke(current, pageIndex);
+      }else if(tool===TOOLS.line || tool===TOOLS.LINE){
+        // zabezpieczenie: TOOLS.line/LINE
+        current = { type:'line', color, size, a:{x,y}, b:{x,y} };
+        clearOverlay(p);
+        AliboardCRDT.startLocalStroke(current, pageIndex);
       }else if(tool===TOOLS.ERASER){
         eraseAt({x,y},p);
         current=null;
@@ -2884,11 +3057,19 @@ function textDimensions(s){
       }
       if(!drawing) return;
 
-      if(tool===TOOLS.PEN){ current.points.push({x,y}); renderAll(p); }
-      else if(tool===TOOLS.LINE){
-        current.b={x,y}; clearOverlay(p);
-        p.ovl.lineCap='round'; p.ovl.lineJoin='round'; p.ovl.strokeStyle=color; p.ovl.lineWidth=size;
+      const pageIndex = PAGES.indexOf(p);
+
+      if(tool===TOOLS.PEN){
+        current.points.push({x,y});
+        renderAll(p);
+        AliboardCRDT.updateLocalStroke(current, pageIndex);
+      }else if(tool===TOOLS.LINE){
+        current.b = {x,y};
+        clearOverlay(p);
+        p.ovl.lineCap='round'; p.ovl.lineJoin='round';
+        p.ovl.strokeStyle=color; p.ovl.lineWidth=size;
         p.ovl.beginPath(); p.ovl.moveTo(startX,startY); p.ovl.lineTo(x,y); p.ovl.stroke();
+        AliboardCRDT.updateLocalStroke(current, pageIndex);
       }
     }
     function end(x,y){
@@ -4462,6 +4643,18 @@ function textDimensions(s){
   // START
   if(!restoreLocal()){ createPage(false); }
   setTool(TOOLS.SELECT);
+
+  // CRDT – podłącz do AliboardRealtime, jeśli jest dostępny
+  if(window.AliboardRealtime){
+    AliboardCRDT.initFromRealtime();
+  }else{
+    // jeśli skrypty ładują się w innej kolejności, spróbuj chwilę później
+    setTimeout(()=>{
+      if(window.AliboardRealtime){
+        AliboardCRDT.initFromRealtime();
+      }
+    }, 500);
+  }
 })();
 
 /* === ALIBOARD: pokazuj przycisk wielko�ci czcionki tylko przy narz�dziu Tekst === */
