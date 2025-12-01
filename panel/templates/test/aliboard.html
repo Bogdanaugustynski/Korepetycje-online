@@ -1452,7 +1452,7 @@
     const dims = getPageDimensions(page);
     return {
       id: image.id || newElementId(),
-      tool: 'image',
+      tool: (image.meta && image.meta.pdf) ? 'pdf' : 'image',
       pageIndex,
       x: dims.width ? (image.x || 0) / dims.width : 0,
       y: dims.height ? (image.y || 0) / dims.height : 0,
@@ -1465,7 +1465,7 @@
 
   function applyElementAddPayload(element){
     if(!element || !element.id) return;
-    const tool = element.tool || element.type || 'pen';
+    const tool = element.tool || element.type || (element.kind === 'pdf' ? 'pdf' : 'pen');
     const page = ensurePageForPatch(element.pageIndex) || currentPage();
     if(!page) return;
     const dims = getPageDimensions(page);
@@ -1514,7 +1514,7 @@
         y: rel.y,
         text: element.text || ''
       });
-    }else if(tool==='image'){
+    }else if(tool==='image' || tool==='pdf'){
       const relPos = fromRelativePoint({x: element.x, y: element.y}, dims);
       const relSize = fromRelativePoint({x: element.w, y: element.h}, dims);
       const revived = reviveImage({
@@ -1630,7 +1630,10 @@
       if(!element || !element.id) return;
       // Obrazy obsługuje dedykowany handler niżej (CRDT images); tutaj je pomijamy,
       // żeby nie usuwać i nie dodawać ich ponownie z błędnym tool.
-      if(element.kind === 'image' || element.tool === 'image' || element.type === 'image') return;
+      if(
+        element.kind === 'image' || element.tool === 'image' || element.type === 'image' ||
+        element.kind === 'pdf'   || element.tool === 'pdf'   || element.type === 'pdf'
+      ) return;
       removeElementById(element.id);
       applyElementAddPayload(element);
     });
@@ -1894,7 +1897,7 @@
 
       window.AliboardRealtime.broadcastElementAdd({
         id,
-        kind: 'image',
+        kind: meta?.pdf ? 'pdf' : 'image',
         pageIndex: pageIndex < 0 ? 0 : pageIndex,
         src,
         meta: meta || null,
@@ -2802,7 +2805,7 @@ function textDimensions(s){
 
                   window.AliboardRealtime.broadcastElementUpdate({
                     id: im.meta.id,
-                    kind: 'image',
+                    kind: im.meta.pdf ? 'pdf' : 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
@@ -2844,7 +2847,7 @@ function textDimensions(s){
 
                   window.AliboardRealtime.broadcastElementUpdate({
                     id: im.meta.id,
-                    kind: 'image',
+                    kind: im.meta.pdf ? 'pdf' : 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
@@ -4293,7 +4296,7 @@ function textDimensions(s){
     // ?? Dodanie obrazu z innego klienta
     window.AliboardRealtime.on('element_add', (element) => {
       try {
-        if (!element || element.kind !== 'image') return;
+        if (!element || (element.kind !== 'image' && element.kind !== 'pdf')) return;
 
         const pageIndex = typeof element.pageIndex === 'number'
           ? element.pageIndex
@@ -4348,7 +4351,7 @@ function textDimensions(s){
     // ?? Aktualizacja pozycji / rozmiaru z innego klienta
     window.AliboardRealtime.on('element_update', (element) => {
       try {
-        if (!element || element.kind !== 'image') return;
+        if (!element || (element.kind !== 'image' && element.kind !== 'pdf')) return;
 
         const pageIndex = typeof element.pageIndex === 'number'
           ? element.pageIndex
