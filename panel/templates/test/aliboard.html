@@ -1703,6 +1703,8 @@
   /* ---------- CRDT: wspoldzielone rysowanie PEN + LINE (z normalizacja) ---------- */
   const AliboardCRDT = (function(){
     const elementsById = new Map(); // id -> { pageIndex, type }
+    const SEND_THROTTLE_MS = 40; // ~25 FPS wystarczy
+    let lastSendTs = 0;
 
     function ensureId(stroke){
       if (!stroke._crdtId){
@@ -1826,6 +1828,13 @@
 
     function updateLocalStroke(stroke, pageIndex, page){
       if (!window.AliboardRealtime || !stroke || !stroke._crdtId) return;
+
+      const now = Date.now();
+      if (now - lastSendTs < SEND_THROTTLE_MS){
+        return; // za wcześnie, poczekaj na kolejny tick
+      }
+      lastSendTs = now;
+
       const el = strokeToElement(stroke, pageIndex, page);
       if (!el) return;
       el.id = stroke._crdtId;
@@ -1875,6 +1884,8 @@
       removeLocalStroke,
     };
   })();
+  // wystawiamy CRDT globalnie (do debugowania i użycia w innych skryptach)
+  window.AliboardCRDT = AliboardCRDT;
   window.AliboardCRDT = AliboardCRDT;
 
 
@@ -2414,7 +2425,7 @@
     }
 
     if (removed){
-      if (window.AliboardRealtime && window.AliboardCRDT){
+      if (window.AliboardRealtime){
         removedStrokes.forEach(st => {
           if (st._crdtId){
             AliboardCRDT.removeLocalStroke(st);
@@ -2957,7 +2968,7 @@ function textDimensions(s){
         renderAll(p);
 
         // CRDT: od razu zgłoś nowy stroke
-        if (window.AliboardRealtime && window.AliboardCRDT){
+        if (window.AliboardRealtime){
           AliboardCRDT.startLocalStroke(current, pageIndex, p);
         }
 
@@ -2966,7 +2977,7 @@ function textDimensions(s){
         clearOverlay(p);
 
         // CRDT: od razu zgłoś nową linię z punktem startowym
-        if (window.AliboardRealtime && window.AliboardCRDT){
+        if (window.AliboardRealtime){
           AliboardCRDT.startLocalStroke(current, pageIndex, p);
         }
 
@@ -3095,7 +3106,7 @@ function textDimensions(s){
         renderAll(p);
 
         // CRDT: każdy ruch = element_update
-        if (window.AliboardRealtime && window.AliboardCRDT){
+        if (window.AliboardRealtime){
           AliboardCRDT.updateLocalStroke(current, pageIndex, p);
         }
 
@@ -3107,7 +3118,7 @@ function textDimensions(s){
         p.ovl.beginPath(); p.ovl.moveTo(startX,startY); p.ovl.lineTo(x,y); p.ovl.stroke();
 
         // CRDT: aktualizuj linię w locie
-        if (window.AliboardRealtime && window.AliboardCRDT){
+        if (window.AliboardRealtime){
           AliboardCRDT.updateLocalStroke(current, pageIndex, p);
         }
       }
