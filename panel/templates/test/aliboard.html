@@ -1700,195 +1700,6 @@
     return PAGES[PAGES.length-1] || null;
   }
 
-  /* ---------- CRDT: wspoldzielone rysowanie PEN + LINE (z normalizacja) ---------- */
-  const AliboardCRDT = (function(){
-    const elementsById = new Map(); // id -> { pageIndex, type }
-    const SEND_THROTTLE_MS = 40; // ~25 FPS wystarczy
-    let lastSendTs = 0;
-
-    function ensureId(stroke){
-      if (!stroke._crdtId){
-        stroke._crdtId = `s-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
-      }
-      return stroke._crdtId;
-    }
-
-    // KONWERSJA stroke -> element (wspolrzedne ZNORMALIZOWANE 0-1)
-    function strokeToElement(stroke, pageIndex, page){
-      if (!stroke || !page) return null;
-      const rect = page.drawC.getBoundingClientRect();
-      const W = rect.width  || 1;
-      const H = rect.height || 1;
-
-      const base = {
-        id: stroke._crdtId || null,
-        type: stroke.type,
-        pageIndex,
-        color: stroke.color,
-        size: stroke.size || 1,
-      };
-
-      if (stroke.type === 'pen'){
-        base.points = (stroke.points || []).map(pt => ({
-          x: pt.x / W,
-          y: pt.y / H,
-        }));
-      } else if (stroke.type === 'line'){
-        base.a = stroke.a ? { x: stroke.a.x / W, y: stroke.a.y / H } : null;
-        base.b = stroke.b ? { x: stroke.b.x / W, y: stroke.b.y / H } : null;
-      } else {
-        return null;
-      }
-      return base;
-    }
-
-    // Zastosowanie elementu na stronie (denormalizacja współrzędnych)
-    function applyElement(element){
-      if (!element || typeof element.pageIndex !== 'number') return;
-      const pageIndex = element.pageIndex;
-
-      while (PAGES.length <= pageIndex){
-        createPage(false);
-      }
-      const p = PAGES[pageIndex];
-      if (!p) return;
-
-      const rect = p.drawC.getBoundingClientRect();
-      const W = rect.width  || 1;
-      const H = rect.height || 1;
-
-      let stroke = p.state.strokes.find(s => s._crdtId === element.id);
-
-      if (!stroke){
-        if (element.type === 'pen'){
-          stroke = {
-            type: 'pen',
-            color: element.color,
-            size: element.size,
-            points: []
-          };
-        } else if (element.type === 'line'){
-          stroke = {
-            type: 'line',
-            color: element.color,
-            size: element.size,
-            a: { x: 0, y: 0 },
-            b: { x: 0, y: 0 },
-          };
-        } else {
-          return;
-        }
-        stroke._crdtId = element.id;
-        stroke.id = element.id;
-        p.state.strokes.push(stroke);
-      }
-
-      stroke.color = element.color;
-      stroke.size  = element.size;
-
-      if (stroke.type === 'pen' && Array.isArray(element.points)){
-        stroke.points = element.points.map(pt => ({
-          x: pt.x * W,
-          y: pt.y * H,
-        }));
-      } else if (stroke.type === 'line' && element.a && element.b){
-        stroke.a = { x: element.a.x * W, y: element.a.y * H };
-        stroke.b = { x: element.b.x * W, y: element.b.y * H };
-      }
-
-      elementsById.set(element.id, { pageIndex, type: element.type });
-      renderAll(p);
-    }
-
-    function removeElement(id){
-      if (!id) return;
-      const meta = elementsById.get(id);
-      if (!meta) return;
-      const p = PAGES[meta.pageIndex];
-      if (!p) return;
-
-      const idx = p.state.strokes.findIndex(s => s._crdtId === id);
-      if (idx >= 0){
-        p.state.strokes.splice(idx, 1);
-        renderAll(p);
-      }
-      elementsById.delete(id);
-    }
-
-    function startLocalStroke(stroke, pageIndex, page){
-      if (!window.AliboardRealtime) return;
-      const id = ensureId(stroke);
-      stroke.id = id;
-      const el = strokeToElement(stroke, pageIndex, page);
-      if (!el) return;
-      el.id = id;
-      elementsById.set(id, { pageIndex, type: stroke.type });
-      window.AliboardRealtime.broadcastElementAdd(el);
-    }
-
-    function updateLocalStroke(stroke, pageIndex, page){
-      if (!window.AliboardRealtime || !stroke || !stroke._crdtId) return;
-
-      const now = Date.now();
-      if (now - lastSendTs < SEND_THROTTLE_MS){
-        return; // za wcześnie, poczekaj na kolejny tick
-      }
-      lastSendTs = now;
-
-      const el = strokeToElement(stroke, pageIndex, page);
-      if (!el) return;
-      el.id = stroke._crdtId;
-      window.AliboardRealtime.broadcastElementUpdate(el);
-    }
-
-    function removeLocalStroke(stroke){
-      if (!window.AliboardRealtime || !stroke || !stroke._crdtId) return;
-      const id = stroke._crdtId;
-      window.AliboardRealtime.broadcastElementRemove(id);
-      elementsById.delete(id);
-    }
-
-    function init(){
-      if (!window.AliboardRealtime){
-        console.warn('[CRDT] Brak AliboardRealtime – opóźniam init');
-        return;
-      }
-
-      // CRDT przejmuje stery → kasujemy ewentualny stary autosave
-      try {
-        const key = `aliboard_v25_state_${window.ALIBOARD_ROOM_ID || 'local-test'}`;
-        localStorage.removeItem(key);
-      } catch (_) {}
-
-      window.AliboardRealtime.on('snapshot', (elements) => {
-        if (!Array.isArray(elements)) return;
-        elements.forEach(el => applyElement(el));
-      });
-      window.AliboardRealtime.on('element_add', (el) => {
-        applyElement(el);
-      });
-      window.AliboardRealtime.on('element_update', (el) => {
-        applyElement(el);
-      });
-      window.AliboardRealtime.on('element_remove', (id) => {
-        removeElement(id);
-      });
-
-      console.log('[CRDT] zainicjalizowano');
-    }
-
-    return {
-      init,
-      startLocalStroke,
-      updateLocalStroke,
-      removeLocalStroke,
-    };
-  })();
-  // wystawiamy CRDT globalnie (do debugowania i użycia w innych skryptach)
-  window.AliboardCRDT = AliboardCRDT;
-  window.AliboardCRDT = AliboardCRDT;
-
-
   /* ---------- TWORZENIE STRONY ---------- */
   function createPage(scrollTo=true){
     const page = document.createElement('div');
@@ -2399,45 +2210,33 @@
   }
   function eraseAt(pt,p){
     const eps = Math.max(6, size*2);
-    let removed = false;
-    const removedStrokes = [];
-
-    for(let i = p.state.strokes.length - 1; i >= 0; i--){
+    let removed=false;
+    const removedIds=[];
+    const removedImageIds=[];
+    for(let i=p.state.strokes.length-1;i>=0;i--){
       const s = p.state.strokes[i];
-      let hit = false;
-
-      if (s.type === 'pen' && hitPolyline(s.points, pt, eps)){
-        hit = true;
-      } else if (s.type === 'line' && distToSegment(pt, s.a, s.b) <= eps){
-        hit = true;
-      } else if (s.type === 'text'){
-        const b = bboxStroke(s);
-        if (pt.x>=b.x && pt.x<=b.x+b.w && pt.y>=b.y && pt.y<=b.y+b.h){
-          hit = true;
-        }
+      let hit=false;
+      if(s.type==='pen' && hitPolyline(s.points,pt,eps)){ hit=true; }
+      else if(s.type==='line' && distToSegment(pt,s.a,s.b)<=eps){ hit=true; }
+      else if(s.type==='poly' && s.points && hitPolyline(s.points,pt,eps)){ hit=true; }
+      else if(s.type==='text'){
+        const b=bboxStroke(s);
+        if(pt.x>=b.x&&pt.x<=b.x+b.w&&pt.y>=b.y&&pt.y<=b.y+b.h){ hit=true; }
       }
-
-      if (hit){
-        removed = true;
-        removedStrokes.push(s);
+      if(hit){
+        if(s.id) removedIds.push(s.id);
         p.state.strokes.splice(i,1);
+        removed=true;
       }
     }
-
-    if (removed){
-      if (window.AliboardRealtime){
-        removedStrokes.forEach(st => {
-          if (st._crdtId){
-            AliboardCRDT.removeLocalStroke(st);
-          }
-        });
-      }
+    // Gumka nie rusza obrazów – ich kasowanie zostawiamy selekcji/koszowi.
+    // (Kiedyś można dodać tryb, ale domyślnie chronimy obrazki przed przypadkowym usunięciem.)
+    if(removed){
       renderAll(p);
       clearOverlay(p);
+      [...removedIds, ...removedImageIds].forEach(id=>emitElementRemove(id));
     }
   }
-
-
 
   /* ---------- TEKST INLINE ---------- */
   let activeEditor=null;
@@ -2872,7 +2671,6 @@ function textDimensions(s){
 }
 
   function bindPage(p){
-    const pageIndex = PAGES.indexOf(p);   // <- potrzebne CRDT do identyfikacji strony
     function getXY(evt){
       const r = p.drawC.getBoundingClientRect();
       return { x: evt.clientX - r.left, y: evt.clientY - r.top };
@@ -2961,27 +2759,12 @@ function textDimensions(s){
         return;
       }
 
-      drawing = true; startX = x; startY = y; pushHistory(p);
-      if (tool === TOOLS.PEN){
-        current = { type:'pen', color, size, points:[{x,y}] };
-        p.state.strokes.push(current);
-        renderAll(p);
-
-        // CRDT: od razu zgłoś nowy stroke
-        if (window.AliboardRealtime){
-          AliboardCRDT.startLocalStroke(current, pageIndex, p);
-        }
-
-      } else if (tool === TOOLS.LINE){
-        current = { type:'line', color, size, a:{x,y}, b:{x,y} };
-        clearOverlay(p);
-
-        // CRDT: od razu zgłoś nową linię z punktem startowym
-        if (window.AliboardRealtime){
-          AliboardCRDT.startLocalStroke(current, pageIndex, p);
-        }
-
-      } else if(tool===TOOLS.ERASER){
+      drawing=true; startX=x; startY=y; pushHistory(p);
+      if(tool===TOOLS.PEN){
+        current={id:newElementId(), type:'pen', color, size, points:[{x,y}]}; p.state.strokes.push(current); renderAll(p);
+      }else if(tool===TOOLS.LINE){
+        current={id:newElementId(), type:'line', color, size, a:{x,y}, b:{x,y}}; clearOverlay(p);
+      }else if(tool===TOOLS.ERASER){
         eraseAt({x,y},p);
         current=null;
       }
@@ -3101,26 +2884,11 @@ function textDimensions(s){
       }
       if(!drawing) return;
 
-      if (tool === TOOLS.PEN){
-        current.points.push({ x, y });
-        renderAll(p);
-
-        // CRDT: każdy ruch = element_update
-        if (window.AliboardRealtime){
-          AliboardCRDT.updateLocalStroke(current, pageIndex, p);
-        }
-
-      } else if (tool === TOOLS.LINE){
-        current.b = { x, y };
-        clearOverlay(p);
-        p.ovl.lineCap = 'round'; p.ovl.lineJoin = 'round';
-        p.ovl.strokeStyle = color; p.ovl.lineWidth = size;
+      if(tool===TOOLS.PEN){ current.points.push({x,y}); renderAll(p); }
+      else if(tool===TOOLS.LINE){
+        current.b={x,y}; clearOverlay(p);
+        p.ovl.lineCap='round'; p.ovl.lineJoin='round'; p.ovl.strokeStyle=color; p.ovl.lineWidth=size;
         p.ovl.beginPath(); p.ovl.moveTo(startX,startY); p.ovl.lineTo(x,y); p.ovl.stroke();
-
-        // CRDT: aktualizuj linię w locie
-        if (window.AliboardRealtime){
-          AliboardCRDT.updateLocalStroke(current, pageIndex, p);
-        }
       }
     }
     function end(x,y){
@@ -3749,11 +3517,6 @@ function textDimensions(s){
   setInterval(autosave, 30000);
 
   function restoreLocal() {
-    // Je?li korzystamy z realtime/CRDT ? nie przywracamy lokalnego autosave
-    if (window.AliboardRealtime){
-      try { localStorage.removeItem(AUTOSAVE_KEY); } catch(_) {}
-      return false;
-    }
     try {
       const raw = localStorage.getItem(AUTOSAVE_KEY);
       if (!raw) return false;
@@ -3770,13 +3533,10 @@ function textDimensions(s){
 
       return true;
     } catch (e) {
-      console.warn('[Aliboard][autosave] b??d restore', e);
+      console.warn('[Aliboard][autosave] błąd restore', e);
       return false;
     }
   }
-
-
-
 
 
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
@@ -4702,21 +4462,6 @@ function textDimensions(s){
   // START
   if(!restoreLocal()){ createPage(false); }
   setTool(TOOLS.SELECT);
-
-  // Inicjalizacja CRDT, gdy tylko AliboardRealtime b?dzie gotowy
-  window.ALIBOARD_CRDT_READY = false;
-  function initCrdtWhenReady(){
-    if (window.AliboardRealtime && !window.ALIBOARD_CRDT_READY){
-      window.ALIBOARD_CRDT_READY = true;
-      if (window.AliboardCRDT && typeof AliboardCRDT.init === 'function'){
-        AliboardCRDT.init();
-      }
-    } else if (!window.ALIBOARD_CRDT_READY){
-      setTimeout(initCrdtWhenReady, 300);
-    }
-  }
-  initCrdtWhenReady();
-
 })();
 
 /* === ALIBOARD: pokazuj przycisk wielko�ci czcionki tylko przy narz�dziu Tekst === */
