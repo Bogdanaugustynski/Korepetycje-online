@@ -1777,6 +1777,7 @@
           return;
         }
         stroke._crdtId = element.id;
+        stroke.id = element.id;
         p.state.strokes.push(stroke);
       }
 
@@ -1815,6 +1816,7 @@
     function startLocalStroke(stroke, pageIndex, page){
       if (!window.AliboardRealtime) return;
       const id = ensureId(stroke);
+      stroke.id = id;
       const el = strokeToElement(stroke, pageIndex, page);
       if (!el) return;
       el.id = id;
