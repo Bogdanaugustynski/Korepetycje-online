@@ -240,6 +240,15 @@ class OnlineStatus(models.Model):
         return f"{self.user} online w rezerwacji {self.rezerwacja.id}"
 
 
+class AliboardSnapshot(models.Model):
+    room_id = models.CharField(max_length=100, unique=True, db_index=True)
+    data = models.JSONField()
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"AliboardSnapshot({self.room_id})"
+
+
 # --- Płatności i rachunki ---
 class Payment(models.Model):
     reservation = models.ForeignKey("panel.Rezerwacja", on_delete=models.CASCADE, related_name="payments")
