@@ -1300,6 +1300,9 @@
     renderAll(p);
     clearOverlay(p);
     updateDeleteButtonState(p);
+    if (typeof autosave === 'function') {
+      autosave();
+    }
   }
 
   /* ---------- SYNC (WebSocket) ---------- */
@@ -1452,7 +1455,7 @@
     const dims = getPageDimensions(page);
     return {
       id: image.id || newElementId(),
-      tool: (image.meta && image.meta.pdf) ? 'pdf' : 'image',
+      tool: 'image',
       pageIndex,
       x: dims.width ? (image.x || 0) / dims.width : 0,
       y: dims.height ? (image.y || 0) / dims.height : 0,
@@ -1897,7 +1900,7 @@
 
       window.AliboardRealtime.broadcastElementAdd({
         id,
-        kind: meta?.pdf ? 'pdf' : 'image',
+        kind: 'image',
         pageIndex: pageIndex < 0 ? 0 : pageIndex,
         src,
         meta: meta || null,
@@ -2805,7 +2808,7 @@ function textDimensions(s){
 
                   window.AliboardRealtime.broadcastElementUpdate({
                     id: im.meta.id,
-                    kind: im.meta.pdf ? 'pdf' : 'image',
+                    kind: 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
@@ -2847,7 +2850,7 @@ function textDimensions(s){
 
                   window.AliboardRealtime.broadcastElementUpdate({
                     id: im.meta.id,
-                    kind: im.meta.pdf ? 'pdf' : 'image',
+                    kind: 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
