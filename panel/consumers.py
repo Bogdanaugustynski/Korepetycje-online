@@ -1,33 +1,9 @@
 import json
 
-from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
-from django.utils import timezone
 
-from .models import AliboardSnapshot
-
-# Prosty magazyn stanu tablicy (na potrzeby pojedynczej instancji worker)
-ROOM_STATES = {}  # room_id -> {"elements": [...], "grid": {...}}
-
-
-@sync_to_async
-def load_snapshot(room_id):
-    try:
-        snap = AliboardSnapshot.objects.get(room_id=room_id)
-        return snap.data
-    except AliboardSnapshot.DoesNotExist:
-        return None
-
-
-@sync_to_async
-def save_snapshot(room_id, state):
-    AliboardSnapshot.objects.update_or_create(
-        room_id=room_id,
-        defaults={
-            "data": state,
-            "updated_at": timezone.now(),
-        },
-    )
+# Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
+ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -84,6 +60,7 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=event["message"])
 
 
+
 class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
@@ -92,38 +69,28 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
-        if self.room_id not in ROOM_STATES:
-            data = await load_snapshot(self.room_id)
-            if data is None:
-                ROOM_STATES[self.room_id] = {"elements": [], "grid": {"gridSize": 0, "kind": "grid"}}
-            else:
-                ROOM_STATES[self.room_id] = data
-
-        state = ROOM_STATES[self.room_id]
-        await self.send_json(
-            {
-                "type": "snapshot",
-                "elements": state.get("elements", []),
-                "grid_state": state.get("grid", {"gridSize": 0, "kind": "grid"}),
-            }
-        )
+        state = ROOM_STATE.get(self.room_id)
+        if state and state.get("elements"):
+            await self.send_json(
+                {
+                    "type": "snapshot",
+                    "elements": list(state["elements"].values()),
+                }
+            )
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
-        state = ROOM_STATES.setdefault(self.room_id, {"elements": [], "grid": {"gridSize": 0, "kind": "grid"}})
-        elements = state.setdefault("elements", [])
+        state = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
 
         if msg_type == "element_add":
             element = content.get("element") or {}
             element_id = element.get("id")
             if not element_id:
                 return
-            elements[:] = [el for el in elements if el.get("id") != element_id]
-            elements.append(element)
-            await save_snapshot(self.room_id, state)
+            state["elements"][element_id] = element
             await self.channel_layer.group_send(
                 self.group_name,
                 {
@@ -138,15 +105,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             element_id = element.get("id")
             if not element_id:
                 return
-            replaced = False
-            for idx, existing in enumerate(elements):
-                if existing.get("id") == element_id:
-                    elements[idx] = element
-                    replaced = True
-                    break
-            if not replaced:
-                elements.append(element)
-            await save_snapshot(self.room_id, state)
+            state["elements"][element_id] = element
             await self.channel_layer.group_send(
                 self.group_name,
                 {
@@ -157,12 +116,10 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             )
 
         elif msg_type == "element_remove":
-            element = content.get("element") or {}
-            element_id = content.get("id") or element.get("id")
+            element_id = content.get("id")
             if not element_id:
                 return
-            elements[:] = [el for el in elements if el.get("id") != element_id]
-            await save_snapshot(self.room_id, state)
+            state["elements"].pop(element_id, None)
             await self.channel_layer.group_send(
                 self.group_name,
                 {
@@ -170,31 +127,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                     "id": element_id,
                     "sender_channel": self.channel_name,
                 },
-            )
-
-        elif msg_type == "grid_state":
-            grid = {
-                "gridSize": content.get("gridSize", 0),
-                "kind": content.get("kind", "grid"),
-            }
-            state["grid"] = grid
-            await save_snapshot(self.room_id, state)
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    "type": "board.grid_state",
-                    "grid": grid,
-                    "sender_channel": self.channel_name,
-                },
-            )
-
-        elif msg_type == "snapshot_request":
-            await self.send_json(
-                {
-                    "type": "snapshot",
-                    "elements": state.get("elements", []),
-                    "grid_state": state.get("grid", {"gridSize": 0, "kind": "grid"}),
-                }
             )
 
         elif msg_type == "cursor":
@@ -325,17 +257,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-    async def board_grid_state(self, event):
-        if event.get("sender_channel") == self.channel_name:
-            return
-        await self.send_json(
-            {
-                "type": "grid_state",
-                "gridSize": event.get("grid", {}).get("gridSize", 0),
-                "kind": event.get("grid", {}).get("kind", "grid"),
-            }
-        )
-
     async def board_cursor(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
@@ -392,3 +313,4 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "from_id": event.get("from_id"),
             }
         )
+
