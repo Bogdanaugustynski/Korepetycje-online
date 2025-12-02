@@ -3580,10 +3580,19 @@ function textDimensions(s){
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy — per room_id (żeby nie było „local-test” między pokojami)
-  const AUTOSAVE_KEY = 'aliboard_v25_state_' + roomId;
+  // AUTOSAVE wielostronicowy – tylko dla trybu lokalnego ("local-test")
+  const IS_LOCAL_MODE = (roomId === 'local-test');
+  const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
+
+  // (opcjonalnie) Wyczyść stary globalny klucz dla trybów realtime
+  try {
+    if (!IS_LOCAL_MODE) {
+      localStorage.removeItem('aliboard_v25_state');
+    }
+  } catch (_) {}
 
   function autosave() {
+    if (!IS_LOCAL_MODE) return;
     try {
       const payload = PAGES.map(p => ({
         strokes: p.state.strokes,
@@ -3631,9 +3640,12 @@ function textDimensions(s){
       persistRemovedIds();
     }
   }
-  setInterval(autosave, 30000);
+  if (IS_LOCAL_MODE) {
+    setInterval(autosave, 30000);
+  }
 
   function restoreLocal() {
+    if (!IS_LOCAL_MODE) return false;
     try {
       const raw = localStorage.getItem(AUTOSAVE_KEY);
       if (!raw) return false;
