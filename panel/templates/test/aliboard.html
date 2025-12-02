@@ -1455,7 +1455,7 @@
     const dims = getPageDimensions(page);
     return {
       id: image.id || newElementId(),
-      tool: 'image',
+      tool: (image.meta && image.meta.pdf) ? 'pdf' : 'image',
       pageIndex,
       x: dims.width ? (image.x || 0) / dims.width : 0,
       y: dims.height ? (image.y || 0) / dims.height : 0,
@@ -1539,12 +1539,19 @@
   }
 
   function applySnapshotElements(elements){
-    resetBoardForSnapshot();
-    if(Array.isArray(elements) && elements.length){
-      elements.forEach(applyElementAddPayload);
-    }else if(boardHasElements()){
-      syncBoardStateToServer();
+    const hadLocal = boardHasElements();
+    if(!Array.isArray(elements) || !elements.length){
+      if(hadLocal){
+        // Jeśli serwer nie ma snapshotu, ale lokalnie mamy stan (np. z autosave),
+        // nie nadpisujemy go pustą tablicą, tylko próbujemy go rozgłosić.
+        syncBoardStateToServer();
+        return;
+      }
+      resetBoardForSnapshot();
+      return;
     }
+    resetBoardForSnapshot();
+    elements.forEach(applyElementAddPayload);
   }
 
   function boardHasElements(){
@@ -1903,7 +1910,7 @@
       clearRemovedId(id); // jeśli element wraca (np. PDF), zdejmij go z listy usuniętych
       window.AliboardRealtime.broadcastElementAdd({
         id,
-        kind: 'image',
+        kind: meta?.pdf ? 'pdf' : 'image',
         pageIndex: pageIndex < 0 ? 0 : pageIndex,
         src,
         meta: meta || null,
@@ -2811,7 +2818,7 @@ function textDimensions(s){
 
                   window.AliboardRealtime.broadcastElementUpdate({
                     id: im.meta.id,
-                    kind: 'image',
+                    kind: im.meta.pdf ? 'pdf' : 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
@@ -2853,7 +2860,7 @@ function textDimensions(s){
 
                   window.AliboardRealtime.broadcastElementUpdate({
                     id: im.meta.id,
-                    kind: 'image',
+                    kind: im.meta.pdf ? 'pdf' : 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
