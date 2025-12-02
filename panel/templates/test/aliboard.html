@@ -1518,6 +1518,7 @@
         text: element.text || ''
       });
     }else if(tool==='image' || tool==='pdf'){
+      if(REMOVED_IDS.has(element.id)) return; // filtruj elementy oznaczone jako usunięte lokalnie
       const relPos = fromRelativePoint({x: element.x, y: element.y}, dims);
       const relSize = fromRelativePoint({x: element.w, y: element.h}, dims);
       const revived = reviveImage({
@@ -1642,6 +1643,7 @@
     });
     realtime.on('element_remove', (payload)=>{
       const id = typeof payload === 'string' ? payload : payload?.id;
+      markRemovedId(id);
       removeElementById(id);
     });
   }
@@ -1898,6 +1900,7 @@
       const nw = rect.width  ? w / rect.width  : 0;
       const nh = rect.height ? h / rect.height : 0;
 
+      clearRemovedId(id); // jeśli element wraca (np. PDF), zdejmij go z listy usuniętych
       window.AliboardRealtime.broadcastElementAdd({
         id,
         kind: 'image',
@@ -3390,6 +3393,12 @@ function textDimensions(s){
             typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
           window.AliboardRealtime.broadcastElementRemove(id);
         }
+
+        // Zapisz informację o usunięciu, aby po refreshu i ewentualnym snapshotcie z serwera PDF nie wrócił
+        markRemovedId(id);
+        if (typeof autosave === 'function') {
+          autosave();
+        }
       }
 
       // 2) (opcjonalnie) Stroke – na razie można usuwać tylko lokalnie
@@ -3518,6 +3527,36 @@ function textDimensions(s){
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
     } catch (e) {
       console.warn('[Aliboard][autosave] błąd / limit localStorage', e);
+    }
+  }
+
+  // UTRWALANIE USUNIĘĆ (lokalny filtr na wypadek starych snapshotów z serwera)
+  const REMOVED_IDS_KEY = 'aliboard_v25_removed_' + roomId;
+  function loadRemovedIds(){
+    try{
+      const raw = localStorage.getItem(REMOVED_IDS_KEY);
+      if(!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    }catch(_){
+      return new Set();
+    }
+  }
+  const REMOVED_IDS = loadRemovedIds();
+  function persistRemovedIds(){
+    try{
+      localStorage.setItem(REMOVED_IDS_KEY, JSON.stringify(Array.from(REMOVED_IDS)));
+    }catch(_){}
+  }
+  function markRemovedId(id){
+    if(!id) return;
+    REMOVED_IDS.add(id);
+    persistRemovedIds();
+  }
+  function clearRemovedId(id){
+    if(!id) return;
+    if(REMOVED_IDS.delete(id)){
+      persistRemovedIds();
     }
   }
   setInterval(autosave, 30000);
@@ -4407,6 +4446,7 @@ function textDimensions(s){
 
         if (!id) return;
 
+        markRemovedId(id);
         PAGES.forEach(p => {
           const before = p.state.images.length;
           p.state.images = p.state.images.filter(im => !(im.meta && im.meta.id === id));
