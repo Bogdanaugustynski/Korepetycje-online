@@ -1291,7 +1291,11 @@
     pushHistory(p);
     if(sel.kind==='image' && p.state.images[sel.index]){
       const removedImage = p.state.images.splice(sel.index,1)[0];
-      if(removedImage?.id){ emitElementRemove(removedImage.id); }
+      const removeId = removedImage?.meta?.id || removedImage?.id;
+      if(removeId){
+        emitElementRemove(removeId);
+        markRemovedId(removeId);
+      }
     }else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
       const removed = p.state.strokes.splice(sel.index,1)[0];
       if(removed?.id){ emitElementRemove(removed.id); }
@@ -1572,6 +1576,50 @@
     });
   }
 
+  // Pomocnicze: serializacja lokalnych elementów do ewentualnego merge ze snapshotem
+  function collectLocalElements(){
+    const acc = [];
+    PAGES.forEach((page, pageIndex)=>{
+      (page.state.strokes || []).forEach(st=>{
+        const payload = serializeStrokeElement(st, pageIndex);
+        if(payload){ acc.push(payload); }
+      });
+      (page.state.images || []).forEach(im=>{
+        const payload = serializeImageElement(im, pageIndex);
+        if(payload){ acc.push(payload); }
+      });
+    });
+    return acc;
+  }
+
+  // Merge: jeżeli snapshot z serwera nie zawiera lokalnych elementów (np. PDF),
+  // dokładamy brakujące, żeby nie znikały po odświeżeniu.
+  function applySnapshotElementsMerged(elements){
+    const hadLocal = boardHasElements();
+    let incoming = Array.isArray(elements) ? [...elements] : [];
+
+    if(!incoming.length){
+      if(hadLocal){
+        syncBoardStateToServer();
+        return;
+      }
+      resetBoardForSnapshot();
+      return;
+    }
+
+    if(hadLocal){
+      const incomingIds = new Set(incoming.map(el=>el?.id).filter(Boolean));
+      collectLocalElements().forEach(el=>{
+        if(el?.id && !incomingIds.has(el.id)){
+          incoming.push(el);
+        }
+      });
+    }
+
+    resetBoardForSnapshot();
+    incoming.forEach(applyElementAddPayload);
+  }
+
   function emitElementAddFromStroke(stroke, pageIndex){
     const realtime = window.AliboardRealtime;
     if(!realtime || typeof realtime.broadcastElementAdd!=='function') return;
@@ -1630,7 +1678,7 @@
       setTimeout(initRealtimeBridge, 600);
       return;
     }
-    realtime.on('snapshot', applySnapshotElements);
+    realtime.on('snapshot', applySnapshotElementsMerged);
     realtime.on('open', ()=>{
       if(boardHasElements()){
         syncBoardStateToServer();
