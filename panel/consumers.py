@@ -105,7 +105,11 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             element_id = element.get("id")
             if not element_id:
                 return
-            state["elements"][element_id] = element
+            room = ROOM_STATE.setdefault(self.room_id, {"elements": {}})
+            if element_id in room["elements"]:
+                room["elements"][element_id] = element
+            else:
+                room["elements"][element_id] = element
             await self.channel_layer.group_send(
                 self.group_name,
                 {
@@ -128,6 +132,15 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                     "id": element_id,
                     "sender_channel": self.channel_name,
                 },
+            )
+
+        elif msg_type == "snapshot_request":
+            room = ROOM_STATE.get(self.room_id, {"elements": {}})
+            await self.send_json(
+                {
+                    "type": "snapshot",
+                    "elements": list(room.get("elements", {}).values()),
+                }
             )
 
         elif msg_type == "cursor":
