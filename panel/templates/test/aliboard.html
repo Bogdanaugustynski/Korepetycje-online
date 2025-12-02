@@ -1452,27 +1452,38 @@
     return base;
   }
 
-  function serializeImageElement(image, pageIndex){
-    if(!image) return null;
-    const page = getPageRef(pageIndex);
+    function serializeImageElement(image, pageIndex){
+      if(!image) return null;
+      if (!image.id && image.meta && image.meta.id) {
+        image.id = image.meta.id;
+      }
+      const page = getPageRef(pageIndex);
     if(!page) return null;
-    const dims = getPageDimensions(page);
-    return {
-      id: image.id || newElementId(),
-      tool: (image.meta && image.meta.pdf) ? 'pdf' : 'image',
-      pageIndex,
-      x: dims.width ? (image.x || 0) / dims.width : 0,
-      y: dims.height ? (image.y || 0) / dims.height : 0,
-      w: dims.width ? (image.w || 0) / dims.width : 0,
-      h: dims.height ? (image.h || 0) / dims.height : 0,
-      src: image.src,
-      meta: image.meta || null
-    };
+      const dims = getPageDimensions(page);
+      const id = image.id || newElementId();
+      const meta = Object.assign({}, image.meta);
+      if (!meta.id) meta.id = id;
+      return {
+        id,
+        tool: 'image',
+        kind: 'image',
+        pageIndex,
+        x: dims.width ? (image.x || 0) / dims.width : 0,
+        y: dims.height ? (image.y || 0) / dims.height : 0,
+        w: dims.width ? (image.w || 0) / dims.width : 0,
+        h: dims.height ? (image.h || 0) / dims.height : 0,
+        src: image.src,
+        meta: meta || null
+      };
   }
 
   function applyElementAddPayload(element){
     if(!element || !element.id) return;
-    const tool = element.tool || element.type || (element.kind === 'pdf' ? 'pdf' : 'pen');
+      let tool = element.tool || element.type || element.kind || 'pen';
+      if (element.kind === 'pdf') {
+        element.meta = Object.assign({}, element.meta, { pdf: true });
+      }
+      if (tool === 'pdf') tool = 'image';
     const page = ensurePageForPatch(element.pageIndex) || currentPage();
     if(!page) return;
     const dims = getPageDimensions(page);
@@ -1521,20 +1532,22 @@
         y: rel.y,
         text: element.text || ''
       });
-    }else if(tool==='image' || tool==='pdf'){
-      if(REMOVED_IDS.has(element.id)) return; // filtruj elementy oznaczone jako usunięte lokalnie
-      const relPos = fromRelativePoint({x: element.x, y: element.y}, dims);
-      const relSize = fromRelativePoint({x: element.w, y: element.h}, dims);
-      const revived = reviveImage({
-        id: element.id,
-        src: element.src,
-        w: relSize?.x ?? 0,
-        h: relSize?.y ?? 0,
-        x: relPos?.x ?? 0,
-        y: relPos?.y ?? 0,
-        meta: element.meta
-      }, page);
-      page.state.images.push(revived);
+      }else if(tool==='image' || tool==='pdf'){
+        if(REMOVED_IDS.has(element.id)) return; // filtruj elementy oznaczone jako usunięte lokalnie
+        const relPos = fromRelativePoint({x: element.x, y: element.y}, dims);
+        const relSize = fromRelativePoint({x: element.w, y: element.h}, dims);
+        const meta = Object.assign({}, element.meta);
+        if (!meta.id) meta.id = element.id;
+        const revived = reviveImage({
+          id: element.id,
+          src: element.src,
+          w: relSize?.x ?? 0,
+          h: relSize?.y ?? 0,
+          x: relPos?.x ?? 0,
+          y: relPos?.y ?? 0,
+          meta
+        }, page);
+        page.state.images.push(revived);
     }else{
       return;
     }
@@ -1915,10 +1928,11 @@
   /* ---------- OBRAZY ---------- */
   // --- OBRAZY: lokalny model + opcjonalny CRDT (element_add) ---
   function reviveImage(im, p){
-    const obj = {
-      id: im.id || null,
-      x: im.x,
-      y: im.y,
+      const resolvedId = im.id || (im.meta && im.meta.id) || null;
+      const obj = {
+        id: resolvedId,
+        x: im.x,
+        y: im.y,
       w: im.w,
       h: im.h,
       src: im.src,
@@ -1938,9 +1952,10 @@
     const pageIndex = typeof opts.pageIndex === 'number' ? opts.pageIndex : PAGES.indexOf(p);
 
     // --- [CRDT_IMAGE_ID] gwarantujemy unikalne ID obrazka ---
-    meta = meta || {};
-    const id = meta.id || opts.id || (window.crypto?.randomUUID?.() || `img_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-    meta.id = id;
+      meta = meta || {};
+      const newId = window.crypto?.randomUUID?.() || `${Date.now().toString(36)}_${Math.random().toString(16).slice(2)}`;
+      const id = meta.id || opts.id || `img-${newId}`;
+      meta.id = id;
 
     pushHistory(p);
     const im = reviveImage({id, src, w, h, x, y, meta}, p);
@@ -1957,8 +1972,8 @@
 
       clearRemovedId(id); // jeśli element wraca (np. PDF), zdejmij go z listy usuniętych
       window.AliboardRealtime.broadcastElementAdd({
-        id,
-        kind: meta?.pdf ? 'pdf' : 'image',
+          id,
+          kind: 'image',
         pageIndex: pageIndex < 0 ? 0 : pageIndex,
         src,
         meta: meta || null,
@@ -2097,23 +2112,33 @@
     for(let i=p.state.images.length-1;i>=0;i--){
       const im=p.state.images[i];
       if(pxy.x>=im.x && pxy.x<=im.x+im.w && pxy.y>=im.y && pxy.y<=im.y+im.h){
-        return {kind:'image', index:i, bbox:{x:im.x,y:im.y,w:im.w,h:im.h}};
+          return {
+            kind:'image',
+            index:i,
+            bbox:{x:im.x,y:im.y,w:im.w,h:im.h},
+            elementId: im.id || (im.meta && im.meta.id) || null
+          };
       }
     }
     const eps = Math.max(6, size*2);
-    for(let i=p.state.strokes.length-1;i>=0;i--){
-      const s=p.state.strokes[i];
-      if(s.type==='pen'){ if(hitPolyline(s.points,pxy,eps)) return {kind:'stroke',index:i,bbox:bboxStroke(s)}; }
-      else if(s.type==='line'){ if(distToSegment(pxy,s.a,s.b)<=eps) return {kind:'stroke',index:i,bbox:bboxStroke(s)}; }
-      else if(s.type==='text'){
-        const b=bboxStroke(s);
-        if(pxy.x>=b.x&&pxy.x<=b.x+b.w&&pxy.y>=b.y&&pxy.y<=b.y+b.h) return {kind:'stroke',index:i,bbox:b};
-      }else if(s.type==='poly'){
-        if(s.points && hitPolyline(s.points, pxy, eps)){
-          return {kind:'stroke', index:i, bbox:bboxStroke(s)};
+      for(let i=p.state.strokes.length-1;i>=0;i--){
+        const s=p.state.strokes[i];
+        if(s.type==='pen'){ if(hitPolyline(s.points,pxy,eps)) return {kind:'stroke',index:i,bbox:bboxStroke(s),elementId: s.id || null}; }
+        else if(s.type==='line'){ if(distToSegment(pxy,s.a,s.b)<=eps) return {kind:'stroke',index:i,bbox:bboxStroke(s),elementId: s.id || null}; }
+        else if(s.type==='text'){
+          const b=bboxStroke(s);
+          if(pxy.x>=b.x&&pxy.x<=b.x+b.w&&pxy.y>=b.y&&pxy.y<=b.y+b.h) return {kind:'stroke',index:i,bbox:b,elementId: s.id || null};
+        }else if(s.type==='poly'){
+          if(s.points && hitPolyline(s.points, pxy, eps)){
+              return {
+                kind:'stroke',
+                index:i,
+                bbox:bboxStroke(s),
+                elementId: s.id || null
+              };
+          }
         }
       }
-    }
     return null;
   }
 
@@ -2855,7 +2880,8 @@ function textDimensions(s){
               sel.bbox.y += dy;
 
               // 🔄 CRDT: broadcast przesunięcia obrazu
-              if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function' && im.meta && im.meta.id){
+              const targetId = im?.id || (im.meta && im.meta.id);
+              if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function' && targetId){
                 const pageIndex = PAGES.indexOf(p);
                 if (pageIndex >= 0){
                   const rect = p.el.getBoundingClientRect();
@@ -2865,8 +2891,8 @@ function textDimensions(s){
                   const nh = im.h / rect.height;
 
                   window.AliboardRealtime.broadcastElementUpdate({
-                    id: im.meta.id,
-                    kind: im.meta.pdf ? 'pdf' : 'image',
+                    id: targetId,
+                    kind: 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
@@ -2894,7 +2920,8 @@ function textDimensions(s){
             // 🔄 CRDT: broadcast zmiany rozmiaru obrazu
             if (sel.kind === 'image'){
               const im = p.state.images[sel.index];
-              if (im && im.meta && im.meta.id &&
+              const targetId = im?.id || (im.meta && im.meta.id);
+              if (im && targetId &&
                   window.AliboardRealtime &&
                   typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
 
@@ -2907,8 +2934,8 @@ function textDimensions(s){
                   const nh = im.h / rect.height;
 
                   window.AliboardRealtime.broadcastElementUpdate({
-                    id: im.meta.id,
-                    kind: im.meta.pdf ? 'pdf' : 'image',
+                    id: targetId,
+                    kind: 'image',
                     pageIndex,
                     x: im.x,
                     y: im.y,
@@ -3429,52 +3456,42 @@ function textDimensions(s){
 
       const sel = p.state.selection;
 
-      // 1) Obraz – usuwamy lokalnie i przez CRDT
+      let targetId = sel.elementId || sel.id || null;
+
       if (sel.kind === 'image') {
         const im = p.state.images[sel.index];
         if (!im) return;
-
-        const id = im.meta && im.meta.id;
+        targetId = targetId || im.id || (im.meta && im.meta.id);
         pushHistory(p);
-
-        // lokalnie
         p.state.images.splice(sel.index, 1);
-        p.state.selection = null;
-        renderAll(p);
-        clearOverlay(p);
-
-        // CRDT: powiadamiamy inne klienty
-        if (id && window.AliboardRealtime &&
-            typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
-          window.AliboardRealtime.broadcastElementRemove(id);
-        }
-
-        // Zapisz informację o usunięciu, aby po refreshu i ewentualnym snapshotcie z serwera PDF nie wrócił
-        markRemovedId(id);
-        if (typeof autosave === 'function') {
-          autosave();
-        }
-      }
-
-      // 2) (opcjonalnie) Stroke – na razie można usuwać tylko lokalnie
-      /*
-      if (sel.kind === 'stroke') {
+      } else if (sel.kind === 'stroke') {
         const s = p.state.strokes[sel.index];
         if (!s) return;
-
+        targetId = targetId || s.id;
         pushHistory(p);
         p.state.strokes.splice(sel.index, 1);
-        p.state.selection = null;
-        renderAll(p);
-        clearOverlay(p);
-
-        // Jeśli kiedyś zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
+      } else {
+        return;
       }
-      */
+
+      p.state.selection = null;
+      renderAll(p);
+      clearOverlay(p);
+      updateDeleteButtonState(p);
+
+      if (targetId && window.AliboardRealtime &&
+          typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
+        window.AliboardRealtime.broadcastElementRemove(targetId);
+      }
+
+      markRemovedId(targetId);
+      if (typeof autosave === 'function') {
+        autosave();
+      }
     });
   })();
 
-  // WSTAW OBRAZ/PDF
+// WSTAW OBRAZ/PDF
   document.getElementById('imgInput').addEventListener('change', (e)=>{
     const f = e.target.files[0];
     if (!f) return;
@@ -4393,7 +4410,8 @@ function textDimensions(s){
     // ?? Dodanie obrazu z innego klienta
     window.AliboardRealtime.on('element_add', (element) => {
       try {
-        if (!element || (element.kind !== 'image' && element.kind !== 'pdf')) return;
+        const kind = element.kind || element.tool;
+        if (!element || (kind !== 'image' && kind !== 'pdf')) return;
 
         const pageIndex = typeof element.pageIndex === 'number'
           ? element.pageIndex
@@ -4406,11 +4424,14 @@ function textDimensions(s){
         const p = PAGES[pageIndex];
 
         // Je?li obraz o tym id ju? istnieje ? nie duplikujemy
-        const exists = p.state.images.some(im => im.meta && im.meta.id === element.id);
+        const exists = p.state.images.some(im => (im.id && im.id === element.id) || (im.meta && im.meta.id === element.id));
         if (exists) return;
 
         const meta = element.meta || {};
         meta.id = element.id;
+        if (element.kind === 'pdf') {
+          meta.pdf = true;
+        }
 
         const rect = p.el.getBoundingClientRect();
         let x, y, w, h;
@@ -4448,7 +4469,8 @@ function textDimensions(s){
     // ?? Aktualizacja pozycji / rozmiaru z innego klienta
     window.AliboardRealtime.on('element_update', (element) => {
       try {
-        if (!element || (element.kind !== 'image' && element.kind !== 'pdf')) return;
+        const kind = element.kind || element.tool;
+        if (!element || (kind !== 'image' && kind !== 'pdf')) return;
 
         const pageIndex = typeof element.pageIndex === 'number'
           ? element.pageIndex
@@ -4457,7 +4479,10 @@ function textDimensions(s){
         if (pageIndex < 0 || pageIndex >= PAGES.length) return;
         const p = PAGES[pageIndex];
 
-        const im = p.state.images.find(im => im.meta && im.meta.id === element.id);
+        const im = p.state.images.find(im =>
+          (im.id && im.id === element.id) ||
+          (im.meta && im.meta.id === element.id)
+        );
         if (!im) return;
 
         const rect = p.el.getBoundingClientRect();
@@ -4504,7 +4529,10 @@ function textDimensions(s){
         markRemovedId(id);
         PAGES.forEach(p => {
           const before = p.state.images.length;
-          p.state.images = p.state.images.filter(im => !(im.meta && im.meta.id === id));
+          p.state.images = p.state.images.filter(im => !(
+            (im.id && im.id === id) ||
+            (im.meta && im.meta.id === id)
+          ));
           if (p.state.images.length !== before) {
             renderAll(p);
           }
@@ -4542,7 +4570,9 @@ function textDimensions(s){
       // Szukamy po wszystkich kartkach
       for (const p of PAGES) {
         const idx = p.state.images.findIndex(
-          (im) => im.meta && im.meta.id === id
+          (im) =>
+            (im.id && im.id === id) ||
+            (im.meta && im.meta.id === id)
         );
         if (idx !== -1) {
           p.state.images.splice(idx, 1);
