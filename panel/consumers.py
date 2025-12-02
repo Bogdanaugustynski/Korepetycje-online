@@ -116,7 +116,8 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             )
 
         elif msg_type == "element_remove":
-            element_id = content.get("id")
+            element = content.get("element") or {}
+            element_id = content.get("id") or element.get("id")
             if not element_id:
                 return
             state["elements"].pop(element_id, None)
