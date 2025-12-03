@@ -1510,18 +1510,27 @@
     const pageIndex = PAGES.indexOf(page);
     if(pageIndex < 0) return;
     const existingImages = new Map((page.state.images || []).map(im=>[im.__elementId, im]));
-    const existingStrokes = new Map((page.state.strokes || []).map(st=>[st.id, st]));
     const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
     const nextStrokes = [];
     const nextImages = [];
     elements.forEach(el=>{
       if(el.kind === 'image' || el.kind === 'pdf'){
         const cached = existingImages.get(el.id);
-        const im = cached || elementToLocalImage(el, page);
-        if(im){ nextImages.push(im); }
+        const fresh = elementToLocalImage(el, page);
+        if(cached && fresh){
+          const srcChanged = cached.src !== fresh.src;
+          cached.x = fresh.x; cached.y = fresh.y; cached.w = fresh.w; cached.h = fresh.h;
+          cached.meta = fresh.meta;
+          if(srcChanged){
+            cached.src = fresh.src;
+            cached.img = fresh.img; // jeżeli źródło się zmieniło, przypnij nowy obraz
+          }
+          nextImages.push(cached);
+        }else if(fresh){
+          nextImages.push(fresh);
+        }
       }else{
-        const cached = existingStrokes.get(el.id);
-        const st = cached || elementToLocalStroke(el, page);
+        const st = elementToLocalStroke(el, page);
         if(st){ nextStrokes.push(st); }
       }
     });
