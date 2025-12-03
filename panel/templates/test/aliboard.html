@@ -1531,9 +1531,6 @@
     });
   }
 
-  // automatyczne odrysowanie po każdej zmianie modelu
-  AliboardModel.subscribe(()=> syncAllPagesFromModel());
-
   function syncPageStateToModel(p){
     const pageIndex = PAGES.indexOf(p);
     if(pageIndex < 0) return;
@@ -1771,6 +1768,9 @@
 
     return { applySnapshot, upsertElement, removeElement, getAllElements, getElement, clear, subscribe };
   })();
+
+  // automatyczne odrysowanie po każdej zmianie modelu (po inicjalizacji modelu)
+  AliboardModel.subscribe(()=> syncAllPagesFromModel());
 
   /* ---------- MODEL STRONY ---------- */
   function makeEmptyPageState(){
