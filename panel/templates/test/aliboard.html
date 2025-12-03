@@ -1691,6 +1691,43 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
   const PAGES = [];
+  // === CRDT: globalny indeks elementów (obrazy + PDF) ===
+  const ELEMENTS = new Map(); // id -> { pageIndex, kind: "image"|"pdf", image: im }
+
+  function makeElementId(kind){
+    return `${kind}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+  }
+
+  function registerImageElement(im, p, elementId, kind){
+    im.__elementId = elementId;
+    const pageIndex = PAGES.indexOf(p);
+    ELEMENTS.set(elementId, {
+      pageIndex,
+      kind,
+      image: im
+    });
+  }
+
+  function elementFromImage(im, pageIndex, kind){
+    return {
+      id: im.__elementId,
+      type: kind,
+      pageIndex,
+      x: im.x,
+      y: im.y,
+      w: im.w,
+      h: im.h,
+      src: im.src,
+      meta: im.meta || null
+    };
+  }
+
+  function ensurePage(index){
+    while (PAGES.length <= index){
+      createPage(false);
+    }
+    return PAGES[index];
+  }
   function currentPage(){
     if(!PAGES.length) return null;
     if(wrapEl){
@@ -1858,44 +1895,6 @@
     }
   }
 
-  // === CRDT: globalny indeks elementów (obrazy + PDF) ===
-  const ELEMENTS = new Map(); // id -> { pageIndex, kind: "image"|"pdf", image: imObj }
-
-  function makeElementId(kind){
-    return `${kind}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
-  }
-
-  function registerImageElement(im, p, elementId, kind){
-    im.__elementId = elementId;
-    const pageIndex = PAGES.indexOf(p);
-    ELEMENTS.set(elementId, {
-      pageIndex,
-      kind,
-      image: im
-    });
-  }
-
-  function elementFromImage(im, pageIndex, kind){
-    return {
-      id: im.__elementId,
-      type: kind,
-      pageIndex,
-      x: im.x,
-      y: im.y,
-      w: im.w,
-      h: im.h,
-      src: im.src,
-      meta: im.meta || null
-    };
-  }
-
-  function ensurePage(index){
-    while (PAGES.length <= index){
-      createPage(false);
-    }
-    return PAGES[index];
-  }
-
   /* ---------- OBRAZY ---------- */
   // --- OBRAZY: lokalny model + opcjonalny CRDT (element_add) ---
   function reviveImage(im, p){
@@ -1923,7 +1922,7 @@
     // lokalna historia (undo)
     pushHistory(p);
 
-    // odtworzenie obrazu
+    // odtwórz obraz
     const im = reviveImage({ src, w, h, x, y, meta }, p);
     p.state.images.push(im);
 
@@ -1931,20 +1930,17 @@
     const elementId = opts.id || makeElementId(kind);
     registerImageElement(im, p, elementId, kind);
 
-    // jesli to lokalna zmiana – wyslij do serwera
-    if (!opts.silent && window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === "function"){
+    // jeśli to lokalna zmiana – wyślij do serwera
+    if (!opts.silent &&
+        window.AliboardRealtime &&
+        typeof window.AliboardRealtime.broadcastElementAdd === "function") {
+
       const pageIndex = PAGES.indexOf(p);
       const element = elementFromImage(im, pageIndex, kind);
       window.AliboardRealtime.broadcastElementAdd(element);
     }
 
     renderAll(p);
-
-    if (typeof autosave === 'function') {
-      autosave();
-    }
-
-    return im;
   }
 
   function applyRemoteImageElement(element, mode){
@@ -3418,9 +3414,6 @@ const toolsRow = document.getElementById('tools');
       renderAll(p);
       clearOverlay(p);
 
-      if (typeof autosave === 'function') {
-        autosave();
-      }
     });
   }
 
@@ -3545,53 +3538,6 @@ const toolsRow = document.getElementById('tools');
       createPage(false);
     }
   }, {passive:true});
-
-  // AUTOSAVE wielostronicowy — per room_id (żeby nie było „local-test” między pokojami)
-  const AUTOSAVE_KEY = 'aliboard_v25_state_' + roomId;
-
-  function autosave() {
-    try {
-      const payload = PAGES.map(p => ({
-        strokes: p.state.strokes,
-        images: p.state.images.map(im => ({
-          x: im.x,
-          y: im.y,
-          w: im.w,
-          h: im.h,
-          src: im.src,
-          meta: im.meta
-        }))
-      }));
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.warn('[Aliboard][autosave] błąd / limit localStorage', e);
-    }
-  }
-  setInterval(autosave, 30000);
-
-  function restoreLocal() {
-    try {
-      const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if (!raw) return false;
-
-      const arr = JSON.parse(raw);
-      if (!Array.isArray(arr) || !arr.length) return false;
-
-      arr.forEach(pageData => {
-        const p = createPage(false);
-        p.state.strokes = pageData.strokes || [];
-        p.state.images  = (pageData.images || []).map(im => reviveImage(im, p));
-        renderAll(p);
-      });
-
-      return true;
-    } catch (e) {
-      console.warn('[Aliboard][autosave] błąd restore', e);
-      return false;
-    }
-  }
-
-
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
     window.AliboardRealtime.on('grid_state', (payload)=>{
@@ -4372,8 +4318,10 @@ const toolsRow = document.getElementById('tools');
     });
   }
 
-  // START
-  if(!restoreLocal()){ createPage(false); }
+  // START – zawsze startujemy od snapshotu lub pustej kartki z serwera
+  if (PAGES.length === 0) {
+    createPage(false);
+  }
   setTool(TOOLS.SELECT);
 })();
 
@@ -4419,6 +4367,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
+
 
 
 
