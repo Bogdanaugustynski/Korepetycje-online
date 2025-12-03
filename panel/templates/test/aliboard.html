@@ -1319,6 +1319,16 @@
   }
   window.aliboardResetBoardForSnapshot = resetBoardForSnapshot;
 
+  function ensurePageForPatch(index){
+    if(typeof index!=='number' || index<0){
+      return currentPage();
+    }
+    while(PAGES.length <= index){
+      createPage(false);
+    }
+    return PAGES[index];
+  }
+
   function getPageRef(pageIndex){
     if(typeof pageIndex==='number' && pageIndex>=0){
       return PAGES[pageIndex];
