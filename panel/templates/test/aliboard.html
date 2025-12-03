@@ -1925,10 +1925,12 @@
     elements.forEach(el=>{
       if(el.kind === 'image' || el.kind === 'pdf'){
         const cached = p.state.images.find(im=>im.__elementId === el.id);
-        images.push(cached || elementToLocalImage(el, p));
+        const image = cached || elementToLocalImage(el, p);
+        if(image){ images.push(image); }
       }else{
         const cached = p.state.strokes.find(st=>st.id === el.id);
-        strokes.push(cached || elementToLocalStroke(el, p));
+        const stroke = cached || elementToLocalStroke(el, p);
+        if(stroke){ strokes.push(stroke); }
       }
     });
 
@@ -1936,6 +1938,7 @@
 
     p.ctx.lineCap='round'; p.ctx.lineJoin='round';
     for(const s of strokes){
+      if(!s) continue;
       if(s.type==='pen'){
         p.ctx.strokeStyle=s.color; p.ctx.lineWidth=s.size;
         const pts=s.points; if(!pts.length) continue;
