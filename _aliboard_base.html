@@ -1,10 +1,10 @@
-ï»¿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard 2.5 â€“ PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 – PolubiszTo.pl (test)</title>
 
 <!-- PDF render -->
 <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
@@ -130,14 +130,14 @@
   }
   .page canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .page .grid, .page .overlay{ pointer-events:none; }
-  .page .board{ touch-action:none; } /* blok gestï¿½w przy rysowaniu */
+  .page .board{ touch-action:none; } /* blok gest?w przy rysowaniu */
 
-  /* ZDALNE KURSORY (CRDT) ï¿½ kropka dokï¿½adnie w miejscu rysowania */
+  /* ZDALNE KURSORY (CRDT) ? kropka dok?adnie w miejscu rysowania */
   .remote-cursor{
     position:absolute;
     z-index:30;
     pointer-events:none;
-    /* UWAGA: bez translate na kontenerze ï¿½ kotwica = punkt rysowania */
+    /* UWAGA: bez translate na kontenerze ? kotwica = punkt rysowania */
     width:0;
     height:0;
     font-size:11px;
@@ -157,8 +157,8 @@
 
   .remote-cursor-label{
     position:absolute;
-    left:12px;        /* tekst trochï¿½ na prawo od kropki */
-    top:-20px;        /* lekko nad kropkï¿½ */
+    left:12px;        /* tekst troch? na prawo od kropki */
+    top:-20px;        /* lekko nad kropk? */
     padding:2px 6px;
     border-radius:999px;
     background:rgba(15,23,42,.85);
@@ -228,7 +228,7 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* === PATCH: delikatne, maï¿½e narzï¿½dzia bez ï¿½grubej ramkiï¿½ === */
+  /* === PATCH: delikatne, ma?e narz?dzia bez ?grubej ramki? === */
 .toolrow .btn,
 .toolrow label.btn{
   border:0 !important;
@@ -262,14 +262,14 @@
 .text-font-btn{ display:none; }
 .text-font-btn.is-visible{ display:inline-flex; }
 
-/* === ALIBOARD: Ikona wielkoï¿½ci czcionki (estetyczna) === */
+/* === ALIBOARD: Ikona wielko?ci czcionki (estetyczna) === */
 #textFontBtn{
   font-size:20px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* MENU WIELKOï¿½CI CZCIONKI (AI Neon Premium) */
+/* MENU WIELKO?CI CZCIONKI (AI Neon Premium) */
 .font-size-menu {
   position: fixed;
   top: -9999px;
@@ -317,7 +317,7 @@
   user-select: none;
 }
 
-/* ciaï¿½niejszy pasek narzï¿½dzi na telefonie */
+/* cia?niejszy pasek narz?dzi na telefonie */
 @media (max-width: 900px){
   .toolrow{
     gap:4px;
@@ -442,7 +442,7 @@
       height:25px;
     }
   }
-/* === FIX: przywrï¿½cenie widocznoï¿½ci ikon narzï¿½dzi Aliboard === */
+/* === FIX: przywr?cenie widoczno?ci ikon narz?dzi Aliboard === */
 .toolrow .btn[data-tool]{
   font-size:18px !important;
   line-height:1;
@@ -451,7 +451,7 @@
   content:none !important;
 }
 
-/* Aliboard Chat â€“ bazowe zmienne */
+/* Aliboard Chat – bazowe zmienne */
 :root{
   --aliboard-chat-bg: rgba(9, 18, 40, 0.96);
   --aliboard-chat-accent: #0b74ff;
@@ -743,7 +743,7 @@
   }
 }
 
-/* === ALIBOARD: wyraï¿½ne podï¿½wietlenie aktywnego narzï¿½dzia === */
+/* === ALIBOARD: wyra?ne pod?wietlenie aktywnego narz?dzia === */
 .toolrow .btn[data-tool].is-active{
   background: rgba(11,116,255,0.14) !important;
   color: #0b1320 !important;
@@ -752,7 +752,7 @@
   box-shadow: 0 0 0 2px var(--brand);
 }
 
-/* nieaktywne ikony delikatnie przygaszone, ï¿½eby aktywne siï¿½ wyrï¿½ï¿½niaï¿½o */
+/* nieaktywne ikony delikatnie przygaszone, ?eby aktywne si? wyr??nia?o */
 .toolrow .btn[data-tool]:not(.is-active){
   opacity: 0.8;
 }
@@ -760,10 +760,10 @@
   opacity: 1;
 }
 
-/* === ALIBOARD: ukï¿½ad nagï¿½ï¿½wka + narzï¿½dzi na telefonie === */
+/* === ALIBOARD: uk?ad nag??wka + narz?dzi na telefonie === */
 @media (max-width: 768px){
 
-  /* nagï¿½ï¿½wek nadal w jednym rzï¿½dzie:
+  /* nag??wek nadal w jednym rz?dzie:
      [logo+Aliboard] po lewej, [Menu] po prawej */
   header{
     flex-direction: row;
@@ -771,13 +771,13 @@
     gap: 8px;
   }
 
-  /* lewa czï¿½ï¿½ï¿½ (logo + pasek narzï¿½dzi) moï¿½e siï¿½ ï¿½cisnï¿½ï¿½ */
+  /* lewa cz??? (logo + pasek narz?dzi) mo?e si? ?cisn?? */
   .left{
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  /* prawa czï¿½ï¿½ï¿½ ï¿½ menu przy logo po prawej */
+  /* prawa cz??? ? menu przy logo po prawej */
   .right{
     margin-left: 8px;
     flex: 0 0 auto;
@@ -803,7 +803,7 @@
   }
   .menu-btn .icon-img{ width:78px; height:78px; }
 
-  /* pasek narzï¿½dzi POD logo, moï¿½e zejï¿½ï¿½ w 2 rzï¿½dy */
+  /* pasek narz?dzi POD logo, mo?e zej?? w 2 rz?dy */
   .toolrow{
     flex-wrap: wrap;
     overflow: visible !important;
@@ -812,33 +812,33 @@
     gap: 4px;
   }
 
-  /* wszystkie narzÄ™dzia majÄ… byÄ‡ widoczne â€“ wyÅ‚Ä…czamy overflow na telefonie */
+  /* wszystkie narzêdzia maj¹ byæ widoczne – wy³¹czamy overflow na telefonie */
   #toolsMoreBtn,
   #toolsMorePanel{
     display: none !important;
   }
 
-  /* ciaï¿½niejsze przyciski, ï¿½eby wszystko siï¿½ mieï¿½ciï¿½o */
+  /* cia?niejsze przyciski, ?eby wszystko si? mie?ci?o */
   .toolrow .btn,
   .toolrow label.btn{
     padding: 4px 6px;
     font-size: 16px;
   }
 
-  /* select z gruboï¿½ciï¿½ ï¿½ trochï¿½ wï¿½ï¿½szy */
+  /* select z grubo?ci? ? troch? w??szy */
   .toolrow label.btn select{
     max-width: 72px;
   }
 }
 
-/* === ALIBOARD: Ikona przycisku Usuï¿½ (zaznaczony element) === */
+/* === ALIBOARD: Ikona przycisku Usu? (zaznaczony element) === */
 #deleteSelection{
   font-size:18px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* === ALIBOARD: menu gruboï¿½ci linii (neon) === */
+/* === ALIBOARD: menu grubo?ci linii (neon) === */
   .line-width-menu {
     position: fixed;
     top: -9999px;
@@ -887,7 +887,7 @@
   box-shadow: 0 0 6px #0cbcff;
 }
 
-/* Ikony obrazkowe w pasku narzï¿½dzi */
+/* Ikony obrazkowe w pasku narz?dzi */
 .icon-img{
   width:26px;
   height:26px;
@@ -904,16 +904,16 @@
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
 <header>
-  <!-- LEWA: brand + narzï¿½dzia -->
+  <!-- LEWA: brand + narz?dzia -->
   <div class="left">
     <div class="brand">
       <div class="mark">
-        <!-- Sama gï¿½owa loga -->
+        <!-- Sama g?owa loga -->
         <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl" />
       </div>
       <div>
         <div style="font-weight:800">Aliboard</div>
-        <div class="state" id="state">Tryb: Kursor â€¢ 3px â€¢ #0b74ff</div>
+        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
       </div>
     </div>
 
@@ -921,8 +921,8 @@
       <button class="btn" type="button" data-tool="select" title="Kursor (V)">
         <img src="{% static 'img/icons/cursor_ai.png' %}" class="icon-img" alt="Kursor">
       </button>
-      <button class="btn" type="button" data-tool="pen"    title="OÅ‚Ã³wek (P)">
-        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="OÅ‚Ã³wek">
+      <button class="btn" type="button" data-tool="pen"    title="O³ówek (P)">
+        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="O³ówek">
       </button>
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">
         <img src="{% static 'img/icons/line_ai.png' %}" class="icon-img" alt="Linia">
@@ -933,8 +933,8 @@
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">
         <img src="{% static 'img/icons/text_ai.png' %}" class="icon-img" alt="Tekst">
       </button>
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="WielkoÅ›Ä‡ czcionki" data-overflow="1">
-        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="WielkoÅ›Ä‡ czcionki">
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkoœæ czcionki" data-overflow="1">
+        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkoœæ czcionki">
       </button>
       <button class="btn" type="button" data-tool="crop"   title="Kopiuj (C)">
         <img src="{% static 'img/icons/copy_ai.png' %}" class="icon-img" alt="Kopiuj">
@@ -947,8 +947,8 @@
         <img src="{% static 'img/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
         <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
-      <button class="btn" type="button" id="lineWidthBtn" title="GruboÅ›Ä‡ linii">
-        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="GruboÅ›Ä‡ linii">
+      <button class="btn" type="button" id="lineWidthBtn" title="Gruboœæ linii">
+        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Gruboœæ linii">
       </button>
       <div class="line-width-menu" id="lineWidthMenu">
         <div class="line-option" data-size="1">
@@ -981,7 +981,7 @@
         <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="UsuÅ„ zaznaczony obiekt" disabled>
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuñ zaznaczony obiekt" disabled>
         X
       </button>
     </div>
@@ -1015,16 +1015,16 @@
           <button class="drop-item" type="button" id="gridToggle" style="display:none">Siatka</button>
           <div class="drop-row" id="templatesRow" style="display:none">
             <button class="drop-item" type="button" data-grid="0">Brak</button>
-            <button class="drop-item" type="button" data-grid="16">MaÅ‚a</button>
-            <button class="drop-item" type="button" data-grid="24">Åšrednia</button>
-            <button class="drop-item" type="button" data-grid="32">DuÅ¼a</button>
+            <button class="drop-item" type="button" data-grid="16">Ma³a</button>
+            <button class="drop-item" type="button" data-grid="24">Œrednia</button>
+            <button class="drop-item" type="button" data-grid="32">Du¿a</button>
             <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
           <div class="drop-title">Nowa tablica</div>
           <div class="drop-row">
-            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkÄ™ A4</button>
+            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkê A4</button>
           </div>
         </div>
       </div>
@@ -1038,21 +1038,21 @@
 
 <!-- Aliboard Chat Module -->
 <div class="aliboard-chat-root">
-  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="OtwÃ³rz czat">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
     <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
   </button>
 
   <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
     <header class="aliboard-chat-header">
       <div class="aliboard-chat-title">
-        <span class="aliboard-chat-title-main">Czat zajÄ™Ä‡</span>
+        <span class="aliboard-chat-title-main">Czat zajêæ</span>
         <span class="aliboard-chat-title-sub">Aliboard</span>
       </div>
       <div class="aliboard-chat-actions">
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
           &#128276;
         </button>
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa gÅ‚osowa">
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa g³osowa">
           &#128222;
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
@@ -1074,11 +1074,11 @@
         type="text"
         id="aliboard-chat-input"
         class="aliboard-chat-input"
-        placeholder="Napisz wiadomoÅ›Ä‡"
+        placeholder="Napisz wiadomoœæ"
         maxlength="500"
       />
       <button type="submit" class="aliboard-chat-send-btn">
-        WyÅ›lij
+        Wyœlij
       </button>
     </form>
   </section>
@@ -1091,15 +1091,15 @@
 
 <div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
-    <h3 id="openBoardTitle">OtwÃ³rz nowÄ… tablicÄ™</h3>
-    <p>UtwÃ³rz pustÄ… tablicÄ™. Aktualne karty zostanÄ… zamkniÄ™te.</p>
+    <h3 id="openBoardTitle">Otwórz now¹ tablicê</h3>
+    <p>Utwórz pust¹ tablicê. Aktualne karty zostan¹ zamkniête.</p>
     <label>
       Nazwa tablicy (opcjonalnie)
       <input type="text" id="openBoardName" placeholder="np. Matematyka - lekcja 3">
     </label>
     <div class="modal-actions">
       <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
-      <button type="button" class="btn primary" id="openBoardCreate">UtwÃ³rz</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
     </div>
   </div>
 </div>
@@ -1108,7 +1108,7 @@
 
 <script>
 (function(){
-  /* === PATCH: wstrzykniï¿½cie delikatnego CSS dla paska narzï¿½dzi (bez kapsli) === */
+  /* === PATCH: wstrzykni?cie delikatnego CSS dla paska narz?dzi (bez kapsli) === */
   const __css = `
   .toolrow .btn, .toolrow label.btn{border:0 !important;background:transparent !important;box-shadow:none !important}
   .toolrow .btn.is-active{background:transparent !important;color:var(--ink) !important;outline:2px solid var(--brand);outline-offset:2px;border-radius:10px}
@@ -1137,19 +1137,19 @@
     figurePalette.className = 'figure-palette';
     figurePalette.innerHTML = `
       <div class="figure-palette-grid">
-        <button class="shape-btn" type="button" data-shape="rect" title="ProstokÄ…t">
+        <button class="shape-btn" type="button" data-shape="rect" title="Prostok¹t">
           <div class="shape-icon shape-icon--rect"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="tri_iso" title="TrÃ³jkÄ…t rÃ³wnoramienny">
+        <button class="shape-btn" type="button" data-shape="tri_iso" title="Trójk¹t równoramienny">
           <div class="shape-icon shape-icon--triangle"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="tri_right" title="TrÃ³jkÄ…t prostokÄ…tny">
+        <button class="shape-btn" type="button" data-shape="tri_right" title="Trójk¹t prostok¹tny">
           <div class="shape-icon shape-icon--right"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="hex" title="SzeÅ›ciokÄ…t">
+        <button class="shape-btn" type="button" data-shape="hex" title="Szeœciok¹t">
           <div class="shape-icon shape-icon--hex"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="circle" title="KoÅ‚o">
+        <button class="shape-btn" type="button" data-shape="circle" title="Ko³o">
           <div class="shape-icon shape-icon--circle"></div>
         </button>
       </div>
@@ -1296,17 +1296,37 @@
       const elementId = removedImage && removedImage.__elementId;
       if(elementId){
         ELEMENTS.delete(elementId);
-        if (window.AliboardRealtime &&
-            typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
+        if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementRemove === "function"){
           window.AliboardRealtime.broadcastElementRemove(elementId);
         }
       }
-    } else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
-      p.state.strokes.splice(sel.index,1);
+      if(removedImage?.id){ emitElementRemove(removedImage.id); }
+    }else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
+      const removed = p.state.strokes.splice(sel.index,1)[0];
+      if(removed?.id){ emitElementRemove(removed.id); }
     }
     p.state.selection = null;
     renderAll(p);
     clearOverlay(p);
+    updateDeleteButtonState(p);
+  }
+
+  /* ---------- SYNC (WebSocket) ---------- */
+  function ensurePageForPatch(index){
+    if(typeof index!=='number' || index<0){
+      return currentPage();
+    }
+    while(PAGES.length <= index){
+      createPage(false);
+    }
+    return PAGES[index];
+  }
+
+  function resetBoardForSnapshot(){
+    while(PAGES.length){ PAGES.pop(); }
+    pagesEl.innerHTML = '';
+    createPage(false);
+    setTool(TOOLS.SELECT);
     updateDeleteButtonState();
   }
   window.aliboardResetBoardForSnapshot = resetBoardForSnapshot;
@@ -1617,8 +1637,8 @@
     realtime.on('element_add', applyElementAddPayload);
     realtime.on('element_update', (element)=>{
       if(!element || !element.id) return;
-      // Obrazy obsÅ‚uguje dedykowany handler niÅ¼ej (CRDT images); tutaj je pomijamy,
-      // Å¼eby nie usuwaÄ‡ i nie dodawaÄ‡ ich ponownie z bÅ‚Ä™dnym tool.
+      // Obrazy obs³uguje dedykowany handler ni¿ej (CRDT images); tutaj je pomijamy,
+      // ¿eby nie usuwaæ i nie dodawaæ ich ponownie z b³êdnym tool.
       if(element.kind === 'image' || element.tool === 'image' || element.type === 'image') return;
       removeElementById(element.id);
       applyElementAddPayload(element);
@@ -1631,15 +1651,15 @@
 
   initRealtimeBridge();
 
-  // ---- USTALENIE roomId (wspï¿½lne z realtime) ----
+  // ---- USTALENIE roomId (wsp?lne z realtime) ----
   let roomId = null;
 
-  // 1) jeï¿½li juï¿½ ktoï¿½ ustawiï¿½ globalnie (np. inny skrypt / Django):
+  // 1) je?li ju? kto? ustawi? globalnie (np. inny skrypt / Django):
   if (window.ALIBOARD_ROOM_ID) {
     roomId = window.ALIBOARD_ROOM_ID;
   }
 
-  // 2) jeï¿½li nie ma ï¿½ sprï¿½buj odczytaï¿½ z data-room-id na kontenerze tablicy
+  // 2) je?li nie ma ? spr?buj odczyta? z data-room-id na kontenerze tablicy
   if (!roomId) {
     const rootEl =
       document.getElementById('aliboard-root') ||
@@ -1649,7 +1669,7 @@
     }
   }
 
-  // 3) jeÅ›li nadal brak â€” sprÃ³buj z query stringa (?room= / ?room_id=)
+  // 3) jeœli nadal brak — spróbuj z query stringa (?room= / ?room_id=)
   if (!roomId) {
     const qs = new URLSearchParams(location.search);
     roomId = qs.get('room') || qs.get('room_id') || 'local-test';
@@ -1671,7 +1691,7 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
   const PAGES = [];
-  // === CRDT: globalny indeks elementÃ³w (obrazy + PDF) ===
+  // === CRDT: globalny indeks elementów (obrazy + PDF) ===
   const ELEMENTS = new Map(); // id -> { pageIndex, kind: "image"|"pdf", image: im }
 
   function makeElementId(kind){
@@ -1777,7 +1797,7 @@
     p.g.restore();
   }
 
-  // --- SYNC GRID: handler dla realtime (wywoï¿½ywany z AliboardRealtime) ---
+  // --- SYNC GRID: handler dla realtime (wywo?ywany z AliboardRealtime) ---
   window.aliboardApplyGridState = function(newGridState){
     const isObj = newGridState && typeof newGridState === 'object';
     const kind = isObj ? newGridState.kind : null;
@@ -1902,7 +1922,7 @@
     // lokalna historia (undo)
     pushHistory(p);
 
-    // odtwÃ³rz obraz
+    // odtwórz obraz
     const im = reviveImage({ src, w, h, x, y, meta }, p);
     p.state.images.push(im);
 
@@ -1910,7 +1930,7 @@
     const elementId = opts.id || makeElementId(kind);
     registerImageElement(im, p, elementId, kind);
 
-    // jeÅ›li to lokalna zmiana â€“ wyÅ›lij do serwera
+    // jeœli to lokalna zmiana – wyœlij do serwera
     if (!opts.silent &&
         window.AliboardRealtime &&
         typeof window.AliboardRealtime.broadcastElementAdd === "function") {
@@ -1963,7 +1983,7 @@
         { id: element.id, silent: true }
       );
     } else {
-      // aktualizacja istniejÄ…cego
+      // aktualizacja istniej¹cego
       const im = entry.image;
       im.x = element.x;
       im.y = element.y;
@@ -2233,7 +2253,7 @@
     }
   }
 
-  /* ---------- GUMKA PODï¿½WIETLA ---------- */
+  /* ---------- GUMKA POD?WIETLA ---------- */
   function previewErase(pt, p){
     clearOverlay(p); if(p.state.selection) drawSelection(p);
     const eps = Math.max(6,size*2);
@@ -2291,8 +2311,8 @@
         removed=true;
       }
     }
-    // Gumka nie rusza obrazÃ³w â€“ ich kasowanie zostawiamy selekcji/koszowi.
-    // (KiedyÅ› moÅ¼na dodaÄ‡ tryb, ale domyÅ›lnie chronimy obrazki przed przypadkowym usuniÄ™ciem.)
+    // Gumka nie rusza obrazów – ich kasowanie zostawiamy selekcji/koszowi.
+    // (Kiedyœ mo¿na dodaæ tryb, ale domyœlnie chronimy obrazki przed przypadkowym usuniêciem.)
     if(removed){
       renderAll(p);
       clearOverlay(p);
@@ -2309,7 +2329,7 @@
     ed.style.left = (r.left + x) + 'px';
     ed.style.top  = (r.top  + y) + 'px';
     ed.style.fontSize = Math.max(14, size*6) + 'px';
-    ed.placeholder='Wpisz tekstï¿½';
+    ed.placeholder='Wpisz tekst?';
     document.body.appendChild(ed); ed.focus();
     ed.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); closeTextEditor(true,p,x,y); } if(e.key==='Escape'){ e.preventDefault(); closeTextEditor(false); }});
     ed.addEventListener('blur', ()=>{ closeTextEditor(true,p,x,y); });
@@ -2570,7 +2590,7 @@
       const dialog=document.createElement('div');
       dialog.className='crop-choice-dialog';
     const text=document.createElement('p');
-    text.textContent='Gdzie umieÅ›ciÄ‡ skopiowany fragment?';
+    text.textContent='Gdzie umieœciæ skopiowany fragment?';
       const actions=document.createElement('div');
       actions.className='crop-choice-actions';
       const btnBelow=document.createElement('button');
@@ -2622,7 +2642,7 @@
     }
     const toast=document.createElement('div');
     toast.className='crop-busy-toast';
-    toast.textContent='Poczekaj na zakoï¿½czenie kopiowania...';
+    toast.textContent='Poczekaj na zako?czenie kopiowania...';
     document.body.appendChild(toast);
     requestAnimationFrame(()=> toast.classList.add('show'));
     cropBusyHintEl=toast;
@@ -2741,7 +2761,7 @@ function textDimensions(s){
     const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
     let multiPan=false;                // tryb dwupalczastego scrolla
-    let panCentroidY=null;             // poprzedni centroid dotykï¿½w (Y)
+    let panCentroidY=null;             // poprzedni centroid dotyk?w (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
     let panIdleTimer=null;
     const PAN_IDLE_MS = 350;
@@ -3088,10 +3108,10 @@ function textDimensions(s){
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden && multiPan){ endMultiPan('hidden'); } });
   }
 
-  /* ---------- UI OGÃ“LNY ---------- */
+  /* ---------- UI OGÓLNY ---------- */
   function toolLabel(){
     return tool===TOOLS.SELECT?'Kursor':
-           tool===TOOLS.PEN?'OÅ‚Ã³wek':
+           tool===TOOLS.PEN?'O³ówek':
            tool===TOOLS.LINE?'Linia':
            tool===TOOLS.ERASER?'Gumka':
            tool===TOOLS.TEXT?'Tekst':
@@ -3111,7 +3131,7 @@ function textDimensions(s){
   }
   function updateState(){
     const shapeLabel = tool===TOOLS.FIGURE
-      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'TrÃ³jkÄ…t':currentShape==='tri_right'?'TrÃ³jkÄ…t 90Â°':currentShape==='hex'?'SzeÅ›ciokÄ…t':'KoÅ‚o'}`
+      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójk¹t':currentShape==='tri_right'?'Trójk¹t 90°':currentShape==='hex'?'Szeœciok¹t':'Ko³o'}`
       : '';
     const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
     stateEl.textContent = `Tryb: ${toolLabel()}  ${sizeLabel}  ${color}${shapeLabel}`;
@@ -3299,7 +3319,7 @@ const toolsRow = document.getElementById('tools');
         PAGES.forEach(p=> drawGrid(p));
       }
 
-      // realtime broadcast ï¿½ jeï¿½li dostï¿½pny
+      // realtime broadcast ? je?li dost?pny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
         window.AliboardRealtime.sendGridState(
           isTech
@@ -3362,7 +3382,7 @@ const toolsRow = document.getElementById('tools');
     }else if(ext==='jpg'){
       const a=document.createElement('a'); a.href=c.toDataURL('image/jpeg', .92); a.download=ts('jpg'); a.click();
     }else if(ext==='pdf'){
-      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaÅ‚adowany.');
+      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF nieza³adowany.');
       const dataUrl = c.toDataURL('image/png');
       const pdf = new lib({orientation:'portrait', unit:'pt', format:'a4'});
       const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
@@ -3397,9 +3417,9 @@ const toolsRow = document.getElementById('tools');
     });
   }
 
-  // USUÅƒ ZAZNACZONY OBIEKT (przycisk "UsuÅ„ zaznaczony obiekt")
+  // USUÑ ZAZNACZONY OBIEKT (przycisk "Usuñ zaznaczony obiekt")
   (function setupDeleteSelectionButton(){
-    const btn = document.getElementById('deleteSelection'); // â† PODMIEÅƒ ID jeÅ›li inny
+    const btn = document.getElementById('deleteSelection'); // ‹ PODMIEÑ ID jeœli inny
     if (!btn) return;
 
     btn.addEventListener('pointerdown', (e) => {
@@ -3410,7 +3430,7 @@ const toolsRow = document.getElementById('tools');
 
       const sel = p.state.selection;
 
-      // 1) Obraz â€“ usuwamy lokalnie i przez CRDT
+      // 1) Obraz – usuwamy lokalnie i przez CRDT
       if (sel.kind === 'image') {
         const im = p.state.images[sel.index];
         if (!im) return;
@@ -3434,7 +3454,7 @@ const toolsRow = document.getElementById('tools');
         }
       }
 
-      // 2) (opcjonalnie) Stroke â€“ na razie moÅ¼na usuwaÄ‡ tylko lokalnie
+      // 2) (opcjonalnie) Stroke – na razie mo¿na usuwaæ tylko lokalnie
       /*
       if (sel.kind === 'stroke') {
         const s = p.state.strokes[sel.index];
@@ -3446,7 +3466,7 @@ const toolsRow = document.getElementById('tools');
         renderAll(p);
         clearOverlay(p);
 
-        // JeÅ›li kiedyÅ› zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
+        // Jeœli kiedyœ zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
       }
       */
     });
@@ -3511,59 +3531,14 @@ const toolsRow = document.getElementById('tools');
     e.target.value='';
   });
 
-        // AUTODODAWANIE KARTKI przy przewijaniu
+  // AUTODODAWANIE KARTKI przy przewijaniu
   wrapEl.addEventListener('scroll', ()=>{
     const nearBottom = wrapEl.scrollTop + wrapEl.clientHeight >= wrapEl.scrollHeight - 80;
     if(nearBottom){
       createPage(false);
     }
   }, {passive:true});
-
-  // AUTOSAVE wielostronicowy â€“ osobny klucz na kaÅ¼dy room_id
-  const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
-
-  // (opcjonalnie) WyczyÅ›Ä‡ stary globalny klucz z czasÃ³w "local-test"
-  try {
-    if (roomId !== 'local-test') {
-      localStorage.removeItem('aliboard_v25_state');
-    }
-  } catch (_) {}
-
-  function autosave(){
-    try{
-      const payload = PAGES.map(p=>({
-        strokes: p.state.strokes,
-        images: p.state.images.map(im=>({
-          x: im.x, y: im.y, w: im.w, h: im.h,
-          src: im.src, meta: im.meta
-        }))
-      }));
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
-    }catch(_){}
-  }
-
-  function restoreLocal(){
-    try{
-      const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if(!raw) return false;
-      const arr = JSON.parse(raw); if(!Array.isArray(arr) || !arr.length) return false;
-      arr.forEach((pageData)=>{
-        const p=createPage(false);
-        p.state.strokes = pageData.strokes||[];
-        p.state.images  = (pageData.images||[]).map(im=>reviveImage(im,p));
-        renderAll(p);
-      });
-      return true;
-    }catch(_){ return false; }
-  }
-
-  // autosave co 30 s
-  setInterval(autosave, 30000);
-
-
-
-
-  // --- CRDT: nasï¿½uch zmian siatki przez AliboardRealtime (event "grid_state") ---
+  // --- CRDT: nas?uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
     window.AliboardRealtime.on('grid_state', (payload)=>{
       if(typeof window.aliboardApplyGridState === 'function'){
@@ -3581,7 +3556,7 @@ const toolsRow = document.getElementById('tools');
       headerExists: !!document.querySelector('header .left'),
     });
 
-    // 1) UtwÃ³rz przycisk â€žâ€¦â€ i panel overflow zaraz obok paska narzÄ™dzi, jeÅ¼eli nie istniejÄ…
+    // 1) Utwórz przycisk „…” i panel overflow zaraz obok paska narzêdzi, je¿eli nie istniej¹
     let moreBtn = document.getElementById('toolsMoreBtn');
     let moreBox = document.getElementById('toolsMorePanel');
 
@@ -3590,22 +3565,22 @@ const toolsRow = document.getElementById('tools');
       moreBtn.id = 'toolsMoreBtn';
       moreBtn.className = 'btn';
       moreBtn.type = 'button';
-      moreBtn.title = 'WiÄ™cej narzÄ™dzi';
-      moreBtn.textContent = 'â€¦';
+      moreBtn.title = 'Wiêcej narzêdzi';
+      moreBtn.textContent = '…';
     toolsRow.appendChild(moreBtn);
     }
     if(!moreBox){
       moreBox = document.createElement('div');
       moreBox.id = 'toolsMorePanel';
       moreBox.className = 'dropdown';
-      // otwieramy w lewo, obok paska narzï¿½dzi
+      // otwieramy w lewo, obok paska narz?dzi
       moreBox.style.left = '0';
       moreBox.style.right = 'auto';
       moreBtn.insertAdjacentElement('afterend', moreBox);
     }
 
-    // 2) Oznacz ï¿½klejoneï¿½ (nigdy nie przenoszone) narzï¿½dzia ï¿½ rdzeï¿½ paska
-    //    (moï¿½esz dopasowaï¿½ listï¿½; domyï¿½lnie trzymamy: select, pen, line, eraser)
+    // 2) Oznacz ?klejone? (nigdy nie przenoszone) narz?dzia ? rdze? paska
+    //    (mo?esz dopasowa? list?; domy?lnie trzymamy: select, pen, line, eraser)
     const stickySelectors = [
       '[data-tool="select"]',
       '[data-tool="pen"]',
@@ -3618,13 +3593,13 @@ const toolsRow = document.getElementById('tools');
         .filter(Boolean)
     );
 
-    // 3) Funkcja: przenieï¿½ elementy z overflow z powrotem do gï¿½ï¿½wnego rzï¿½du
+    // 3) Funkcja: przenie? elementy z overflow z powrotem do g??wnego rz?du
     function restoreFromOverflow(){
-      // przywrÃ³Ä‡ wszystko co byÅ‚o upchniÄ™te
+      // przywróæ wszystko co by³o upchniête
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
     }
 
-    // 4) Funkcja: wylicz ktÃ³re elementy trzeba schowaÄ‡ do â€žâ€¦â€, aÅ¼ przestanie siÄ™ przelewaÄ‡
+    // 4) Funkcja: wylicz które elementy trzeba schowaæ do „…”, a¿ przestanie siê przelewaæ
     function rebalanceTools(){
       if(!toolsRow) return;
 
@@ -3697,12 +3672,12 @@ const toolsRow = document.getElementById('tools');
       }
     });
 
-    // 6) Rebalans po zaï¿½adowaniu i na resize
+    // 6) Rebalans po za?adowaniu i na resize
     window.addEventListener('load', rebalanceTools, { once: true });
     window.addEventListener('resize', rebalanceTools);
 
-    // 7) Obsï¿½uga ï¿½tapï¿½ na elementach przeniesionych do overflow:
-    //    delegujemy klikniï¿½cia, ï¿½eby zachowaï¿½y siï¿½ identycznie jak w gï¿½ï¿½wnym rzï¿½dzie
+    // 7) Obs?uga ?tap? na elementach przeniesionych do overflow:
+    //    delegujemy klikni?cia, ?eby zachowa?y si? identycznie jak w g??wnym rz?dzie
     moreBox.addEventListener('pointerdown', (e)=>{
       const btn = e.target.closest('button, label');
       if(!btn) return;
@@ -3722,7 +3697,7 @@ const toolsRow = document.getElementById('tools');
       setTimeout(()=> moreBox.classList.remove('open'), 0);
     });
 
-    // 8) Publiczny hook: gdyby coï¿½ dynamicznie dodaï¿½o narzï¿½dzie ï¿½ sprï¿½buj zbalansowaï¿½ ponownie
+    // 8) Publiczny hook: gdyby co? dynamicznie doda?o narz?dzie ? spr?buj zbalansowa? ponownie
     const ro = new ResizeObserver(rebalanceTools);
     ro.observe(toolsRow);
     setTimeout(rebalanceTools, 250);
@@ -3731,7 +3706,7 @@ const toolsRow = document.getElementById('tools');
   })();
   // [CODEX:END OVERFLOW_MENU]
 
-  // Aliboard Chat Module â€“ logika czatu
+  // Aliboard Chat Module – logika czatu
   (function initAliboardChatModule(){
     const bubble = document.getElementById('aliboard-chat-bubble');
     const panel = document.getElementById('aliboard-chat-panel');
@@ -3748,7 +3723,7 @@ const toolsRow = document.getElementById('tools');
       return;
     }
 
-    // Na desktopie podnieï¿½ dymek czatu, by nie nachodziï¿½ na room_id
+    // Na desktopie podnie? dymek czatu, by nie nachodzi? na room_id
     if(bubbleRoot && window.matchMedia('(pointer:fine)').matches){
       bubbleRoot.classList.add('desktop-offset');
     }
@@ -3831,10 +3806,10 @@ const toolsRow = document.getElementById('tools');
       const banner = document.createElement('div');
       banner.className = 'aliboard-call-banner';
       banner.innerHTML = `
-        <span>ðŸ“ž PoÅ‚Ä…czenie gÅ‚osowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'UczeÅ„'}</strong></span>
+        <span>?? Po³¹czenie g³osowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeñ'}</strong></span>
         <div class="aliboard-call-actions">
-          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">DoÅ‚Ä…cz</button>
-          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">RozÅ‚Ä…cz</button>
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Do³¹cz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Roz³¹cz</button>
         </div>
       `;
       panel.insertBefore(banner, panel.firstChild);
@@ -3936,7 +3911,7 @@ const toolsRow = document.getElementById('tools');
       if (!text.trim()) return;
       const trimmed = text.trim().slice(0, 500);
 
-      // Ping tylko wysyÅ‚amy na serwer, bez lokalnego dopisywania
+      // Ping tylko wysy³amy na serwer, bez lokalnego dopisywania
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
         window.aliboardChat.sendToServer(trimmed);
       }
@@ -3952,7 +3927,7 @@ const toolsRow = document.getElementById('tools');
     if(pingBtn){
       pingBtn.addEventListener('click', ()=>{
         appendMessage({
-          text: 'ðŸ”” WysÅ‚aÅ‚eÅ› zaczepienie (ping).',
+          text: '?? Wys³a³eœ zaczepienie (ping).',
           author: 'me',
           timeString: getTimeString()
         });
@@ -4019,7 +3994,7 @@ const toolsRow = document.getElementById('tools');
           window.aliboardVoice.hangupCall(false);
         }
         appendMessage({
-          text: 'ðŸ“´ PoÅ‚Ä…czenie zostaÅ‚o zakoÅ„czone',
+          text: '?? Po³¹czenie zosta³o zakoñczone',
           author: 'other',
           timeString: getTimeString(),
         });
@@ -4204,7 +4179,7 @@ const toolsRow = document.getElementById('tools');
       callBtn.addEventListener('click', ()=>{
         setPanelOpen(true);
         appendMessage({
-          text: 'ðŸ“ž PrÃ³ba rozpoczÄ™cia rozmowy gÅ‚osowejâ€¦',
+          text: '?? Próba rozpoczêcia rozmowy g³osowej…',
           author: 'me',
           timeString: getTimeString(),
         });
@@ -4287,7 +4262,7 @@ const toolsRow = document.getElementById('tools');
     })();
   })();
 
-  // PODPINAMY SIï¿½ DO ALIBOARD REALTIME (jeï¿½li dostï¿½pny) ï¿½ retry aï¿½ do skutku
+  // PODPINAMY SI? DO ALIBOARD REALTIME (je?li dost?pny) ? retry a? do skutku
   (function attachCursorListener(){
     const rt = window.AliboardRealtime;
     if(!rt || typeof rt.on !== 'function'){
@@ -4302,99 +4277,55 @@ const toolsRow = document.getElementById('tools');
         }
         upsertRemoteCursor(cursor);
       }catch(err){
-        console.error("[Aliboard][cursor] bï¿½ï¿½d przy nakï¿½adaniu zdalnego kursora", err);
+        console.error("[Aliboard][cursor] b??d przy nak?adaniu zdalnego kursora", err);
       }
     });
     attachCursorListener._attached = true;
   })();
 
-  // === Integracja z AliboardRealtime (CRDT obrazÃ³w/PDF) ===
-  let snapshotApplied = false; // flaga, ktÃ³rÄ… wykorzystamy takÅ¼e w starcie
-
-  function attachRealtimeOnce(){
-    const RT = window.AliboardRealtime;
-    if (!RT || typeof RT.on !== 'function') return;
-    if (window.__ALIBOARD_RT_ATTACHED) return;
-    window.__ALIBOARD_RT_ATTACHED = true;
-
-    console.log('[Aliboard] Realtime attached');
-
-    // 1) PeÅ‚ny snapshot z ROOM_STATE przy wejÅ›ciu do pokoju
-    RT.on("snapshot", (elements) => {
+  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === "function"){
+    // snapshot: pe³ny stan z ROOM_STATE przy wejœciu do pokoju
+    window.AliboardRealtime.on("snapshot", (elements) => {
       if (!Array.isArray(elements)) return;
-      snapshotApplied = true;
 
-      // wyczyÅ›Ä‡ lokalny stan obrazÃ³w i indeks CRDT
+      // wyczyœæ lokalne obrazy + indeks przed wgraniem snapshotu
       ELEMENTS.clear();
       PAGES.forEach(p => {
         p.state.images = [];
       });
 
-      // wgraj elementy z serwera (tylko image/pdf)
       elements.forEach(el => {
-        if (!el) return;
-        if (el.type !== "image" && el.type !== "pdf") return;
+        if (!el || (el.type !== "image" && el.type !== "pdf")) return;
         applyRemoteImageElement(el, "add");
       });
 
-      // odrysuj wszystkie strony
+      // po snapshot mo¿na odrysowaæ wszystkie strony
       PAGES.forEach(p => renderAll(p));
     });
 
-    // 2) Nowy element z sieci
-    RT.on("element_add", (element) => {
-      if (!element) return;
-      if (element.type !== "image" && element.type !== "pdf") return;
+    window.AliboardRealtime.on("element_add", (element) => {
+      if (!element || (element.type !== "image" && element.type !== "pdf")) return;
       applyRemoteImageElement(element, "add");
     });
 
-    // 3) Aktualizacja z sieci
-    RT.on("element_update", (element) => {
-      if (!element) return;
-      if (element.type !== "image" && element.type !== "pdf") return;
+    window.AliboardRealtime.on("element_update", (element) => {
+      if (!element || (element.type !== "image" && element.type !== "pdf")) return;
       applyRemoteImageElement(element, "update");
     });
 
-    // 4) UsuniÄ™cie z sieci
-    RT.on("element_remove", (idOrObj) => {
-      applyRemoteImageElement(idOrObj, "remove");
+    window.AliboardRealtime.on("element_remove", (id) => {
+      applyRemoteImageElement(id, "remove");
     });
   }
 
-  // SprÃ³buj od razuâ€¦
-  attachRealtimeOnce();
-  // â€¦a jeÅ›li jeszcze nie ma AliboardRealtime, prÃ³buj co 300 ms
-  (function waitForRealtime(){
-    if (window.__ALIBOARD_RT_ATTACHED) return;
-    const iv = setInterval(() => {
-      if (window.__ALIBOARD_RT_ATTACHED) {
-        clearInterval(iv);
-        return;
-      }
-      attachRealtimeOnce();
-    }, 300);
-  })();
-
-  // START
-  (function startAliboard(){
-    // jeÅ›li serwer nie przysÅ‚aÅ‚ snapshotu, sprÃ³buj przywrÃ³ciÄ‡ z localStorage
-    if (!snapshotApplied){
-      if (!restoreLocal()){
-        if (PAGES.length === 0) {
-          createPage(false);
-        }
-      }
-    } else {
-      // serwer daÅ‚ snapshot, a my mamy zero stron? dodaj jednÄ… pustÄ…
-      if (PAGES.length === 0) {
-        createPage(false);
-      }
-    }
-    setTool(TOOLS.SELECT);
-  })();
+  // START – zawsze startujemy od snapshotu lub pustej kartki z serwera
+  if (PAGES.length === 0) {
+    createPage(false);
+  }
+  setTool(TOOLS.SELECT);
 })();
 
-/* === ALIBOARD: pokazuj przycisk wielkoï¿½ci czcionki tylko przy narzï¿½dziu Tekst === */
+/* === ALIBOARD: pokazuj przycisk wielko?ci czcionki tylko przy narz?dziu Tekst === */
 const textFontBtn = document.getElementById("textFontBtn");
 
 function updateFontButtonVisibility(activeTool){
@@ -4436,13 +4367,6 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
-
-
-
-
-
-
-
 
 
 
