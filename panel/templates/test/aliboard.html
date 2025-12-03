@@ -1309,6 +1309,14 @@
     clearOverlay(p);
     updateDeleteButtonState();
   }
+
+  function resetBoardForSnapshot(){
+    while(PAGES.length){ PAGES.pop(); }
+    pagesEl.innerHTML = '';
+    createPage(false);
+    setTool(TOOLS.SELECT);
+    updateDeleteButtonState();
+  }
   window.aliboardResetBoardForSnapshot = resetBoardForSnapshot;
 
   function getPageRef(pageIndex){
