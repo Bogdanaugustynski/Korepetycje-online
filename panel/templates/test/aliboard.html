@@ -1769,9 +1769,6 @@
     return { applySnapshot, upsertElement, removeElement, getAllElements, getElement, clear, subscribe };
   })();
 
-  // automatyczne odrysowanie po każdej zmianie modelu (po inicjalizacji modelu)
-  AliboardModel.subscribe(()=> syncAllPagesFromModel());
-
   /* ---------- MODEL STRONY ---------- */
   function makeEmptyPageState(){
     return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null };
@@ -1779,6 +1776,9 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
   const PAGES = [];
+
+  // automatyczne odrysowanie po każdej zmianie modelu (po zainicjalizowaniu PAGES)
+  AliboardModel.subscribe(()=> syncAllPagesFromModel());
 
   function ensurePage(index){
     while (PAGES.length <= index){
