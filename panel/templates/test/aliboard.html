@@ -1104,6 +1104,8 @@
   </div>
 </div>
 
+<script src="{% static 'panel/js/aliboard_crdt_core.js' %}"></script>
+
 <script>
 (function(){
   /* === PATCH: wstrzykni�cie delikatnego CSS dla paska narz�dzi (bez kapsli) === */
@@ -1291,6 +1293,13 @@
     pushHistory(p);
     if(sel.kind==='image' && p.state.images[sel.index]){
       const removedImage = p.state.images.splice(sel.index,1)[0];
+      const elementId = removedImage && removedImage.__elementId;
+      if(elementId){
+        ELEMENTS.delete(elementId);
+        if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementRemove === "function"){
+          window.AliboardRealtime.broadcastElementRemove(elementId);
+        }
+      }
       if(removedImage?.id){ emitElementRemove(removedImage.id); }
     }else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
       const removed = p.state.strokes.splice(sel.index,1)[0];
@@ -1849,6 +1858,44 @@
     }
   }
 
+  // === CRDT: globalny indeks elementów (obrazy + PDF) ===
+  const ELEMENTS = new Map(); // id -> { pageIndex, kind: "image"|"pdf", image: imObj }
+
+  function makeElementId(kind){
+    return `${kind}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+  }
+
+  function registerImageElement(im, p, elementId, kind){
+    im.__elementId = elementId;
+    const pageIndex = PAGES.indexOf(p);
+    ELEMENTS.set(elementId, {
+      pageIndex,
+      kind,
+      image: im
+    });
+  }
+
+  function elementFromImage(im, pageIndex, kind){
+    return {
+      id: im.__elementId,
+      type: kind,
+      pageIndex,
+      x: im.x,
+      y: im.y,
+      w: im.w,
+      h: im.h,
+      src: im.src,
+      meta: im.meta || null
+    };
+  }
+
+  function ensurePage(index){
+    while (PAGES.length <= index){
+      createPage(false);
+    }
+    return PAGES[index];
+  }
+
   /* ---------- OBRAZY ---------- */
   // --- OBRAZY: lokalny model + opcjonalny CRDT (element_add) ---
   function reviveImage(im, p){
@@ -1868,49 +1915,88 @@
     return obj;
   }
 
-  // addImageFromSrc = JEDYNE miejsce, które dodaje obraz do strony
-  // opts: { broadcast: true/false, id, pageIndex, nx, ny, nw, nh }
+    // addImageFromSrc = JEDYNE miejsce, ktore dodaje obraz do strony
   function addImageFromSrc(src, w, h, x, y, meta, p, opts){
     opts = opts || {};
-    const pageIndex = typeof opts.pageIndex === 'number' ? opts.pageIndex : PAGES.indexOf(p);
+    const kind = (meta && meta.pdf) ? "pdf" : "image";
 
-    // --- [CRDT_IMAGE_ID] gwarantujemy unikalne ID obrazka ---
-    meta = meta || {};
-    const id = meta.id || opts.id || (window.crypto?.randomUUID?.() || `img_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-    meta.id = id;
-
+    // lokalna historia (undo)
     pushHistory(p);
-    const im = reviveImage({id, src, w, h, x, y, meta}, p);
+
+    // odtworzenie obrazu
+    const im = reviveImage({ src, w, h, x, y, meta }, p);
     p.state.images.push(im);
-    renderAll(p);
 
-    // CRDT: rozsy?amy obraz do innych uczestnik?w
-    if (opts.broadcast && window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === 'function'){
-      const rect = p.el.getBoundingClientRect();
-      const nx = rect.width  ? x / rect.width  : 0;
-      const ny = rect.height ? y / rect.height : 0;
-      const nw = rect.width  ? w / rect.width  : 0;
-      const nh = rect.height ? h / rect.height : 0;
+    // rejestr elementu CRDT
+    const elementId = opts.id || makeElementId(kind);
+    registerImageElement(im, p, elementId, kind);
 
-      window.AliboardRealtime.broadcastElementAdd({
-        id,
-        kind: 'image',
-        pageIndex: pageIndex < 0 ? 0 : pageIndex,
-        src,
-        meta: meta || null,
-        nx,
-        ny,
-        nw,
-        nh,
-        clientId: window.AliboardRealtime.clientId || null,
-      });
+    // jesli to lokalna zmiana – wyslij do serwera
+    if (!opts.silent && window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === "function"){
+      const pageIndex = PAGES.indexOf(p);
+      const element = elementFromImage(im, pageIndex, kind);
+      window.AliboardRealtime.broadcastElementAdd(element);
     }
+
+    renderAll(p);
 
     if (typeof autosave === 'function') {
       autosave();
     }
 
     return im;
+  }
+
+  function applyRemoteImageElement(element, mode){
+    if (!element) return;
+    const id = typeof element === "string" ? element : element.id;
+    if (!id) return;
+
+    if (mode === "remove"){
+      const entry = ELEMENTS.get(id);
+      if (!entry) return;
+      const { pageIndex, image } = entry;
+      const p = PAGES[pageIndex];
+      if (!p) return;
+
+      const idx = p.state.images.indexOf(image);
+      if (idx >= 0){
+        p.state.images.splice(idx, 1);
+      }
+      ELEMENTS.delete(id);
+      renderAll(p);
+      return;
+    }
+
+    // add / update
+    const pageIndex = element.pageIndex || 0;
+    const kind = element.type === "pdf" ? "pdf" : "image";
+    const p = ensurePage(pageIndex);
+
+    let entry = ELEMENTS.get(element.id);
+    if (!entry){
+      // nowy element z sieci
+      addImageFromSrc(
+        element.src,
+        element.w,
+        element.h,
+        element.x,
+        element.y,
+        element.meta || null,
+        p,
+        { id: element.id, silent: true }
+      );
+    } else {
+      // aktualizacja istniejącego
+      const im = entry.image;
+      im.x = element.x;
+      im.y = element.y;
+      im.w = element.w;
+      im.h = element.h;
+      im.meta = element.meta || null;
+      entry.pageIndex = pageIndex;
+      renderAll(p);
+    }
   }
 
   /* ---------- HISTORIA ---------- */
@@ -2790,26 +2876,13 @@ function textDimensions(s){
               sel.bbox.x += dx;
               sel.bbox.y += dy;
 
-              // 🔄 CRDT: broadcast przesunięcia obrazu
-              if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function' && im.meta && im.meta.id){
-                const pageIndex = PAGES.indexOf(p);
-                if (pageIndex >= 0){
-                  const rect = p.el.getBoundingClientRect();
-                  const nx = im.x / rect.width;
-                  const ny = im.y / rect.height;
-                  const nw = im.w / rect.width;
-                  const nh = im.h / rect.height;
-
-                  window.AliboardRealtime.broadcastElementUpdate({
-                    id: im.meta.id,
-                    kind: 'image',
-                    pageIndex,
-                    x: im.x,
-                    y: im.y,
-                    w: im.w,
-                    h: im.h,
-                    nx, ny, nw, nh
-                  });
+              // CRDT: broadcast przesuniecia obrazu
+              if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
+                const entry = ELEMENTS.get(im.__elementId);
+                if (entry){
+                  const kind = entry.kind || ((im.meta && im.meta.pdf) ? "pdf" : "image");
+                  const element = elementFromImage(im, entry.pageIndex, kind);
+                  window.AliboardRealtime.broadcastElementUpdate(element);
                 }
               }
             } else {
@@ -2827,31 +2900,18 @@ function textDimensions(s){
             applyScaledSelection(sel, d, nextBBox, p);
             sel.bbox = nextBBox;
 
-            // 🔄 CRDT: broadcast zmiany rozmiaru obrazu
+            // ?? CRDT: broadcast zmiany rozmiaru obrazu
             if (sel.kind === 'image'){
               const im = p.state.images[sel.index];
-              if (im && im.meta && im.meta.id &&
+              if (im &&
                   window.AliboardRealtime &&
                   typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
 
-                const pageIndex = PAGES.indexOf(p);
-                if (pageIndex >= 0){
-                  const rect = p.el.getBoundingClientRect();
-                  const nx = im.x / rect.width;
-                  const ny = im.y / rect.height;
-                  const nw = im.w / rect.width;
-                  const nh = im.h / rect.height;
-
-                  window.AliboardRealtime.broadcastElementUpdate({
-                    id: im.meta.id,
-                    kind: 'image',
-                    pageIndex,
-                    x: im.x,
-                    y: im.y,
-                    w: im.w,
-                    h: im.h,
-                    nx, ny, nw, nh
-                  });
+                const entry = ELEMENTS.get(im.__elementId);
+                if (entry){
+                  const kind = entry.kind || ((im.meta && im.meta.pdf) ? "pdf" : "image");
+                  const element = elementFromImage(im, entry.pageIndex, kind);
+                  window.AliboardRealtime.broadcastElementUpdate(element);
                 }
               }
             }
@@ -2893,7 +2953,20 @@ function textDimensions(s){
     }
     function end(x,y){
       let strokeToSync = null;
-      if(tool===TOOLS.SELECT){ p.state.dragging=null; return; }
+      if(tool===TOOLS.SELECT){
+        const sel = p.state.selection;
+        if (sel && sel.kind === "image" && window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === "function"){
+          const imRef = p.state.images[sel.index];
+          const entry = imRef ? ELEMENTS.get(imRef.__elementId) : null;
+          if (entry){
+            const im = entry.image;
+            const pageIndex = entry.pageIndex;
+            const kind = entry.kind || ((im.meta && im.meta.pdf) ? "pdf" : "image");
+            const element = elementFromImage(im, pageIndex, kind);
+            window.AliboardRealtime.broadcastElementUpdate(element);
+          }
+        }
+        p.state.dragging=null; return; }
       if(tool===TOOLS.CROP && cropping){ cropping=false; finalizeCrop(x,y,p); return; }
       if(tool===TOOLS.ERASER){
         drawing=false;
@@ -2950,7 +3023,7 @@ function textDimensions(s){
         panIdleTimer = setTimeout(()=>{ endMultiPan('idle-start'); }, PAN_IDLE_MS);
         try{
           touchPointers.forEach(id=>{ try{ p.drawC.releasePointerCapture(id); }catch(_){} });
-        }catch(_){}
+        }catch(_){ }
       }else if(!shouldPan && multiPan){
         endMultiPan('pointer-drop');
       }else if(shouldPan && multiPan){
@@ -2991,7 +3064,7 @@ function textDimensions(s){
       const {x,y}=getXY(e);
       move(x,y);
 
-      // ZDALNY KURSOR: wy�lij swoj� pozycj� (znormalizowan�)
+      // ZDALNY KURSOR: wyslij swoja pozycje (znormalizowana)
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendCursor === "function") {
         const rect = p.drawC.getBoundingClientRect();
         if (rect.width && rect.height) {
@@ -3018,7 +3091,7 @@ function textDimensions(s){
       e.preventDefault();
       const {x,y}=getXY(e);
       end(x,y);
-      try{ p.drawC.releasePointerCapture(e.pointerId);}catch(_){}
+      try{ p.drawC.releasePointerCapture(e.pointerId);}catch(_){ }
     }
     p.drawC.addEventListener('pointerup', handlePointerRelease, {passive:false});
     p.drawC.addEventListener('pointercancel', handlePointerRelease, {passive:false});
@@ -3062,14 +3135,13 @@ function textDimensions(s){
   }
   function updateState(){
     const shapeLabel = tool===TOOLS.FIGURE
-      ? ` • ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
+      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
       : '';
     const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
-    stateEl.textContent = `Tryb: ${toolLabel()} • ${sizeLabel} • ${color}${shapeLabel}`;
+    stateEl.textContent = `Tryb: ${toolLabel()}  ${sizeLabel}  ${color}${shapeLabel}`;
     updateFigurePaletteSelection();
   }
-
-  const toolsRow = document.getElementById('tools');
+const toolsRow = document.getElementById('tools');
   toolsRow.addEventListener('pointerdown', (e)=>{
     const b = e.target.closest('[data-tool]'); if(!b) return;
     e.preventDefault();
@@ -3370,11 +3442,14 @@ function textDimensions(s){
         const im = p.state.images[sel.index];
         if (!im) return;
 
-        const id = im.meta && im.meta.id;
+        const id = im.__elementId;
         pushHistory(p);
 
         // lokalnie
         p.state.images.splice(sel.index, 1);
+        if (id){
+          ELEMENTS.delete(id);
+        }
         p.state.selection = null;
         renderAll(p);
         clearOverlay(p);
@@ -3433,28 +3508,6 @@ function textDimensions(s){
 
         // lokalnie dodaj obraz
         addImageFromSrc(dataUrl, w, h, x, y, meta, p);
-
-        // CRDT: wsp??rz?dne normalizowane (procent szeroko?ci/wysoko?ci kartki)
-        if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === 'function') {
-          const pageIndex = PAGES.indexOf(p);
-          const pageRect  = p.el.getBoundingClientRect();
-          const nx = x / pageRect.width;
-          const ny = y / pageRect.height;
-          const nw = w / pageRect.width;
-          const nh = h / pageRect.height;
-
-          window.AliboardRealtime.broadcastElementAdd({
-            id: meta.id,
-            kind: 'image',
-            pageIndex,
-            src: dataUrl,
-            // piksele (stare pola ? dla kompatybilno?ci)
-            x, y, w, h,
-            // wsp??rz?dne w u?amkach [0,1]
-            nx, ny, nw, nh,
-            meta
-          });
-        }
       };
       temp.src = dataUrl;
     };
@@ -4284,178 +4337,38 @@ function textDimensions(s){
     attachCursorListener._attached = true;
   })();
 
-  // ===== CRDT: OBRAZY (element_add / element_remove) =====
-  function setupRealtimeImages() {
-    if (!window.AliboardRealtime || typeof window.AliboardRealtime.on !== 'function') {
-      return false;
-    }
+  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === "function"){
+    // snapshot: pełny stan z ROOM_STATE przy wejściu do pokoju
+    window.AliboardRealtime.on("snapshot", (elements) => {
+      if (!Array.isArray(elements)) return;
 
-    // ?? Dodanie obrazu z innego klienta
-    window.AliboardRealtime.on('element_add', (element) => {
-      try {
-        if (!element || element.kind !== 'image') return;
+      // wyczyść lokalne obrazy + indeks przed wgraniem snapshotu
+      ELEMENTS.clear();
+      PAGES.forEach(p => {
+        p.state.images = [];
+      });
 
-        const pageIndex = typeof element.pageIndex === 'number'
-          ? element.pageIndex
-          : (PAGES.length ? PAGES.length - 1 : 0);
+      elements.forEach(el => {
+        if (!el || (el.type !== "image" && el.type !== "pdf")) return;
+        applyRemoteImageElement(el, "add");
+      });
 
-        // Upewnij si?, ?e mamy odpowiedni? kartk?
-        while (PAGES.length <= pageIndex) {
-          createPage(false);
-        }
-        const p = PAGES[pageIndex];
-
-        // Je?li obraz o tym id ju? istnieje ? nie duplikujemy
-        const exists = p.state.images.some(im => im.meta && im.meta.id === element.id);
-        if (exists) return;
-
-        const meta = element.meta || {};
-        meta.id = element.id;
-
-        const rect = p.el.getBoundingClientRect();
-        let x, y, w, h;
-
-        // Preferuj wsp??rz?dne znormalizowane (nx,ny,nw,nh)
-        if (typeof element.nx === 'number' &&
-            typeof element.ny === 'number' &&
-            typeof element.nw === 'number' &&
-            typeof element.nh === 'number') {
-
-          x = element.nx * rect.width;
-          y = element.ny * rect.height;
-          w = element.nw * rect.width;
-          h = element.nh * rect.height;
-
-        } else {
-          // Fallback ? stare pola w px (na wypadek starszej wersji)
-          x = element.x ?? 0;
-          y = element.y ?? 0;
-          w = element.w ?? (rect.width * 0.5);
-          h = element.h ?? (rect.height * 0.5);
-        }
-
-        addImageFromSrc(
-          element.src,
-          w, h, x, y,
-          meta,
-          p
-        );
-      } catch (err) {
-        console.error('[Aliboard][CRDT image] element_add error', err);
-      }
+      // po snapshot można odrysować wszystkie strony
+      PAGES.forEach(p => renderAll(p));
     });
 
-    // ?? Aktualizacja pozycji / rozmiaru z innego klienta
-    window.AliboardRealtime.on('element_update', (element) => {
-      try {
-        if (!element || element.kind !== 'image') return;
-
-        const pageIndex = typeof element.pageIndex === 'number'
-          ? element.pageIndex
-          : (PAGES.length ? PAGES.length - 1 : 0);
-
-        if (pageIndex < 0 || pageIndex >= PAGES.length) return;
-        const p = PAGES[pageIndex];
-
-        const im = p.state.images.find(im => im.meta && im.meta.id === element.id);
-        if (!im) return;
-
-        const rect = p.el.getBoundingClientRect();
-        let x, y, w, h;
-
-        if (typeof element.nx === 'number' &&
-            typeof element.ny === 'number' &&
-            typeof element.nw === 'number' &&
-            typeof element.nh === 'number') {
-
-          x = element.nx * rect.width;
-          y = element.ny * rect.height;
-          w = element.nw * rect.width;
-          h = element.nh * rect.height;
-
-        } else {
-          x = element.x ?? im.x;
-          y = element.y ?? im.y;
-          w = element.w ?? im.w;
-          h = element.h ?? im.h;
-        }
-
-        im.x = x;
-        im.y = y;
-        im.w = w;
-        im.h = h;
-
-        renderAll(p);
-        drawSelection(p);
-      } catch (err) {
-        console.error('[Aliboard][CRDT image] element_update error', err);
-      }
+    window.AliboardRealtime.on("element_add", (element) => {
+      if (!element || (element.type !== "image" && element.type !== "pdf")) return;
+      applyRemoteImageElement(element, "add");
     });
 
-    // ?? Usuwanie obrazu po id (je?li kiedy? dorobimy broadcast remove przy kasowaniu)
-    window.AliboardRealtime.on('element_remove', (idOrElement) => {
-      try {
-        const id = typeof idOrElement === 'string'
-          ? idOrElement
-          : idOrElement?.id;
-
-        if (!id) return;
-
-        PAGES.forEach(p => {
-          const before = p.state.images.length;
-          p.state.images = p.state.images.filter(im => !(im.meta && im.meta.id === id));
-          if (p.state.images.length !== before) {
-            renderAll(p);
-          }
-        });
-      } catch (err) {
-        console.error('[Aliboard][CRDT image] element_remove error', err);
-      }
+    window.AliboardRealtime.on("element_update", (element) => {
+      if (!element || (element.type !== "image" && element.type !== "pdf")) return;
+      applyRemoteImageElement(element, "update");
     });
 
-    console.info('[Aliboard][CRDT image] realtime handlers attached');
-    return true;
-  }
-
-  // Spr?buj od razu
-  if (!setupRealtimeImages()) {
-    // Je?eli AliboardRealtime jeszcze nie istnieje ? pr?bujemy kilka razy w tle
-    const rtInterval = setInterval(() => {
-      if (setupRealtimeImages()) {
-        clearInterval(rtInterval);
-      }
-    }, 500);
-
-    // Po 10 sekundach przestajemy pr?bowa?
-    setTimeout(() => clearInterval(rtInterval), 10000);
-  }
-
-
-  // --- CRDT: odbieranie usuwania obraz?w z innych urz?dze? ---
-  if (window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function') {
-    window.AliboardRealtime.on('element_remove', (id) => {
-      if (!id) return;
-
-      let changed = false;
-
-      // Szukamy po wszystkich kartkach
-      for (const p of PAGES) {
-        const idx = p.state.images.findIndex(
-          (im) => im.meta && im.meta.id === id
-        );
-        if (idx !== -1) {
-          p.state.images.splice(idx, 1);
-          changed = true;
-          // nie break ? w teorii ten sam ID powinien by? raz, ale lecimy dla pewno?ci
-        }
-      }
-
-      if (changed) {
-        PAGES.forEach((p) => {
-          renderAll(p);
-          clearOverlay(p);
-        });
-      }
+    window.AliboardRealtime.on("element_remove", (id) => {
+      applyRemoteImageElement(id, "remove");
     });
   }
 
@@ -4506,5 +4419,16 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
 
 
