@@ -1295,14 +1295,21 @@
       const removedImage = p.state.images.splice(sel.index,1)[0];
       const elementId = removedImage && removedImage.__elementId;
       if(elementId){
-        ELEMENTS.delete(elementId);
+        AliboardModel.removeElement(elementId);
         if (window.AliboardRealtime &&
             typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
           window.AliboardRealtime.broadcastElementRemove(elementId);
         }
       }
     } else if(sel.kind==='stroke' && p.state.strokes[sel.index]){
-      p.state.strokes.splice(sel.index,1);
+      const removedStroke = p.state.strokes.splice(sel.index,1)[0];
+      if(removedStroke?.id){
+        AliboardModel.removeElement(removedStroke.id);
+        if (window.AliboardRealtime &&
+            typeof window.AliboardRealtime.broadcastElementRemove === 'function') {
+          window.AliboardRealtime.broadcastElementRemove(removedStroke.id);
+        }
+      }
     }
     p.state.selection = null;
     renderAll(p);
@@ -1372,84 +1379,52 @@
     return 'el_' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
   }
 
-  function getPageRef(pageIndex){
-    if(typeof pageIndex==='number' && pageIndex>=0){
-      return PAGES[pageIndex];
-    }
-    return currentPage();
-  }
-
-  function getPageDimensions(page){
-    const rect = page?.el?.getBoundingClientRect();
-    let width = rect?.width;
-    let height = rect?.height;
-    if(!Number.isFinite(width) || width<=0){ width = page?.drawC?.width || 1; }
-    if(!Number.isFinite(height) || height<=0){ height = page?.drawC?.height || 1; }
-    return { width, height };
-  }
-
-  function toRelativePoint(pt, dims){
-    if(!pt || !dims) return null;
-    const x = Number(pt.x ?? pt[0]);
-    const y = Number(pt.y ?? pt[1]);
-    if(!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return {
-      x: dims.width ? x / dims.width : 0,
-      y: dims.height ? y / dims.height : 0
-    };
-  }
-
-  function fromRelativePoint(pt, dims){
-    if(!pt || !dims) return null;
-    const x = Number(pt.x ?? pt[0]);
-    const y = Number(pt.y ?? pt[1]);
-    if(!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return {
-      x: x * dims.width,
-      y: y * dims.height
-    };
-  }
-
   function serializeStrokeElement(stroke, pageIndex){
     if(!stroke) return null;
     const page = getPageRef(pageIndex);
     if(!page) return null;
     const dims = getPageDimensions(page);
     const tool = stroke.type || stroke.tool || 'pen';
-    const base = {
-      id: stroke.id || newElementId(),
-      tool,
-      pageIndex,
+    const kind = tool === 'poly' ? 'line' : tool;
+    const data = {
       color: stroke.color || '#0b74ff',
       size: stroke.size || stroke.width || 3
     };
     if(tool==='pen'){
       const pts = (stroke.points || []).map(pt=>toRelativePoint(pt, dims)).filter(Boolean);
       if(pts.length<2) return null;
-      base.points = pts;
+      data.points = pts;
     }else if(tool==='line'){
       if(!stroke.a || !stroke.b) return null;
       const relA = toRelativePoint(stroke.a, dims);
       const relB = toRelativePoint(stroke.b, dims);
       if(!relA || !relB) return null;
-      base.a = relA;
-      base.b = relB;
+      data.a = relA;
+      data.b = relB;
     }else if(tool==='poly'){
       const pts = (stroke.points || []).map(pt=>toRelativePoint(pt, dims)).filter(Boolean);
       if(pts.length<2) return null;
-      base.points = pts;
-      if(stroke.closed) base.closed = true;
+      data.points = pts;
+      if(stroke.closed) data.closed = true;
     }else if(tool==='text'){
       const rel = toRelativePoint({x: stroke.x, y: stroke.y}, dims);
       if(!rel) return null;
-      base.text = stroke.text || '';
-      base.x = rel.x;
-      base.y = rel.y;
+      data.text = stroke.text || '';
+      data.x = rel.x;
+      data.y = rel.y;
     }else{
       return null;
     }
-    stroke.id = base.id;
-    return base;
+    const element = {
+      id: stroke.id || newElementId(),
+      kind,
+      type: kind,
+      page: pageIndex,
+      pageIndex,
+      data
+    };
+    stroke.id = element.id;
+    return element;
   }
 
   function serializeImageElement(image, pageIndex){
@@ -1457,166 +1432,193 @@
     const page = getPageRef(pageIndex);
     if(!page) return null;
     const dims = getPageDimensions(page);
-    return {
+    const kind = image.meta?.pdf ? 'pdf' : 'image';
+    const element = {
       id: image.id || newElementId(),
-      tool: 'image',
+      kind,
+      type: kind,
+      page: pageIndex,
       pageIndex,
-      x: dims.width ? (image.x || 0) / dims.width : 0,
-      y: dims.height ? (image.y || 0) / dims.height : 0,
-      w: dims.width ? (image.w || 0) / dims.width : 0,
-      h: dims.height ? (image.h || 0) / dims.height : 0,
-      src: image.src,
-      meta: image.meta || null
+      data: {
+        x: dims.width ? (image.x || 0) / dims.width : 0,
+        y: dims.height ? (image.y || 0) / dims.height : 0,
+        w: dims.width ? (image.w || 0) / dims.width : 0,
+        h: dims.height ? (image.h || 0) / dims.height : 0,
+        src: image.src,
+        meta: image.meta || null
+      }
     };
+    image.id = element.id;
+    return element;
   }
 
-  function applyElementAddPayload(element){
-    if(!element || !element.id) return;
-    const tool = element.tool || element.type || 'pen';
-    const page = ensurePageForPatch(element.pageIndex) || currentPage();
-    if(!page) return;
+  function elementToLocalStroke(element, page){
+    if(!element || !page) return null;
     const dims = getPageDimensions(page);
-    if(tool==='pen'){
-      const mapped = (element.points || []).map(pt=>fromRelativePoint(pt, dims)).filter(Boolean);
-      if(mapped.length<2) return;
-      page.state.strokes.push({
-        id: element.id,
-        type:'pen',
-        color: element.color || '#0b74ff',
-        size: element.size || 3,
-        points: mapped
-      });
-    }else if(tool==='line'){
-      const a = fromRelativePoint(element.a, dims);
-      const b = fromRelativePoint(element.b, dims);
-      if(!a || !b) return;
-      page.state.strokes.push({
-        id: element.id,
-        type:'line',
-        color: element.color || '#0b74ff',
-        size: element.size || 3,
-        a,
-        b
-      });
-    }else if(tool==='poly'){
-      const mapped = (element.points || []).map(pt=>fromRelativePoint(pt, dims)).filter(Boolean);
-      if(mapped.length<2) return;
-      page.state.strokes.push({
-        id: element.id,
-        type:'poly',
-        color: element.color || '#0b74ff',
-        size: element.size || 3,
-        points: mapped,
-        closed: Boolean(element.closed)
-      });
-    }else if(tool==='text'){
-      const rel = fromRelativePoint({x: element.x, y: element.y}, dims);
-      if(!rel) return;
-      page.state.strokes.push({
-        id: element.id,
-        type:'text',
-        color: element.color || '#0b74ff',
-        size: element.size || 3,
-        x: rel.x,
-        y: rel.y,
-        text: element.text || ''
-      });
-    }else if(tool==='image'){
-      const relPos = fromRelativePoint({x: element.x, y: element.y}, dims);
-      const relSize = fromRelativePoint({x: element.w, y: element.h}, dims);
-      const revived = reviveImage({
-        id: element.id,
-        src: element.src,
-        w: relSize?.x ?? 0,
-        h: relSize?.y ?? 0,
-        x: relPos?.x ?? 0,
-        y: relPos?.y ?? 0,
-        meta: element.meta
-      }, page);
-      page.state.images.push(revived);
-    }else{
-      return;
+    const data = element.data || {};
+    const base = {
+      id: element.id,
+      color: data.color || '#0b74ff',
+      size: data.size || 3
+    };
+    if(element.kind === 'pen'){
+      const pts = (data.points || []).map(pt=>fromRelativePoint(pt, dims)).filter(Boolean);
+      if(pts.length < 2) return null;
+      return { ...base, type: 'pen', points: pts };
     }
-    renderAll(page);
-    if(page.state.selection){ drawSelection(page); }
-  }
-
-  function applySnapshotElements(elements){
-    resetBoardForSnapshot();
-    if(Array.isArray(elements) && elements.length){
-      elements.forEach(applyElementAddPayload);
-    }else if(boardHasElements()){
-      syncBoardStateToServer();
+    if(element.kind === 'line'){
+      if(data.a && data.b){
+        const a = fromRelativePoint(data.a, dims);
+        const b = fromRelativePoint(data.b, dims);
+        if(!a || !b) return null;
+        return { ...base, type: 'line', a, b };
+      }
+      const pts = (data.points || []).map(pt=>fromRelativePoint(pt, dims)).filter(Boolean);
+      if(pts.length >= 2){
+        return { ...base, type: data.closed ? 'poly' : 'line', points: pts, closed: !!data.closed };
+      }
     }
+    if(element.kind === 'text'){
+      const rel = fromRelativePoint({x: data.x, y: data.y}, dims);
+      if(!rel) return null;
+      return { ...base, type: 'text', x: rel.x, y: rel.y, text: data.text || '' };
+    }
+    return null;
   }
 
-  function boardHasElements(){
-    return PAGES.some(page => (page.state.strokes && page.state.strokes.length) || (page.state.images && page.state.images.length));
+  function elementToLocalImage(element, page){
+    if(!element || !page) return null;
+    const dims = getPageDimensions(page);
+    const data = element.data || {};
+    const raw = {
+      id: element.id,
+      x: (data.x || 0) * (dims.width || 1),
+      y: (data.y || 0) * (dims.height || 1),
+      w: (data.w || 0) * (dims.width || 1),
+      h: (data.h || 0) * (dims.height || 1),
+      src: data.src,
+      meta: data.meta || (element.kind === 'pdf' ? { pdf: true } : null)
+    };
+    const revived = reviveImage(raw, page);
+    if(revived){
+      revived.__elementId = element.id;
+    }
+    return revived;
   }
 
-  function removeElementById(id){
-    if(!id) return;
-    PAGES.forEach((page)=>{
-      const beforeStrokes = page.state.strokes.length;
-      page.state.strokes = page.state.strokes.filter(st=>st.id!==id);
-      const beforeImages = page.state.images.length;
-      page.state.images = page.state.images.filter(im=>im.id!==id);
-      if(page.state.strokes.length!==beforeStrokes || page.state.images.length!==beforeImages){
-        renderAll(page);
-        if(page.state.selection){ drawSelection(page); }
+  function syncPageStateFromModel(page){
+    const pageIndex = PAGES.indexOf(page);
+    if(pageIndex < 0) return;
+    const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
+    page.state.strokes = [];
+    page.state.images = [];
+    elements.forEach(el=>{
+      if(el.kind === 'image' || el.kind === 'pdf'){
+        const im = elementToLocalImage(el, page);
+        if(im){ page.state.images.push(im); }
+      }else{
+        const st = elementToLocalStroke(el, page);
+        if(st){ page.state.strokes.push(st); }
       }
     });
   }
 
+  function syncAllPagesFromModel(){
+    PAGES.forEach(p=>{
+      syncPageStateFromModel(p);
+      renderAll(p);
+      if(p.state.selection){ drawSelection(p); }
+    });
+  }
+
+  // automatyczne odrysowanie po każdej zmianie modelu
+  AliboardModel.subscribe(()=> syncAllPagesFromModel());
+
+  function syncPageStateToModel(p){
+    const pageIndex = PAGES.indexOf(p);
+    if(pageIndex < 0) return;
+    const kept = new Set();
+    (p.state.strokes || []).forEach(st=>{
+      const el = serializeStrokeElement(st, pageIndex);
+      if(el){
+        kept.add(el.id);
+        AliboardModel.upsertElement(el);
+      }
+    });
+    (p.state.images || []).forEach(im=>{
+      const el = serializeImageElement(im, pageIndex);
+      if(el){
+        kept.add(el.id);
+        im.__elementId = el.id;
+        AliboardModel.upsertElement(el);
+      }
+    });
+    AliboardModel.getAllElements().forEach(el=>{
+      if(el.page === pageIndex && !kept.has(el.id)){
+        AliboardModel.removeElement(el.id);
+      }
+    });
+  }
+
+  function applyElementAddPayload(element){
+    if(!element || !element.id) return;
+    AliboardModel.upsertElement(element);
+  }
+
+  function applySnapshotElements(elements){
+    resetBoardForSnapshot();
+    AliboardModel.applySnapshot(Array.isArray(elements) ? elements : []);
+  }
+
+  function boardHasElements(){
+    return AliboardModel.getAllElements().length > 0;
+  }
+
+  function removeElementById(id){
+    if(!id) return;
+    AliboardModel.removeElement(id);
+  }
+
   function emitElementAddFromStroke(stroke, pageIndex){
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.broadcastElementAdd!=='function') return;
     const payload = serializeStrokeElement(stroke, pageIndex);
     if(!payload) return;
-    realtime.broadcastElementAdd(payload);
+    AliboardModel.upsertElement(payload);
+    const realtime = window.AliboardRealtime;
+    if(realtime && typeof realtime.broadcastElementAdd==='function'){
+      realtime.broadcastElementAdd(payload);
+    }
   }
 
   function emitElementRemove(id){
     if(!id) return;
     const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.broadcastElementRemove!=='function') return;
-    realtime.broadcastElementRemove(id);
+    AliboardModel.removeElement(id);
+    if(realtime && typeof realtime.broadcastElementRemove==='function'){
+      realtime.broadcastElementRemove(id);
+    }
   }
 
   function emitImageElementAdd(image, pageIndex){
     if(!image) return;
-    const realtime = window.AliboardRealtime;
-    if(!realtime || typeof realtime.broadcastElementAdd!=='function') return;
     const payload = serializeImageElement(image, pageIndex);
     if(!payload) return;
     image.id = payload.id;
-    realtime.broadcastElementAdd(payload);
+    AliboardModel.upsertElement(payload);
+    const realtime = window.AliboardRealtime;
+    if(realtime && typeof realtime.broadcastElementAdd==='function'){
+      realtime.broadcastElementAdd(payload);
+    }
   }
 
   function syncBoardStateToServer(){
     const realtime = window.AliboardRealtime;
     if(!realtime) return;
-    PAGES.forEach((page, pageIndex)=>{
-      (page.state.strokes||[]).forEach(st=>{
-        const payload = serializeStrokeElement(st, pageIndex);
-        if(payload){
-          if(typeof realtime.broadcastElementUpdate === 'function'){
-            realtime.broadcastElementUpdate(payload);
-          }else{
-            realtime.broadcastElementAdd(payload);
-          }
-        }
-      });
-      (page.state.images||[]).forEach(im=>{
-        const payload = serializeImageElement(im, pageIndex);
-        if(payload){
-          if(typeof realtime.broadcastElementUpdate === 'function'){
-            realtime.broadcastElementUpdate(payload);
-          }else{
-            realtime.broadcastElementAdd(payload);
-          }
-        }
-      });
+    AliboardModel.getAllElements().forEach(el=>{
+      if(typeof realtime.broadcastElementUpdate === 'function'){
+        realtime.broadcastElementUpdate(el);
+      }else if(typeof realtime.broadcastElementAdd === 'function'){
+        realtime.broadcastElementAdd(el);
+      }
     });
   }
 
@@ -1626,21 +1628,16 @@
       setTimeout(initRealtimeBridge, 600);
       return;
     }
-    realtime.on('snapshot', applySnapshotElements);
+    realtime.on('snapshot', (elements)=>{
+      applySnapshotElements(elements);
+    });
     realtime.on('open', ()=>{
       if(boardHasElements()){
         syncBoardStateToServer();
       }
     });
     realtime.on('element_add', applyElementAddPayload);
-    realtime.on('element_update', (element)=>{
-      if(!element || !element.id) return;
-      // Obrazy obsługuje dedykowany handler niżej (CRDT images); tutaj je pomijamy,
-      // żeby nie usuwać i nie dodawać ich ponownie z błędnym tool.
-      if(element.kind === 'image' || element.tool === 'image' || element.type === 'image') return;
-      removeElementById(element.id);
-      applyElementAddPayload(element);
-    });
+    realtime.on('element_update', applyElementAddPayload);
     realtime.on('element_remove', (payload)=>{
       const id = typeof payload === 'string' ? payload : payload?.id;
       removeElementById(id);
@@ -1682,6 +1679,99 @@
 
   console.log('[Aliboard] roomId =', roomId);
 
+  /* ---------- MODEL STANU (CRDT) ---------- */
+  const AliboardModel = (function(){
+    const elements = new Map();
+    const subs = new Set();
+
+    function buildDataFromLegacy(raw){
+      if(raw.points){
+        return { points: raw.points, color: raw.color, size: raw.size, closed: raw.closed };
+      }
+      if(raw.a && raw.b){
+        return { a: raw.a, b: raw.b, color: raw.color, size: raw.size };
+      }
+      if(raw.text !== undefined){
+        return { x: raw.x, y: raw.y, text: raw.text, color: raw.color, size: raw.size };
+      }
+      if(raw.src){
+        return { x: raw.x, y: raw.y, w: raw.w, h: raw.h, src: raw.src, meta: raw.meta };
+      }
+      return {};
+    }
+
+    function normalize(raw){
+      if(!raw || !raw.id) return null;
+      const kind = raw.kind || raw.tool || raw.type || 'pen';
+      const page = Number.isFinite(raw.page) ? Number(raw.page) : (
+        Number.isFinite(raw.pageIndex) ? Number(raw.pageIndex) : 0
+      );
+      const data = raw.data ? { ...raw.data } : buildDataFromLegacy(raw);
+      return { id: raw.id, kind, page, pageIndex: page, data };
+    }
+
+    function notify(){
+      const snapshot = getAllElements();
+      subs.forEach(fn=>{
+        try{
+          fn(snapshot);
+        }catch(err){
+          console.error('[AliboardModel] subscriber error', err);
+        }
+      });
+    }
+
+    function applySnapshot(list){
+      elements.clear();
+      (list || []).forEach(el=>{
+        const normalized = normalize(el);
+        if(normalized){
+          elements.set(normalized.id, normalized);
+        }
+      });
+      notify();
+    }
+
+    function upsertElement(el){
+      const normalized = normalize(el);
+      if(!normalized) return;
+      elements.set(normalized.id, normalized);
+      notify();
+    }
+
+    function removeElement(id){
+      if(!id) return;
+      elements.delete(id);
+      notify();
+    }
+
+    function getAllElements(){
+      return Array.from(elements.values());
+    }
+
+    function getElement(id){
+      return elements.get(id) || null;
+    }
+
+    function clear(){
+      elements.clear();
+      notify();
+    }
+
+    function subscribe(fn){
+      if(typeof fn !== 'function') return ()=>{};
+      subs.add(fn);
+      try{
+        fn(getAllElements());
+      }catch(err){
+        console.error('[AliboardModel] initial subscriber error', err);
+      }
+      return ()=> subs.delete(fn);
+    }
+
+    return { applySnapshot, upsertElement, removeElement, getAllElements, getElement, clear, subscribe };
+  })();
+
   /* ---------- MODEL STRONY ---------- */
   function makeEmptyPageState(){
     return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null };
@@ -1689,36 +1779,6 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
   const PAGES = [];
-  // === CRDT: globalny indeks elementów (obrazy + PDF) ===
-  const ELEMENTS = new Map(); // id -> { pageIndex, kind: "image"|"pdf", image: im }
-
-  function makeElementId(kind){
-    return `${kind}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
-  }
-
-  function registerImageElement(im, p, elementId, kind){
-    im.__elementId = elementId;
-    const pageIndex = PAGES.indexOf(p);
-    ELEMENTS.set(elementId, {
-      pageIndex,
-      kind,
-      image: im
-    });
-  }
-
-  function elementFromImage(im, pageIndex, kind){
-    return {
-      id: im.__elementId,
-      type: kind,
-      pageIndex,
-      x: im.x,
-      y: im.y,
-      w: im.w,
-      h: im.h,
-      src: im.src,
-      meta: im.meta || null
-    };
-  }
 
   function ensurePage(index){
     while (PAGES.length <= index){
@@ -1856,10 +1916,26 @@
     const w = p.drawC.width / dpr, h = p.drawC.height / dpr;
     p.ctx.clearRect(0,0,w,h);
 
-    for(const im of p.state.images){ if(im.img) p.ctx.drawImage(im.img, im.x, im.y, im.w, im.h); }
+    const pageIndex = PAGES.indexOf(p);
+    const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
+
+    const strokes = [];
+    const images = [];
+
+    elements.forEach(el=>{
+      if(el.kind === 'image' || el.kind === 'pdf'){
+        const cached = p.state.images.find(im=>im.__elementId === el.id);
+        images.push(cached || elementToLocalImage(el, p));
+      }else{
+        const cached = p.state.strokes.find(st=>st.id === el.id);
+        strokes.push(cached || elementToLocalStroke(el, p));
+      }
+    });
+
+    for(const im of images){ if(im?.img) p.ctx.drawImage(im.img, im.x, im.y, im.w, im.h); }
 
     p.ctx.lineCap='round'; p.ctx.lineJoin='round';
-    for(const s of p.state.strokes){
+    for(const s of strokes){
       if(s.type==='pen'){
         p.ctx.strokeStyle=s.color; p.ctx.lineWidth=s.size;
         const pts=s.points; if(!pts.length) continue;
@@ -1913,86 +1989,30 @@
   }
 
     // addImageFromSrc = JEDYNE miejsce, ktore dodaje obraz do strony
+
   function addImageFromSrc(src, w, h, x, y, meta, p, opts){
     opts = opts || {};
-    const kind = (meta && meta.pdf) ? "pdf" : "image";
 
     // lokalna historia (undo)
     pushHistory(p);
 
-    // odtwórz obraz
-    const im = reviveImage({ src, w, h, x, y, meta }, p);
+    const pageIndex = PAGES.indexOf(p);
+    const im = reviveImage({ id: opts.id, src, w, h, x, y, meta }, p);
     p.state.images.push(im);
 
-    // rejestr elementu CRDT
-    const elementId = opts.id || makeElementId(kind);
-    registerImageElement(im, p, elementId, kind);
-
-    // jeśli to lokalna zmiana – wyślij do serwera
-    if (!opts.silent &&
-        window.AliboardRealtime &&
-        typeof window.AliboardRealtime.broadcastElementAdd === "function") {
-
-      const pageIndex = PAGES.indexOf(p);
-      const element = elementFromImage(im, pageIndex, kind);
-      window.AliboardRealtime.broadcastElementAdd(element);
+    const element = serializeImageElement(im, pageIndex);
+    if(element){
+      im.__elementId = element.id;
+      AliboardModel.upsertElement(element);
+      if (!opts.silent &&
+          window.AliboardRealtime &&
+          typeof window.AliboardRealtime.broadcastElementAdd === "function") {
+        window.AliboardRealtime.broadcastElementAdd(element);
+      }
     }
 
     renderAll(p);
   }
-
-  function applyRemoteImageElement(element, mode){
-    if (!element) return;
-    const id = typeof element === "string" ? element : element.id;
-    if (!id) return;
-
-    if (mode === "remove"){
-      const entry = ELEMENTS.get(id);
-      if (!entry) return;
-      const { pageIndex, image } = entry;
-      const p = PAGES[pageIndex];
-      if (!p) return;
-
-      const idx = p.state.images.indexOf(image);
-      if (idx >= 0){
-        p.state.images.splice(idx, 1);
-      }
-      ELEMENTS.delete(id);
-      renderAll(p);
-      return;
-    }
-
-    // add / update
-    const pageIndex = element.pageIndex || 0;
-    const kind = element.type === "pdf" ? "pdf" : "image";
-    const p = ensurePage(pageIndex);
-
-    let entry = ELEMENTS.get(element.id);
-    if (!entry){
-      // nowy element z sieci
-      addImageFromSrc(
-        element.src,
-        element.w,
-        element.h,
-        element.x,
-        element.y,
-        element.meta || null,
-        p,
-        { id: element.id, silent: true }
-      );
-    } else {
-      // aktualizacja istniejącego
-      const im = entry.image;
-      im.x = element.x;
-      im.y = element.y;
-      im.w = element.w;
-      im.h = element.h;
-      im.meta = element.meta || null;
-      entry.pageIndex = pageIndex;
-      renderAll(p);
-    }
-  }
-
   /* ---------- HISTORIA ---------- */
   function snapshotState(p){
     return JSON.stringify({
@@ -2010,6 +2030,7 @@
       p.state.strokes = s.strokes||[];
       ensureStrokeIds(p);
       p.state.images  = (s.images||[]).map(im=>reviveImage(im, p));
+      syncPageStateToModel(p);
       renderAll(p); drawSelection(p);
     }catch(_){}
   }
@@ -2755,7 +2776,7 @@ function textDimensions(s){
       const r = p.drawC.getBoundingClientRect();
       return { x: evt.clientX - r.left, y: evt.clientY - r.top };
     }
-    let drawing=false, startX=0, startY=0, current=null, cropping=false;
+    let drawing=false, startX=0, startY=0, current=null, currentSent=false, cropping=false;
     const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
     let multiPan=false;                // tryb dwupalczastego scrolla
@@ -2839,11 +2860,27 @@ function textDimensions(s){
         return;
       }
 
-      drawing=true; startX=x; startY=y; pushHistory(p);
+      drawing=true; startX=x; startY=y; currentSent=false; pushHistory(p);
       if(tool===TOOLS.PEN){
         current={id:newElementId(), type:'pen', color, size, points:[{x,y}]}; p.state.strokes.push(current); renderAll(p);
+        const payload = serializeStrokeElement(current, PAGES.indexOf(p));
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          if(window.AliboardRealtime?.broadcastElementAdd){
+            window.AliboardRealtime.broadcastElementAdd(payload);
+          }
+          currentSent = true;
+        }
       }else if(tool===TOOLS.LINE){
         current={id:newElementId(), type:'line', color, size, a:{x,y}, b:{x,y}}; clearOverlay(p);
+        const payload = serializeStrokeElement(current, PAGES.indexOf(p));
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          if(window.AliboardRealtime?.broadcastElementAdd){
+            window.AliboardRealtime.broadcastElementAdd(payload);
+          }
+          currentSent = true;
+        }
       }else if(tool===TOOLS.ERASER){
         eraseAt({x,y},p);
         current=null;
@@ -2870,13 +2907,11 @@ function textDimensions(s){
               sel.bbox.x += dx;
               sel.bbox.y += dy;
 
-              // CRDT: broadcast przesuniecia obrazu
-              if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
-                const entry = ELEMENTS.get(im.__elementId);
-                if (entry){
-                  const kind = entry.kind || ((im.meta && im.meta.pdf) ? "pdf" : "image");
-                  const element = elementFromImage(im, entry.pageIndex, kind);
-                  window.AliboardRealtime.broadcastElementUpdate(element);
+              const updatePayload = serializeImageElement(im, PAGES.indexOf(p));
+              if(updatePayload){
+                AliboardModel.upsertElement(updatePayload);
+                if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
+                  window.AliboardRealtime.broadcastElementUpdate(updatePayload);
                 }
               }
             } else {
@@ -2887,6 +2922,14 @@ function textDimensions(s){
               if (s.type === 'text'){ s.x += dx; s.y += dy; }
               if (s.type === 'poly' && s.points){ s.points.forEach(pt=>{pt.x+=dx;pt.y+=dy;}); }
               sel.bbox = bboxStroke(s);
+
+              const updatePayload = serializeStrokeElement(s, PAGES.indexOf(p));
+              if(updatePayload){
+                AliboardModel.upsertElement(updatePayload);
+                if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
+                  window.AliboardRealtime.broadcastElementUpdate(updatePayload);
+                }
+              }
             }
 
           } else if (d.mode === 'scale'){
@@ -2901,11 +2944,10 @@ function textDimensions(s){
                   window.AliboardRealtime &&
                   typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
 
-                const entry = ELEMENTS.get(im.__elementId);
-                if (entry){
-                  const kind = entry.kind || ((im.meta && im.meta.pdf) ? "pdf" : "image");
-                  const element = elementFromImage(im, entry.pageIndex, kind);
-                  window.AliboardRealtime.broadcastElementUpdate(element);
+                const updatePayload = serializeImageElement(im, PAGES.indexOf(p));
+                if(updatePayload){
+                  AliboardModel.upsertElement(updatePayload);
+                  window.AliboardRealtime.broadcastElementUpdate(updatePayload);
                 }
               }
             }
@@ -2917,10 +2959,18 @@ function textDimensions(s){
                 const delta = angle - d.startAngle;
                 s.points = d.original.points.map(pt=>rotatePointAround(pt, d.center, delta));
                 sel.bbox = bboxStroke(s);
+
+                const updatePayload = serializeStrokeElement(s, PAGES.indexOf(p));
+                if(updatePayload){
+                  AliboardModel.upsertElement(updatePayload);
+                  if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
+                    window.AliboardRealtime.broadcastElementUpdate(updatePayload);
+                  }
+                }
               }
             }
           }
-          renderAll(p); drawSelection(p);
+            renderAll(p); drawSelection(p);
         }
         return;
       }
@@ -2938,11 +2988,35 @@ function textDimensions(s){
       }
       if(!drawing) return;
 
-      if(tool===TOOLS.PEN){ current.points.push({x,y}); renderAll(p); }
+      if(tool===TOOLS.PEN){
+        current.points.push({x,y}); renderAll(p);
+        const payload = serializeStrokeElement(current, PAGES.indexOf(p));
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          const rt = window.AliboardRealtime;
+          if(rt?.broadcastElementUpdate){
+            rt.broadcastElementUpdate(payload);
+          }else if(!currentSent && rt?.broadcastElementAdd){
+            rt.broadcastElementAdd(payload);
+          }
+          currentSent = true;
+        }
+      }
       else if(tool===TOOLS.LINE){
         current.b={x,y}; clearOverlay(p);
         p.ovl.lineCap='round'; p.ovl.lineJoin='round'; p.ovl.strokeStyle=color; p.ovl.lineWidth=size;
         p.ovl.beginPath(); p.ovl.moveTo(startX,startY); p.ovl.lineTo(x,y); p.ovl.stroke();
+        const payload = serializeStrokeElement(current, PAGES.indexOf(p));
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          const rt = window.AliboardRealtime;
+          if(rt?.broadcastElementUpdate){
+            rt.broadcastElementUpdate(payload);
+          }else if(!currentSent && rt?.broadcastElementAdd){
+            rt.broadcastElementAdd(payload);
+          }
+          currentSent = true;
+        }
       }
     }
     function end(x,y){
@@ -2951,13 +3025,10 @@ function textDimensions(s){
         const sel = p.state.selection;
         if (sel && sel.kind === "image" && window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === "function"){
           const imRef = p.state.images[sel.index];
-          const entry = imRef ? ELEMENTS.get(imRef.__elementId) : null;
-          if (entry){
-            const im = entry.image;
-            const pageIndex = entry.pageIndex;
-            const kind = entry.kind || ((im.meta && im.meta.pdf) ? "pdf" : "image");
-            const element = elementFromImage(im, pageIndex, kind);
-            window.AliboardRealtime.broadcastElementUpdate(element);
+          const payload = serializeImageElement(imRef, PAGES.indexOf(p));
+          if(payload){
+            AliboardModel.upsertElement(payload);
+            window.AliboardRealtime.broadcastElementUpdate(payload);
           }
         }
         p.state.dragging=null; return; }
@@ -2993,9 +3064,19 @@ function textDimensions(s){
         drawing=false;
       }
       if(strokeToSync){
-        emitElementAddFromStroke(strokeToSync, PAGES.indexOf(p));
+        const payload = serializeStrokeElement(strokeToSync, PAGES.indexOf(p));
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          const rt = window.AliboardRealtime;
+          if(!currentSent && rt?.broadcastElementAdd){
+            rt.broadcastElementAdd(payload);
+          }else if(rt?.broadcastElementUpdate){
+            rt.broadcastElementUpdate(payload);
+          }
+        }
       }
       current=null;
+      currentSent=false;
     }
 
     function trackTouch(e, isDown){
@@ -3439,7 +3520,7 @@ const toolsRow = document.getElementById('tools');
         // lokalnie
         p.state.images.splice(sel.index, 1);
         if (id){
-          ELEMENTS.delete(id);
+          AliboardModel.removeElement(id);
         }
         p.state.selection = null;
         renderAll(p);
@@ -3537,46 +3618,7 @@ const toolsRow = document.getElementById('tools');
     }
   }, {passive:true});
 
-  // AUTOSAVE wielostronicowy – osobny klucz na każdy room_id
-  const AUTOSAVE_KEY = `aliboard_v25_state_${roomId}`;
-
-  // (opcjonalnie) Wyczyść stary globalny klucz z czasów "local-test"
-  try {
-    if (roomId !== 'local-test') {
-      localStorage.removeItem('aliboard_v25_state');
-    }
-  } catch (_) {}
-
-  function autosave(){
-    try{
-      const payload = PAGES.map(p=>({
-        strokes: p.state.strokes,
-        images: p.state.images.map(im=>({
-          x: im.x, y: im.y, w: im.w, h: im.h,
-          src: im.src, meta: im.meta
-        }))
-      }));
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
-    }catch(_){}
-  }
-
-  function restoreLocal(){
-    try{
-      const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if(!raw) return false;
-      const arr = JSON.parse(raw); if(!Array.isArray(arr) || !arr.length) return false;
-      arr.forEach((pageData)=>{
-        const p=createPage(false);
-        p.state.strokes = pageData.strokes||[];
-        p.state.images  = (pageData.images||[]).map(im=>reviveImage(im,p));
-        renderAll(p);
-      });
-      return true;
-    }catch(_){ return false; }
-  }
-
-  // autosave co 30 s
-  setInterval(autosave, 30000);
+  // AUTOSAVE wielostronicowy usunięty – stan tylko z serwera i bieżącej sesji
 
 
 
@@ -4305,7 +4347,7 @@ const toolsRow = document.getElementById('tools');
     })();
   })();
 
-  // PODPINAMY SI� DO ALIBOARD REALTIME (je�li dost�pny) � retry a� do skutku
+    // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
   (function attachCursorListener(){
     const rt = window.AliboardRealtime;
     if(!rt || typeof rt.on !== 'function'){
@@ -4320,94 +4362,18 @@ const toolsRow = document.getElementById('tools');
         }
         upsertRemoteCursor(cursor);
       }catch(err){
-        console.error("[Aliboard][cursor] b��d przy nak�adaniu zdalnego kursora", err);
+        console.error("[Aliboard][cursor] błąd przy nakładaniu zdalnego kursora", err);
       }
     });
     attachCursorListener._attached = true;
   })();
 
-  // === Integracja z AliboardRealtime (CRDT obrazów/PDF) ===
-  let snapshotApplied = false; // flaga, którą wykorzystamy także w starcie
-
-  function attachRealtimeOnce(){
-    const RT = window.AliboardRealtime;
-    if (!RT || typeof RT.on !== 'function') return;
-    if (window.__ALIBOARD_RT_ATTACHED) return;
-    window.__ALIBOARD_RT_ATTACHED = true;
-
-    console.log('[Aliboard] Realtime attached');
-
-    // 1) Pełny snapshot z ROOM_STATE przy wejściu do pokoju
-    RT.on("snapshot", (elements) => {
-      if (!Array.isArray(elements)) return;
-      snapshotApplied = true;
-
-      // wyczyść lokalny stan obrazów i indeks CRDT
-      ELEMENTS.clear();
-      PAGES.forEach(p => {
-        p.state.images = [];
-      });
-
-      // wgraj elementy z serwera (tylko image/pdf)
-      elements.forEach(el => {
-        if (!el) return;
-        if (el.type !== "image" && el.type !== "pdf") return;
-        applyRemoteImageElement(el, "add");
-      });
-
-      // odrysuj wszystkie strony
-      PAGES.forEach(p => renderAll(p));
-    });
-
-    // 2) Nowy element z sieci
-    RT.on("element_add", (element) => {
-      if (!element) return;
-      if (element.type !== "image" && element.type !== "pdf") return;
-      applyRemoteImageElement(element, "add");
-    });
-
-    // 3) Aktualizacja z sieci
-    RT.on("element_update", (element) => {
-      if (!element) return;
-      if (element.type !== "image" && element.type !== "pdf") return;
-      applyRemoteImageElement(element, "update");
-    });
-
-    // 4) Usunięcie z sieci
-    RT.on("element_remove", (idOrObj) => {
-      applyRemoteImageElement(idOrObj, "remove");
-    });
-  }
-
-  // Spróbuj od razu…
-  attachRealtimeOnce();
-  // …a jeśli jeszcze nie ma AliboardRealtime, próbuj co 300 ms
-  (function waitForRealtime(){
-    if (window.__ALIBOARD_RT_ATTACHED) return;
-    const iv = setInterval(() => {
-      if (window.__ALIBOARD_RT_ATTACHED) {
-        clearInterval(iv);
-        return;
-      }
-      attachRealtimeOnce();
-    }, 300);
-  })();
-
   // START
   (function startAliboard(){
-    // jeśli serwer nie przysłał snapshotu, spróbuj przywrócić z localStorage
-    if (!snapshotApplied){
-      if (!restoreLocal()){
-        if (PAGES.length === 0) {
-          createPage(false);
-        }
-      }
-    } else {
-      // serwer dał snapshot, a my mamy zero stron? dodaj jedną pustą
-      if (PAGES.length === 0) {
-        createPage(false);
-      }
+    if (PAGES.length === 0) {
+      createPage(false);
     }
+    syncAllPagesFromModel();
     setTool(TOOLS.SELECT);
   })();
 })();
@@ -4454,6 +4420,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
+
 
 
 
