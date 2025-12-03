@@ -1509,18 +1509,24 @@
   function syncPageStateFromModel(page){
     const pageIndex = PAGES.indexOf(page);
     if(pageIndex < 0) return;
+    const existingImages = new Map((page.state.images || []).map(im=>[im.__elementId, im]));
+    const existingStrokes = new Map((page.state.strokes || []).map(st=>[st.id, st]));
     const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
-    page.state.strokes = [];
-    page.state.images = [];
+    const nextStrokes = [];
+    const nextImages = [];
     elements.forEach(el=>{
       if(el.kind === 'image' || el.kind === 'pdf'){
-        const im = elementToLocalImage(el, page);
-        if(im){ page.state.images.push(im); }
+        const cached = existingImages.get(el.id);
+        const im = cached || elementToLocalImage(el, page);
+        if(im){ nextImages.push(im); }
       }else{
-        const st = elementToLocalStroke(el, page);
-        if(st){ page.state.strokes.push(st); }
+        const cached = existingStrokes.get(el.id);
+        const st = cached || elementToLocalStroke(el, page);
+        if(st){ nextStrokes.push(st); }
       }
     });
+    page.state.strokes = nextStrokes;
+    page.state.images = nextImages;
   }
 
   function syncAllPagesFromModel(){
