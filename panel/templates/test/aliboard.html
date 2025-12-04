@@ -2323,12 +2323,6 @@
   }
   function hitPolyline(pts, pxy, eps){ for(let i=1;i<pts.length;i++){ if(distToSegment(pxy, pts[i-1], pts[i])<=eps) return true;} return false; }
   function hitTest(pxy, p){
-    for(let i=p.state.images.length-1;i>=0;i--){
-      const im=p.state.images[i];
-      if(pxy.x>=im.x && pxy.x<=im.x+im.w && pxy.y>=im.y && pxy.y<=im.y+im.h){
-        return {kind:'image', index:i, bbox:{x:im.x,y:im.y,w:im.w,h:im.h}};
-      }
-    }
     const eps = Math.max(6, size*2);
     for(let i=p.state.strokes.length-1;i>=0;i--){
       const s=p.state.strokes[i];
@@ -2341,6 +2335,12 @@
         if(s.points && hitPolyline(s.points, pxy, eps)){
           return {kind:'stroke', index:i, bbox:bboxStroke(s)};
         }
+      }
+    }
+    for(let i=p.state.images.length-1;i>=0;i--){
+      const im=p.state.images[i];
+      if(pxy.x>=im.x && pxy.x<=im.x+im.w && pxy.y>=im.y && pxy.y<=im.y+im.h){
+        return {kind:'image', index:i, bbox:{x:im.x,y:im.y,w:im.w,h:im.h}};
       }
     }
     return null;
