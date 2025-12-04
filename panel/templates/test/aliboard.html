@@ -1187,6 +1187,7 @@
 
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
+  let lastGridState = { gridSize: 0, kind: 'grid' };
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
   let lastBrushSize = size;
   let currentShape = 'rect';
@@ -1647,6 +1648,9 @@
       if(boardHasElements()){
         syncBoardStateToServer();
       }
+      if(lastGridState && window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
+        window.AliboardRealtime.sendGridState(lastGridState);
+      }
     });
     realtime.on('element_add', applyElementAddPayload);
     realtime.on('element_update', applyElementAddPayload);
@@ -1880,6 +1884,10 @@
       ? 'tech'
       : (typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0);
     gridSize = parsedSize;
+    lastGridState = {
+      gridSize: parsedSize === 'tech' ? 0 : parsedSize,
+      kind: isTech ? 'tech' : 'grid'
+    };
     PAGES.forEach(p => {
       if(isTech){ drawTechGrid(p); }
       else { drawGrid(p); }
@@ -1889,6 +1897,11 @@
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
     drawTechPattern(p.g, w, h);
+  }
+  function broadcastGridState(state){
+    if(window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
+      window.AliboardRealtime.sendGridState(state);
+    }
   }
   function drawTechPattern(ctx, w, h){
     ctx.clearRect(0,0,w,h);
@@ -3427,6 +3440,10 @@ const toolsRow = document.getElementById('tools');
       const isTech = val === 'tech';
       const newSize = isTech ? 'tech' : parseInt(val,10) || 0;
       gridSize = newSize;
+      lastGridState = {
+        gridSize: isTech ? 0 : newSize,
+        kind: isTech ? 'tech' : 'grid'
+      };
 
       if (isTech){
         PAGES.forEach(p=> drawTechGrid(p));
