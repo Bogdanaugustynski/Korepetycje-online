@@ -2948,16 +2948,22 @@ function textDimensions(s){
             applyScaledSelection(sel, d, nextBBox, p);
             sel.bbox = nextBBox;
 
-            // ?? CRDT: broadcast zmiany rozmiaru obrazu
+            // CRDT: broadcast zmiany rozmiaru obrazu/rysunku
             if (sel.kind === 'image'){
               const im = p.state.images[sel.index];
-              if (im &&
-                  window.AliboardRealtime &&
-                  typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
-
-                const updatePayload = serializeImageElement(im, PAGES.indexOf(p));
-                if(updatePayload){
-                  AliboardModel.upsertElement(updatePayload);
+              const updatePayload = im ? serializeImageElement(im, PAGES.indexOf(p)) : null;
+              if(updatePayload){
+                AliboardModel.upsertElement(updatePayload);
+                if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
+                  window.AliboardRealtime.broadcastElementUpdate(updatePayload);
+                }
+              }
+            } else if (sel.kind === 'stroke'){
+              const s = p.state.strokes[sel.index];
+              const updatePayload = s ? serializeStrokeElement(s, PAGES.indexOf(p)) : null;
+              if(updatePayload){
+                AliboardModel.upsertElement(updatePayload);
+                if (window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementUpdate === 'function'){
                   window.AliboardRealtime.broadcastElementUpdate(updatePayload);
                 }
               }
