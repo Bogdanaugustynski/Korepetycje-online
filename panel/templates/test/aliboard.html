@@ -1187,37 +1187,6 @@
 
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
-  let lastGridState = { gridSize: 0, kind: 'grid' };
-  const GRID_STATE_KEY = 'aliboard_grid_state';
-
-  function loadGridStateFromStorage(){
-    try{
-      const raw = localStorage.getItem(GRID_STATE_KEY);
-      if(!raw) return null;
-      const parsed = JSON.parse(raw);
-      if(parsed && (parsed.gridSize!==undefined || parsed.kind)){
-        return {
-          gridSize: typeof parsed.gridSize === 'number' ? parsed.gridSize : 0,
-          kind: parsed.kind === 'tech' ? 'tech' : 'grid'
-        };
-      }
-    }catch(_){}
-    return null;
-  }
-  function saveGridStateToStorage(state){
-    try{
-      if(state){
-        localStorage.setItem(GRID_STATE_KEY, JSON.stringify(state));
-      }
-    }catch(_){}
-  }
-
-  // ustawienie siatki z poprzedniej sesji (jeśli zapisana)
-  const storedGridState = loadGridStateFromStorage();
-  if(storedGridState){
-    gridSize = storedGridState.kind === 'tech' ? 'tech' : (storedGridState.gridSize || 0);
-    lastGridState = storedGridState;
-  }
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
   let lastBrushSize = size;
   let currentShape = 'rect';
@@ -1678,9 +1647,6 @@
       if(boardHasElements()){
         syncBoardStateToServer();
       }
-      if(lastGridState && window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
-        window.AliboardRealtime.sendGridState(lastGridState);
-      }
     });
     realtime.on('element_add', applyElementAddPayload);
     realtime.on('element_update', applyElementAddPayload);
@@ -1914,11 +1880,6 @@
       ? 'tech'
       : (typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0);
     gridSize = parsedSize;
-    lastGridState = {
-      gridSize: parsedSize === 'tech' ? 0 : parsedSize,
-      kind: isTech ? 'tech' : 'grid'
-    };
-    saveGridStateToStorage(lastGridState);
     PAGES.forEach(p => {
       if(isTech){ drawTechGrid(p); }
       else { drawGrid(p); }
@@ -1928,16 +1889,6 @@
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
     drawTechPattern(p.g, w, h);
-  }
-  function broadcastGridState(state){
-    if(window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
-      window.AliboardRealtime.sendGridState(state);
-    }
-  }
-  function broadcastGridState(state){
-    if(window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
-      window.AliboardRealtime.sendGridState(state);
-    }
   }
   function drawTechPattern(ctx, w, h){
     ctx.clearRect(0,0,w,h);
@@ -3476,11 +3427,6 @@ const toolsRow = document.getElementById('tools');
       const isTech = val === 'tech';
       const newSize = isTech ? 'tech' : parseInt(val,10) || 0;
       gridSize = newSize;
-      lastGridState = {
-        gridSize: isTech ? 0 : newSize,
-        kind: isTech ? 'tech' : 'grid'
-      };
-      saveGridStateToStorage(lastGridState);
 
       if (isTech){
         PAGES.forEach(p=> drawTechGrid(p));
@@ -3715,32 +3661,12 @@ const toolsRow = document.getElementById('tools');
 
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
-    if(!window.__aliboardGridListenerAttached){
-      window.__aliboardGridListenerAttached = true;
-      window.AliboardRealtime.on('grid_state', (payload)=>{
-        if(typeof window.aliboardApplyGridState === 'function'){
-          window.aliboardApplyGridState(payload);
-        }
-      });
-    }
-  }
-
-  // fallback: jeżeli realtime nie był gotowy przy ładowaniu, spróbuj podpiąć się z opóźnieniem
-  (function ensureGridListener(){
-    if(window.__aliboardGridListenerAttached) return;
-    const rt = window.AliboardRealtime;
-    if(!rt || typeof rt.on !== 'function'){
-      setTimeout(ensureGridListener, 400);
-      return;
-    }
-    if(window.__aliboardGridListenerAttached) return;
-    window.__aliboardGridListenerAttached = true;
-    rt.on('grid_state', (payload)=>{
+    window.AliboardRealtime.on('grid_state', (payload)=>{
       if(typeof window.aliboardApplyGridState === 'function'){
         window.aliboardApplyGridState(payload);
       }
     });
-  })();
+  }
 
   // [CODEX:BEGIN OVERFLOW_MENU]
   (function setupToolsOverflow(){
