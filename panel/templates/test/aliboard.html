@@ -2249,14 +2249,6 @@
       y: nextBBox.y + ry * nextBBox.h
     };
   }
-  function computeScaleFactor(startBBox, nextBBox){
-    const vals = [];
-    if(startBBox.w) vals.push(Math.abs(nextBBox.w / startBBox.w));
-    if(startBBox.h) vals.push(Math.abs(nextBBox.h / startBBox.h));
-    if(!vals.length) return 1;
-    const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
-    return avg || 1;
-  }
   function applyScaledSelection(sel, drag, nextBBox, p){
     if(sel.kind==='image'){
       const im = p.state.images[sel.index];
@@ -2282,11 +2274,9 @@
     }else if(stroke.type==='poly'){
       stroke.points = (original.points||[]).map(pt=>scalePointRelative(pt, drag.startBBox, nextBBox));
     }
-    const factor = computeScaleFactor(drag.startBBox, nextBBox);
-    if(stroke.type==='pen' || stroke.type==='line'){
-      stroke.size = Math.max(0.5, original.size * factor);
-    }else if(stroke.type==='text'){
-      stroke.size = Math.max(1, original.size * factor);
+    // nie skalujemy grubości linii ani czcionki przy zmianie rozmiaru
+    if(stroke.type==='pen' || stroke.type==='line' || stroke.type==='text'){
+      stroke.size = original.size;
     }
   }
 
