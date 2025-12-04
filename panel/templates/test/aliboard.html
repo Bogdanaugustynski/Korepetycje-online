@@ -1186,10 +1186,61 @@
   }
 
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
-  let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
+  let tool = TOOLS.SELECT, color = '#0b74ff', size = 3;
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
   let lastBrushSize = size;
   let currentShape = 'rect';
+  const TEMPLATE_KINDS = {
+    NONE: 'none',
+    GRID_SMALL: 'grid-small',
+    GRID_MEDIUM: 'grid-medium',
+    GRID_LARGE: 'grid-large',
+    GRID_TECH: 'grid-tech',
+    LINED: 'lined'
+  };
+
+  function normalizeTemplateKind(rawKind, sizeHint){
+    if(typeof rawKind === 'object' && rawKind !== null && 'templateKind' in rawKind){
+      return normalizeTemplateKind(rawKind.templateKind, rawKind.gridSize ?? rawKind.size);
+    }
+    const sizeNum = Number.isFinite(sizeHint) ? sizeHint : parseInt(sizeHint, 10);
+    const sizeStr = typeof sizeHint === 'string' ? sizeHint.toLowerCase() : '';
+    const rawStr = typeof rawKind === 'string' ? rawKind.trim().toLowerCase() : '';
+    if(rawStr === 'grid-tech' || rawStr === 'tech' || sizeStr === 'tech'){ return TEMPLATE_KINDS.GRID_TECH; }
+    if(rawStr === 'lined' || rawStr === 'line'){ return TEMPLATE_KINDS.LINED; }
+    if(rawStr === 'grid-small' || rawStr === 'small' || sizeNum === 16){ return TEMPLATE_KINDS.GRID_SMALL; }
+    if(rawStr === 'grid-medium' || rawStr === 'medium' || sizeNum === 24){ return TEMPLATE_KINDS.GRID_MEDIUM; }
+    if(rawStr === 'grid-large' || rawStr === 'large' || sizeNum === 32){ return TEMPLATE_KINDS.GRID_LARGE; }
+    if(rawStr === 'grid' && sizeNum){
+      if(sizeNum <= 18){ return TEMPLATE_KINDS.GRID_SMALL; }
+      if(sizeNum <= 26){ return TEMPLATE_KINDS.GRID_MEDIUM; }
+      return TEMPLATE_KINDS.GRID_LARGE;
+    }
+    if(rawStr === 'none' || rawStr === 'brak' || sizeNum === 0){ return TEMPLATE_KINDS.NONE; }
+    return TEMPLATE_KINDS.NONE;
+  }
+  function templateKindToStep(kind){
+    switch(kind){
+      case TEMPLATE_KINDS.GRID_SMALL: return 16;
+      case TEMPLATE_KINDS.GRID_MEDIUM: return 24;
+      case TEMPLATE_KINDS.GRID_LARGE: return 32;
+      default: return 0;
+    }
+  }
+  function gridStateToTemplateKind(state){
+    const isObj = state && typeof state === 'object';
+    const rawKind = isObj ? (state.kind || state.templateKind || state.type) : state;
+    const sizeHint = isObj ? (state.gridSize ?? state.size) : state;
+    if(rawKind === 'tech' || rawKind === 'grid-tech'){ return TEMPLATE_KINDS.GRID_TECH; }
+    return normalizeTemplateKind(rawKind, sizeHint);
+  }
+  function templateElementKind(el){
+    if(!el) return TEMPLATE_KINDS.NONE;
+    const data = el.data || {};
+    const rawKind = data.templateKind ?? el.templateKind ?? data.kind ?? el.kind;
+    const sizeHint = data.gridSize ?? data.size ?? el.gridSize ?? el.size;
+    return normalizeTemplateKind(rawKind, sizeHint);
+  }
 
   /* ---------- TEKST: ROZMIAR CZCIONKI ---------- */
   function clampTextFont(px){
@@ -1513,7 +1564,12 @@
     const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
     const nextStrokes = [];
     const nextImages = [];
+    let nextTemplateKind = TEMPLATE_KINDS.NONE;
     elements.forEach(el=>{
+      if(el.kind === 'template'){
+        nextTemplateKind = templateElementKind(el);
+        return;
+      }
       if(el.kind === 'image' || el.kind === 'pdf'){
         const cached = existingImages.get(el.id);
         const fresh = elementToLocalImage(el, page);
@@ -1536,6 +1592,7 @@
     });
     page.state.strokes = nextStrokes;
     page.state.images = nextImages;
+    setPageTemplateKind(page, nextTemplateKind);
   }
 
   function syncAllPagesFromModel(){
@@ -1566,7 +1623,7 @@
       }
     });
     AliboardModel.getAllElements().forEach(el=>{
-      if(el.page === pageIndex && !kept.has(el.id)){
+      if(el.page === pageIndex && el.kind !== 'template' && !kept.has(el.id)){
         AliboardModel.removeElement(el.id);
       }
     });
@@ -1697,6 +1754,9 @@
     const subs = new Set();
 
     function buildDataFromLegacy(raw){
+      if((raw.kind === 'template' || raw.type === 'template') && (raw.templateKind || raw.gridSize || raw.size)){
+        return { templateKind: normalizeTemplateKind(raw.templateKind || raw.kind || raw.type, raw.gridSize ?? raw.size) };
+      }
       if(raw.points){
         return { points: raw.points, color: raw.color, size: raw.size, closed: raw.closed };
       }
@@ -1718,7 +1778,14 @@
       const page = Number.isFinite(raw.page) ? Number(raw.page) : (
         Number.isFinite(raw.pageIndex) ? Number(raw.pageIndex) : 0
       );
-      const data = raw.data ? { ...raw.data } : buildDataFromLegacy(raw);
+      let data = raw.data ? { ...raw.data } : buildDataFromLegacy(raw);
+      if(kind === 'template'){
+        const templateKind = normalizeTemplateKind(
+          raw.templateKind ?? data.templateKind ?? data.kind ?? raw.kind,
+          data.gridSize ?? data.size ?? raw.gridSize ?? raw.size
+        );
+        data = { templateKind };
+      }
       return { id: raw.id, kind, page, pageIndex: page, data };
     }
 
@@ -1786,7 +1853,7 @@
 
   /* ---------- MODEL STRONY ---------- */
   function makeEmptyPageState(){
-    return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null };
+    return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null, templateKind: TEMPLATE_KINDS.NONE };
   }
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
@@ -1839,14 +1906,14 @@
     PAGES.push(p);
     p.index = PAGES.length - 1;
     resizePage(p);
-    refreshGrid(p);
+    setPageTemplateKind(p, p.state.templateKind, true);
     renderAll(p);
     bindPage(p);
     if(scrollTo) page.scrollIntoView({behavior:'smooth', block:'center'});
     return p;
   }
 
-  /* ---------- ROZMIAR I SIATKA ---------- */
+  /* ---------- ROZMIAR I SZABLON ---------- */
   function resizePage(p){
     const rect = p.el.getBoundingClientRect();
     const dpr  = window.devicePixelRatio || 1;
@@ -1858,38 +1925,76 @@
       const c2d = c.getContext('2d');
       c2d.setTransform(dpr,0,0,dpr,0,0);
     });
+    renderTemplateLayer(p);
   }
-  function drawGrid(p){
+  function drawSimpleGrid(ctx, w, h, step){
+    if(!step) return;
+    ctx.save(); ctx.strokeStyle='#e6edff'; ctx.lineWidth=1;
+    for(let x=0;x<=w;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+    for(let y=0;y<=h;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawLinedPattern(ctx, w, h){
+    const step = 28;
+    ctx.save(); ctx.strokeStyle='#e6edff'; ctx.lineWidth=1;
+    for(let y=0;y<=h;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawTemplateOnContext(ctx, w, h, templateKind){
+    const kind = normalizeTemplateKind(templateKind);
+    ctx.clearRect(0,0,w,h);
+    if(kind === TEMPLATE_KINDS.NONE) return;
+    if(kind === TEMPLATE_KINDS.GRID_TECH){ drawTechPattern(ctx, w, h); return; }
+    if(kind === TEMPLATE_KINDS.LINED){ drawLinedPattern(ctx, w, h); return; }
+    const step = templateKindToStep(kind);
+    if(step){ drawSimpleGrid(ctx, w, h, step); }
+  }
+  function renderTemplateLayer(p){
+    if(!p || !p.gridC) return;
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
-    p.g.clearRect(0,0,w,h);
-    if(!gridSize) return;
-    p.g.save(); p.g.strokeStyle='#e6edff'; p.g.lineWidth=1;
-    for(let x=0;x<=w;x+=gridSize){ p.g.beginPath(); p.g.moveTo(x,0); p.g.lineTo(x,h); p.g.stroke(); }
-    for(let y=0;y<=h;y+=gridSize){ p.g.beginPath(); p.g.moveTo(0,y); p.g.lineTo(w,y); p.g.stroke(); }
-    p.g.restore();
+    drawTemplateOnContext(p.g, w, h, p.state.templateKind);
   }
-
-  // --- SYNC GRID: handler dla realtime (wywo�ywany z AliboardRealtime) ---
+  function setPageTemplateKind(p, templateKind, forceDraw){
+    if(!p || !p.state) return;
+    const next = normalizeTemplateKind(templateKind);
+    if(!forceDraw && p.state.templateKind === next) return;
+    p.state.templateKind = next;
+    renderTemplateLayer(p);
+  }
+  function buildTemplateElement(pageIndex, templateKind){
+    return {
+      id: `template:${pageIndex}`,
+      kind: 'template',
+      type: 'template',
+      page: pageIndex,
+      pageIndex,
+      data: { templateKind: normalizeTemplateKind(templateKind) }
+    };
+  }
+  function broadcastTemplateElement(element, opts){
+    const realtime = window.AliboardRealtime;
+    if(!element || !realtime) return;
+    if(opts && opts.broadcast === false) return;
+    if(typeof realtime.broadcastElementUpdate === 'function'){
+      realtime.broadcastElementUpdate(element);
+    }else if(typeof realtime.broadcastElementAdd === 'function'){
+      realtime.broadcastElementAdd(element);
+    }
+  }
+  function setTemplateForPage(pageIndex, templateKind, opts){
+    const p = ensurePage(pageIndex);
+    const normalized = normalizeTemplateKind(templateKind);
+    setPageTemplateKind(p, normalized, true);
+    const element = buildTemplateElement(pageIndex, normalized);
+    AliboardModel.upsertElement(element);
+    broadcastTemplateElement(element, opts);
+  }
+  // --- LEGACY GRID EVENT: mapuj na element template ---
   window.aliboardApplyGridState = function(newGridState){
-    const isObj = newGridState && typeof newGridState === 'object';
-    const kind = isObj ? newGridState.kind : null;
-    const valRaw = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
-    const isTech = kind === 'tech';
-    const parsedSize = isTech
-      ? 'tech'
-      : (typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0);
-    gridSize = parsedSize;
-    PAGES.forEach(p => {
-      if(isTech){ drawTechGrid(p); }
-      else { drawGrid(p); }
-    });
+    const templateKind = gridStateToTemplateKind(newGridState);
+    PAGES.forEach((page, idx)=> setTemplateForPage(idx, templateKind, { broadcast:false }));
   };
-  function drawTechGrid(p){
-    const dpr = window.devicePixelRatio || 1;
-    const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
-    drawTechPattern(p.g, w, h);
-  }
   function drawTechPattern(ctx, w, h){
     ctx.clearRect(0,0,w,h);
     ctx.save();
@@ -1911,17 +2016,13 @@
     for (let y = 0; y <= h; y += step*10){ ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
     ctx.restore();
   }
-  function refreshGrid(p){
-    if(gridSize==='tech'){ drawTechGrid(p); }
-    else{ drawGrid(p); }
-  }
   function resetBoard(){
     PAGES.forEach(p=> p.el.remove());
     PAGES.length = 0;
     pagesEl.innerHTML = '';
   }
   window.addEventListener('resize', ()=>{
-    PAGES.forEach(p=>{ resizePage(p); refreshGrid(p); renderAll(p); drawSelection(p); });
+    PAGES.forEach(p=>{ resizePage(p); renderAll(p); drawSelection(p); });
     if(textFontPanel?.classList.contains('open')){ positionTextFontPanel(); }
   });
 
@@ -1931,13 +2032,16 @@
     const w = p.drawC.width / dpr, h = p.drawC.height / dpr;
     p.ctx.clearRect(0,0,w,h);
 
-    const pageIndex = PAGES.indexOf(p);
+    const pageIndex = Number.isFinite(p.index) ? p.index : PAGES.indexOf(p);
     const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
 
     const strokes = [];
     const images = [];
 
     elements.forEach(el=>{
+      if(el.kind === 'template'){
+        return;
+      }
       if(el.kind === 'image' || el.kind === 'pdf'){
         const cached = p.state.images.find(im=>im.__elementId === el.id);
         const image = cached || elementToLocalImage(el, p);
@@ -2386,15 +2490,7 @@
     tmp.height = Math.ceil(cssH * dpr);
     theContext = tmp.getContext('2d');
     theContext.scale(dpr, dpr);
-
-    if(gridSize === 'tech'){
-      drawTechPattern(theContext, cssW, cssH);
-    }else if(gridSize){
-      theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
-      for(let x=0;x<=cssW;x+=gridSize){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,cssH); theContext.stroke(); }
-      for(let y=0;y<=cssH;y+=gridSize){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(cssW,y); theContext.stroke(); }
-      theContext.restore();
-    }
+    drawTemplateOnContext(theContext, cssW, cssH, p.state.templateKind);
     await Promise.all(p.state.images.map(im => im.img ? Promise.resolve() : new Promise(res=>{ const el=new Image(); el.onload=()=>{im.img=el; res();}; el.src=im.src; })));
     for(const im of p.state.images){ if(im.img) theContext.drawImage(im.img, im.x, im.y, im.w, im.h); }
 
@@ -3424,25 +3520,10 @@ const toolsRow = document.getElementById('tools');
     btn.addEventListener('pointerdown', (e)=>{
       e.preventDefault();
       const val = btn.getAttribute('data-grid');
-      const isTech = val === 'tech';
-      const newSize = isTech ? 'tech' : parseInt(val,10) || 0;
-      gridSize = newSize;
-
-      if (isTech){
-        PAGES.forEach(p=> drawTechGrid(p));
-      } else {
-        PAGES.forEach(p=> drawGrid(p));
-      }
-
-      // realtime broadcast � je�li dost�pny
-      if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
-        window.AliboardRealtime.sendGridState(
-          isTech
-            ? { gridSize: 0, kind: 'tech' }
-            : { gridSize: newSize, kind: 'grid' }
-        );
-      }
-
+      const templateKind = normalizeTemplateKind(val === 'tech' ? 'grid-tech' : val);
+      const page = currentPage();
+      const pageIndex = page ? (Number.isFinite(page.index) ? page.index : PAGES.indexOf(page)) : 0;
+      setTemplateForPage(pageIndex, templateKind, { broadcast:true });
       toggleMenu(false);
     });
   });
