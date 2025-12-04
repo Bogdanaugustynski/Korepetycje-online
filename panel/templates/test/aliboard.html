@@ -3715,12 +3715,32 @@ const toolsRow = document.getElementById('tools');
 
   // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
-    window.AliboardRealtime.on('grid_state', (payload)=>{
+    if(!window.__aliboardGridListenerAttached){
+      window.__aliboardGridListenerAttached = true;
+      window.AliboardRealtime.on('grid_state', (payload)=>{
+        if(typeof window.aliboardApplyGridState === 'function'){
+          window.aliboardApplyGridState(payload);
+        }
+      });
+    }
+  }
+
+  // fallback: jeżeli realtime nie był gotowy przy ładowaniu, spróbuj podpiąć się z opóźnieniem
+  (function ensureGridListener(){
+    if(window.__aliboardGridListenerAttached) return;
+    const rt = window.AliboardRealtime;
+    if(!rt || typeof rt.on !== 'function'){
+      setTimeout(ensureGridListener, 400);
+      return;
+    }
+    if(window.__aliboardGridListenerAttached) return;
+    window.__aliboardGridListenerAttached = true;
+    rt.on('grid_state', (payload)=>{
       if(typeof window.aliboardApplyGridState === 'function'){
         window.aliboardApplyGridState(payload);
       }
     });
-  }
+  })();
 
   // [CODEX:BEGIN OVERFLOW_MENU]
   (function setupToolsOverflow(){
