@@ -1203,9 +1203,12 @@
     if(typeof rawKind === 'object' && rawKind !== null && 'templateKind' in rawKind){
       return normalizeTemplateKind(rawKind.templateKind, rawKind.gridSize ?? rawKind.size);
     }
-    const sizeNum = Number.isFinite(sizeHint) ? sizeHint : parseInt(sizeHint, 10);
+    let sizeNum = Number.isFinite(sizeHint) ? sizeHint : parseInt(sizeHint, 10);
     const sizeStr = typeof sizeHint === 'string' ? sizeHint.toLowerCase() : '';
     const rawStr = typeof rawKind === 'string' ? rawKind.trim().toLowerCase() : '';
+    if((!Number.isFinite(sizeNum)) && rawStr && /^[0-9]+$/.test(rawStr)){
+      sizeNum = parseInt(rawStr, 10);
+    }
     if(rawStr === 'grid-tech' || rawStr === 'tech' || sizeStr === 'tech'){ return TEMPLATE_KINDS.GRID_TECH; }
     if(rawStr === 'lined' || rawStr === 'line'){ return TEMPLATE_KINDS.LINED; }
     if(rawStr === 'grid-small' || rawStr === 'small' || sizeNum === 16){ return TEMPLATE_KINDS.GRID_SMALL; }
@@ -3520,7 +3523,7 @@ const toolsRow = document.getElementById('tools');
     btn.addEventListener('pointerdown', (e)=>{
       e.preventDefault();
       const val = btn.getAttribute('data-grid');
-      const templateKind = normalizeTemplateKind(val === 'tech' ? 'grid-tech' : val);
+      const templateKind = normalizeTemplateKind(val === 'tech' ? 'grid-tech' : val, val);
       const page = currentPage();
       const pageIndex = page ? (Number.isFinite(page.index) ? page.index : PAGES.indexOf(page)) : 0;
       setTemplateForPage(pageIndex, templateKind, { broadcast:true });
