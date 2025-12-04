@@ -2597,8 +2597,10 @@
     if(!activeTextEditor) return;
     const { el, elementId, pageIndex } = activeTextEditor;
     const value = el.value;
-    el.remove();
     activeTextEditor = null;
+    if(el && el.isConnected){
+      el.remove();
+    }
 
     const page = PAGES[pageIndex];
     if(!page) return;
