@@ -2374,7 +2374,10 @@
   }
   function closeTextEditor(commit,p,x,y){
     if(!activeEditor){ return; }
-    const {el} = activeEditor; const val=el.value.trim(); el.remove(); activeEditor=null;
+    const {el} = activeEditor;
+    const val = el.value ? el.value.trim() : '';
+    if(el.parentNode){ el.remove(); }
+    activeEditor=null;
     if(commit && p && val){
       pushHistory(p);
       const textStroke = { id:newElementId(), type:'text', color, size, x, y, text: val };
