@@ -2865,9 +2865,17 @@ function textDimensions(s){
         beginCrop(x,y,p); cropping=true; return;
       }
       if(tool===TOOLS.FIGURE){
-        drawing=true; startX=x; startY=y; pushHistory(p); clearOverlay(p);
+        drawing=true; startX=x; startY=y; currentSent=false; pushHistory(p); clearOverlay(p);
         const pts = shapeFromDrag(currentShape, startX, startY, x, y);
-        drawPolyPreview(p, pts);
+        current = { id:newElementId(), type:'poly', color, size, points: pts, closed:true };
+        p.state.strokes.push(current);
+        renderAll(p);
+        const payload = serializeStrokeElement(current, PAGES.indexOf(p));
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          const rt = window.AliboardRealtime;
+          if(rt?.broadcastElementAdd){ rt.broadcastElementAdd(payload); currentSent=true; }
+        }
         return;
       }
 
@@ -3000,7 +3008,18 @@ function textDimensions(s){
       if(tool===TOOLS.FIGURE){
         if(!drawing) return;
         const pts = shapeFromDrag(currentShape, startX, startY, x, y);
-        drawPolyPreview(p, pts);
+        if(current){ current.points = pts; renderAll(p); }
+        const payload = current ? serializeStrokeElement(current, PAGES.indexOf(p)) : null;
+        if(payload){
+          AliboardModel.upsertElement(payload);
+          const rt = window.AliboardRealtime;
+          if(rt?.broadcastElementUpdate){
+            rt.broadcastElementUpdate(payload);
+          }else if(!currentSent && rt?.broadcastElementAdd){
+            rt.broadcastElementAdd(payload);
+          }
+          currentSent = true;
+        }
         return;
       }
       if(!drawing) return;
@@ -3060,12 +3079,12 @@ function textDimensions(s){
         if(!drawing) return;
         const pts = shapeFromDrag(currentShape, startX, startY, x, y);
         clearOverlay(p);
-        const polyStroke = { id:newElementId(), type:'poly', color, size, points: pts, closed:true };
-        p.state.strokes.push(polyStroke);
-        renderAll(p);
-        strokeToSync = polyStroke;
+        if(current){
+          current.points = pts;
+          renderAll(p);
+          strokeToSync = current;
+        }
         drawing=false;
-        current=null;
       }else{
         if(!drawing) return;
         if(tool===TOOLS.LINE){
