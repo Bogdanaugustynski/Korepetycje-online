@@ -4748,6 +4748,13 @@ const toolsRow = document.getElementById('tools');
         sdp: pc.localDescription,
         to_id: fromId,
       });
+
+      // jeśli UI było w trybie incoming, po otrzymaniu oferty też przełączamy stan
+      if (typeof window.aliboardChat !== 'undefined' && window.aliboardChat.onCallSignal) {
+        try{
+          window.aliboardChat.onCallSignal({ action: 'accept' });
+        }catch(_){}
+      }
     }
 
     async function handleAnswer(data){
@@ -4815,6 +4822,14 @@ const toolsRow = document.getElementById('tools');
       }
       if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
         window.aliboardChat.sendCallSignal('ring');
+      }
+
+      // Wyślij ofertę (broadcast, to_id null) - druga strona odpowie po accept
+      try{
+        await sendOffer(null);
+      }catch(err){
+        console.error('[AliboardVoice] sendOffer error', err);
+        throw err;
       }
     };
 
