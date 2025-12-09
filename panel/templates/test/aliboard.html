@@ -130,14 +130,14 @@
   }
   .page canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .page .grid, .page .overlay{ pointer-events:none; }
-  .page .board{ touch-action:none; } /* blok gest�w przy rysowaniu */
+  .page .board{ touch-action:none; } /* blok gest?w przy rysowaniu */
 
-  /* ZDALNE KURSORY (CRDT) � kropka dok�adnie w miejscu rysowania */
+  /* ZDALNE KURSORY (CRDT) ? kropka dok?adnie w miejscu rysowania */
   .remote-cursor{
     position:absolute;
     z-index:30;
     pointer-events:none;
-    /* UWAGA: bez translate na kontenerze � kotwica = punkt rysowania */
+    /* UWAGA: bez translate na kontenerze ? kotwica = punkt rysowania */
     width:0;
     height:0;
     font-size:11px;
@@ -157,8 +157,8 @@
 
   .remote-cursor-label{
     position:absolute;
-    left:12px;        /* tekst troch� na prawo od kropki */
-    top:-20px;        /* lekko nad kropk� */
+    left:12px;        /* tekst troch? na prawo od kropki */
+    top:-20px;        /* lekko nad kropk? */
     padding:2px 6px;
     border-radius:999px;
     background:rgba(15,23,42,.85);
@@ -228,7 +228,7 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* === PATCH: delikatne, ma�e narz�dzia bez �grubej ramki� === */
+  /* === PATCH: delikatne, ma?e narz?dzia bez ?grubej ramki? === */
 .toolrow .btn,
 .toolrow label.btn{
   border:0 !important;
@@ -262,14 +262,14 @@
 .text-font-btn{ display:none; }
 .text-font-btn.is-visible{ display:inline-flex; }
 
-/* === ALIBOARD: Ikona wielko�ci czcionki (estetyczna) === */
+/* === ALIBOARD: Ikona wielko?ci czcionki (estetyczna) === */
 #textFontBtn{
   font-size:20px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* MENU WIELKO�CI CZCIONKI (AI Neon Premium) */
+/* MENU WIELKO?CI CZCIONKI (AI Neon Premium) */
 .font-size-menu {
   position: fixed;
   top: -9999px;
@@ -317,7 +317,7 @@
   user-select: none;
 }
 
-/* cia�niejszy pasek narz�dzi na telefonie */
+/* cia?niejszy pasek narz?dzi na telefonie */
 @media (max-width: 900px){
   .toolrow{
     gap:4px;
@@ -442,7 +442,7 @@
       height:25px;
     }
   }
-/* === FIX: przywr�cenie widoczno�ci ikon narz�dzi Aliboard === */
+/* === FIX: przywr?cenie widoczno?ci ikon narz?dzi Aliboard === */
 .toolrow .btn[data-tool]{
   font-size:18px !important;
   line-height:1;
@@ -561,6 +561,20 @@
 }
 .aliboard-chat-icon-btn:active{
   transform:scale(0.92);
+}
+.aliboard-select{
+  height:28px;
+  padding:4px 6px;
+  border-radius:8px;
+  border:1px solid var(--aliboard-chat-border);
+  background:rgba(15,23,42,0.85);
+  color:var(--aliboard-chat-text);
+  font-size:11px;
+  outline:none;
+}
+.aliboard-select:focus{
+  border-color:var(--aliboard-chat-accent);
+  box-shadow:0 0 0 1px var(--aliboard-chat-accent-soft);
 }
 .aliboard-chat-messages,
 #aliboard-chat-messages{
@@ -743,7 +757,7 @@
   }
 }
 
-/* === ALIBOARD: wyra�ne pod�wietlenie aktywnego narz�dzia === */
+/* === ALIBOARD: wyra?ne pod?wietlenie aktywnego narz?dzia === */
 .toolrow .btn[data-tool].is-active{
   background: rgba(11,116,255,0.14) !important;
   color: #0b1320 !important;
@@ -752,7 +766,7 @@
   box-shadow: 0 0 0 2px var(--brand);
 }
 
-/* nieaktywne ikony delikatnie przygaszone, �eby aktywne si� wyr��nia�o */
+/* nieaktywne ikony delikatnie przygaszone, ?eby aktywne si? wyr??nia?o */
 .toolrow .btn[data-tool]:not(.is-active){
   opacity: 0.8;
 }
@@ -760,10 +774,10 @@
   opacity: 1;
 }
 
-/* === ALIBOARD: uk�ad nag��wka + narz�dzi na telefonie === */
+/* === ALIBOARD: uk?ad nag??wka + narz?dzi na telefonie === */
 @media (max-width: 768px){
 
-  /* nag��wek nadal w jednym rz�dzie:
+  /* nag??wek nadal w jednym rz?dzie:
      [logo+Aliboard] po lewej, [Menu] po prawej */
   header{
     flex-direction: row;
@@ -771,13 +785,13 @@
     gap: 8px;
   }
 
-  /* lewa cz��� (logo + pasek narz�dzi) mo�e si� �cisn�� */
+  /* lewa cz??? (logo + pasek narz?dzi) mo?e si? ?cisn?? */
   .left{
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  /* prawa cz��� � menu przy logo po prawej */
+  /* prawa cz??? ? menu przy logo po prawej */
   .right{
     margin-left: 8px;
     flex: 0 0 auto;
@@ -803,7 +817,7 @@
   }
   .menu-btn .icon-img{ width:78px; height:78px; }
 
-  /* pasek narz�dzi POD logo, mo�e zej�� w 2 rz�dy */
+  /* pasek narz?dzi POD logo, mo?e zej?? w 2 rz?dy */
   .toolrow{
     flex-wrap: wrap;
     overflow: visible !important;
@@ -818,27 +832,27 @@
     display: none !important;
   }
 
-  /* cia�niejsze przyciski, �eby wszystko si� mie�ci�o */
+  /* cia?niejsze przyciski, ?eby wszystko si? mie?ci?o */
   .toolrow .btn,
   .toolrow label.btn{
     padding: 4px 6px;
     font-size: 16px;
   }
 
-  /* select z grubo�ci� � troch� w��szy */
+  /* select z grubo?ci? ? troch? w??szy */
   .toolrow label.btn select{
     max-width: 72px;
   }
 }
 
-/* === ALIBOARD: Ikona przycisku Usu� (zaznaczony element) === */
+/* === ALIBOARD: Ikona przycisku Usu? (zaznaczony element) === */
 #deleteSelection{
   font-size:18px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* === ALIBOARD: menu grubo�ci linii (neon) === */
+/* === ALIBOARD: menu grubo?ci linii (neon) === */
   .line-width-menu {
     position: fixed;
     top: -9999px;
@@ -887,7 +901,7 @@
   box-shadow: 0 0 6px #0cbcff;
 }
 
-/* Ikony obrazkowe w pasku narz�dzi */
+/* Ikony obrazkowe w pasku narz?dzi */
 .icon-img{
   width:26px;
   height:26px;
@@ -904,11 +918,11 @@
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
 <header>
-  <!-- LEWA: brand + narz�dzia -->
+  <!-- LEWA: brand + narz?dzia -->
   <div class="left">
     <div class="brand">
       <div class="mark">
-        <!-- Sama g�owa loga -->
+        <!-- Sama g?owa loga -->
         <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl" />
       </div>
       <div>
@@ -1055,6 +1069,11 @@
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
           &#128222;
         </button>
+        <select id="aliboard-call-mode" class="aliboard-select" title="Tryb rozmowy">
+          <option value="1">1-1</option>
+          <option value="4">1-4</option>
+          <option value="30">1-30</option>
+        </select>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
           &#127908;
         </button>
@@ -1108,7 +1127,7 @@
 
 <script>
 (function(){
-  /* === PATCH: wstrzykni�cie delikatnego CSS dla paska narz�dzi (bez kapsli) === */
+  /* === PATCH: wstrzykni?cie delikatnego CSS dla paska narz?dzi (bez kapsli) === */
   const __css = `
   .toolrow .btn, .toolrow label.btn{border:0 !important;background:transparent !important;box-shadow:none !important}
   .toolrow .btn.is-active{background:transparent !important;color:var(--ink) !important;outline:2px solid var(--brand);outline-offset:2px;border-radius:10px}
@@ -1738,15 +1757,15 @@
 
   initRealtimeBridge();
 
-  // ---- USTALENIE roomId (wsp�lne z realtime) ----
+  // ---- USTALENIE roomId (wsp?lne z realtime) ----
   let roomId = null;
 
-  // 1) je�li ju� kto� ustawi� globalnie (np. inny skrypt / Django):
+  // 1) je?li ju? kto? ustawi? globalnie (np. inny skrypt / Django):
   if (window.ALIBOARD_ROOM_ID) {
     roomId = window.ALIBOARD_ROOM_ID;
   }
 
-  // 2) je�li nie ma � spr�buj odczyta� z data-room-id na kontenerze tablicy
+  // 2) je?li nie ma ? spr?buj odczyta? z data-room-id na kontenerze tablicy
   if (!roomId) {
     const rootEl =
       document.getElementById('aliboard-root') ||
@@ -2454,7 +2473,7 @@
     }
   }
 
-  /* ---------- GUMKA POD�WIETLA ---------- */
+  /* ---------- GUMKA POD?WIETLA ---------- */
   function previewErase(pt, p){
     clearOverlay(p); if(p.state.selection) drawSelection(p);
     const eps = Math.max(6,size*2);
@@ -2911,7 +2930,7 @@
     }
     const toast=document.createElement('div');
     toast.className='crop-busy-toast';
-    toast.textContent='Poczekaj na zako�czenie kopiowania...';
+    toast.textContent='Poczekaj na zako?czenie kopiowania...';
     document.body.appendChild(toast);
     requestAnimationFrame(()=> toast.classList.add('show'));
     cropBusyHintEl=toast;
@@ -3030,7 +3049,7 @@ function textDimensions(s){
     const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
     let multiPan=false;                // tryb dwupalczastego scrolla
-    let panCentroidY=null;             // poprzedni centroid dotyk�w (Y)
+    let panCentroidY=null;             // poprzedni centroid dotyk?w (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
     let panIdleTimer=null;
     const PAN_IDLE_MS = 350;
@@ -3790,7 +3809,7 @@ const toolsRow = document.getElementById('tools');
 
   // USUŃ ZAZNACZONY OBIEKT (przycisk "Usuń zaznaczony obiekt")
   (function setupDeleteSelectionButton(){
-    const btn = document.getElementById('deleteSelection'); // ← PODMIEŃ ID jeśli inny
+    const btn = document.getElementById('deleteSelection'); // ‹ PODMIEŃ ID jeśli inny
     if (!btn) return;
 
     btn.addEventListener('pointerdown', (e) => {
@@ -3915,7 +3934,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-  // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
+  // --- CRDT: nas?uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
     window.AliboardRealtime.on('grid_state', (payload)=>{
       if(typeof window.aliboardApplyGridState === 'function'){
@@ -3950,14 +3969,14 @@ const toolsRow = document.getElementById('tools');
       moreBox = document.createElement('div');
       moreBox.id = 'toolsMorePanel';
       moreBox.className = 'dropdown';
-      // otwieramy w lewo, obok paska narz�dzi
+      // otwieramy w lewo, obok paska narz?dzi
       moreBox.style.left = '0';
       moreBox.style.right = 'auto';
       moreBtn.insertAdjacentElement('afterend', moreBox);
     }
 
-    // 2) Oznacz �klejone� (nigdy nie przenoszone) narz�dzia � rdze� paska
-    //    (mo�esz dopasowa� list�; domy�lnie trzymamy: select, pen, line, eraser)
+    // 2) Oznacz ?klejone? (nigdy nie przenoszone) narz?dzia ? rdze? paska
+    //    (mo?esz dopasowa? list?; domy?lnie trzymamy: select, pen, line, eraser)
     const stickySelectors = [
       '[data-tool="select"]',
       '[data-tool="pen"]',
@@ -3970,7 +3989,7 @@ const toolsRow = document.getElementById('tools');
         .filter(Boolean)
     );
 
-    // 3) Funkcja: przenie� elementy z overflow z powrotem do g��wnego rz�du
+    // 3) Funkcja: przenie? elementy z overflow z powrotem do g??wnego rz?du
     function restoreFromOverflow(){
       // przywróć wszystko co było upchnięte
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
@@ -4049,12 +4068,12 @@ const toolsRow = document.getElementById('tools');
       }
     });
 
-    // 6) Rebalans po za�adowaniu i na resize
+    // 6) Rebalans po za?adowaniu i na resize
     window.addEventListener('load', rebalanceTools, { once: true });
     window.addEventListener('resize', rebalanceTools);
 
-    // 7) Obs�uga �tap� na elementach przeniesionych do overflow:
-    //    delegujemy klikni�cia, �eby zachowa�y si� identycznie jak w g��wnym rz�dzie
+    // 7) Obs?uga ?tap? na elementach przeniesionych do overflow:
+    //    delegujemy klikni?cia, ?eby zachowa?y si? identycznie jak w g??wnym rz?dzie
     moreBox.addEventListener('pointerdown', (e)=>{
       const btn = e.target.closest('button, label');
       if(!btn) return;
@@ -4074,7 +4093,7 @@ const toolsRow = document.getElementById('tools');
       setTimeout(()=> moreBox.classList.remove('open'), 0);
     });
 
-    // 8) Publiczny hook: gdyby co� dynamicznie doda�o narz�dzie � spr�buj zbalansowa� ponownie
+    // 8) Publiczny hook: gdyby co? dynamicznie doda?o narz?dzie ? spr?buj zbalansowa? ponownie
     const ro = new ResizeObserver(rebalanceTools);
     ro.observe(toolsRow);
     setTimeout(rebalanceTools, 250);
@@ -4094,13 +4113,34 @@ const toolsRow = document.getElementById('tools');
     const pingBtn = document.getElementById('aliboard-chat-ping');
     const micBtn = document.getElementById('aliboard-chat-mic');
     const callBtn = document.getElementById('aliboard-chat-call');
+    const modeSelect = document.getElementById('aliboard-call-mode');
     const bubbleRoot = bubble ? bubble.closest('.aliboard-chat-root') : null;
 
     if(!bubble || !panel || !form || !input || !messagesEl){
       return;
     }
 
-    // Na desktopie podnie� dymek czatu, by nie nachodzi� na room_id
+    if(modeSelect){
+      if((window.ALIBOARD_USER_ROLE || '') !== 'teacher'){
+        modeSelect.style.display = 'none';
+      }
+      window.ALIBOARD_CALL_MODE = parseInt(modeSelect.value, 10) || window.ALIBOARD_CALL_MODE || 1;
+      modeSelect.addEventListener('change', ()=>{
+        window.ALIBOARD_CALL_MODE = parseInt(modeSelect.value, 10) || 1;
+        if(window.AliboardRealtime && typeof window.AliboardRealtime.send === 'function'){
+          window.AliboardRealtime.send({
+            type:'audio_mode',
+            mode: window.ALIBOARD_CALL_MODE,
+            teacher_id: window.ALIBOARD_USER_ID,
+            room_id: window.ALIBOARD_ROOM_ID,
+          });
+        }
+      });
+    }else{
+      window.ALIBOARD_CALL_MODE = window.ALIBOARD_CALL_MODE || 1;
+    }
+
+    // Na desktopie podnie? dymek czatu, by nie nachodzi? na room_id
     if(bubbleRoot && window.matchMedia('(pointer:fine)').matches){
       bubbleRoot.classList.add('desktop-offset');
     }
@@ -4175,7 +4215,7 @@ const toolsRow = document.getElementById('tools');
       }
     }
 
-    function showIncomingCallBanner(fromRole){
+    function showIncomingCallBanner(fromRole, fromId, mode){
       if(!panel) return;
       if(incomingCallBanner && incomingCallBanner.parentNode){
         incomingCallBanner.parentNode.removeChild(incomingCallBanner);
@@ -4183,7 +4223,7 @@ const toolsRow = document.getElementById('tools');
       const banner = document.createElement('div');
       banner.className = 'aliboard-call-banner';
       banner.innerHTML = `
-        <span>📞 Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
+        <span>?? Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
         <div class="aliboard-call-actions">
           <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Dołącz</button>
           <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Rozłącz</button>
@@ -4191,6 +4231,7 @@ const toolsRow = document.getElementById('tools');
       `;
       panel.insertBefore(banner, panel.firstChild);
       incomingCallBanner = banner;
+      lastRingFromId = (fromId !== undefined && fromId !== null) ? Number(fromId) : null;
       startRingTone();
 
       const acceptBtn = document.getElementById('aliboard-accept-call-btn');
@@ -4200,10 +4241,12 @@ const toolsRow = document.getElementById('tools');
         acceptBtn.addEventListener('click', ()=>{
           stopRingTone();
           if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
-            window.aliboardVoice.acceptIncomingCall()
+            window.aliboardVoice.acceptIncomingCall(fromId)
               .catch((err)=>{
                 console.error('[AliboardVoice] acceptIncomingCall error', err);
-                if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                if(window.aliboardVoice && typeof window.aliboardVoice.hangupAll === 'function'){
+                  window.aliboardVoice.hangupAll(false);
+                }else if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
                   window.aliboardVoice.hangupCall(false);
                 }
               });
@@ -4217,7 +4260,9 @@ const toolsRow = document.getElementById('tools');
           if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
             window.aliboardChat.sendCallSignal('end');
           }
-          if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+          if(window.aliboardVoice && typeof window.aliboardVoice.hangupAll === 'function'){
+            window.aliboardVoice.hangupAll(false);
+          }else if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
             window.aliboardVoice.hangupCall(false);
           }
         });
@@ -4304,7 +4349,7 @@ const toolsRow = document.getElementById('tools');
     if(pingBtn){
       pingBtn.addEventListener('click', ()=>{
         appendMessage({
-          text: '🔔 Wysłałeś zaczepienie (ping).',
+          text: '?? Wysłałeś zaczepienie (ping).',
           author: 'me',
           timeString: getTimeString()
         });
@@ -4348,204 +4393,225 @@ const toolsRow = document.getElementById('tools');
       if(!payload) return;
       const fromId = payload.from_id;
       const fromRole = payload.from_role || 'unknown';
-      const action = payload.action;
+      const type = payload.type || null;
+      const action = payload.action || (type === 'voice:ring' ? 'ring' : (type === 'voice:end' ? 'end' : null));
       const myId = window.ALIBOARD_USER_ID;
+
+      if(payload.mode){
+        window.ALIBOARD_CALL_MODE = Number(payload.mode) || window.ALIBOARD_CALL_MODE || 1;
+      }
 
       if(fromId != null && myId != null && Number(fromId) === Number(myId)){
         return;
       }
 
-      if(action === 'ring'){
-        setPanelOpen(true);
-        showIncomingCallBanner(fromRole);
+      if(type === 'voice:busy'){
+        appendMessage({
+          text: 'Linia zajeta lub tryb nie pozwala na dolaczenie.',
+          author: 'other',
+          timeString: getTimeString(),
+        });
         return;
       }
 
-      if(action === 'end'){
+      if(action === 'ring'){
+        setPanelOpen(true);
+        showIncomingCallBanner(fromRole, fromId, payload.mode);
+        return;
+      }
+
+      if(action === 'end' || type === 'voice:end'){
         stopRingTone();
         if(incomingCallBanner && incomingCallBanner.parentNode){
           incomingCallBanner.parentNode.removeChild(incomingCallBanner);
           incomingCallBanner = null;
         }
-        if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+        if(window.aliboardVoice && typeof window.aliboardVoice.hangupAll === 'function'){
+          window.aliboardVoice.hangupAll(false);
+        }else if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
           window.aliboardVoice.hangupCall(false);
         }
         appendMessage({
-          text: '📴 Połączenie zostało zakończone',
+          text: '?? Połączenie zostało zakończone',
           author: 'other',
           timeString: getTimeString(),
         });
       }
     };
 
-    // WebRTC Voice Module
+    // WebRTC Voice Module (multi-peer)
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
-    let voicePc = null;
-    let localStream = null;
-    let isCallActive = false;
-    let isCaller = false;
-    let pendingOffer = null;
-
-    const remoteAudio = document.getElementById('aliboard-remote-audio');
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     };
+    const voicePeers = new Map();
+    const remoteAudio = document.getElementById('aliboard-remote-audio');
+    let lastRingFromId = null;
 
-    async function ensureLocalStream(){
-      if(localStream) return localStream;
-      try{
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      }catch(err){
-        console.error('[AliboardVoice] getUserMedia error', err);
-        throw err;
+    function buildAudioEl(peerId){
+      const elId = `aliboard-voice-${peerId}`;
+      let au = document.getElementById(elId);
+      if(!au){
+        au = document.createElement('audio');
+        au.id = elId;
+        au.autoplay = true;
+        au.playsInline = true;
+        au.hidden = true;
+        document.body.appendChild(au);
       }
-      return localStream;
+      return au;
     }
 
-    function createPeerConnection(){
-      if(voicePc) return voicePc;
-      voicePc = new RTCPeerConnection(rtcConfig);
-      voicePc.onicecandidate = (event)=>{
-        if(event.candidate){
-          window.aliboardVoice.sendSignal({
-            type: 'webrtc_ice_candidate',
-            candidate: event.candidate,
-          });
-        }
-      };
-      voicePc.ontrack = (event)=>{
-        if(remoteAudio){
-          remoteAudio.srcObject = event.streams[0];
-        }
-      };
-      voicePc.onconnectionstatechange = ()=>{
-        if(!voicePc) return;
-        if(['failed','disconnected','closed'].includes(voicePc.connectionState)){
-          window.aliboardVoice.hangupCall(false);
-        }
-      };
-      return voicePc;
+    async function ensureLocalStream(){
+      if(window.__ALIBOARD_LOCAL_STREAM) return window.__ALIBOARD_LOCAL_STREAM;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation:true, noiseSuppression:true },
+        video: false
+      });
+      window.__ALIBOARD_LOCAL_STREAM = stream;
+      return stream;
+    }
+
+    function destroyPeer(peerId){
+      const pc = voicePeers.get(peerId);
+      if(pc){
+        pc.ontrack = null;
+        pc.onicecandidate = null;
+        try{ pc.close(); }catch(_){ }
+        voicePeers.delete(peerId);
+      }
+      const el = document.getElementById(`aliboard-voice-${peerId}`);
+      if(el){
+        el.srcObject = null;
+        el.remove();
+      }
     }
 
     async function addLocalTracks(pc){
       const stream = await ensureLocalStream();
-      stream.getTracks().forEach((track)=>{
-        pc.addTrack(track, stream);
-      });
+      stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
     }
 
-    async function processOffer(data){
-      pendingOffer = null;
-      const desc = new RTCSessionDescription(data.sdp);
-      const pc = createPeerConnection();
-      await pc.setRemoteDescription(desc);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      window.aliboardVoice.sendSignal({
-        type: 'webrtc_answer',
-        from_id: window.ALIBOARD_USER_ID,
-        from_role: window.ALIBOARD_USER_ROLE || 'unknown',
-        sdp: pc.localDescription,
-      });
+    function createPeer(peerId){
+      const key = (peerId !== undefined && peerId !== null) ? peerId : 'legacy';
+      let pc = voicePeers.get(key);
+      if(pc) return pc;
+      pc = new RTCPeerConnection(rtcConfig);
+      pc.onicecandidate = (event)=>{
+        if(event.candidate){
+          if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceIce === 'function' && peerId !== undefined && peerId !== null){
+            window.AliboardRealtime.voiceIce(peerId, event.candidate);
+          }else{
+            window.aliboardVoice.sendSignal({
+              type: 'webrtc_ice_candidate',
+              candidate: event.candidate,
+            });
+          }
+        }
+      };
+      pc.ontrack = (event)=>{
+        const au = (peerId !== undefined && peerId !== null) ? buildAudioEl(peerId) : remoteAudio;
+        if(au){
+          au.srcObject = event.streams[0];
+        }
+      };
+      pc.onconnectionstatechange = ()=>{
+        if(['failed','disconnected','closed'].includes(pc.connectionState)){
+          destroyPeer(key);
+        }
+      };
+      voicePeers.set(key, pc);
+      return pc;
     }
 
-    window.aliboardVoice.startOutgoingCall = async function(){
-      if(isCallActive) return;
-      isCaller = true;
-      isCallActive = true;
-      pendingOffer = null;
-      const pc = createPeerConnection();
+    function shouldHandleToId(toId){
+      if(toId === undefined || toId === null) return true;
+      if(window.ALIBOARD_USER_ID === undefined || window.ALIBOARD_USER_ID === null) return false;
+      return Number(toId) === Number(window.ALIBOARD_USER_ID);
+    }
+
+    window.aliboardVoice.startCallTo = async function(peerId){
+      if(peerId === undefined || peerId === null) return;
+      const pc = createPeer(peerId);
       await addLocalTracks(pc);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      window.aliboardVoice.sendSignal({
-        type: 'webrtc_offer',
-        from_id: window.ALIBOARD_USER_ID,
-        from_role: window.ALIBOARD_USER_ROLE || 'unknown',
-        sdp: pc.localDescription,
-      });
-    };
-
-    window.aliboardVoice.acceptIncomingCall = async function(){
-      if(isCallActive) return;
-      isCaller = false;
-      isCallActive = true;
-      const pc = createPeerConnection();
-      await addLocalTracks(pc);
-      if(pendingOffer){
-        try{
-          await processOffer(pendingOffer);
-        }catch(err){
-          console.error('[AliboardVoice] processOffer error', err);
-          window.aliboardVoice.hangupCall(false);
-          throw err;
-        }
+      if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceOffer === 'function'){
+        window.AliboardRealtime.voiceOffer(peerId, pc.localDescription);
+      }else{
+        window.aliboardVoice.sendSignal({
+          type: 'webrtc_offer',
+          sdp: pc.localDescription,
+        });
       }
     };
 
     window.aliboardVoice.onOffer = async function(data){
       const fromId = data.from_id;
+      const toId = data.to_id;
       if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
         return;
       }
-      pendingOffer = data;
-      if(isCallActive){
-        try{
-          await processOffer(data);
-        }catch(err){
-          console.error('[AliboardVoice] processOffer error', err);
-          window.aliboardVoice.hangupCall(false);
-        }
+      if(!shouldHandleToId(toId)) return;
+      const pc = createPeer(fromId);
+      await addLocalTracks(pc);
+      const desc = new RTCSessionDescription(data.sdp);
+      await pc.setRemoteDescription(desc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceAnswer === 'function'){
+        window.AliboardRealtime.voiceAnswer(fromId, pc.localDescription);
+      }else{
+        window.aliboardVoice.sendSignal({
+          type: 'webrtc_answer',
+          sdp: pc.localDescription,
+        });
       }
     };
 
     window.aliboardVoice.onAnswer = async function(data){
       const fromId = data.from_id;
+      const toId = data.to_id;
       if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
         return;
       }
-      if(!voicePc) return;
-      if(voicePc.signalingState === 'stable'){
-        return;
-      }
+      if(!shouldHandleToId(toId)) return;
+      const pc = voicePeers.get(fromId != null ? fromId : 'legacy');
+      if(!pc) return;
       try{
         const desc = new RTCSessionDescription(data.sdp);
-        await voicePc.setRemoteDescription(desc);
+        await pc.setRemoteDescription(desc);
       }catch(err){
         console.error('[AliboardVoice] setRemoteDescription error', err);
-        window.aliboardVoice.hangupCall(false);
+        window.aliboardVoice.hangupAll(false);
       }
     };
 
     window.aliboardVoice.onIceCandidate = async function(data){
       const fromId = data.from_id;
+      const toId = data.to_id;
       if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
         return;
       }
-      if(!voicePc) return;
+      if(!shouldHandleToId(toId)) return;
+      const pc = voicePeers.get(fromId != null ? fromId : 'legacy');
+      if(!pc) return;
       try{
-        await voicePc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
       }catch(err){
         console.error('[AliboardVoice] ICE add error', err);
       }
     };
 
-    window.aliboardVoice.hangupCall = function(sendSignal = true){
-      isCallActive = false;
-      isCaller = false;
-      pendingOffer = null;
+    window.aliboardVoice.hangupAll = function(sendSignal = true){
       stopRingTone();
-      if(voicePc){
-        voicePc.ontrack = null;
-        voicePc.onicecandidate = null;
-        voicePc.close();
-        voicePc = null;
-      }
-      if(localStream){
-        localStream.getTracks().forEach((track)=> track.stop());
-        localStream = null;
+      Array.from(voicePeers.keys()).forEach((pid)=> destroyPeer(pid));
+      const ls = window.__ALIBOARD_LOCAL_STREAM;
+      if(ls){
+        ls.getTracks().forEach((t)=> t.stop());
+        window.__ALIBOARD_LOCAL_STREAM = null;
       }
       if(remoteAudio){
         remoteAudio.srcObject = null;
@@ -4554,27 +4620,39 @@ const toolsRow = document.getElementById('tools');
         incomingCallBanner.parentNode.removeChild(incomingCallBanner);
         incomingCallBanner = null;
       }
-      if(sendSignal && window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
-        window.aliboardChat.sendCallSignal('end');
+      lastRingFromId = null;
+      if(sendSignal){
+        if(window.AliboardRealtime && typeof window.AliboardRealtime.send === 'function'){
+          window.AliboardRealtime.send({
+            type:'voice:end',
+            room_id: window.ALIBOARD_ROOM_ID,
+            from_id: window.ALIBOARD_USER_ID,
+          });
+        }
+        if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal('end');
+        }
       }
     };
 
+    window.aliboardVoice.hangupCall = window.aliboardVoice.hangupAll;
+    window.aliboardVoice.acceptIncomingCall = async function(peerId){
+      const target = peerId !== undefined && peerId !== null ? peerId : lastRingFromId;
+      if(target === undefined || target === null) return;
+      await window.aliboardVoice.startCallTo(target);
+    };
+    window.aliboardVoice.startOutgoingCall = window.aliboardVoice.startCallTo;
     if(callBtn){
       callBtn.addEventListener('click', ()=>{
         setPanelOpen(true);
         appendMessage({
-          text: '📞 Próba rozpoczęcia rozmowy głosowej…',
+          text: '?? Próba rozpoczęcia rozmowy głosowej…',
           author: 'me',
           timeString: getTimeString(),
         });
         if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
           window.aliboardChat.sendCallSignal('ring');
         }
-        window.aliboardVoice.startOutgoingCall()
-          .catch((err)=>{
-            console.error('[AliboardVoice] startOutgoingCall error', err);
-            window.aliboardVoice.hangupCall();
-          });
       });
     }
 
@@ -4677,7 +4755,7 @@ const toolsRow = document.getElementById('tools');
   })();
 })();
 
-/* === ALIBOARD: pokazuj przycisk wielko�ci czcionki tylko przy narz�dziu Tekst === */
+/* === ALIBOARD: pokazuj przycisk wielko?ci czcionki tylko przy narz?dziu Tekst === */
 const textFontBtn = document.getElementById("textFontBtn");
 
 function updateFontButtonVisibility(activeTool){

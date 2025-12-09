@@ -72,6 +72,11 @@
     socket.send(JSON.stringify(payload));
   }
 
+  // Alias ułatwiający wysyłkę dowolnych typów (presence, audio_mode itp.)
+  function sendTyped(payload) {
+    send(payload);
+  }
+
   function connect() {
     try {
       socket = new WebSocket(wsUrl);
@@ -96,12 +101,25 @@
     };
     window.aliboardChat.sendCallSignal = function (action) {
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      const mode = window.ALIBOARD_CALL_MODE || 1;
+      const act = action || "ring";
+      const base = {
+        room_id: roomId,
+        from_id: window.ALIBOARD_USER_ID,
+        from_role: window.ALIBOARD_USER_ROLE || "unknown",
+        mode,
+      };
+      // nowe sygnały voice:*
+      send({
+        ...base,
+        type: act === "end" ? "voice:end" : "voice:ring",
+      });
+      // zgodność wstecz: call_signal
       socket.send(
         JSON.stringify({
+          ...base,
           type: "call_signal",
-          action: action || "ring",
-          from_id: window.ALIBOARD_USER_ID,
-          from_role: window.ALIBOARD_USER_ROLE || "unknown",
+          action: act,
         })
       );
     };
@@ -138,6 +156,69 @@
       }
 
       console.debug("[RT] recv", data.type, data);
+
+      if (data.type === "presence:update") {
+        notify("presence", data);
+        return;
+      }
+
+      if (data.type === "audio_mode") {
+        notify("audio_mode", data);
+        window.ALIBOARD_CALL_MODE = data.mode || 1;
+        return;
+      }
+
+      if (data.type === "voice:ring") {
+        if (
+          window.aliboardChat &&
+          typeof window.aliboardChat.onCallSignal === "function"
+        ) {
+          window.aliboardChat.onCallSignal(data);
+        }
+        notify("call_signal", data);
+        return;
+      }
+
+      if (data.type === "voice:offer") {
+        if (
+          window.aliboardVoice &&
+          typeof window.aliboardVoice.onOffer === "function"
+        ) {
+          window.aliboardVoice.onOffer(data);
+        }
+        return;
+      }
+
+      if (data.type === "voice:answer") {
+        if (
+          window.aliboardVoice &&
+          typeof window.aliboardVoice.onAnswer === "function"
+        ) {
+          window.aliboardVoice.onAnswer(data);
+        }
+        return;
+      }
+
+      if (data.type === "voice:ice") {
+        if (
+          window.aliboardVoice &&
+          typeof window.aliboardVoice.onIceCandidate === "function"
+        ) {
+          window.aliboardVoice.onIceCandidate(data);
+        }
+        return;
+      }
+
+      if (data.type === "voice:end" || data.type === "voice:busy") {
+        if (
+          window.aliboardChat &&
+          typeof window.aliboardChat.onCallSignal === "function"
+        ) {
+          window.aliboardChat.onCallSignal(data);
+        }
+        notify("call_signal", data);
+        return;
+      }
 
       if (data.type === "call_signal") {
         if (
@@ -243,6 +324,7 @@
         if (idx >= 0) listeners[event].splice(idx, 1);
       };
     },
+    send: sendTyped,
     broadcastElementAdd(element) {
       if (!element || !element.id) return;
       send({ type: "element_add", element });
@@ -298,11 +380,22 @@
       });
     },
     sendCallSignal(action) {
-      send({
-        type: "call_signal",
-        action: action || "ring",
+      const mode = window.ALIBOARD_CALL_MODE || 1;
+      const act = action || "ring";
+      const base = {
+        room_id: roomId,
         from_id: window.ALIBOARD_USER_ID,
         from_role: window.ALIBOARD_USER_ROLE || "unknown",
+        mode,
+      };
+      send({
+        ...base,
+        type: act === "end" ? "voice:end" : "voice:ring",
+      });
+      send({
+        ...base,
+        type: "call_signal",
+        action: act,
       });
     },
     sendChatPing() {
@@ -310,6 +403,36 @@
     },
     sendChatMicState(isMuted) {
       send({ type: "chat_mic_state", muted: !!isMuted });
+    },
+    voiceOffer(to_id, sdp) {
+      if (!to_id || !sdp) return;
+      send({
+        type: "voice:offer",
+        room_id: roomId,
+        from_id: window.ALIBOARD_USER_ID,
+        to_id,
+        sdp,
+      });
+    },
+    voiceAnswer(to_id, sdp) {
+      if (!to_id || !sdp) return;
+      send({
+        type: "voice:answer",
+        room_id: roomId,
+        from_id: window.ALIBOARD_USER_ID,
+        to_id,
+        sdp,
+      });
+    },
+    voiceIce(to_id, candidate) {
+      if (!to_id || !candidate) return;
+      send({
+        type: "voice:ice",
+        room_id: roomId,
+        from_id: window.ALIBOARD_USER_ID,
+        to_id,
+        candidate,
+      });
     },
   };
 
