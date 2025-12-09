@@ -130,14 +130,14 @@
   }
   .page canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .page .grid, .page .overlay{ pointer-events:none; }
-  .page .board{ touch-action:none; } /* blok gest?w przy rysowaniu */
+  .page .board{ touch-action:none; } /* blok gest�w przy rysowaniu */
 
-  /* ZDALNE KURSORY (CRDT) ? kropka dok?adnie w miejscu rysowania */
+  /* ZDALNE KURSORY (CRDT) � kropka dok�adnie w miejscu rysowania */
   .remote-cursor{
     position:absolute;
     z-index:30;
     pointer-events:none;
-    /* UWAGA: bez translate na kontenerze ? kotwica = punkt rysowania */
+    /* UWAGA: bez translate na kontenerze � kotwica = punkt rysowania */
     width:0;
     height:0;
     font-size:11px;
@@ -157,8 +157,8 @@
 
   .remote-cursor-label{
     position:absolute;
-    left:12px;        /* tekst troch? na prawo od kropki */
-    top:-20px;        /* lekko nad kropk? */
+    left:12px;        /* tekst troch� na prawo od kropki */
+    top:-20px;        /* lekko nad kropk� */
     padding:2px 6px;
     border-radius:999px;
     background:rgba(15,23,42,.85);
@@ -228,7 +228,7 @@
   /* mobile tap UX */
   .toolrow .btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* === PATCH: delikatne, ma?e narz?dzia bez ?grubej ramki? === */
+  /* === PATCH: delikatne, ma�e narz�dzia bez �grubej ramki� === */
 .toolrow .btn,
 .toolrow label.btn{
   border:0 !important;
@@ -262,14 +262,14 @@
 .text-font-btn{ display:none; }
 .text-font-btn.is-visible{ display:inline-flex; }
 
-/* === ALIBOARD: Ikona wielko?ci czcionki (estetyczna) === */
+/* === ALIBOARD: Ikona wielko�ci czcionki (estetyczna) === */
 #textFontBtn{
   font-size:20px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* MENU WIELKO?CI CZCIONKI (AI Neon Premium) */
+/* MENU WIELKO�CI CZCIONKI (AI Neon Premium) */
 .font-size-menu {
   position: fixed;
   top: -9999px;
@@ -317,7 +317,7 @@
   user-select: none;
 }
 
-/* cia?niejszy pasek narz?dzi na telefonie */
+/* cia�niejszy pasek narz�dzi na telefonie */
 @media (max-width: 900px){
   .toolrow{
     gap:4px;
@@ -442,7 +442,7 @@
       height:25px;
     }
   }
-/* === FIX: przywr?cenie widoczno?ci ikon narz?dzi Aliboard === */
+/* === FIX: przywr�cenie widoczno�ci ikon narz�dzi Aliboard === */
 .toolrow .btn[data-tool]{
   font-size:18px !important;
   line-height:1;
@@ -451,136 +451,299 @@
   content:none !important;
 }
 
-/* Kontener czatu + launcher */
-#aliboard-chat-launcher{
+/* Aliboard Chat – bazowe zmienne */
+:root{
+  --aliboard-chat-bg: rgba(9, 18, 40, 0.96);
+  --aliboard-chat-accent: #0b74ff;
+  --aliboard-chat-accent-soft: rgba(11, 116, 255, 0.25);
+  --aliboard-chat-border: rgba(255, 255, 255, 0.12);
+  --aliboard-chat-text: #f9fbff;
+  --aliboard-chat-muted: #a5b3d1;
+}
+.aliboard-chat-root{
   position:fixed;
   right:16px;
   bottom:16px;
-  width:48px;
-  height:48px;
-  border-radius:999px;
-  border:none;
-  background:var(--brand);
-  color:#fff;
-  font-size:20px;
-  display:grid;
-  place-items:center;
-  cursor:pointer;
-  box-shadow:0 10px 28px rgba(15,23,42,0.28);
   z-index:9999;
 }
-
-#aliboard-chat-launcher.has-unread{
-  box-shadow:0 0 0 4px rgba(239,68,68,0.35), 0 10px 28px rgba(15,23,42,0.28);
+.aliboard-chat-root.desktop-offset{
+  bottom:72px;
 }
-
-#aliboard-chat{
-  display:flex;
-  flex-direction:column;
-  height:260px;
-  max-height:40vh;
-  border:1px solid var(--line);
-  border-radius:12px;
-  background:#fff;
-  overflow:hidden;
+.aliboard-chat-bubble{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:46px;
+  height:46px;
+  position:relative;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  background:transparent;
+  box-shadow:none;
+  font-size:24px;
+  transition:transform 0.15s ease-out, box-shadow 0.15s ease-out, opacity 0.15s ease-out;
+  color:#fff;
+}
+.aliboard-chat-bubble:hover{
+  transform:translateY(-1px) scale(1.03);
+  box-shadow:none;
+}
+.aliboard-chat-bubble:active{
+  transform:translateY(0) scale(0.97);
+  box-shadow:none;
+}
+.aliboard-chat-panel{
   position:fixed;
   right:16px;
   bottom:76px;
   width:320px;
-  box-shadow:0 12px 34px rgba(15,23,42,0.18);
-  z-index:9998;
+  max-height:60vh;
+  display:flex;
+  flex-direction:column;
+  background:var(--aliboard-chat-bg);
+  border-radius:18px;
+  border:1px solid var(--aliboard-chat-border);
+  box-shadow:0 18px 50px rgba(0,0,0,0.6);
+  overflow:hidden;
+  opacity:0;
+  transform:translateY(12px) scale(0.96);
+  pointer-events:none;
+  transition:opacity 0.16s ease-out, transform 0.16s ease-out;
 }
-
-#aliboard-chat.is-hidden{
+.aliboard-chat-panel.is-open{
+  opacity:1;
+  transform:translateY(0) scale(1);
+  pointer-events:auto;
+}
+.aliboard-chat-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px 8px;
+  background:linear-gradient(135deg, rgba(11,116,255,0.28), rgba(11,116,255,0.02));
+  border-bottom:1px solid var(--aliboard-chat-border);
+}
+.aliboard-chat-title{
+  display:flex;
+  flex-direction:column;
+}
+.aliboard-chat-title-main{
+  font-size:13px;
+  font-weight:600;
+  color:var(--aliboard-chat-text);
+}
+.aliboard-chat-title-sub{
+  font-size:11px;
+  color:var(--aliboard-chat-muted);
+}
+.aliboard-chat-actions{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.aliboard-chat-icon-btn{
+  border:none;
+  background:transparent;
+  color:var(--aliboard-chat-text);
+  cursor:pointer;
+  border-radius:999px;
+  width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  transition:background 0.12s ease-out, transform 0.08s ease-out;
+}
+.aliboard-chat-icon-btn:hover{
+  background:rgba(255,255,255,0.09);
+}
+.aliboard-chat-icon-btn:active{
+  transform:scale(0.92);
+}
+.aliboard-chat-messages,
+#aliboard-chat-messages{
+  flex:1;
+  padding:8px 8px 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:4px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,0.22) transparent;
+}
+.aliboard-chat-messages::-webkit-scrollbar{
+  width:6px;
+}
+.aliboard-chat-messages::-webkit-scrollbar-track{
+  background:transparent;
+}
+.aliboard-chat-messages::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,0.22);
+  border-radius:999px;
+}
+.aliboard-chat-message{
+  max-width:80%;
+  padding:6px 10px;
+  border-radius:12px;
+  font-size:13px;
+  line-height:1.35;
+  display:inline-block;
+  align-self:flex-start;
+  word-wrap:break-word;
+  white-space:pre-wrap;
+}
+/* JA -> po PRAWEJ */
+.aliboard-chat-message.me{
+  align-self:flex-end;
+  background:#0b74ff;
+  color:#fff;
+}
+/* DRUGA OSOBA -> po LEWEJ */
+.aliboard-chat-message.other{
+  align-self:flex-start;
+  background:rgba(15,23,42,0.85);
+  color:#fff;
+  border:1px solid #344155;
+}
+.aliboard-chat-meta{
+  display:block;
+  margin-top:2px;
+  font-size:10px;
+  color:var(--aliboard-chat-muted);
+}
+.aliboard-chat-input-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 8px 8px;
+  border-top:1px solid var(--aliboard-chat-border);
+  background:rgba(7,12,25,0.98);
+}
+.aliboard-chat-input{
+  flex:1;
+  border-radius:999px;
+  border:1px solid rgba(148,163,184,0.6);
+  padding:6px 10px;
+  font-size:12px;
+  background:rgba(15,23,42,0.7);
+  color:var(--aliboard-chat-text);
+  outline:none;
+}
+.aliboard-chat-input::placeholder{
+  color:var(--aliboard-chat-muted);
+}
+.aliboard-chat-input:focus{
+  border-color:var(--aliboard-chat-accent);
+  box-shadow:0 0 0 1px var(--aliboard-chat-accent-soft);
+}
+.aliboard-chat-send-btn{
+  border:none;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:500;
+  background:var(--aliboard-chat-accent);
+  color:#fff;
+  cursor:pointer;
+  transition:transform 0.08s ease-out, box-shadow 0.08s ease-out, opacity 0.08s ease-out;
+  white-space:nowrap;
+}
+.aliboard-chat-send-btn:hover{
+  box-shadow:0 8px 20px rgba(0,0,0,0.45);
+}
+.aliboard-chat-send-btn:active{
+  transform:scale(0.94);
+  box-shadow:none;
+}
+.aliboard-call-banner{
+  padding:6px 10px;
+  font-size:12px;
+  background:rgba(34,197,94,0.16);
+  color:#bbf7d0;
+  border-bottom:1px solid rgba(34,197,94,0.5);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.aliboard-call-actions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.aliboard-call-accept-btn,
+.aliboard-call-end-btn{
+  padding:4px 8px;
+  border-radius:6px;
+  border:1px solid transparent;
+  font-size:11px;
+  cursor:pointer;
+  transition:background 0.15s ease-out, transform 0.1s ease-out;
+}
+.aliboard-call-accept-btn{
+  background:rgba(34,197,94,0.3);
+  border-color:rgba(34,197,94,0.6);
+  color:#bbf7d0;
+}
+.aliboard-call-accept-btn:hover{
+  background:rgba(34,197,94,0.5);
+}
+.aliboard-call-end-btn{
+  background:rgba(239,68,68,0.25);
+  border-color:rgba(239,68,68,0.5);
+  color:#fecaca;
+}
+.aliboard-call-end-btn:hover{
+  background:rgba(239,68,68,0.4);
+}
+.aliboard-call-accept-btn:active,
+.aliboard-call-end-btn:active{
+  transform:scale(0.95);
+}
+.aliboard-chat-badge{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  min-width:16px;
+  height:16px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:10px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.aliboard-chat-badge-hidden{
   display:none;
 }
-
-@media (max-width: 768px){
-  #aliboard-chat{
-    right:10px;
-    left:10px;
-    width:auto;
-    max-width:100%;
-  }
-  #aliboard-chat-launcher{
+.aliboard-chat-icon-btn.is-muted{
+  background:rgba(239,68,68,0.2);
+  color:#fecaca;
+}
+@media (max-width:768px){
+  .aliboard-chat-root{
     right:10px;
     bottom:10px;
   }
+  .aliboard-chat-panel{
+    right:0;
+    left:0;
+    bottom:0;
+    margin:0 auto;
+    width:100%;
+    max-width:100%;
+    max-height:60vh;
+    border-radius:18px 18px 0 0;
+  }
 }
 
-/* Lista wiadomości */
-#aliboard-chat-log{
-  flex:1;
-  padding:8px 10px;
-  overflow-y:auto;
-  font-size:14px;
-}
-
-/* Pojedyncza wiadomość (jedna kolumna) */
-.chat-msg{
-  margin-bottom:8px;
-}
-
-/* Nagłówek wiadomości: kto + godzina */
-.chat-msg-header{
-  display:flex;
-  gap:6px;
-  align-items:baseline;
-  margin-bottom:2px;
-}
-
-.chat-author{
-  font-weight:600;
-  font-size:12px;
-  padding:2px 6px;
-  border-radius:999px;
-  background:#eef2ff;
-}
-
-/* Kolorki wg roli */
-.chat-author--teacher{ background:#dbeafe; color:#1d4ed8; }
-.chat-author--student{ background:#dcfce7; color:#166534; }
-.chat-author--me{ background:#fee2e2; color:#b91c1c; }
-
-.chat-time{
-  font-size:11px;
-  color:var(--muted);
-}
-
-/* Treść */
-.chat-text{
-  font-size:14px;
-  line-height:1.35;
-  word-break:break-word;
-}
-
-/* Input + przycisk */
-#aliboard-chat-form{
-  display:flex;
-  gap:6px;
-  padding:8px 10px;
-  border-top:1px solid var(--line);
-}
-
-#aliboard-chat-input{
-  flex:1;
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:6px 10px;
-  font-size:14px;
-}
-
-#aliboard-chat-form button{
-  border:none;
-  border-radius:999px;
-  padding:6px 12px;
-  background:var(--brand);
-  color:#fff;
-  font-size:14px;
-  cursor:pointer;
-}
-
-/* === ALIBOARD: wyra?ne pod?wietlenie aktywnego narz?dzia === */
+/* === ALIBOARD: wyra�ne pod�wietlenie aktywnego narz�dzia === */
 .toolrow .btn[data-tool].is-active{
   background: rgba(11,116,255,0.14) !important;
   color: #0b1320 !important;
@@ -589,7 +752,7 @@
   box-shadow: 0 0 0 2px var(--brand);
 }
 
-/* nieaktywne ikony delikatnie przygaszone, ?eby aktywne si? wyr??nia?o */
+/* nieaktywne ikony delikatnie przygaszone, �eby aktywne si� wyr��nia�o */
 .toolrow .btn[data-tool]:not(.is-active){
   opacity: 0.8;
 }
@@ -597,10 +760,10 @@
   opacity: 1;
 }
 
-/* === ALIBOARD: uk?ad nag??wka + narz?dzi na telefonie === */
+/* === ALIBOARD: uk�ad nag��wka + narz�dzi na telefonie === */
 @media (max-width: 768px){
 
-  /* nag??wek nadal w jednym rz?dzie:
+  /* nag��wek nadal w jednym rz�dzie:
      [logo+Aliboard] po lewej, [Menu] po prawej */
   header{
     flex-direction: row;
@@ -608,13 +771,13 @@
     gap: 8px;
   }
 
-  /* lewa cz??? (logo + pasek narz?dzi) mo?e si? ?cisn?? */
+  /* lewa cz��� (logo + pasek narz�dzi) mo�e si� �cisn�� */
   .left{
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  /* prawa cz??? ? menu przy logo po prawej */
+  /* prawa cz��� � menu przy logo po prawej */
   .right{
     margin-left: 8px;
     flex: 0 0 auto;
@@ -640,7 +803,7 @@
   }
   .menu-btn .icon-img{ width:78px; height:78px; }
 
-  /* pasek narz?dzi POD logo, mo?e zej?? w 2 rz?dy */
+  /* pasek narz�dzi POD logo, mo�e zej�� w 2 rz�dy */
   .toolrow{
     flex-wrap: wrap;
     overflow: visible !important;
@@ -655,27 +818,27 @@
     display: none !important;
   }
 
-  /* cia?niejsze przyciski, ?eby wszystko si? mie?ci?o */
+  /* cia�niejsze przyciski, �eby wszystko si� mie�ci�o */
   .toolrow .btn,
   .toolrow label.btn{
     padding: 4px 6px;
     font-size: 16px;
   }
 
-  /* select z grubo?ci? ? troch? w??szy */
+  /* select z grubo�ci� � troch� w��szy */
   .toolrow label.btn select{
     max-width: 72px;
   }
 }
 
-/* === ALIBOARD: Ikona przycisku Usu? (zaznaczony element) === */
+/* === ALIBOARD: Ikona przycisku Usu� (zaznaczony element) === */
 #deleteSelection{
   font-size:18px !important;
   padding:4px 6px !important;
   line-height:1;
 }
 
-/* === ALIBOARD: menu grubo?ci linii (neon) === */
+/* === ALIBOARD: menu grubo�ci linii (neon) === */
   .line-width-menu {
     position: fixed;
     top: -9999px;
@@ -724,7 +887,7 @@
   box-shadow: 0 0 6px #0cbcff;
 }
 
-/* Ikony obrazkowe w pasku narz?dzi */
+/* Ikony obrazkowe w pasku narz�dzi */
 .icon-img{
   width:26px;
   height:26px;
@@ -741,11 +904,11 @@
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
 <header>
-  <!-- LEWA: brand + narz?dzia -->
+  <!-- LEWA: brand + narz�dzia -->
   <div class="left">
     <div class="brand">
       <div class="mark">
-        <!-- Sama g?owa loga -->
+        <!-- Sama g�owa loga -->
         <img src="{% static 'img/brand/logo_head.png' %}" alt="PolubiszTo.pl" />
       </div>
       <div>
@@ -873,20 +1036,52 @@
   <div class="pages" id="pages"></div>
 </div>
 
-<div id="aliboard-chat-launcher" aria-label="Otwórz czat" title="Czat">💬</div>
-
 <!-- Aliboard Chat Module -->
-<div id="aliboard-chat" class="is-hidden">
-  <div id="aliboard-chat-log"></div>
+<div class="aliboard-chat-root">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
+    <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
+  </button>
 
-  <form id="aliboard-chat-form" autocomplete="off">
-    <input
-      id="aliboard-chat-input"
-      type="text"
-      placeholder="Napisz wiadomość…"
-    />
-    <button type="submit">Wyślij</button>
-  </form>
+  <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
+    <header class="aliboard-chat-header">
+      <div class="aliboard-chat-title">
+        <span class="aliboard-chat-title-main">Czat zajęć</span>
+        <span class="aliboard-chat-title-sub">Aliboard</span>
+      </div>
+      <div class="aliboard-chat-actions">
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
+          &#128276;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
+          &#128222;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
+          &#127908;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
+          &#10006;
+        </button>
+      </div>
+    </header>
+
+    <!-- Audio remote dla WebRTC -->
+    <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
+
+    <div class="aliboard-chat-messages" id="aliboard-chat-messages" aria-live="polite"></div>
+
+    <form class="aliboard-chat-input-row" id="aliboard-chat-form" autocomplete="off">
+      <input
+        type="text"
+        id="aliboard-chat-input"
+        class="aliboard-chat-input"
+        placeholder="Napisz wiadomość"
+        maxlength="500"
+      />
+      <button type="submit" class="aliboard-chat-send-btn">
+        Wyślij
+      </button>
+    </form>
+  </section>
 </div>
 <!-- koniec: Aliboard Chat Module -->
 
@@ -913,7 +1108,7 @@
 
 <script>
 (function(){
-  /* === PATCH: wstrzykni?cie delikatnego CSS dla paska narz?dzi (bez kapsli) === */
+  /* === PATCH: wstrzykni�cie delikatnego CSS dla paska narz�dzi (bez kapsli) === */
   const __css = `
   .toolrow .btn, .toolrow label.btn{border:0 !important;background:transparent !important;box-shadow:none !important}
   .toolrow .btn.is-active{background:transparent !important;color:var(--ink) !important;outline:2px solid var(--brand);outline-offset:2px;border-radius:10px}
@@ -1543,15 +1738,15 @@
 
   initRealtimeBridge();
 
-  // ---- USTALENIE roomId (wsp?lne z realtime) ----
+  // ---- USTALENIE roomId (wsp�lne z realtime) ----
   let roomId = null;
 
-  // 1) je?li ju? kto? ustawi? globalnie (np. inny skrypt / Django):
+  // 1) je�li ju� kto� ustawi� globalnie (np. inny skrypt / Django):
   if (window.ALIBOARD_ROOM_ID) {
     roomId = window.ALIBOARD_ROOM_ID;
   }
 
-  // 2) je?li nie ma ? spr?buj odczyta? z data-room-id na kontenerze tablicy
+  // 2) je�li nie ma � spr�buj odczyta� z data-room-id na kontenerze tablicy
   if (!roomId) {
     const rootEl =
       document.getElementById('aliboard-root') ||
@@ -2259,7 +2454,7 @@
     }
   }
 
-  /* ---------- GUMKA POD?WIETLA ---------- */
+  /* ---------- GUMKA POD�WIETLA ---------- */
   function previewErase(pt, p){
     clearOverlay(p); if(p.state.selection) drawSelection(p);
     const eps = Math.max(6,size*2);
@@ -2716,7 +2911,7 @@
     }
     const toast=document.createElement('div');
     toast.className='crop-busy-toast';
-    toast.textContent='Poczekaj na zako?czenie kopiowania...';
+    toast.textContent='Poczekaj na zako�czenie kopiowania...';
     document.body.appendChild(toast);
     requestAnimationFrame(()=> toast.classList.add('show'));
     cropBusyHintEl=toast;
@@ -2835,7 +3030,7 @@ function textDimensions(s){
     const touchPointers = new Set();   // aktywne pointerId typu touch
     const activePointers = new Set();
     let multiPan=false;                // tryb dwupalczastego scrolla
-    let panCentroidY=null;             // poprzedni centroid dotyk?w (Y)
+    let panCentroidY=null;             // poprzedni centroid dotyk�w (Y)
     const pointerPosY = new Map();     // pointerId -> ostatni clientY
     let panIdleTimer=null;
     const PAN_IDLE_MS = 350;
@@ -3595,7 +3790,7 @@ const toolsRow = document.getElementById('tools');
 
   // USUŃ ZAZNACZONY OBIEKT (przycisk "Usuń zaznaczony obiekt")
   (function setupDeleteSelectionButton(){
-    const btn = document.getElementById('deleteSelection'); // ‹ PODMIEŃ ID jeśli inny
+    const btn = document.getElementById('deleteSelection'); // ← PODMIEŃ ID jeśli inny
     if (!btn) return;
 
     btn.addEventListener('pointerdown', (e) => {
@@ -3720,7 +3915,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-  // --- CRDT: nas?uch zmian siatki przez AliboardRealtime (event "grid_state") ---
+  // --- CRDT: nas�uch zmian siatki przez AliboardRealtime (event "grid_state") ---
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
     window.AliboardRealtime.on('grid_state', (payload)=>{
       if(typeof window.aliboardApplyGridState === 'function'){
@@ -3755,14 +3950,14 @@ const toolsRow = document.getElementById('tools');
       moreBox = document.createElement('div');
       moreBox.id = 'toolsMorePanel';
       moreBox.className = 'dropdown';
-      // otwieramy w lewo, obok paska narz?dzi
+      // otwieramy w lewo, obok paska narz�dzi
       moreBox.style.left = '0';
       moreBox.style.right = 'auto';
       moreBtn.insertAdjacentElement('afterend', moreBox);
     }
 
-    // 2) Oznacz ?klejone? (nigdy nie przenoszone) narz?dzia ? rdze? paska
-    //    (mo?esz dopasowa? list?; domy?lnie trzymamy: select, pen, line, eraser)
+    // 2) Oznacz �klejone� (nigdy nie przenoszone) narz�dzia � rdze� paska
+    //    (mo�esz dopasowa� list�; domy�lnie trzymamy: select, pen, line, eraser)
     const stickySelectors = [
       '[data-tool="select"]',
       '[data-tool="pen"]',
@@ -3775,7 +3970,7 @@ const toolsRow = document.getElementById('tools');
         .filter(Boolean)
     );
 
-    // 3) Funkcja: przenie? elementy z overflow z powrotem do g??wnego rz?du
+    // 3) Funkcja: przenie� elementy z overflow z powrotem do g��wnego rz�du
     function restoreFromOverflow(){
       // przywróć wszystko co było upchnięte
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
@@ -3854,12 +4049,12 @@ const toolsRow = document.getElementById('tools');
       }
     });
 
-    // 6) Rebalans po za?adowaniu i na resize
+    // 6) Rebalans po za�adowaniu i na resize
     window.addEventListener('load', rebalanceTools, { once: true });
     window.addEventListener('resize', rebalanceTools);
 
-    // 7) Obs?uga ?tap? na elementach przeniesionych do overflow:
-    //    delegujemy klikni?cia, ?eby zachowa?y si? identycznie jak w g??wnym rz?dzie
+    // 7) Obs�uga �tap� na elementach przeniesionych do overflow:
+    //    delegujemy klikni�cia, �eby zachowa�y si� identycznie jak w g��wnym rz�dzie
     moreBox.addEventListener('pointerdown', (e)=>{
       const btn = e.target.closest('button, label');
       if(!btn) return;
@@ -3879,7 +4074,7 @@ const toolsRow = document.getElementById('tools');
       setTimeout(()=> moreBox.classList.remove('open'), 0);
     });
 
-    // 8) Publiczny hook: gdyby co? dynamicznie doda?o narz?dzie ? spr?buj zbalansowa? ponownie
+    // 8) Publiczny hook: gdyby co� dynamicznie doda�o narz�dzie � spr�buj zbalansowa� ponownie
     const ro = new ResizeObserver(rebalanceTools);
     ro.observe(toolsRow);
     setTimeout(rebalanceTools, 250);
@@ -3888,123 +4083,563 @@ const toolsRow = document.getElementById('tools');
   })();
   // [CODEX:END OVERFLOW_MENU]
 
-          // Aliboard Chat Module - logika czatu
-  (function () {
-    const launcher = document.getElementById("aliboard-chat-launcher");
-    const chatBox = document.getElementById("aliboard-chat");
-    const logEl = document.getElementById("aliboard-chat-log");
-    const formEl = document.getElementById("aliboard-chat-form");
-    const inputEl = document.getElementById("aliboard-chat-input");
+  // Aliboard Chat Module – logika czatu
+  (function initAliboardChatModule(){
+    const bubble = document.getElementById('aliboard-chat-bubble');
+    const panel = document.getElementById('aliboard-chat-panel');
+    const closeBtn = document.getElementById('aliboard-chat-close');
+    const form = document.getElementById('aliboard-chat-form');
+    const input = document.getElementById('aliboard-chat-input');
+    const messagesEl = document.getElementById('aliboard-chat-messages');
+    const pingBtn = document.getElementById('aliboard-chat-ping');
+    const micBtn = document.getElementById('aliboard-chat-mic');
+    const callBtn = document.getElementById('aliboard-chat-call');
+    const bubbleRoot = bubble ? bubble.closest('.aliboard-chat-root') : null;
 
-    if (!logEl || !formEl || !inputEl || !chatBox) {
-      console.warn("[AliboardChat] brak elementów DOM czatu");
+    if(!bubble || !panel || !form || !input || !messagesEl){
       return;
     }
 
+    // Na desktopie podnie� dymek czatu, by nie nachodzi� na room_id
+    if(bubbleRoot && window.matchMedia('(pointer:fine)').matches){
+      bubbleRoot.classList.add('desktop-offset');
+    }
+
     window.aliboardChat = window.aliboardChat || {};
+    window.aliboardChat.sendToServer = window.aliboardChat.sendToServer || null;
+    window.aliboardChat.sendPing = window.aliboardChat.sendPing || null;
+    window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
+    window.aliboardChat.sendCallSignal = window.aliboardChat.sendCallSignal || null;
 
-    const myIdRaw = window.ALIBOARD_USER_ID;
-    const myId = myIdRaw != null ? Number(myIdRaw) : null;
-    let isOpen = false;
+    const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
+    let isMicMuted = false;
+    let incomingCallBanner = null;
+    let ringIntervalId = null;
+    let isPanelOpen = false;
+    let unreadCount = 0;
+    let unreadBadgeEl = null;
 
-    function setOpen(open){
-      isOpen = !!open;
-      if (chatBox) {
-        chatBox.classList.toggle("is-hidden", !isOpen);
+    function ensureUnreadBadge(){
+      if(!bubble) return;
+      if(unreadBadgeEl) return;
+      unreadBadgeEl = document.createElement('span');
+      unreadBadgeEl.className = 'aliboard-chat-badge aliboard-chat-badge-hidden';
+      unreadBadgeEl.textContent = '';
+      bubble.appendChild(unreadBadgeEl);
+    }
+
+    function playCallBeepOnce(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }catch(_){
+        // AudioContext niedostepny - ignorujemy
       }
-      if (isOpen && logEl) {
-        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function startRingTone(){
+      if(ringIntervalId !== null) return;
+      playCallBeepOnce();
+      ringIntervalId = window.setInterval(playCallBeepOnce, 1500);
+    }
+
+    function stopRingTone(){
+      if(ringIntervalId !== null){
+        window.clearInterval(ringIntervalId);
+        ringIntervalId = null;
       }
-      if (launcher) {
-        launcher.setAttribute("aria-pressed", isOpen ? "true" : "false");
-        if (isOpen) {
-          launcher.classList.remove("has-unread");
+    }
+
+    function playMessageBeep(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = 600;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      }catch(_){
+        // brak dzwieku - ignorujemy
+      }
+    }
+
+    function showIncomingCallBanner(fromRole){
+      if(!panel) return;
+      if(incomingCallBanner && incomingCallBanner.parentNode){
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+      }
+      const banner = document.createElement('div');
+      banner.className = 'aliboard-call-banner';
+      banner.innerHTML = `
+        <span>📞 Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
+        <div class="aliboard-call-actions">
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Dołącz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Rozłącz</button>
+        </div>
+      `;
+      panel.insertBefore(banner, panel.firstChild);
+      incomingCallBanner = banner;
+      startRingTone();
+
+      const acceptBtn = document.getElementById('aliboard-accept-call-btn');
+      const endBtn = document.getElementById('aliboard-end-call-btn');
+
+      if(acceptBtn){
+        acceptBtn.addEventListener('click', ()=>{
+          stopRingTone();
+          if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
+            window.aliboardVoice.acceptIncomingCall()
+              .catch((err)=>{
+                console.error('[AliboardVoice] acceptIncomingCall error', err);
+                if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                  window.aliboardVoice.hangupCall(false);
+                }
+              });
+          }
+        });
+      }
+
+      if(endBtn){
+        endBtn.addEventListener('click', ()=>{
+          stopRingTone();
+          if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+            window.aliboardChat.sendCallSignal('end');
+          }
+          if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+            window.aliboardVoice.hangupCall(false);
+          }
+        });
+      }
+    }
+
+    function setPanelOpen(isOpen){
+      isPanelOpen = !!isOpen;
+      if(isOpen){
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        try{ localStorage.setItem(CHAT_OPEN_KEY, '1'); }catch(_){}
+        setTimeout(()=> input.focus(), 20);
+        unreadCount = 0;
+        if(unreadBadgeEl){
+          unreadBadgeEl.textContent = '';
+          unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
         }
+      }else{
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+        try{ localStorage.setItem(CHAT_OPEN_KEY, '0'); }catch(_){}
       }
     }
 
-    if (launcher) {
-      launcher.addEventListener("click", ()=> setOpen(!isOpen));
+    try{
+      if(localStorage.getItem(CHAT_OPEN_KEY)==='1'){
+        setPanelOpen(true);
+      }
+    }catch(_){}
+
+    bubble.addEventListener('click', ()=>{
+      const shouldOpen = !panel.classList.contains('is-open');
+      setPanelOpen(shouldOpen);
+    });
+    if(closeBtn){
+      closeBtn.addEventListener('click', ()=> setPanelOpen(false));
     }
 
-    function resolveLabel(authorId, authorRole) {
-      const isMe = myId != null && authorId != null && myId === Number(authorId);
-
-      if (isMe) return { label: "Ty", roleClass: "chat-author--me" };
-
-      if (authorRole === "teacher")
-        return { label: "Nauczyciel", roleClass: "chat-author--teacher" };
-
-      if (authorRole === "student")
-        return { label: "Uczeń", roleClass: "chat-author--student" };
-
-      return { label: "Gość", roleClass: "" };
+    function appendMessage(opts){
+      if(!opts || !opts.text) return;
+      const author = opts.author === 'other' ? 'other' : 'me';
+      const msgEl = document.createElement('div');
+      msgEl.className = `aliboard-chat-message ${author}`;
+      const contentSpan = document.createElement('span');
+      contentSpan.textContent = opts.text.toString();
+      msgEl.appendChild(contentSpan);
+      if(opts.timeString){
+        const meta = document.createElement('span');
+        meta.className = 'aliboard-chat-meta';
+        meta.textContent = opts.timeString;
+        msgEl.appendChild(meta);
+      }
+      messagesEl.appendChild(msgEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function formatTime(date) {
-      const d = date instanceof Date ? date : new Date();
-      const h = String(d.getHours()).padStart(2, "0");
-      const m = String(d.getMinutes()).padStart(2, "0");
-      return `${h}:${m}`;
+    function getTimeString(){
+      try{
+        const d = new Date();
+        return d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      }catch(_){
+        return '';
+      }
     }
 
-    function appendMessage(text, authorId, authorRole) {
-      const { label, roleClass } = resolveLabel(authorId, authorRole);
+    function sendChatMessage(text) {
+      if (!text.trim()) return;
+      const trimmed = text.trim().slice(0, 500);
 
-      const msgEl = document.createElement("div");
-      msgEl.className = "chat-msg";
-
-      const headerEl = document.createElement("div");
-      headerEl.className = "chat-msg-header";
-
-      const authorEl = document.createElement("span");
-      authorEl.className = "chat-author " + roleClass;
-      authorEl.textContent = label;
-
-      const timeEl = document.createElement("span");
-      timeEl.className = "chat-time";
-      timeEl.textContent = formatTime(new Date());
-
-      headerEl.appendChild(authorEl);
-      headerEl.appendChild(timeEl);
-
-      const textEl = document.createElement("div");
-      textEl.className = "chat-text";
-      textEl.textContent = text;
-
-      msgEl.appendChild(headerEl);
-      msgEl.appendChild(textEl);
-
-      logEl.appendChild(msgEl);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    // 1) Wyślij wiadomość (używamy sendToServer z aliboard_realtime.js)
-    formEl.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const val = (inputEl.value || "").trim();
-      if (!val) return;
-
+      // Ping tylko wysyłamy na serwer, bez lokalnego dopisywania
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
-        window.aliboardChat.sendToServer(val);
-      } else {
-        console.warn("[AliboardChat] brak sendToServer – czy aliboard_realtime.js jest załadowany?");
+        window.aliboardChat.sendToServer(trimmed);
       }
 
-      // Nie robimy local-echo – serwer i tak odeśle wiadomość z author_id/role
-      inputEl.value = "";
+      input.value = "";
+    }
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      sendChatMessage(input.value);
     });
 
-    // 2) Odbiór z WebSocketu – jedna kolumna, podpisany nadawca
-    window.aliboardChat.onServerMessage = function (text, authorId, authorRole) {
-      appendMessage(text, authorId, authorRole);
-      if (!isOpen && launcher) {
-        launcher.classList.add("has-unread");
+    if(pingBtn){
+      pingBtn.addEventListener('click', ()=>{
+        appendMessage({
+          text: '🔔 Wysłałeś zaczepienie (ping).',
+          author: 'me',
+          timeString: getTimeString()
+        });
+        if(typeof window.aliboardChat.sendPing === 'function'){
+          window.aliboardChat.sendPing();
+        }
+      });
+    }
+
+        if(micBtn){
+      micBtn.addEventListener('click', ()=>{
+        isMicMuted = !isMicMuted;
+        micBtn.classList.toggle('is-muted', isMicMuted);
+        if(typeof window.aliboardChat.toggleMic === 'function'){
+          window.aliboardChat.toggleMic(isMicMuted);
+        }
+      });
+    }
+
+    window.aliboardChat.onServerMessage = function (text, authorId) {
+      const myId = window.ALIBOARD_USER_ID;
+      const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
+      const isMe = (myId !== null && myId !== undefined && serverId !== null && serverId === Number(myId));
+
+      appendMessage({
+        text: text,
+        author: isMe ? "me" : "other",
+        timeString: getTimeString(),
+      });
+
+      if(!isPanelOpen && !isMe){
+        ensureUnreadBadge();
+        unreadCount += 1;
+        unreadBadgeEl.textContent = unreadCount.toString();
+        unreadBadgeEl.classList.remove('aliboard-chat-badge-hidden');
+        playMessageBeep();
       }
     };
+
+    window.aliboardChat.onCallSignal = function(payload){
+      if(!payload) return;
+      const fromId = payload.from_id;
+      const fromRole = payload.from_role || 'unknown';
+      const action = payload.action;
+      const myId = window.ALIBOARD_USER_ID;
+
+      if(fromId != null && myId != null && Number(fromId) === Number(myId)){
+        return;
+      }
+
+      if(action === 'ring'){
+        setPanelOpen(true);
+        showIncomingCallBanner(fromRole);
+        return;
+      }
+
+      if(action === 'end'){
+        stopRingTone();
+        if(incomingCallBanner && incomingCallBanner.parentNode){
+          incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+          incomingCallBanner = null;
+        }
+        if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+          window.aliboardVoice.hangupCall(false);
+        }
+        appendMessage({
+          text: '📴 Połączenie zostało zakończone',
+          author: 'other',
+          timeString: getTimeString(),
+        });
+      }
+    };
+
+    // WebRTC Voice Module
+    window.aliboardVoice = window.aliboardVoice || {};
+    window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
+
+    let voicePc = null;
+    let localStream = null;
+    let isCallActive = false;
+    let isCaller = false;
+    let pendingOffer = null;
+
+    const remoteAudio = document.getElementById('aliboard-remote-audio');
+    const rtcConfig = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    };
+
+    async function ensureLocalStream(){
+      if(localStream) return localStream;
+      try{
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }catch(err){
+        console.error('[AliboardVoice] getUserMedia error', err);
+        throw err;
+      }
+      return localStream;
+    }
+
+    function createPeerConnection(){
+      if(voicePc) return voicePc;
+      voicePc = new RTCPeerConnection(rtcConfig);
+      voicePc.onicecandidate = (event)=>{
+        if(event.candidate){
+          window.aliboardVoice.sendSignal({
+            type: 'webrtc_ice_candidate',
+            candidate: event.candidate,
+          });
+        }
+      };
+      voicePc.ontrack = (event)=>{
+        if(remoteAudio){
+          remoteAudio.srcObject = event.streams[0];
+        }
+      };
+      voicePc.onconnectionstatechange = ()=>{
+        if(!voicePc) return;
+        if(['failed','disconnected','closed'].includes(voicePc.connectionState)){
+          window.aliboardVoice.hangupCall(false);
+        }
+      };
+      return voicePc;
+    }
+
+    async function addLocalTracks(pc){
+      const stream = await ensureLocalStream();
+      stream.getTracks().forEach((track)=>{
+        pc.addTrack(track, stream);
+      });
+    }
+
+    async function processOffer(data){
+      pendingOffer = null;
+      const desc = new RTCSessionDescription(data.sdp);
+      const pc = createPeerConnection();
+      await pc.setRemoteDescription(desc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      window.aliboardVoice.sendSignal({
+        type: 'webrtc_answer',
+        sdp: pc.localDescription,
+      });
+    }
+
+    window.aliboardVoice.startOutgoingCall = async function(){
+      if(isCallActive) return;
+      isCaller = true;
+      isCallActive = true;
+      pendingOffer = null;
+      const pc = createPeerConnection();
+      await addLocalTracks(pc);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      window.aliboardVoice.sendSignal({
+        type: 'webrtc_offer',
+        sdp: pc.localDescription,
+      });
+    };
+
+    window.aliboardVoice.acceptIncomingCall = async function(){
+      if(isCallActive) return;
+      isCaller = false;
+      isCallActive = true;
+      const pc = createPeerConnection();
+      await addLocalTracks(pc);
+      if(pendingOffer){
+        try{
+          await processOffer(pendingOffer);
+        }catch(err){
+          console.error('[AliboardVoice] processOffer error', err);
+          window.aliboardVoice.hangupCall(false);
+          throw err;
+        }
+      }
+    };
+
+    window.aliboardVoice.onOffer = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      pendingOffer = data;
+      if(isCallActive){
+        try{
+          await processOffer(data);
+        }catch(err){
+          console.error('[AliboardVoice] processOffer error', err);
+          window.aliboardVoice.hangupCall(false);
+        }
+      }
+    };
+
+    window.aliboardVoice.onAnswer = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      if(!voicePc) return;
+      try{
+        const desc = new RTCSessionDescription(data.sdp);
+        await voicePc.setRemoteDescription(desc);
+      }catch(err){
+        console.error('[AliboardVoice] setRemoteDescription error', err);
+        window.aliboardVoice.hangupCall(false);
+      }
+    };
+
+    window.aliboardVoice.onIceCandidate = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      if(!voicePc) return;
+      try{
+        await voicePc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }catch(err){
+        console.error('[AliboardVoice] ICE add error', err);
+      }
+    };
+
+    window.aliboardVoice.hangupCall = function(sendSignal = true){
+      isCallActive = false;
+      isCaller = false;
+      pendingOffer = null;
+      stopRingTone();
+      if(voicePc){
+        voicePc.ontrack = null;
+        voicePc.onicecandidate = null;
+        voicePc.close();
+        voicePc = null;
+      }
+      if(localStream){
+        localStream.getTracks().forEach((track)=> track.stop());
+        localStream = null;
+      }
+      if(remoteAudio){
+        remoteAudio.srcObject = null;
+      }
+      if(incomingCallBanner && incomingCallBanner.parentNode){
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+        incomingCallBanner = null;
+      }
+      if(sendSignal && window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+        window.aliboardChat.sendCallSignal('end');
+      }
+    };
+
+    if(callBtn){
+      callBtn.addEventListener('click', ()=>{
+        setPanelOpen(true);
+        appendMessage({
+          text: '📞 Próba rozpoczęcia rozmowy głosowej…',
+          author: 'me',
+          timeString: getTimeString(),
+        });
+        if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal('ring');
+        }
+        window.aliboardVoice.startOutgoingCall()
+          .catch((err)=>{
+            console.error('[AliboardVoice] startOutgoingCall error', err);
+            window.aliboardVoice.hangupCall();
+          });
+      });
+    }
+
+    function wireRealtimeBridge(){
+      const tryAttach = ()=>{
+        const realtime = window.AliboardRealtime;
+        if(!realtime){
+          setTimeout(tryAttach, 600);
+          return;
+        }
+        if(typeof realtime.sendChatMessage === 'function'){
+          window.aliboardChat.sendToServer = (text)=> realtime.sendChatMessage(text);
+        }
+        if(typeof realtime.sendChatPing === 'function'){
+          window.aliboardChat.sendPing = ()=> realtime.sendChatPing();
+        }
+        if(typeof realtime.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal = (action)=> realtime.sendCallSignal(action);
+        }
+        if(typeof realtime.sendChatMicState === 'function'){
+          window.aliboardChat.toggleMic = (muted)=> realtime.sendChatMicState(muted);
+        }
+      };
+      tryAttach();
+    }
+
+    wireRealtimeBridge();
+
+    (function enableChatBubbleDrag(){
+      const bubble = document.getElementById('aliboard-chat-bubble');
+      if(!bubble) return;
+
+      let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
+
+    bubble.style.position = 'fixed';
+    bubble.style.right = bubble.style.right || '16px';
+    bubble.style.bottom = bubble.style.bottom || '16px';
+
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const x = e.clientX ?? (e.touches && e.touches[0]?.clientX);
+      const y = e.clientY ?? (e.touches && e.touches[0]?.clientY);
+        if(x==null || y==null) return;
+        const dx = x - startX;
+        const dy = y - startY;
+        bubble.style.right = 'auto';
+        bubble.style.bottom = 'auto';
+        bubble.style.left = `${startLeft + dx}px`;
+        bubble.style.top = `${startTop + dy}px`;
+      };
+
+      const onUp = ()=>{
+        dragging = false;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+
+      bubble.addEventListener('pointerdown', (e)=>{
+        e.preventDefault();
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = bubble.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+    })();
   })();
 
-  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
+    // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
   (function attachCursorListener(){
     const rt = window.AliboardRealtime;
     if(!rt || typeof rt.on !== 'function'){
@@ -4035,7 +4670,7 @@ const toolsRow = document.getElementById('tools');
   })();
 })();
 
-/* === ALIBOARD: pokazuj przycisk wielko?ci czcionki tylko przy narz?dziu Tekst === */
+/* === ALIBOARD: pokazuj przycisk wielko�ci czcionki tylko przy narz�dziu Tekst === */
 const textFontBtn = document.getElementById("textFontBtn");
 
 function updateFontButtonVisibility(activeTool){
@@ -4077,13 +4712,6 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
-
-
-
-
-
-
-
 
 
 

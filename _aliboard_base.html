@@ -1,10 +1,10 @@
-ï»¿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aliboard 2.5 ï¿½ PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 – PolubiszTo.pl (test)</title>
 
 <!-- PDF render -->
 <link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
@@ -451,136 +451,296 @@
   content:none !important;
 }
 
-/* Kontener czatu */
-#aliboard-chat-launcher{
+/* Aliboard Chat – bazowe zmienne */
+:root{
+  --aliboard-chat-bg: rgba(9, 18, 40, 0.96);
+  --aliboard-chat-accent: #0b74ff;
+  --aliboard-chat-accent-soft: rgba(11, 116, 255, 0.25);
+  --aliboard-chat-border: rgba(255, 255, 255, 0.12);
+  --aliboard-chat-text: #f9fbff;
+  --aliboard-chat-muted: #a5b3d1;
+}
+.aliboard-chat-root{
   position:fixed;
   right:16px;
   bottom:16px;
-  width:48px;
-  height:48px;
-  border-radius:999px;
-  border:none;
-  background:var(--brand);
-  color:#fff;
-  font-size:20px;
-  display:grid;
-  place-items:center;
-  cursor:pointer;
-  box-shadow:0 10px 28px rgba(15,23,42,0.28);
   z-index:9999;
 }
-
-#aliboard-chat-launcher.has-unread{
-  box-shadow:0 0 0 4px rgba(239,68,68,0.35), 0 10px 28px rgba(15,23,42,0.28);
+.aliboard-chat-root.desktop-offset{
+  bottom:72px;
 }
-
-#aliboard-chat{
-  display:flex;
-  flex-direction:column;
-  height:260px;
-  max-height:40vh;
-  border:1px solid var(--line);
-  border-radius:12px;
-  background:#fff;
-  overflow:hidden;
+.aliboard-chat-bubble{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:46px;
+  height:46px;
+  position:relative;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  background:transparent;
+  box-shadow:none;
+  font-size:24px;
+  transition:transform 0.15s ease-out, box-shadow 0.15s ease-out, opacity 0.15s ease-out;
+  color:#fff;
+}
+.aliboard-chat-bubble:hover{
+  transform:translateY(-1px) scale(1.03);
+  box-shadow:none;
+}
+.aliboard-chat-bubble:active{
+  transform:translateY(0) scale(0.97);
+  box-shadow:none;
+}
+.aliboard-chat-panel{
   position:fixed;
   right:16px;
   bottom:76px;
   width:320px;
-  box-shadow:0 12px 34px rgba(15,23,42,0.18);
-  z-index:9998;
+  max-height:60vh;
+  display:flex;
+  flex-direction:column;
+  background:var(--aliboard-chat-bg);
+  border-radius:18px;
+  border:1px solid var(--aliboard-chat-border);
+  box-shadow:0 18px 50px rgba(0,0,0,0.6);
+  overflow:hidden;
+  opacity:0;
+  transform:translateY(12px) scale(0.96);
+  pointer-events:none;
+  transition:opacity 0.16s ease-out, transform 0.16s ease-out;
 }
-
-#aliboard-chat.is-hidden{
+.aliboard-chat-panel.is-open{
+  opacity:1;
+  transform:translateY(0) scale(1);
+  pointer-events:auto;
+}
+.aliboard-chat-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px 8px;
+  background:linear-gradient(135deg, rgba(11,116,255,0.28), rgba(11,116,255,0.02));
+  border-bottom:1px solid var(--aliboard-chat-border);
+}
+.aliboard-chat-title{
+  display:flex;
+  flex-direction:column;
+}
+.aliboard-chat-title-main{
+  font-size:13px;
+  font-weight:600;
+  color:var(--aliboard-chat-text);
+}
+.aliboard-chat-title-sub{
+  font-size:11px;
+  color:var(--aliboard-chat-muted);
+}
+.aliboard-chat-actions{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.aliboard-chat-icon-btn{
+  border:none;
+  background:transparent;
+  color:var(--aliboard-chat-text);
+  cursor:pointer;
+  border-radius:999px;
+  width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  transition:background 0.12s ease-out, transform 0.08s ease-out;
+}
+.aliboard-chat-icon-btn:hover{
+  background:rgba(255,255,255,0.09);
+}
+.aliboard-chat-icon-btn:active{
+  transform:scale(0.92);
+}
+.aliboard-chat-messages,
+#aliboard-chat-messages{
+  flex:1;
+  padding:8px 8px 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:4px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,0.22) transparent;
+}
+.aliboard-chat-messages::-webkit-scrollbar{
+  width:6px;
+}
+.aliboard-chat-messages::-webkit-scrollbar-track{
+  background:transparent;
+}
+.aliboard-chat-messages::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,0.22);
+  border-radius:999px;
+}
+.aliboard-chat-message{
+  max-width:80%;
+  padding:6px 10px;
+  border-radius:12px;
+  font-size:13px;
+  line-height:1.35;
+  display:inline-block;
+  align-self:flex-start;
+  word-wrap:break-word;
+  white-space:pre-wrap;
+}
+/* JA -> po PRAWEJ */
+.aliboard-chat-message.me{
+  align-self:flex-end;
+  background:#0b74ff;
+  color:#fff;
+}
+/* DRUGA OSOBA -> po LEWEJ */
+.aliboard-chat-message.other{
+  align-self:flex-start;
+  background:rgba(15,23,42,0.85);
+  color:#fff;
+  border:1px solid #344155;
+}
+.aliboard-chat-meta{
+  display:block;
+  margin-top:2px;
+  font-size:10px;
+  color:var(--aliboard-chat-muted);
+}
+.aliboard-chat-input-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 8px 8px;
+  border-top:1px solid var(--aliboard-chat-border);
+  background:rgba(7,12,25,0.98);
+}
+.aliboard-chat-input{
+  flex:1;
+  border-radius:999px;
+  border:1px solid rgba(148,163,184,0.6);
+  padding:6px 10px;
+  font-size:12px;
+  background:rgba(15,23,42,0.7);
+  color:var(--aliboard-chat-text);
+  outline:none;
+}
+.aliboard-chat-input::placeholder{
+  color:var(--aliboard-chat-muted);
+}
+.aliboard-chat-input:focus{
+  border-color:var(--aliboard-chat-accent);
+  box-shadow:0 0 0 1px var(--aliboard-chat-accent-soft);
+}
+.aliboard-chat-send-btn{
+  border:none;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:500;
+  background:var(--aliboard-chat-accent);
+  color:#fff;
+  cursor:pointer;
+  transition:transform 0.08s ease-out, box-shadow 0.08s ease-out, opacity 0.08s ease-out;
+  white-space:nowrap;
+}
+.aliboard-chat-send-btn:hover{
+  box-shadow:0 8px 20px rgba(0,0,0,0.45);
+}
+.aliboard-chat-send-btn:active{
+  transform:scale(0.94);
+  box-shadow:none;
+}
+.aliboard-call-banner{
+  padding:6px 10px;
+  font-size:12px;
+  background:rgba(34,197,94,0.16);
+  color:#bbf7d0;
+  border-bottom:1px solid rgba(34,197,94,0.5);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.aliboard-call-actions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.aliboard-call-accept-btn,
+.aliboard-call-end-btn{
+  padding:4px 8px;
+  border-radius:6px;
+  border:1px solid transparent;
+  font-size:11px;
+  cursor:pointer;
+  transition:background 0.15s ease-out, transform 0.1s ease-out;
+}
+.aliboard-call-accept-btn{
+  background:rgba(34,197,94,0.3);
+  border-color:rgba(34,197,94,0.6);
+  color:#bbf7d0;
+}
+.aliboard-call-accept-btn:hover{
+  background:rgba(34,197,94,0.5);
+}
+.aliboard-call-end-btn{
+  background:rgba(239,68,68,0.25);
+  border-color:rgba(239,68,68,0.5);
+  color:#fecaca;
+}
+.aliboard-call-end-btn:hover{
+  background:rgba(239,68,68,0.4);
+}
+.aliboard-call-accept-btn:active,
+.aliboard-call-end-btn:active{
+  transform:scale(0.95);
+}
+.aliboard-chat-badge{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  min-width:16px;
+  height:16px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:10px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.aliboard-chat-badge-hidden{
   display:none;
 }
-
-
-
-
-@media (max-width: 768px){
-  #aliboard-chat{
-    right:10px;
-    left:10px;
-    width:auto;
-    max-width:100%;
-  }
-  #aliboard-chat-launcher{
+.aliboard-chat-icon-btn.is-muted{
+  background:rgba(239,68,68,0.2);
+  color:#fecaca;
+}
+@media (max-width:768px){
+  .aliboard-chat-root{
     right:10px;
     bottom:10px;
   }
-}
-
-/* Lista wiadomoï¿½ci */
-#aliboard-chat-log{
-  flex:1;
-  padding:8px 10px;
-  overflow-y:auto;
-  font-size:14px;
-}
-
-/* Pojedyncza wiadomoï¿½ï¿½ (jedna kolumna) */
-.chat-msg{
-  margin-bottom:8px;
-}
-
-/* Nagï¿½ï¿½wek wiadomoï¿½ci: kto + godzina */
-.chat-msg-header{
-  display:flex;
-  gap:6px;
-  align-items:baseline;
-  margin-bottom:2px;
-}
-
-.chat-author{
-  font-weight:600;
-  font-size:12px;
-  padding:2px 6px;
-  border-radius:999px;
-  background:#eef2ff;
-}
-
-/* Kolorki wg roli */
-.chat-author--teacher{ background:#dbeafe; color:#1d4ed8; }
-.chat-author--student{ background:#dcfce7; color:#166534; }
-.chat-author--me{ background:#fee2e2; color:#b91c1c; }
-
-.chat-time{
-  font-size:11px;
-  color:var(--muted);
-}
-
-/* Treï¿½ï¿½ */
-.chat-text{
-  font-size:14px;
-  line-height:1.35;
-  word-break:break-word;
-}
-
-/* Input + przycisk */
-#aliboard-chat-form{
-  display:flex;
-  gap:6px;
-  padding:8px 10px;
-  border-top:1px solid var(--line);
-}
-
-#aliboard-chat-input{
-  flex:1;
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:6px 10px;
-  font-size:14px;
-}
-
-#aliboard-chat-form button{
-  border:none;
-  border-radius:999px;
-  padding:6px 12px;
-  background:var(--brand);
-  color:#fff;
-  font-size:14px;
-  cursor:pointer;
+  .aliboard-chat-panel{
+    right:0;
+    left:0;
+    bottom:0;
+    margin:0 auto;
+    width:100%;
+    max-width:100%;
+    max-height:60vh;
+    border-radius:18px 18px 0 0;
+  }
 }
 
 /* === ALIBOARD: wyra?ne pod?wietlenie aktywnego narz?dzia === */
@@ -652,7 +812,7 @@
     gap: 4px;
   }
 
-  /* wszystkie narzï¿½dzia majï¿½ byï¿½ widoczne ï¿½ wyï¿½ï¿½czamy overflow na telefonie */
+  /* wszystkie narzêdzia maj¹ byæ widoczne – wy³¹czamy overflow na telefonie */
   #toolsMoreBtn,
   #toolsMorePanel{
     display: none !important;
@@ -753,7 +913,7 @@
       </div>
       <div>
         <div style="font-weight:800">Aliboard</div>
-        <div class="state" id="state">Tryb: Kursor ï¿½ 3px ï¿½ #0b74ff</div>
+        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
       </div>
     </div>
 
@@ -761,8 +921,8 @@
       <button class="btn" type="button" data-tool="select" title="Kursor (V)">
         <img src="{% static 'img/icons/cursor_ai.png' %}" class="icon-img" alt="Kursor">
       </button>
-      <button class="btn" type="button" data-tool="pen"    title="Oï¿½ï¿½wek (P)">
-        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="Oï¿½ï¿½wek">
+      <button class="btn" type="button" data-tool="pen"    title="O³ówek (P)">
+        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="O³ówek">
       </button>
       <button class="btn" type="button" data-tool="line"   title="Linia (L)">
         <img src="{% static 'img/icons/line_ai.png' %}" class="icon-img" alt="Linia">
@@ -773,8 +933,8 @@
       <button class="btn" type="button" data-tool="text"   title="Tekst (T)">
         <img src="{% static 'img/icons/text_ai.png' %}" class="icon-img" alt="Tekst">
       </button>
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkoï¿½ï¿½ czcionki" data-overflow="1">
-        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkoï¿½ï¿½ czcionki">
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkoœæ czcionki" data-overflow="1">
+        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkoœæ czcionki">
       </button>
       <button class="btn" type="button" data-tool="crop"   title="Kopiuj (C)">
         <img src="{% static 'img/icons/copy_ai.png' %}" class="icon-img" alt="Kopiuj">
@@ -787,8 +947,8 @@
         <img src="{% static 'img/icons/color_ai.png' %}" class="icon-img" alt="Kolor">
         <input type="color" id="color" value="#0b74ff" style="display:none;">
       </label>
-      <button class="btn" type="button" id="lineWidthBtn" title="Gruboï¿½ï¿½ linii">
-        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Gruboï¿½ï¿½ linii">
+      <button class="btn" type="button" id="lineWidthBtn" title="Gruboœæ linii">
+        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Gruboœæ linii">
       </button>
       <div class="line-width-menu" id="lineWidthMenu">
         <div class="line-option" data-size="1">
@@ -821,7 +981,7 @@
         <input id="pdfInput" type="file" accept="application/pdf" style="display:none">
       </label>
 
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuï¿½ zaznaczony obiekt" disabled>
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuñ zaznaczony obiekt" disabled>
         X
       </button>
     </div>
@@ -855,16 +1015,16 @@
           <button class="drop-item" type="button" id="gridToggle" style="display:none">Siatka</button>
           <div class="drop-row" id="templatesRow" style="display:none">
             <button class="drop-item" type="button" data-grid="0">Brak</button>
-            <button class="drop-item" type="button" data-grid="16">Maï¿½a</button>
-            <button class="drop-item" type="button" data-grid="24">ï¿½rednia</button>
-            <button class="drop-item" type="button" data-grid="32">Duï¿½a</button>
+            <button class="drop-item" type="button" data-grid="16">Ma³a</button>
+            <button class="drop-item" type="button" data-grid="24">Œrednia</button>
+            <button class="drop-item" type="button" data-grid="32">Du¿a</button>
             <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
           </div>
         </div>
         <div class="drop-group">
           <div class="drop-title">Nowa tablica</div>
           <div class="drop-row">
-            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkï¿½ A4</button>
+            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkê A4</button>
           </div>
         </div>
       </div>
@@ -876,20 +1036,52 @@
   <div class="pages" id="pages"></div>
 </div>
 
-<div id="aliboard-chat-launcher" aria-label="Otwï¿½rz czat" title="Czat">??</div>
-
 <!-- Aliboard Chat Module -->
-<div id="aliboard-chat" class="is-hidden">
-  <div id="aliboard-chat-log"></div>
+<div class="aliboard-chat-root">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
+    <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
+  </button>
 
-  <form id="aliboard-chat-form" autocomplete="off">
-    <input
-      id="aliboard-chat-input"
-      type="text"
-      placeholder="Napisz wiadomoï¿½ï¿½"
-    />
-    <button type="submit">Wyï¿½lij</button>
-  </form>
+  <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
+    <header class="aliboard-chat-header">
+      <div class="aliboard-chat-title">
+        <span class="aliboard-chat-title-main">Czat zajêæ</span>
+        <span class="aliboard-chat-title-sub">Aliboard</span>
+      </div>
+      <div class="aliboard-chat-actions">
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
+          &#128276;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa g³osowa">
+          &#128222;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
+          &#127908;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
+          &#10006;
+        </button>
+      </div>
+    </header>
+
+    <!-- Audio remote dla WebRTC -->
+    <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
+
+    <div class="aliboard-chat-messages" id="aliboard-chat-messages" aria-live="polite"></div>
+
+    <form class="aliboard-chat-input-row" id="aliboard-chat-form" autocomplete="off">
+      <input
+        type="text"
+        id="aliboard-chat-input"
+        class="aliboard-chat-input"
+        placeholder="Napisz wiadomoœæ"
+        maxlength="500"
+      />
+      <button type="submit" class="aliboard-chat-send-btn">
+        Wyœlij
+      </button>
+    </form>
+  </section>
 </div>
 <!-- koniec: Aliboard Chat Module -->
 
@@ -899,15 +1091,15 @@
 
 <div class="modal-backdrop" id="openBoardModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
-    <h3 id="openBoardTitle">Otwï¿½rz nowï¿½ tablicï¿½</h3>
-    <p>Utwï¿½rz pustï¿½ tablicï¿½. Aktualne karty zostanï¿½ zamkniï¿½te.</p>
+    <h3 id="openBoardTitle">Otwórz now¹ tablicê</h3>
+    <p>Utwórz pust¹ tablicê. Aktualne karty zostan¹ zamkniête.</p>
     <label>
       Nazwa tablicy (opcjonalnie)
       <input type="text" id="openBoardName" placeholder="np. Matematyka - lekcja 3">
     </label>
     <div class="modal-actions">
       <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
-      <button type="button" class="btn primary" id="openBoardCreate">Utwï¿½rz</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
     </div>
   </div>
 </div>
@@ -945,19 +1137,19 @@
     figurePalette.className = 'figure-palette';
     figurePalette.innerHTML = `
       <div class="figure-palette-grid">
-        <button class="shape-btn" type="button" data-shape="rect" title="Prostokï¿½t">
+        <button class="shape-btn" type="button" data-shape="rect" title="Prostok¹t">
           <div class="shape-icon shape-icon--rect"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="tri_iso" title="Trï¿½jkï¿½t rï¿½wnoramienny">
+        <button class="shape-btn" type="button" data-shape="tri_iso" title="Trójk¹t równoramienny">
           <div class="shape-icon shape-icon--triangle"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="tri_right" title="Trï¿½jkï¿½t prostokï¿½tny">
+        <button class="shape-btn" type="button" data-shape="tri_right" title="Trójk¹t prostok¹tny">
           <div class="shape-icon shape-icon--right"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="hex" title="Szeï¿½ciokï¿½t">
+        <button class="shape-btn" type="button" data-shape="hex" title="Szeœciok¹t">
           <div class="shape-icon shape-icon--hex"></div>
         </button>
-        <button class="shape-btn" type="button" data-shape="circle" title="Koï¿½o">
+        <button class="shape-btn" type="button" data-shape="circle" title="Ko³o">
           <div class="shape-icon shape-icon--circle"></div>
         </button>
       </div>
@@ -1445,8 +1637,8 @@
     realtime.on('element_add', applyElementAddPayload);
     realtime.on('element_update', (element)=>{
       if(!element || !element.id) return;
-      // Obrazy obsï¿½uguje dedykowany handler niï¿½ej (CRDT images); tutaj je pomijamy,
-      // ï¿½eby nie usuwaï¿½ i nie dodawaï¿½ ich ponownie z bï¿½ï¿½dnym tool.
+      // Obrazy obs³uguje dedykowany handler ni¿ej (CRDT images); tutaj je pomijamy,
+      // ¿eby nie usuwaæ i nie dodawaæ ich ponownie z b³êdnym tool.
       if(element.kind === 'image' || element.tool === 'image' || element.type === 'image') return;
       removeElementById(element.id);
       applyElementAddPayload(element);
@@ -1477,7 +1669,7 @@
     }
   }
 
-  // 3) jeï¿½li nadal brak ï¿½ sprï¿½buj z query stringa (?room= / ?room_id=)
+  // 3) jeœli nadal brak — spróbuj z query stringa (?room= / ?room_id=)
   if (!roomId) {
     const qs = new URLSearchParams(location.search);
     roomId = qs.get('room') || qs.get('room_id') || 'local-test';
@@ -1499,7 +1691,7 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
   const REMOTE_CURSORS = new Map();
   const PAGES = [];
-  // === CRDT: globalny indeks elementï¿½w (obrazy + PDF) ===
+  // === CRDT: globalny indeks elementów (obrazy + PDF) ===
   const ELEMENTS = new Map(); // id -> { pageIndex, kind: "image"|"pdf", image: im }
 
   function makeElementId(kind){
@@ -1730,7 +1922,7 @@
     // lokalna historia (undo)
     pushHistory(p);
 
-    // odtwï¿½rz obraz
+    // odtwórz obraz
     const im = reviveImage({ src, w, h, x, y, meta }, p);
     p.state.images.push(im);
 
@@ -1738,7 +1930,7 @@
     const elementId = opts.id || makeElementId(kind);
     registerImageElement(im, p, elementId, kind);
 
-    // jeï¿½li to lokalna zmiana ï¿½ wyï¿½lij do serwera
+    // jeœli to lokalna zmiana – wyœlij do serwera
     if (!opts.silent &&
         window.AliboardRealtime &&
         typeof window.AliboardRealtime.broadcastElementAdd === "function") {
@@ -1791,7 +1983,7 @@
         { id: element.id, silent: true }
       );
     } else {
-      // aktualizacja istniejï¿½cego
+      // aktualizacja istniej¹cego
       const im = entry.image;
       im.x = element.x;
       im.y = element.y;
@@ -2119,8 +2311,8 @@
         removed=true;
       }
     }
-    // Gumka nie rusza obrazï¿½w ï¿½ ich kasowanie zostawiamy selekcji/koszowi.
-    // (Kiedyï¿½ moï¿½na dodaï¿½ tryb, ale domyï¿½lnie chronimy obrazki przed przypadkowym usuniï¿½ciem.)
+    // Gumka nie rusza obrazów – ich kasowanie zostawiamy selekcji/koszowi.
+    // (Kiedyœ mo¿na dodaæ tryb, ale domyœlnie chronimy obrazki przed przypadkowym usuniêciem.)
     if(removed){
       renderAll(p);
       clearOverlay(p);
@@ -2398,7 +2590,7 @@
       const dialog=document.createElement('div');
       dialog.className='crop-choice-dialog';
     const text=document.createElement('p');
-    text.textContent='Gdzie umieï¿½ciï¿½ skopiowany fragment?';
+    text.textContent='Gdzie umieœciæ skopiowany fragment?';
       const actions=document.createElement('div');
       actions.className='crop-choice-actions';
       const btnBelow=document.createElement('button');
@@ -2916,10 +3108,10 @@ function textDimensions(s){
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden && multiPan){ endMultiPan('hidden'); } });
   }
 
-  /* ---------- UI OGï¿½LNY ---------- */
+  /* ---------- UI OGÓLNY ---------- */
   function toolLabel(){
     return tool===TOOLS.SELECT?'Kursor':
-           tool===TOOLS.PEN?'Oï¿½ï¿½wek':
+           tool===TOOLS.PEN?'O³ówek':
            tool===TOOLS.LINE?'Linia':
            tool===TOOLS.ERASER?'Gumka':
            tool===TOOLS.TEXT?'Tekst':
@@ -2939,7 +3131,7 @@ function textDimensions(s){
   }
   function updateState(){
     const shapeLabel = tool===TOOLS.FIGURE
-      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trï¿½jkï¿½t':currentShape==='tri_right'?'Trï¿½jkï¿½t 90ï¿½':currentShape==='hex'?'Szeï¿½ciokï¿½t':'Koï¿½o'}`
+      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójk¹t':currentShape==='tri_right'?'Trójk¹t 90°':currentShape==='hex'?'Szeœciok¹t':'Ko³o'}`
       : '';
     const sizeLabel = tool===TOOLS.TEXT ? `${Math.round(textFontSizePx)}px` : `${size}px`;
     stateEl.textContent = `Tryb: ${toolLabel()}  ${sizeLabel}  ${color}${shapeLabel}`;
@@ -3190,7 +3382,7 @@ const toolsRow = document.getElementById('tools');
     }else if(ext==='jpg'){
       const a=document.createElement('a'); a.href=c.toDataURL('image/jpeg', .92); a.download=ts('jpg'); a.click();
     }else if(ext==='pdf'){
-      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaï¿½adowany.');
+      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF nieza³adowany.');
       const dataUrl = c.toDataURL('image/png');
       const pdf = new lib({orientation:'portrait', unit:'pt', format:'a4'});
       const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
@@ -3225,9 +3417,9 @@ const toolsRow = document.getElementById('tools');
     });
   }
 
-  // USUï¿½ ZAZNACZONY OBIEKT (przycisk "Usuï¿½ zaznaczony obiekt")
+  // USUÑ ZAZNACZONY OBIEKT (przycisk "Usuñ zaznaczony obiekt")
   (function setupDeleteSelectionButton(){
-    const btn = document.getElementById('deleteSelection'); // ï¿½ PODMIEï¿½ ID jeï¿½li inny
+    const btn = document.getElementById('deleteSelection'); // ‹ PODMIEÑ ID jeœli inny
     if (!btn) return;
 
     btn.addEventListener('pointerdown', (e) => {
@@ -3238,7 +3430,7 @@ const toolsRow = document.getElementById('tools');
 
       const sel = p.state.selection;
 
-      // 1) Obraz ï¿½ usuwamy lokalnie i przez CRDT
+      // 1) Obraz – usuwamy lokalnie i przez CRDT
       if (sel.kind === 'image') {
         const im = p.state.images[sel.index];
         if (!im) return;
@@ -3262,7 +3454,7 @@ const toolsRow = document.getElementById('tools');
         }
       }
 
-      // 2) (opcjonalnie) Stroke ï¿½ na razie moï¿½na usuwaï¿½ tylko lokalnie
+      // 2) (opcjonalnie) Stroke – na razie mo¿na usuwaæ tylko lokalnie
       /*
       if (sel.kind === 'stroke') {
         const s = p.state.strokes[sel.index];
@@ -3274,7 +3466,7 @@ const toolsRow = document.getElementById('tools');
         renderAll(p);
         clearOverlay(p);
 
-        // Jeï¿½li kiedyï¿½ zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
+        // Jeœli kiedyœ zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
       }
       */
     });
@@ -3364,7 +3556,7 @@ const toolsRow = document.getElementById('tools');
       headerExists: !!document.querySelector('header .left'),
     });
 
-    // 1) Utwï¿½rz przycisk ï¿½ï¿½ï¿½ i panel overflow zaraz obok paska narzï¿½dzi, jeï¿½eli nie istniejï¿½
+    // 1) Utwórz przycisk „…” i panel overflow zaraz obok paska narzêdzi, je¿eli nie istniej¹
     let moreBtn = document.getElementById('toolsMoreBtn');
     let moreBox = document.getElementById('toolsMorePanel');
 
@@ -3373,8 +3565,8 @@ const toolsRow = document.getElementById('tools');
       moreBtn.id = 'toolsMoreBtn';
       moreBtn.className = 'btn';
       moreBtn.type = 'button';
-      moreBtn.title = 'Wiï¿½cej narzï¿½dzi';
-      moreBtn.textContent = 'ï¿½';
+      moreBtn.title = 'Wiêcej narzêdzi';
+      moreBtn.textContent = '…';
     toolsRow.appendChild(moreBtn);
     }
     if(!moreBox){
@@ -3403,11 +3595,11 @@ const toolsRow = document.getElementById('tools');
 
     // 3) Funkcja: przenie? elementy z overflow z powrotem do g??wnego rz?du
     function restoreFromOverflow(){
-      // przywrï¿½ï¿½ wszystko co byï¿½o upchniï¿½te
+      // przywróæ wszystko co by³o upchniête
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
     }
 
-    // 4) Funkcja: wylicz ktï¿½re elementy trzeba schowaï¿½ do ï¿½ï¿½ï¿½, aï¿½ przestanie siï¿½ przelewaï¿½
+    // 4) Funkcja: wylicz które elementy trzeba schowaæ do „…”, a¿ przestanie siê przelewaæ
     function rebalanceTools(){
       if(!toolsRow) return;
 
@@ -3514,123 +3706,565 @@ const toolsRow = document.getElementById('tools');
   })();
   // [CODEX:END OVERFLOW_MENU]
 
-      // Aliboard Chat Module - logika czatu
-  (function () {
-    const launcher = document.getElementById("aliboard-chat-launcher");
-    const chatBox = document.getElementById("aliboard-chat");
-    const logEl = document.getElementById("aliboard-chat-log");
-    const formEl = document.getElementById("aliboard-chat-form");
-    const inputEl = document.getElementById("aliboard-chat-input");
+  // Aliboard Chat Module – logika czatu
+  (function initAliboardChatModule(){
+    const bubble = document.getElementById('aliboard-chat-bubble');
+    const panel = document.getElementById('aliboard-chat-panel');
+    const closeBtn = document.getElementById('aliboard-chat-close');
+    const form = document.getElementById('aliboard-chat-form');
+    const input = document.getElementById('aliboard-chat-input');
+    const messagesEl = document.getElementById('aliboard-chat-messages');
+    const pingBtn = document.getElementById('aliboard-chat-ping');
+    const micBtn = document.getElementById('aliboard-chat-mic');
+    const callBtn = document.getElementById('aliboard-chat-call');
+    const bubbleRoot = bubble ? bubble.closest('.aliboard-chat-root') : null;
 
-    if (!logEl || !formEl || !inputEl || !chatBox) {
-      console.warn("[AliboardChat] brak elementÃ³w DOM czatu");
+    if(!bubble || !panel || !form || !input || !messagesEl){
       return;
     }
 
+    // Na desktopie podnie? dymek czatu, by nie nachodzi? na room_id
+    if(bubbleRoot && window.matchMedia('(pointer:fine)').matches){
+      bubbleRoot.classList.add('desktop-offset');
+    }
+
     window.aliboardChat = window.aliboardChat || {};
+    window.aliboardChat.sendToServer = window.aliboardChat.sendToServer || null;
+    window.aliboardChat.sendPing = window.aliboardChat.sendPing || null;
+    window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
+    window.aliboardChat.sendCallSignal = window.aliboardChat.sendCallSignal || null;
 
-    const myIdRaw = window.ALIBOARD_USER_ID;
-    const myId = myIdRaw != null ? Number(myIdRaw) : null;
-    let isOpen = false;
+    const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
+    let isMicMuted = false;
+    let incomingCallBanner = null;
+    let ringIntervalId = null;
+    let isPanelOpen = false;
+    let unreadCount = 0;
+    let unreadBadgeEl = null;
 
-    function setOpen(open){
-      isOpen = !!open;
-      if (chatBox) {
-        chatBox.classList.toggle("is-hidden", !isOpen);
+    function ensureUnreadBadge(){
+      if(!bubble) return;
+      if(unreadBadgeEl) return;
+      unreadBadgeEl = document.createElement('span');
+      unreadBadgeEl.className = 'aliboard-chat-badge aliboard-chat-badge-hidden';
+      unreadBadgeEl.textContent = '';
+      bubble.appendChild(unreadBadgeEl);
+    }
+
+    function playCallBeepOnce(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }catch(_){
+        // AudioContext niedostepny - ignorujemy
       }
-      if (isOpen && logEl) {
-        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function startRingTone(){
+      if(ringIntervalId !== null) return;
+      playCallBeepOnce();
+      ringIntervalId = window.setInterval(playCallBeepOnce, 1500);
+    }
+
+    function stopRingTone(){
+      if(ringIntervalId !== null){
+        window.clearInterval(ringIntervalId);
+        ringIntervalId = null;
       }
-      if (launcher) {
-        launcher.setAttribute("aria-pressed", isOpen ? "true" : "false");
-        if (isOpen) {
-          launcher.classList.remove("has-unread");
+    }
+
+    function playMessageBeep(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = 600;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      }catch(_){
+        // brak dzwieku - ignorujemy
+      }
+    }
+
+    function showIncomingCallBanner(fromRole){
+      if(!panel) return;
+      if(incomingCallBanner && incomingCallBanner.parentNode){
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+      }
+      const banner = document.createElement('div');
+      banner.className = 'aliboard-call-banner';
+      banner.innerHTML = `
+        <span>?? Po³¹czenie g³osowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeñ'}</strong></span>
+        <div class="aliboard-call-actions">
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Do³¹cz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Roz³¹cz</button>
+        </div>
+      `;
+      panel.insertBefore(banner, panel.firstChild);
+      incomingCallBanner = banner;
+      startRingTone();
+
+      const acceptBtn = document.getElementById('aliboard-accept-call-btn');
+      const endBtn = document.getElementById('aliboard-end-call-btn');
+
+      if(acceptBtn){
+        acceptBtn.addEventListener('click', ()=>{
+          stopRingTone();
+          if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
+            window.aliboardVoice.acceptIncomingCall()
+              .catch((err)=>{
+                console.error('[AliboardVoice] acceptIncomingCall error', err);
+                if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                  window.aliboardVoice.hangupCall(false);
+                }
+              });
+          }
+        });
+      }
+
+      if(endBtn){
+        endBtn.addEventListener('click', ()=>{
+          stopRingTone();
+          if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+            window.aliboardChat.sendCallSignal('end');
+          }
+          if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+            window.aliboardVoice.hangupCall(false);
+          }
+        });
+      }
+    }
+
+    function setPanelOpen(isOpen){
+      isPanelOpen = !!isOpen;
+      if(isOpen){
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        try{ localStorage.setItem(CHAT_OPEN_KEY, '1'); }catch(_){}
+        setTimeout(()=> input.focus(), 20);
+        unreadCount = 0;
+        if(unreadBadgeEl){
+          unreadBadgeEl.textContent = '';
+          unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
         }
+      }else{
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+        try{ localStorage.setItem(CHAT_OPEN_KEY, '0'); }catch(_){}
       }
     }
 
-    if (launcher) {
-      launcher.addEventListener("click", ()=> setOpen(!isOpen));
+    try{
+      if(localStorage.getItem(CHAT_OPEN_KEY)==='1'){
+        setPanelOpen(true);
+      }
+    }catch(_){}
+
+    bubble.addEventListener('click', ()=>{
+      const shouldOpen = !panel.classList.contains('is-open');
+      setPanelOpen(shouldOpen);
+    });
+    if(closeBtn){
+      closeBtn.addEventListener('click', ()=> setPanelOpen(false));
     }
 
-    function resolveLabel(authorId, authorRole) {
-      const isMe = myId != null && authorId != null && myId === Number(authorId);
-
-      if (isMe) return { label: "Ty", roleClass: "chat-author--me" };
-
-      if (authorRole === "teacher")
-        return { label: "Nauczyciel", roleClass: "chat-author--teacher" };
-
-      if (authorRole === "student")
-        return { label: "UczeÅ„", roleClass: "chat-author--student" };
-
-      return { label: "GoÅ›Ä‡", roleClass: "" };
+    function appendMessage(opts){
+      if(!opts || !opts.text) return;
+      const author = opts.author === 'other' ? 'other' : 'me';
+      const msgEl = document.createElement('div');
+      msgEl.className = `aliboard-chat-message ${author}`;
+      const contentSpan = document.createElement('span');
+      contentSpan.textContent = opts.text.toString();
+      msgEl.appendChild(contentSpan);
+      if(opts.timeString){
+        const meta = document.createElement('span');
+        meta.className = 'aliboard-chat-meta';
+        meta.textContent = opts.timeString;
+        msgEl.appendChild(meta);
+      }
+      messagesEl.appendChild(msgEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function formatTime(date) {
-      const d = date instanceof Date ? date : new Date();
-      const h = String(d.getHours()).padStart(2, "0");
-      const m = String(d.getMinutes()).padStart(2, "0");
-      return `${h}:${m}`;
+    function getTimeString(){
+      try{
+        const d = new Date();
+        return d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      }catch(_){
+        return '';
+      }
     }
 
-    function appendMessage(text, authorId, authorRole) {
-      const { label, roleClass } = resolveLabel(authorId, authorRole);
+    function sendChatMessage(text) {
+      if (!text.trim()) return;
+      const trimmed = text.trim().slice(0, 500);
 
-      const msgEl = document.createElement("div");
-      msgEl.className = "chat-msg";
-
-      const headerEl = document.createElement("div");
-      headerEl.className = "chat-msg-header";
-
-      const authorEl = document.createElement("span");
-      authorEl.className = "chat-author " + roleClass;
-      authorEl.textContent = label;
-
-      const timeEl = document.createElement("span");
-      timeEl.className = "chat-time";
-      timeEl.textContent = formatTime(new Date());
-
-      headerEl.appendChild(authorEl);
-      headerEl.appendChild(timeEl);
-
-      const textEl = document.createElement("div");
-      textEl.className = "chat-text";
-      textEl.textContent = text;
-
-      msgEl.appendChild(headerEl);
-      msgEl.appendChild(textEl);
-
-      logEl.appendChild(msgEl);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    // 1) WyÅ›lij wiadomoÅ›Ä‡ (uÅ¼ywamy sendToServer z aliboard_realtime.js)
-    formEl.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const val = (inputEl.value || "").trim();
-      if (!val) return;
-
+      // Ping tylko wysy³amy na serwer, bez lokalnego dopisywania
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
-        window.aliboardChat.sendToServer(val);
-      } else {
-        console.warn("[AliboardChat] brak sendToServer â€“ czy aliboard_realtime.js jest zaÅ‚adowany?");
+        window.aliboardChat.sendToServer(trimmed);
       }
 
-      // Nie robimy local-echo â€“ serwer i tak odeÅ›le wiadomoÅ›Ä‡ z author_id/role
-      inputEl.value = "";
+      input.value = "";
+    }
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      sendChatMessage(input.value);
     });
 
-    // 2) OdbiÃ³r z WebSocketu â€“ jedna kolumna, podpisany nadawca
-    window.aliboardChat.onServerMessage = function (text, authorId, authorRole) {
-      appendMessage(text, authorId, authorRole);
-      if (!isOpen && launcher) {
-        launcher.classList.add("has-unread");
+    if(pingBtn){
+      pingBtn.addEventListener('click', ()=>{
+        appendMessage({
+          text: '?? Wys³a³eœ zaczepienie (ping).',
+          author: 'me',
+          timeString: getTimeString()
+        });
+        if(typeof window.aliboardChat.sendPing === 'function'){
+          window.aliboardChat.sendPing();
+        }
+      });
+    }
+
+        if(micBtn){
+      micBtn.addEventListener('click', ()=>{
+        isMicMuted = !isMicMuted;
+        micBtn.classList.toggle('is-muted', isMicMuted);
+        if(typeof window.aliboardChat.toggleMic === 'function'){
+          window.aliboardChat.toggleMic(isMicMuted);
+        }
+      });
+    }
+
+    window.aliboardChat.onServerMessage = function (text, authorId) {
+      const myId = window.ALIBOARD_USER_ID;
+      const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
+      const isMe = (myId !== null && myId !== undefined && serverId !== null && serverId === Number(myId));
+
+      appendMessage({
+        text: text,
+        author: isMe ? "me" : "other",
+        timeString: getTimeString(),
+      });
+
+      if(!isPanelOpen && !isMe){
+        ensureUnreadBadge();
+        unreadCount += 1;
+        unreadBadgeEl.textContent = unreadCount.toString();
+        unreadBadgeEl.classList.remove('aliboard-chat-badge-hidden');
+        playMessageBeep();
       }
     };
+
+    window.aliboardChat.onCallSignal = function(payload){
+      if(!payload) return;
+      const fromId = payload.from_id;
+      const fromRole = payload.from_role || 'unknown';
+      const action = payload.action;
+      const myId = window.ALIBOARD_USER_ID;
+
+      if(fromId != null && myId != null && Number(fromId) === Number(myId)){
+        return;
+      }
+
+      if(action === 'ring'){
+        setPanelOpen(true);
+        showIncomingCallBanner(fromRole);
+        return;
+      }
+
+      if(action === 'end'){
+        stopRingTone();
+        if(incomingCallBanner && incomingCallBanner.parentNode){
+          incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+          incomingCallBanner = null;
+        }
+        if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+          window.aliboardVoice.hangupCall(false);
+        }
+        appendMessage({
+          text: '?? Po³¹czenie zosta³o zakoñczone',
+          author: 'other',
+          timeString: getTimeString(),
+        });
+      }
+    };
+
+    // WebRTC Voice Module
+    window.aliboardVoice = window.aliboardVoice || {};
+    window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
+
+    let voicePc = null;
+    let localStream = null;
+    let isCallActive = false;
+    let isCaller = false;
+    let pendingOffer = null;
+
+    const remoteAudio = document.getElementById('aliboard-remote-audio');
+    const rtcConfig = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    };
+
+    async function ensureLocalStream(){
+      if(localStream) return localStream;
+      try{
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }catch(err){
+        console.error('[AliboardVoice] getUserMedia error', err);
+        throw err;
+      }
+      return localStream;
+    }
+
+    function createPeerConnection(){
+      if(voicePc) return voicePc;
+      voicePc = new RTCPeerConnection(rtcConfig);
+      voicePc.onicecandidate = (event)=>{
+        if(event.candidate){
+          window.aliboardVoice.sendSignal({
+            type: 'webrtc_ice_candidate',
+            candidate: event.candidate,
+          });
+        }
+      };
+      voicePc.ontrack = (event)=>{
+        if(remoteAudio){
+          remoteAudio.srcObject = event.streams[0];
+        }
+      };
+      voicePc.onconnectionstatechange = ()=>{
+        if(!voicePc) return;
+        if(['failed','disconnected','closed'].includes(voicePc.connectionState)){
+          window.aliboardVoice.hangupCall(false);
+        }
+      };
+      return voicePc;
+    }
+
+    async function addLocalTracks(pc){
+      const stream = await ensureLocalStream();
+      stream.getTracks().forEach((track)=>{
+        pc.addTrack(track, stream);
+      });
+    }
+
+    async function processOffer(data){
+      pendingOffer = null;
+      const desc = new RTCSessionDescription(data.sdp);
+      const pc = createPeerConnection();
+      await pc.setRemoteDescription(desc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      window.aliboardVoice.sendSignal({
+        type: 'webrtc_answer',
+        sdp: pc.localDescription,
+      });
+    }
+
+    window.aliboardVoice.startOutgoingCall = async function(){
+      if(isCallActive) return;
+      isCaller = true;
+      isCallActive = true;
+      pendingOffer = null;
+      const pc = createPeerConnection();
+      await addLocalTracks(pc);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      window.aliboardVoice.sendSignal({
+        type: 'webrtc_offer',
+        sdp: pc.localDescription,
+      });
+    };
+
+    window.aliboardVoice.acceptIncomingCall = async function(){
+      if(isCallActive) return;
+      isCaller = false;
+      isCallActive = true;
+      const pc = createPeerConnection();
+      await addLocalTracks(pc);
+      if(pendingOffer){
+        try{
+          await processOffer(pendingOffer);
+        }catch(err){
+          console.error('[AliboardVoice] processOffer error', err);
+          window.aliboardVoice.hangupCall(false);
+          throw err;
+        }
+      }
+    };
+
+    window.aliboardVoice.onOffer = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      pendingOffer = data;
+      if(isCallActive){
+        try{
+          await processOffer(data);
+        }catch(err){
+          console.error('[AliboardVoice] processOffer error', err);
+          window.aliboardVoice.hangupCall(false);
+        }
+      }
+    };
+
+    window.aliboardVoice.onAnswer = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      if(!voicePc) return;
+      try{
+        const desc = new RTCSessionDescription(data.sdp);
+        await voicePc.setRemoteDescription(desc);
+      }catch(err){
+        console.error('[AliboardVoice] setRemoteDescription error', err);
+        window.aliboardVoice.hangupCall(false);
+      }
+    };
+
+    window.aliboardVoice.onIceCandidate = async function(data){
+      const fromId = data.from_id;
+      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+        return;
+      }
+      if(!voicePc) return;
+      try{
+        await voicePc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }catch(err){
+        console.error('[AliboardVoice] ICE add error', err);
+      }
+    };
+
+    window.aliboardVoice.hangupCall = function(sendSignal = true){
+      isCallActive = false;
+      isCaller = false;
+      pendingOffer = null;
+      stopRingTone();
+      if(voicePc){
+        voicePc.ontrack = null;
+        voicePc.onicecandidate = null;
+        voicePc.close();
+        voicePc = null;
+      }
+      if(localStream){
+        localStream.getTracks().forEach((track)=> track.stop());
+        localStream = null;
+      }
+      if(remoteAudio){
+        remoteAudio.srcObject = null;
+      }
+      if(incomingCallBanner && incomingCallBanner.parentNode){
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+        incomingCallBanner = null;
+      }
+      if(sendSignal && window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+        window.aliboardChat.sendCallSignal('end');
+      }
+    };
+
+    if(callBtn){
+      callBtn.addEventListener('click', ()=>{
+        setPanelOpen(true);
+        appendMessage({
+          text: '?? Próba rozpoczêcia rozmowy g³osowej…',
+          author: 'me',
+          timeString: getTimeString(),
+        });
+        if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal('ring');
+        }
+        window.aliboardVoice.startOutgoingCall()
+          .catch((err)=>{
+            console.error('[AliboardVoice] startOutgoingCall error', err);
+            window.aliboardVoice.hangupCall();
+          });
+      });
+    }
+
+    function wireRealtimeBridge(){
+      const tryAttach = ()=>{
+        const realtime = window.AliboardRealtime;
+        if(!realtime){
+          setTimeout(tryAttach, 600);
+          return;
+        }
+        if(typeof realtime.sendChatMessage === 'function'){
+          window.aliboardChat.sendToServer = (text)=> realtime.sendChatMessage(text);
+        }
+        if(typeof realtime.sendChatPing === 'function'){
+          window.aliboardChat.sendPing = ()=> realtime.sendChatPing();
+        }
+        if(typeof realtime.sendCallSignal === 'function'){
+          window.aliboardChat.sendCallSignal = (action)=> realtime.sendCallSignal(action);
+        }
+        if(typeof realtime.sendChatMicState === 'function'){
+          window.aliboardChat.toggleMic = (muted)=> realtime.sendChatMicState(muted);
+        }
+      };
+      tryAttach();
+    }
+
+    wireRealtimeBridge();
+
+    (function enableChatBubbleDrag(){
+      const bubble = document.getElementById('aliboard-chat-bubble');
+      if(!bubble) return;
+
+      let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
+
+    bubble.style.position = 'fixed';
+    bubble.style.right = bubble.style.right || '16px';
+    bubble.style.bottom = bubble.style.bottom || '16px';
+
+    const onMove = (e)=>{
+      if(!dragging) return;
+      const x = e.clientX ?? (e.touches && e.touches[0]?.clientX);
+      const y = e.clientY ?? (e.touches && e.touches[0]?.clientY);
+        if(x==null || y==null) return;
+        const dx = x - startX;
+        const dy = y - startY;
+        bubble.style.right = 'auto';
+        bubble.style.bottom = 'auto';
+        bubble.style.left = `${startLeft + dx}px`;
+        bubble.style.top = `${startTop + dy}px`;
+      };
+
+      const onUp = ()=>{
+        dragging = false;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+
+      bubble.addEventListener('pointerdown', (e)=>{
+        e.preventDefault();
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = bubble.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+    })();
   })();
 
-  // PODPINAMY SIÄ˜ DO ALIBOARD REALTIME (jeÅ›li dostÄ™pny) â€“ retry aÅ¼ do skutku  window.AliboardRealtime;
+  // PODPINAMY SI? DO ALIBOARD REALTIME (je?li dost?pny) ? retry a? do skutku
+  (function attachCursorListener(){
+    const rt = window.AliboardRealtime;
     if(!rt || typeof rt.on !== 'function'){
       setTimeout(attachCursorListener, 600);
       return;
@@ -3650,11 +4284,11 @@ const toolsRow = document.getElementById('tools');
   })();
 
   if (window.AliboardRealtime && typeof window.AliboardRealtime.on === "function"){
-    // snapshot: peï¿½ny stan z ROOM_STATE przy wejï¿½ciu do pokoju
+    // snapshot: pe³ny stan z ROOM_STATE przy wejœciu do pokoju
     window.AliboardRealtime.on("snapshot", (elements) => {
       if (!Array.isArray(elements)) return;
 
-      // wyczyï¿½ï¿½ lokalne obrazy + indeks przed wgraniem snapshotu
+      // wyczyœæ lokalne obrazy + indeks przed wgraniem snapshotu
       ELEMENTS.clear();
       PAGES.forEach(p => {
         p.state.images = [];
@@ -3665,7 +4299,7 @@ const toolsRow = document.getElementById('tools');
         applyRemoteImageElement(el, "add");
       });
 
-      // po snapshot moï¿½na odrysowaï¿½ wszystkie strony
+      // po snapshot mo¿na odrysowaæ wszystkie strony
       PAGES.forEach(p => renderAll(p));
     });
 
@@ -3684,7 +4318,7 @@ const toolsRow = document.getElementById('tools');
     });
   }
 
-  // START ï¿½ zawsze startujemy od snapshotu lub pustej kartki z serwera
+  // START – zawsze startujemy od snapshotu lub pustej kartki z serwera
   if (PAGES.length === 0) {
     createPage(false);
   }
@@ -3733,21 +4367,6 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
