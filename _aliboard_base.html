@@ -3751,9 +3751,29 @@ const toolsRow = document.getElementById('tools');
       bubble.appendChild(unreadBadgeEl);
     }
 
+    let audioCtx = null;
+    function getAudioCtx(){
+      if(audioCtx) return audioCtx;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function ensureAudioContext(){
+      try{
+        const ctx = getAudioCtx();
+        if(ctx && ctx.state === 'suspended'){
+          ctx.resume();
+        }
+        return ctx;
+      }catch(_){
+        return null;
+      }
+    }
+
     function playCallBeepOnce(){
       try{
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = ensureAudioContext();
+        if(!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
@@ -3767,6 +3787,7 @@ const toolsRow = document.getElementById('tools');
         // AudioContext niedostepny - ignorujemy
       }
     }
+
 
     function startRingTone(){
       if(ringIntervalId !== null) return;
@@ -3783,7 +3804,8 @@ const toolsRow = document.getElementById('tools');
 
     function playMessageBeep(){
       try{
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = ensureAudioContext();
+        if(!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'triangle';
@@ -3797,6 +3819,7 @@ const toolsRow = document.getElementById('tools');
         // brak dzwieku - ignorujemy
       }
     }
+
 
     function showIncomingCallBanner(fromRole){
       if(!panel) return;
@@ -3821,6 +3844,7 @@ const toolsRow = document.getElementById('tools');
 
       if(acceptBtn){
         acceptBtn.addEventListener('click', ()=>{
+          ensureAudioContext();
           stopRingTone();
           if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
             window.aliboardVoice.acceptIncomingCall().catch((err)=>{
@@ -3835,6 +3859,7 @@ const toolsRow = document.getElementById('tools');
 
       if(endBtn){
         endBtn.addEventListener('click', ()=>{
+          ensureAudioContext();
           stopRingTone();
           if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
             window.aliboardChat.sendCallSignal('end');
@@ -3872,6 +3897,7 @@ const toolsRow = document.getElementById('tools');
     }catch(_){}
 
     bubble.addEventListener('click', ()=>{
+      ensureAudioContext();
       const shouldOpen = !panel.classList.contains('is-open');
       setPanelOpen(shouldOpen);
     });
@@ -4228,19 +4254,6 @@ const toolsRow = document.getElementById('tools');
       }
     };
 
-      if(endBtn){
-        endBtn.addEventListener('click', ()=>{
-          stopRingTone();
-          if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
-            window.aliboardChat.sendCallSignal('end');
-          }
-          if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
-            window.aliboardVoice.hangupCall(false);
-          }
-        });
-      }
-    }
-
     function setPanelOpen(isOpen){
       isPanelOpen = !!isOpen;
       if(isOpen){
@@ -4267,6 +4280,7 @@ const toolsRow = document.getElementById('tools');
     }catch(_){}
 
     bubble.addEventListener('click', ()=>{
+      ensureAudioContext();
       const shouldOpen = !panel.classList.contains('is-open');
       setPanelOpen(shouldOpen);
     });
