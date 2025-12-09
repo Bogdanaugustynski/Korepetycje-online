@@ -956,6 +956,12 @@
   font-size:14px;
   line-height:1.35;
   word-break:break-word;
+  background:#f8faff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:8px 10px;
+  display:inline-block;
+  color:var(--ink);
 }
 
 </style>
@@ -1103,7 +1109,7 @@
   <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
     <header class="aliboard-chat-header">
       <div class="aliboard-chat-title">
-        <span class="aliboard-chat-title-main">Czat zaj??</span>
+        <span class="aliboard-chat-title-main">Czat zajęć</span>
         <span class="aliboard-chat-title-sub">Aliboard</span>
       </div>
       <div class="aliboard-chat-actions">
@@ -4508,8 +4514,15 @@ const toolsRow = document.getElementById('tools');
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
+    const turnCfg = (window.ALIBOARD_TURN && Array.isArray(window.ALIBOARD_TURN))
+      ? window.ALIBOARD_TURN
+      : (window.ALIBOARD_TURN ? [window.ALIBOARD_TURN] : []);
+    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }, ...turnCfg];
     const rtcConfig = {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      iceServers,
+      bundlePolicy: 'balanced',
+      // unified-plan jest wspierany przez Safari
+      sdpSemantics: 'unified-plan',
     };
     const remoteAudio = document.getElementById('aliboard-remote-audio');
     const voicePeers = new Map(); // remoteId -> { pc, audioEl }
