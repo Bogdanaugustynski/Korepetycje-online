@@ -4445,6 +4445,8 @@ const toolsRow = document.getElementById('tools');
       await pc.setLocalDescription(answer);
       window.aliboardVoice.sendSignal({
         type: 'webrtc_answer',
+        from_id: window.ALIBOARD_USER_ID,
+        from_role: window.ALIBOARD_USER_ROLE || 'unknown',
         sdp: pc.localDescription,
       });
     }
@@ -4460,6 +4462,8 @@ const toolsRow = document.getElementById('tools');
       await pc.setLocalDescription(offer);
       window.aliboardVoice.sendSignal({
         type: 'webrtc_offer',
+        from_id: window.ALIBOARD_USER_ID,
+        from_role: window.ALIBOARD_USER_ROLE || 'unknown',
         sdp: pc.localDescription,
       });
     };
@@ -4503,6 +4507,9 @@ const toolsRow = document.getElementById('tools');
         return;
       }
       if(!voicePc) return;
+      if(voicePc.signalingState === 'stable'){
+        return;
+      }
       try{
         const desc = new RTCSessionDescription(data.sdp);
         await voicePc.setRemoteDescription(desc);
