@@ -963,6 +963,21 @@
   display:inline-block;
   color:var(--ink);
 }
+.chat-author--teacher + .chat-time + .chat-text,
+.chat-msg .chat-author--teacher ~ .chat-text{
+  background:#e8f2ff;
+  border-color:#dbeafe;
+}
+.chat-author--student + .chat-time + .chat-text,
+.chat-msg .chat-author--student ~ .chat-text{
+  background:#e7f6ec;
+  border-color:#dcfce7;
+}
+.chat-author--me + .chat-time + .chat-text,
+.chat-msg .chat-author--me ~ .chat-text{
+  background:#ffeaea;
+  border-color:#fee2e2;
+}
 
 </style>
 </head>
