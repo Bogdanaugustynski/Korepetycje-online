@@ -167,17 +167,21 @@
           typeof window.aliboardChat.onServerMessage === "function"
         ) {
           const authorIdRaw = data.author_id;
-          const authorId =
-            typeof authorIdRaw === "number"
-              ? authorIdRaw
-              : authorIdRaw != null
-              ? Number(authorIdRaw)
-              : null;
-          window.aliboardChat.onServerMessage(data.text || "", authorId);
-        }
-        notify("chat_message", data);
-        return;
-      }
+      const authorId =
+        typeof authorIdRaw === "number"
+          ? authorIdRaw
+          : authorIdRaw != null
+          ? Number(authorIdRaw)
+          : null;
+
+      const authorRole = data.author_role || "unknown";
+
+      // teraz przekazujemy też rolę
+      window.aliboardChat.onServerMessage(data.text || "", authorId, authorRole);
+    }
+    notify("chat_message", data);
+    return;
+  }
 
       if (data.type === "webrtc_offer") {
         if (
