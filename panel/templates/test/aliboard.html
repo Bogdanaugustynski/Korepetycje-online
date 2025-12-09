@@ -451,7 +451,29 @@
   content:none !important;
 }
 
-/* Kontener czatu */
+/* Kontener czatu + launcher */
+#aliboard-chat-launcher{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  width:48px;
+  height:48px;
+  border-radius:999px;
+  border:none;
+  background:var(--brand);
+  color:#fff;
+  font-size:20px;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  box-shadow:0 10px 28px rgba(15,23,42,0.28);
+  z-index:9999;
+}
+
+#aliboard-chat-launcher.has-unread{
+  box-shadow:0 0 0 4px rgba(239,68,68,0.35), 0 10px 28px rgba(15,23,42,0.28);
+}
+
 #aliboard-chat{
   display:flex;
   flex-direction:column;
@@ -461,6 +483,29 @@
   border-radius:12px;
   background:#fff;
   overflow:hidden;
+  position:fixed;
+  right:16px;
+  bottom:76px;
+  width:320px;
+  box-shadow:0 12px 34px rgba(15,23,42,0.18);
+  z-index:9998;
+}
+
+#aliboard-chat.is-hidden{
+  display:none;
+}
+
+@media (max-width: 768px){
+  #aliboard-chat{
+    right:10px;
+    left:10px;
+    width:auto;
+    max-width:100%;
+  }
+  #aliboard-chat-launcher{
+    right:10px;
+    bottom:10px;
+  }
 }
 
 /* Lista wiadomości */
@@ -828,8 +873,10 @@
   <div class="pages" id="pages"></div>
 </div>
 
+<div id="aliboard-chat-launcher" aria-label="Otwórz czat" title="Czat">💬</div>
+
 <!-- Aliboard Chat Module -->
-<div id="aliboard-chat">
+<div id="aliboard-chat" class="is-hidden">
   <div id="aliboard-chat-log"></div>
 
   <form id="aliboard-chat-form" autocomplete="off">
@@ -3841,13 +3888,15 @@ const toolsRow = document.getElementById('tools');
   })();
   // [CODEX:END OVERFLOW_MENU]
 
-        // Aliboard Chat Module - logika czatu
+          // Aliboard Chat Module - logika czatu
   (function () {
+    const launcher = document.getElementById("aliboard-chat-launcher");
+    const chatBox = document.getElementById("aliboard-chat");
     const logEl = document.getElementById("aliboard-chat-log");
     const formEl = document.getElementById("aliboard-chat-form");
     const inputEl = document.getElementById("aliboard-chat-input");
 
-    if (!logEl || !formEl || !inputEl) {
+    if (!logEl || !formEl || !inputEl || !chatBox) {
       console.warn("[AliboardChat] brak elementów DOM czatu");
       return;
     }
@@ -3856,6 +3905,27 @@ const toolsRow = document.getElementById('tools');
 
     const myIdRaw = window.ALIBOARD_USER_ID;
     const myId = myIdRaw != null ? Number(myIdRaw) : null;
+    let isOpen = false;
+
+    function setOpen(open){
+      isOpen = !!open;
+      if (chatBox) {
+        chatBox.classList.toggle("is-hidden", !isOpen);
+      }
+      if (isOpen && logEl) {
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      if (launcher) {
+        launcher.setAttribute("aria-pressed", isOpen ? "true" : "false");
+        if (isOpen) {
+          launcher.classList.remove("has-unread");
+        }
+      }
+    }
+
+    if (launcher) {
+      launcher.addEventListener("click", ()=> setOpen(!isOpen));
+    }
 
     function resolveLabel(authorId, authorRole) {
       const isMe = myId != null && authorId != null && myId === Number(authorId);
@@ -3928,9 +3998,13 @@ const toolsRow = document.getElementById('tools');
     // 2) Odbiór z WebSocketu – jedna kolumna, podpisany nadawca
     window.aliboardChat.onServerMessage = function (text, authorId, authorRole) {
       appendMessage(text, authorId, authorRole);
+      if (!isOpen && launcher) {
+        launcher.classList.add("has-unread");
+      }
     };
   })();
-// PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
+
+  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku  // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
   (function attachCursorListener(){
     const rt = window.AliboardRealtime;
     if(!rt || typeof rt.on !== 'function'){
@@ -4003,6 +4077,8 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
 </body>
 </html>
+
+
 
 
 
