@@ -107,12 +107,9 @@
     };
     window.aliboardVoice.sendSignal = function (payload) {
       if (!payload || typeof payload !== "object" || !payload.type) return;
-      const enriched = {
-        from_id: window.ALIBOARD_USER_ID,
-        from_role: window.ALIBOARD_USER_ROLE || "unknown",
+      send({
         ...payload,
-      };
-      send(enriched);
+      });
     };
 
     socket.onopen = function () {
@@ -176,14 +173,7 @@
               : authorIdRaw != null
               ? Number(authorIdRaw)
               : null;
-          const authorRole = data.author_role || "unknown";
-
-          // teraz przekazujemy też rolę
-          window.aliboardChat.onServerMessage(
-            data.text || "",
-            authorId,
-            authorRole
-          );
+          window.aliboardChat.onServerMessage(data.text || "", authorId);
         }
         notify("chat_message", data);
         return;
