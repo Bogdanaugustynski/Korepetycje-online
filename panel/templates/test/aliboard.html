@@ -4404,8 +4404,29 @@ const toolsRow = document.getElementById('tools');
       micBtn.addEventListener('click', ()=>{
         isMicMuted = !isMicMuted;
         micBtn.classList.toggle('is-muted', isMicMuted);
-        if(typeof window.aliboardChat.toggleMic === 'function'){
-          window.aliboardChat.toggleMic(isMicMuted);
+    if(typeof window.aliboardChat.toggleMic === 'function'){
+      window.aliboardChat.toggleMic(isMicMuted);
+    }
+  });
+}
+
+    if(callBtn){
+      callBtn.addEventListener('click', ()=>{
+        setPanelOpen(true);
+        appendMessage({
+          text: '🔔 Próba rozpoczęcia rozmowy głosowej',
+          authorId: window.ALIBOARD_USER_ID,
+          authorRole: window.ALIBOARD_USER_ROLE || 'unknown',
+          timeString: getTimeString(),
+        });
+        if(window.aliboardVoice && typeof window.aliboardVoice.startOutgoingCall === 'function'){
+          window.aliboardVoice.startOutgoingCall()
+            .catch((err)=>{
+              console.error('[AliboardVoice] startOutgoingCall error', err);
+              if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                window.aliboardVoice.hangupCall(false);
+              }
+            });
         }
       });
     }
