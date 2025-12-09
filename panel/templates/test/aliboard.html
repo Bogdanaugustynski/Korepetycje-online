@@ -4443,17 +4443,22 @@ const toolsRow = document.getElementById('tools');
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
-    const rtcConfig = {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    };
-    const voicePeers = new Map();
-    const remoteAudio = document.getElementById('aliboard-remote-audio');
-    let lastRingFromId = null;
+      const rtcConfig = {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      };
+      const voicePeers = new Map();
+      const pendingIce = new Map(); // peerId -> RTCIceCandidate[]
+      const remoteAudio = document.getElementById('aliboard-remote-audio');
+      let lastRingFromId = null;
 
-    function buildAudioEl(peerId){
-      const elId = `aliboard-voice-${peerId}`;
-      let au = document.getElementById(elId);
-      if(!au){
+      function getPeerKey(peerId){
+        return peerId !== undefined && peerId !== null ? peerId : 'legacy';
+      }
+
+      function buildAudioEl(peerId){
+        const elId = `aliboard-voice-${peerId}`;
+        let au = document.getElementById(elId);
+        if(!au){
         au = document.createElement('audio');
         au.id = elId;
         au.autoplay = true;
@@ -4472,21 +4477,23 @@ const toolsRow = document.getElementById('tools');
       });
       window.__ALIBOARD_LOCAL_STREAM = stream;
       return stream;
-    }
+      }
 
-    function destroyPeer(peerId){
-      const pc = voicePeers.get(peerId);
-      if(pc){
-        pc.ontrack = null;
-        pc.onicecandidate = null;
-        try{ pc.close(); }catch(_){ }
-        voicePeers.delete(peerId);
-      }
-      const el = document.getElementById(`aliboard-voice-${peerId}`);
-      if(el){
-        el.srcObject = null;
-        el.remove();
-      }
+      function destroyPeer(peerId){
+        const key = getPeerKey(peerId);
+        const pc = voicePeers.get(key);
+        if(pc){
+          pc.ontrack = null;
+          pc.onicecandidate = null;
+          try{ pc.close(); }catch(_){ }
+          voicePeers.delete(key);
+        }
+        pendingIce.delete(key);
+        const el = document.getElementById(`aliboard-voice-${peerId}`);
+        if(el){
+          el.srcObject = null;
+          el.remove();
+        }
     }
 
     async function addLocalTracks(pc){
@@ -4494,13 +4501,13 @@ const toolsRow = document.getElementById('tools');
       stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
     }
 
-    function createPeer(peerId){
-      const key = (peerId !== undefined && peerId !== null) ? peerId : 'legacy';
-      let pc = voicePeers.get(key);
-      if(pc) return pc;
-      pc = new RTCPeerConnection(rtcConfig);
-      pc.onicecandidate = (event)=>{
-        if(event.candidate){
+      function createPeer(peerId){
+        const key = getPeerKey(peerId);
+        let pc = voicePeers.get(key);
+        if(pc) return pc;
+        pc = new RTCPeerConnection(rtcConfig);
+        pc.onicecandidate = (event)=>{
+          if(event.candidate){
           if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceIce === 'function' && peerId !== undefined && peerId !== null){
             window.AliboardRealtime.voiceIce(peerId, event.candidate);
           }else{
@@ -4521,16 +4528,53 @@ const toolsRow = document.getElementById('tools');
         if(['failed','disconnected','closed'].includes(pc.connectionState)){
           destroyPeer(key);
         }
-      };
-      voicePeers.set(key, pc);
-      return pc;
-    }
+        };
+        voicePeers.set(key, pc);
+        return pc;
+      }
 
-    function shouldHandleToId(toId){
-      if(toId === undefined || toId === null) return true;
-      if(window.ALIBOARD_USER_ID === undefined || window.ALIBOARD_USER_ID === null) return false;
-      return Number(toId) === Number(window.ALIBOARD_USER_ID);
-    }
+      function safeAddIceCandidate(peerId, candidateObj){
+        const key = getPeerKey(peerId);
+        const pc = voicePeers.get(key);
+        if(!pc){
+          console.warn("[AliboardVoice] ICE dla nieznanego peerId", peerId);
+          return;
+        }
+        const candidate = new RTCIceCandidate(candidateObj);
+
+        if(pc.remoteDescription && pc.remoteDescription.type){
+          pc.addIceCandidate(candidate).catch((err)=>{
+            console.error("[AliboardVoice] addIceCandidate error", err);
+          });
+        }else{
+          if(!pendingIce.has(key)){
+            pendingIce.set(key, []);
+          }
+          pendingIce.get(key).push(candidate);
+          console.debug("[AliboardVoice] ICE queued (no remoteDescription yet)", peerId);
+        }
+      }
+
+      async function flushPendingIce(peerId, pc){
+        const key = getPeerKey(peerId);
+        const queued = pendingIce.get(key);
+        if(!queued || !queued.length) return;
+        console.debug("[AliboardVoice] flushing queued ICE for", peerId, queued.length);
+        for(const cand of queued){
+          try{
+            await pc.addIceCandidate(cand);
+          }catch(err){
+            console.error("[AliboardVoice] flush addIceCandidate error", err);
+          }
+        }
+        pendingIce.delete(key);
+      }
+
+      function shouldHandleToId(toId){
+        if(toId === undefined || toId === null) return true;
+        if(window.ALIBOARD_USER_ID === undefined || window.ALIBOARD_USER_ID === null) return false;
+        return Number(toId) === Number(window.ALIBOARD_USER_ID);
+      }
 
     window.aliboardVoice.startCallTo = async function(peerId){
       if(peerId === undefined || peerId === null) return;
@@ -4555,15 +4599,16 @@ const toolsRow = document.getElementById('tools');
         return;
       }
       if(!shouldHandleToId(toId)) return;
-      const pc = createPeer(fromId);
-      await addLocalTracks(pc);
-      const desc = new RTCSessionDescription(data.sdp);
-      await pc.setRemoteDescription(desc);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceAnswer === 'function'){
-        window.AliboardRealtime.voiceAnswer(fromId, pc.localDescription);
-      }else{
+        const pc = createPeer(fromId);
+        await addLocalTracks(pc);
+        const desc = new RTCSessionDescription(data.sdp);
+        await pc.setRemoteDescription(desc);
+        await flushPendingIce(fromId, pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceAnswer === 'function'){
+          window.AliboardRealtime.voiceAnswer(fromId, pc.localDescription);
+        }else{
         window.aliboardVoice.sendSignal({
           type: 'webrtc_answer',
           sdp: pc.localDescription,
@@ -4578,36 +4623,31 @@ const toolsRow = document.getElementById('tools');
         return;
       }
       if(!shouldHandleToId(toId)) return;
-      const pc = voicePeers.get(fromId != null ? fromId : 'legacy');
-      if(!pc) return;
-      try{
-        const desc = new RTCSessionDescription(data.sdp);
-        await pc.setRemoteDescription(desc);
-      }catch(err){
-        console.error('[AliboardVoice] setRemoteDescription error', err);
-        window.aliboardVoice.hangupAll(false);
-      }
-    };
+        const pc = voicePeers.get(fromId != null ? fromId : 'legacy');
+        if(!pc) return;
+        try{
+          const desc = new RTCSessionDescription(data.sdp);
+          await pc.setRemoteDescription(desc);
+          await flushPendingIce(fromId, pc);
+        }catch(err){
+          console.error('[AliboardVoice] setRemoteDescription error', err);
+          window.aliboardVoice.hangupAll(false);
+        }
+      };
 
     window.aliboardVoice.onIceCandidate = async function(data){
       const fromId = data.from_id;
       const toId = data.to_id;
-      if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
-        return;
-      }
-      if(!shouldHandleToId(toId)) return;
-      const pc = voicePeers.get(fromId != null ? fromId : 'legacy');
-      if(!pc) return;
-      try{
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-      }catch(err){
-        console.error('[AliboardVoice] ICE add error', err);
-      }
-    };
+        if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
+          return;
+        }
+        if(!shouldHandleToId(toId)) return;
+        safeAddIceCandidate(fromId != null ? fromId : 'legacy', data.candidate);
+      };
 
-    window.aliboardVoice.hangupAll = function(sendSignal = true){
-      stopRingTone();
-      Array.from(voicePeers.keys()).forEach((pid)=> destroyPeer(pid));
+      window.aliboardVoice.hangupAll = function(sendSignal = true){
+        stopRingTone();
+        Array.from(voicePeers.keys()).forEach((pid)=> destroyPeer(pid));
       const ls = window.__ALIBOARD_LOCAL_STREAM;
       if(ls){
         ls.getTracks().forEach((t)=> t.stop());

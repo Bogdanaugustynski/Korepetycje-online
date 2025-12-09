@@ -4005,6 +4005,9 @@ const toolsRow = document.getElementById('tools');
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
+    const voicePeers = new Map(); // peerId -> RTCPeerConnection
+    const pendingIce = new Map(); // peerId -> RTCIceCandidate[]
+
     let voicePc = null;
     let localStream = null;
     let isCallActive = false;
@@ -4015,6 +4018,7 @@ const toolsRow = document.getElementById('tools');
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     };
+
 
     async function ensureLocalStream(){
       if(localStream) return localStream;
@@ -4027,9 +4031,56 @@ const toolsRow = document.getElementById('tools');
       return localStream;
     }
 
-    function createPeerConnection(){
-      if(voicePc) return voicePc;
+    function getPeerKey(peerId){
+      return peerId !== undefined && peerId !== null ? peerId : 'legacy';
+    }
+
+    function safeAddIceCandidate(peerId, candidateObj) {
+      const key = getPeerKey(peerId);
+      const pc = voicePeers.get(key) || voicePc;
+      if (!pc) {
+        console.warn("[AliboardVoice] ICE dla nieznanego peerId", peerId);
+        return;
+      }
+
+      const candidate = new RTCIceCandidate(candidateObj);
+
+      if (pc.remoteDescription && pc.remoteDescription.type) {
+        pc.addIceCandidate(candidate).catch((err) => {
+          console.error("[AliboardVoice] addIceCandidate error", err);
+        });
+      } else {
+        if (!pendingIce.has(key)) {
+          pendingIce.set(key, []);
+        }
+        pendingIce.get(key).push(candidate);
+        console.debug("[AliboardVoice] ICE queued (no remoteDescription yet)", peerId);
+      }
+    }
+
+    async function flushPendingIce(peerId, pc){
+      const key = getPeerKey(peerId);
+      const queued = pendingIce.get(key);
+      if(!queued || !queued.length) return;
+      console.debug("[AliboardVoice] flushing queued ICE for", peerId, queued.length);
+      for(const cand of queued){
+        try{
+          await pc.addIceCandidate(cand);
+        }catch(err){
+          console.error("[AliboardVoice] flush addIceCandidate error", err);
+        }
+      }
+      pendingIce.delete(key);
+    }
+
+    function createPeerConnection(peerId){
+      const key = getPeerKey(peerId);
+      if(voicePeers.has(key)){
+        voicePc = voicePeers.get(key);
+        return voicePc;
+      }
       voicePc = new RTCPeerConnection(rtcConfig);
+      voicePeers.set(key, voicePc);
       voicePc.onicecandidate = (event)=>{
         if(event.candidate){
           window.aliboardVoice.sendSignal({
@@ -4059,11 +4110,13 @@ const toolsRow = document.getElementById('tools');
       });
     }
 
+
     async function processOffer(data){
       pendingOffer = null;
       const desc = new RTCSessionDescription(data.sdp);
-      const pc = createPeerConnection();
+      const pc = createPeerConnection(data.from_id);
       await pc.setRemoteDescription(desc);
+      await flushPendingIce(data.from_id, pc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       window.aliboardVoice.sendSignal({
@@ -4120,6 +4173,7 @@ const toolsRow = document.getElementById('tools');
       }
     };
 
+
     window.aliboardVoice.onAnswer = async function(data){
       const fromId = data.from_id;
       if(fromId != null && window.ALIBOARD_USER_ID != null && Number(fromId) === Number(window.ALIBOARD_USER_ID)){
@@ -4129,11 +4183,13 @@ const toolsRow = document.getElementById('tools');
       try{
         const desc = new RTCSessionDescription(data.sdp);
         await voicePc.setRemoteDescription(desc);
+        await flushPendingIce(fromId, voicePc);
       }catch(err){
         console.error('[AliboardVoice] setRemoteDescription error', err);
         window.aliboardVoice.hangupCall(false);
       }
     };
+
 
     window.aliboardVoice.onIceCandidate = async function(data){
       const fromId = data.from_id;
@@ -4141,11 +4197,7 @@ const toolsRow = document.getElementById('tools');
         return;
       }
       if(!voicePc) return;
-      try{
-        await voicePc.addIceCandidate(new RTCIceCandidate(data.candidate));
-      }catch(err){
-        console.error('[AliboardVoice] ICE add error', err);
-      }
+      safeAddIceCandidate(fromId, data.candidate);
     };
 
     window.aliboardVoice.hangupCall = function(sendSignal = true){
@@ -4153,6 +4205,8 @@ const toolsRow = document.getElementById('tools');
       isCaller = false;
       pendingOffer = null;
       stopRingTone();
+      voicePeers.clear();
+      pendingIce.clear();
       if(voicePc){
         voicePc.ontrack = null;
         voicePc.onicecandidate = null;
@@ -4175,26 +4229,181 @@ const toolsRow = document.getElementById('tools');
       }
     };
 
-    if(callBtn){
-      callBtn.addEventListener('click', ()=>{
-        setPanelOpen(true);
-        appendMessage({
-          text: '?? Próba rozpoczêcia rozmowy g³osowej…',
-          author: 'me',
-          timeString: getTimeString(),
+    window.aliboardVoice.hangupCall(false);
+                }
+              });
+          }
         });
-        if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
-          window.aliboardChat.sendCallSignal('ring');
+      }
+
+      if(endBtn){
+        endBtn.addEventListener('click', ()=>{
+          stopRingTone();
+          if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
+            window.aliboardChat.sendCallSignal('end');
+          }
+          if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+            window.aliboardVoice.hangupCall(false);
+          }
+        });
+      }
+    }
+
+    function setPanelOpen(isOpen){
+      isPanelOpen = !!isOpen;
+      if(isOpen){
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        try{ localStorage.setItem(CHAT_OPEN_KEY, '1'); }catch(_){}
+        setTimeout(()=> input.focus(), 20);
+        unreadCount = 0;
+        if(unreadBadgeEl){
+          unreadBadgeEl.textContent = '';
+          unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
         }
-        window.aliboardVoice.startOutgoingCall()
-          .catch((err)=>{
-            console.error('[AliboardVoice] startOutgoingCall error', err);
-            window.aliboardVoice.hangupCall();
-          });
+      }else{
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+        try{ localStorage.setItem(CHAT_OPEN_KEY, '0'); }catch(_){}
+      }
+    }
+
+    try{
+      if(localStorage.getItem(CHAT_OPEN_KEY)==='1'){
+        setPanelOpen(true);
+      }
+    }catch(_){}
+
+    bubble.addEventListener('click', ()=>{
+      const shouldOpen = !panel.classList.contains('is-open');
+      setPanelOpen(shouldOpen);
+    });
+    if(closeBtn){
+      closeBtn.addEventListener('click', ()=> setPanelOpen(false));
+    }
+
+    function appendMessage(opts){
+      if(!opts || !opts.text) return;
+      const author = opts.author === 'other' ? 'other' : 'me';
+      const msgEl = document.createElement('div');
+      msgEl.className = `aliboard-chat-message ${author}`;
+      const contentSpan = document.createElement('span');
+      contentSpan.textContent = opts.text.toString();
+      msgEl.appendChild(contentSpan);
+      if(opts.timeString){
+        const meta = document.createElement('span');
+        meta.className = 'aliboard-chat-meta';
+        meta.textContent = opts.timeString;
+        msgEl.appendChild(meta);
+      }
+      messagesEl.appendChild(msgEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function getTimeString(){
+      try{
+        const d = new Date();
+        return d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      }catch(_){
+        return '';
+      }
+    }
+
+    function sendChatMessage(text) {
+      if (!text.trim()) return;
+      const trimmed = text.trim().slice(0, 500);
+
+      // Ping tylko wysy³amy na serwer, bez lokalnego dopisywania
+      if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
+        window.aliboardChat.sendToServer(trimmed);
+      }
+
+      input.value = "";
+    }
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      sendChatMessage(input.value);
+    });
+
+    if(pingBtn){
+      pingBtn.addEventListener('click', ()=>{
+        appendMessage({
+          text: '?? Wys³a³eœ zaczepienie (ping).',
+          author: 'me',
+          timeString: getTimeString()
+        });
+        if(typeof window.aliboardChat.sendPing === 'function'){
+          window.aliboardChat.sendPing();
+        }
       });
     }
 
-    function wireRealtimeBridge(){
+        if(micBtn){
+      micBtn.addEventListener('click', ()=>{
+        isMicMuted = !isMicMuted;
+        micBtn.classList.toggle('is-muted', isMicMuted);
+        if(typeof window.aliboardChat.toggleMic === 'function'){
+          window.aliboardChat.toggleMic(isMicMuted);
+        }
+      });
+    }
+
+    window.aliboardChat.onServerMessage = function (text, authorId) {
+      const myId = window.ALIBOARD_USER_ID;
+      const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
+      const isMe = (myId !== null && myId !== undefined && serverId !== null && serverId === Number(myId));
+
+      appendMessage({
+        text: text,
+        author: isMe ? "me" : "other",
+        timeString: getTimeString(),
+      });
+
+      if(!isPanelOpen && !isMe){
+        ensureUnreadBadge();
+        unreadCount += 1;
+        unreadBadgeEl.textContent = unreadCount.toString();
+        unreadBadgeEl.classList.remove('aliboard-chat-badge-hidden');
+        playMessageBeep();
+      }
+    };
+
+    window.aliboardChat.onCallSignal = function(payload){
+      if(!payload) return;
+      const fromId = payload.from_id;
+      const fromRole = payload.from_role || 'unknown';
+      const action = payload.action;
+      const myId = window.ALIBOARD_USER_ID;
+
+      if(fromId != null && myId != null && Number(fromId) === Number(myId)){
+        return;
+      }
+
+      if(action === 'ring'){
+        setPanelOpen(true);
+        showIncomingCallBanner(fromRole);
+        return;
+      }
+
+      if(action === 'end'){
+        stopRingTone();
+        if(incomingCallBanner && incomingCallBanner.parentNode){
+          incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+          incomingCallBanner = null;
+        }
+        if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+          window.aliboardVoice.hangupCall(false);
+        }
+        appendMessage({
+          text: '?? Po³¹czenie zosta³o zakoñczone',
+          author: 'other',
+          timeString: getTimeString(),
+        });
+      }
+    };
+
+    wireRealtimeBridge(){
       const tryAttach = ()=>{
         const realtime = window.AliboardRealtime;
         if(!realtime){
