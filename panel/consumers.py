@@ -4,6 +4,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocke
 
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
+ROOM_CHANNELS = {}  # room_id -> {user_id: channel_name}
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -65,9 +66,12 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.group_name = f"aliboard_{self.room_id}"
+        user = self.scope["user"]
+        self.user_id = self._normalize_user_id(user.id) if user.is_authenticated else None
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        self._register_channel()
 
         state = ROOM_STATE.get(self.room_id)
         if state and state.get("elements"):
@@ -80,6 +84,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        self._unregister_channel()
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
@@ -227,6 +232,47 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        elif msg_type == "audio_mode":
+            mode = content.get("mode")
+            if not mode:
+                return
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "broadcast.audio_mode",
+                    "mode": mode,
+                    "from_id": self.user_id,
+                },
+            )
+
+        elif msg_type and msg_type.startswith("voice:"):
+            payload = {**content, "from_id": self.user_id}
+            to_id_raw = content.get("to_id")
+            to_id = self._normalize_user_id(to_id_raw)
+
+            if to_id_raw is not None:
+                if to_id is None:
+                    return
+
+                target_channel = self._get_channel_for_user(to_id)
+                if target_channel:
+                    await self.channel_layer.send(
+                        target_channel,
+                        {
+                            "type": "direct.voice",
+                            "payload": payload,
+                        },
+                    )
+            else:
+                await self.channel_layer.group_send(
+                    self.group_name,
+                    {
+                        "type": "broadcast.voice",
+                        "payload": payload,
+                    },
+                )
+
     async def board_element_add(self, event):
         if event.get("sender_channel") == self.channel_name:
             return
@@ -313,4 +359,45 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "from_id": event.get("from_id"),
             }
         )
+
+    async def broadcast_audio_mode(self, event):
+        await self.send_json(
+            {
+                "type": "audio_mode",
+                "mode": event.get("mode"),
+                "from_id": event.get("from_id"),
+            }
+        )
+
+    async def broadcast_voice(self, event):
+        await self.send_json(event.get("payload") or {})
+
+    async def direct_voice(self, event):
+        await self.send_json(event.get("payload") or {})
+
+    def _normalize_user_id(self, raw):
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _register_channel(self):
+        if self.user_id is None:
+            return
+        room_channels = ROOM_CHANNELS.setdefault(self.room_id, {})
+        room_channels[self.user_id] = self.channel_name
+
+    def _unregister_channel(self):
+        if self.user_id is None:
+            return
+        room_channels = ROOM_CHANNELS.get(self.room_id)
+        if not room_channels:
+            return
+        room_channels.pop(self.user_id, None)
+        if not room_channels:
+            ROOM_CHANNELS.pop(self.room_id, None)
+
+    def _get_channel_for_user(self, user_id):
+        room_channels = ROOM_CHANNELS.get(self.room_id) or {}
+        return room_channels.get(user_id)
 
