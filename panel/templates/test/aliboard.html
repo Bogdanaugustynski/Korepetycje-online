@@ -1121,17 +1121,35 @@
 </div>
 
 <!-- Aliboard Chat Module -->
-<div id="aliboard-chat">
-  <div id="aliboard-chat-log"></div>
+<div class="aliboard-chat-root">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
+    <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
+  </button>
 
-  <form id="aliboard-chat-form" autocomplete="off">
-    <input
-      id="aliboard-chat-input"
-      type="text"
-      placeholder="Napisz wiadomość…"
-    />
-    <button type="submit">Wyślij</button>
-  </form>
+  <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
+    <header class="aliboard-chat-header">
+      <div class="aliboard-chat-title">
+        <span class="aliboard-chat-title-main">Czat zajęć</span>
+        <span class="aliboard-chat-title-sub">Aliboard</span>
+      </div>
+      <div class="aliboard-chat-actions">
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
+          &#10006;
+        </button>
+      </div>
+    </header>
+
+    <div id="aliboard-chat-log"></div>
+
+    <form id="aliboard-chat-form" autocomplete="off">
+      <input
+        id="aliboard-chat-input"
+        type="text"
+        placeholder="Napisz wiadomość…"
+      />
+      <button type="submit">Wyślij</button>
+    </form>
+  </section>
 </div>
 <!-- koniec: Aliboard Chat Module -->
 
@@ -4765,6 +4783,9 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
   const logEl  = document.getElementById('aliboard-chat-log');
   const formEl = document.getElementById('aliboard-chat-form');
   const inputEl= document.getElementById('aliboard-chat-input');
+  const bubbleEl = document.getElementById('aliboard-chat-bubble');
+  const panelEl = document.getElementById('aliboard-chat-panel');
+  const closeEl = document.getElementById('aliboard-chat-close');
 
   if (!logEl || !formEl || !inputEl) {
     console.warn('[AliboardChat] brak elementów DOM czatu');
@@ -4850,6 +4871,28 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
   window.aliboardChat.onServerMessage = function(text, authorId, authorRole){
     appendMessage(text, authorId, authorRole);
   };
+
+  function setPanelOpen(isOpen){
+    if(!panelEl) return;
+    panelEl.classList.toggle('is-open', !!isOpen);
+    panelEl.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    if(isOpen){
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
+
+  if(bubbleEl && panelEl){
+    bubbleEl.addEventListener('click', function(){
+      const currentlyOpen = panelEl.classList.contains('is-open');
+      setPanelOpen(!currentlyOpen);
+    });
+  }
+
+  if(closeEl){
+    closeEl.addEventListener('click', function(){
+      setPanelOpen(false);
+    });
+  }
 
 })();
 </script>
