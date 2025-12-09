@@ -958,32 +958,6 @@
   word-break:break-word;
 }
 
-/* Input + przycisk */
-#aliboard-chat-form{
-  display:flex;
-  gap:6px;
-  padding:8px 10px;
-  border-top:1px solid var(--line);
-}
-
-#aliboard-chat-input{
-  flex:1;
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:6px 10px;
-  font-size:14px;
-}
-
-#aliboard-chat-form button{
-  border:none;
-  border-radius:999px;
-  padding:6px 12px;
-  background:var(--brand);
-  color:#fff;
-  font-size:14px;
-  cursor:pointer;
-}
-
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
@@ -1122,32 +1096,48 @@
 
 <!-- Aliboard Chat Module -->
 <div class="aliboard-chat-root">
-  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otw?rz czat">
     <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
   </button>
 
   <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
     <header class="aliboard-chat-header">
       <div class="aliboard-chat-title">
-        <span class="aliboard-chat-title-main">Czat zajęć</span>
+        <span class="aliboard-chat-title-main">Czat zaj??</span>
         <span class="aliboard-chat-title-sub">Aliboard</span>
       </div>
       <div class="aliboard-chat-actions">
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
+          &#128276;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa g?osowa">
+          &#128222;
+        </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
+          &#127908;
+        </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
           &#10006;
         </button>
       </div>
     </header>
 
-    <div id="aliboard-chat-log"></div>
+    <!-- Audio remote dla WebRTC -->
+    <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
 
-    <form id="aliboard-chat-form" autocomplete="off">
+    <div class="aliboard-chat-messages" id="aliboard-chat-log" aria-live="polite"></div>
+
+    <form class="aliboard-chat-input-row" id="aliboard-chat-form" autocomplete="off">
       <input
-        id="aliboard-chat-input"
         type="text"
-        placeholder="Napisz wiadomość…"
+        id="aliboard-chat-input"
+        class="aliboard-chat-input"
+        placeholder="Napisz wiadomo??"
+        maxlength="500"
       />
-      <button type="submit">Wyślij</button>
+      <button type="submit" class="aliboard-chat-send-btn">
+        Wy?lij
+      </button>
     </form>
   </section>
 </div>
@@ -4158,7 +4148,7 @@ const toolsRow = document.getElementById('tools');
     const closeBtn = document.getElementById('aliboard-chat-close');
     const form = document.getElementById('aliboard-chat-form');
     const input = document.getElementById('aliboard-chat-input');
-    const messagesEl = document.getElementById('aliboard-chat-messages');
+    const messagesEl = document.getElementById('aliboard-chat-log');
     const pingBtn = document.getElementById('aliboard-chat-ping');
     const micBtn = document.getElementById('aliboard-chat-mic');
     const callBtn = document.getElementById('aliboard-chat-call');
@@ -4325,31 +4315,58 @@ const toolsRow = document.getElementById('tools');
       closeBtn.addEventListener('click', ()=> setPanelOpen(false));
     }
 
-    function appendMessage(opts){
-      if(!opts || !opts.text) return;
-      const author = opts.author === 'other' ? 'other' : 'me';
-      const msgEl = document.createElement('div');
-      msgEl.className = `aliboard-chat-message ${author}`;
-      const contentSpan = document.createElement('span');
-      contentSpan.textContent = opts.text.toString();
-      msgEl.appendChild(contentSpan);
-      if(opts.timeString){
-        const meta = document.createElement('span');
-        meta.className = 'aliboard-chat-meta';
-        meta.textContent = opts.timeString;
-        msgEl.appendChild(meta);
-      }
-      messagesEl.appendChild(msgEl);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+    function resolveLabel(authorId, authorRole){
+      const myId = window.ALIBOARD_USER_ID;
+      const isMe = (myId != null && authorId != null && Number(myId) === Number(authorId));
+
+      if (isMe) return { label: 'Ty', roleClass: 'chat-author--me' };
+      if (authorRole === 'teacher') return { label: 'Nauczyciel', roleClass: 'chat-author--teacher' };
+      if (authorRole === 'student') return { label: 'Uczeń', roleClass: 'chat-author--student' };
+      return { label: 'Gość', roleClass: '' };
     }
 
     function getTimeString(){
       try{
         const d = new Date();
-        return d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+        const h = String(d.getHours()).padStart(2,'0');
+        const m = String(d.getMinutes()).padStart(2,'0');
+        return `${h}:${m}`;
       }catch(_){
         return '';
       }
+    }
+
+    function appendMessage(opts){
+      if(!opts || !opts.text) return;
+      const text = opts.text.toString();
+      const { label, roleClass } = resolveLabel(opts.authorId, opts.authorRole);
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'chat-msg';
+
+      const headerEl = document.createElement('div');
+      headerEl.className = 'chat-msg-header';
+
+      const authorEl = document.createElement('span');
+      authorEl.className = 'chat-author ' + roleClass;
+      authorEl.textContent = label;
+
+      const timeEl = document.createElement('span');
+      timeEl.className = 'chat-time';
+      timeEl.textContent = opts.timeString || getTimeString();
+
+      headerEl.appendChild(authorEl);
+      headerEl.appendChild(timeEl);
+
+      const textEl = document.createElement('div');
+      textEl.className = 'chat-text';
+      textEl.textContent = text;
+
+      msgEl.appendChild(headerEl);
+      msgEl.appendChild(textEl);
+
+      messagesEl.appendChild(msgEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     function sendChatMessage(text) {
@@ -4372,8 +4389,9 @@ const toolsRow = document.getElementById('tools');
     if(pingBtn){
       pingBtn.addEventListener('click', ()=>{
         appendMessage({
-          text: '🔔 Wysłałeś zaczepienie (ping).',
-          author: 'me',
+          text: '?? Wys?a?em zaczepienie (ping).',
+          authorId: window.ALIBOARD_USER_ID,
+          authorRole: window.ALIBOARD_USER_ROLE || 'unknown',
           timeString: getTimeString()
         });
         if(typeof window.aliboardChat.sendPing === 'function'){
@@ -4392,14 +4410,15 @@ const toolsRow = document.getElementById('tools');
       });
     }
 
-    window.aliboardChat.onServerMessage = function (text, authorId) {
+    window.aliboardChat.onServerMessage = function (text, authorId, authorRole) {
       const myId = window.ALIBOARD_USER_ID;
       const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
       const isMe = (myId !== null && myId !== undefined && serverId !== null && serverId === Number(myId));
 
       appendMessage({
         text: text,
-        author: isMe ? "me" : "other",
+        authorId: authorId,
+        authorRole: authorRole || 'unknown',
         timeString: getTimeString(),
       });
 
@@ -4429,7 +4448,7 @@ const toolsRow = document.getElementById('tools');
         return;
       }
 
-      if(action === 'end'){
+            if(action === 'end'){
         stopRingTone();
         if(incomingCallBanner && incomingCallBanner.parentNode){
           incomingCallBanner.parentNode.removeChild(incomingCallBanner);
@@ -4439,8 +4458,9 @@ const toolsRow = document.getElementById('tools');
           window.aliboardVoice.hangupCall(false);
         }
         appendMessage({
-          text: '📴 Połączenie zostało zakończone',
-          author: 'other',
+          text: '?? Po??czenie zosta?o zako?czone',
+          authorId: payload && payload.from_id,
+          authorRole: fromRole,
           timeString: getTimeString(),
         });
       }
@@ -4623,9 +4643,10 @@ const toolsRow = document.getElementById('tools');
     if(callBtn){
       callBtn.addEventListener('click', ()=>{
         setPanelOpen(true);
-        appendMessage({
-          text: '📞 Próba rozpoczęcia rozmowy głosowej…',
-          author: 'me',
+                appendMessage({
+          text: '?? Pr?ba rozpocz?cia rozmowy g?osowej',
+          authorId: window.ALIBOARD_USER_ID,
+          authorRole: window.ALIBOARD_USER_ROLE || 'unknown',
           timeString: getTimeString(),
         });
         if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
@@ -4778,124 +4799,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
   })();
 </script>
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
-<script>
-(function(){
-  const logEl  = document.getElementById('aliboard-chat-log');
-  const formEl = document.getElementById('aliboard-chat-form');
-  const inputEl= document.getElementById('aliboard-chat-input');
-  const bubbleEl = document.getElementById('aliboard-chat-bubble');
-  const panelEl = document.getElementById('aliboard-chat-panel');
-  const closeEl = document.getElementById('aliboard-chat-close');
 
-  if (!logEl || !formEl || !inputEl) {
-    console.warn('[AliboardChat] brak elementów DOM czatu');
-    return;
-  }
-
-  // Upewniamy się, że mamy obiekt globalny
-  window.aliboardChat = window.aliboardChat || {};
-
-  // Pomocniczo – próba odczytu ID użytkownika (może być string)
-  const myIdRaw = window.ALIBOARD_USER_ID;
-  const myId = myIdRaw != null ? Number(myIdRaw) : null;
-
-  function resolveLabel(authorId, authorRole){
-    const isMe = (myId != null && authorId != null && myId === Number(authorId));
-
-    if (isMe) return { label: 'Ty', roleClass: 'chat-author--me' };
-
-    if (authorRole === 'teacher')
-      return { label: 'Nauczyciel', roleClass: 'chat-author--teacher' };
-
-    if (authorRole === 'student')
-      return { label: 'Uczeń', roleClass: 'chat-author--student' };
-
-    return { label: 'Gość', roleClass: '' };
-  }
-
-  function formatTime(date){
-    const d = date instanceof Date ? date : new Date();
-    const h = String(d.getHours()).padStart(2,'0');
-    const m = String(d.getMinutes()).padStart(2,'0');
-    return `${h}:${m}`;
-  }
-
-  function appendMessage(text, authorId, authorRole){
-    const {label, roleClass} = resolveLabel(authorId, authorRole);
-
-    const msgEl = document.createElement('div');
-    msgEl.className = 'chat-msg';
-
-    const headerEl = document.createElement('div');
-    headerEl.className = 'chat-msg-header';
-
-    const authorEl = document.createElement('span');
-    authorEl.className = 'chat-author ' + roleClass;
-    authorEl.textContent = label;
-
-    const timeEl = document.createElement('span');
-    timeEl.className = 'chat-time';
-    timeEl.textContent = formatTime(new Date());
-
-    headerEl.appendChild(authorEl);
-    headerEl.appendChild(timeEl);
-
-    const textEl = document.createElement('div');
-    textEl.className = 'chat-text';
-    textEl.textContent = text;
-
-    msgEl.appendChild(headerEl);
-    msgEl.appendChild(textEl);
-
-    logEl.appendChild(msgEl);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
-  // 1) Wyślij wiadomość (używamy sendToServer z aliboard_realtime.js)
-  formEl.addEventListener('submit', function(e){
-    e.preventDefault();
-    const val = (inputEl.value || '').trim();
-    if (!val) return;
-
-    if (window.aliboardChat && typeof window.aliboardChat.sendToServer === 'function') {
-      window.aliboardChat.sendToServer(val);
-    } else {
-      console.warn('[AliboardChat] brak sendToServer – czy aliboard_realtime.js jest załadowany?');
-    }
-
-    // Nie robimy local-echo – serwer i tak odeśle wiadomość z author_id/role
-    inputEl.value = '';
-  });
-
-  // 2) Odbiór z WebSocketu – jedna kolumna, podpisany nadawca
-  window.aliboardChat.onServerMessage = function(text, authorId, authorRole){
-    appendMessage(text, authorId, authorRole);
-  };
-
-  function setPanelOpen(isOpen){
-    if(!panelEl) return;
-    panelEl.classList.toggle('is-open', !!isOpen);
-    panelEl.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-    if(isOpen){
-      logEl.scrollTop = logEl.scrollHeight;
-    }
-  }
-
-  if(bubbleEl && panelEl){
-    bubbleEl.addEventListener('click', function(){
-      const currentlyOpen = panelEl.classList.contains('is-open');
-      setPanelOpen(!currentlyOpen);
-    });
-  }
-
-  if(closeEl){
-    closeEl.addEventListener('click', function(){
-      setPanelOpen(false);
-    });
-  }
-
-})();
-</script>
 </body>
 </html>
 
