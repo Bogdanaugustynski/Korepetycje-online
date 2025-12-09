@@ -900,6 +900,90 @@
   height:78px;
 }
 
+/* Kontener czatu */
+#aliboard-chat{
+  display:flex;
+  flex-direction:column;
+  height:260px;
+  max-height:40vh;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff;
+  overflow:hidden;
+}
+
+/* Lista wiadomości */
+#aliboard-chat-log{
+  flex:1;
+  padding:8px 10px;
+  overflow-y:auto;
+  font-size:14px;
+}
+
+/* Pojedyncza wiadomość (jedna kolumna) */
+.chat-msg{
+  margin-bottom:8px;
+}
+
+/* Nagłówek wiadomości: kto + godzina */
+.chat-msg-header{
+  display:flex;
+  gap:6px;
+  align-items:baseline;
+  margin-bottom:2px;
+}
+
+.chat-author{
+  font-weight:600;
+  font-size:12px;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#eef2ff;
+}
+
+/* Kolorki wg roli */
+.chat-author--teacher{ background:#dbeafe; color:#1d4ed8; }
+.chat-author--student{ background:#dcfce7; color:#166534; }
+.chat-author--me{ background:#fee2e2; color:#b91c1c; }
+
+.chat-time{
+  font-size:11px;
+  color:var(--muted);
+}
+
+/* Treść */
+.chat-text{
+  font-size:14px;
+  line-height:1.35;
+  word-break:break-word;
+}
+
+/* Input + przycisk */
+#aliboard-chat-form{
+  display:flex;
+  gap:6px;
+  padding:8px 10px;
+  border-top:1px solid var(--line);
+}
+
+#aliboard-chat-input{
+  flex:1;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:14px;
+}
+
+#aliboard-chat-form button{
+  border:none;
+  border-radius:999px;
+  padding:6px 12px;
+  background:var(--brand);
+  color:#fff;
+  font-size:14px;
+  cursor:pointer;
+}
+
 </style>
 </head>
 <body id="aliboard-root" data-room-id="{{ room_id|default:'local-test' }}" data-user-id="{{ request.user.id }}" data-user-role="{{ user_role|default:'unknown' }}">
@@ -1037,51 +1121,17 @@
 </div>
 
 <!-- Aliboard Chat Module -->
-<div class="aliboard-chat-root">
-  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
-    <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
-  </button>
+<div id="aliboard-chat">
+  <div id="aliboard-chat-log"></div>
 
-  <section class="aliboard-chat-panel" id="aliboard-chat-panel" aria-hidden="true">
-    <header class="aliboard-chat-header">
-      <div class="aliboard-chat-title">
-        <span class="aliboard-chat-title-main">Czat zajęć</span>
-        <span class="aliboard-chat-title-sub">Aliboard</span>
-      </div>
-      <div class="aliboard-chat-actions">
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
-          &#128276;
-        </button>
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
-          &#128222;
-        </button>
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
-          &#127908;
-        </button>
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-close" title="Zamknij czat">
-          &#10006;
-        </button>
-      </div>
-    </header>
-
-    <!-- Audio remote dla WebRTC -->
-    <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
-
-    <div class="aliboard-chat-messages" id="aliboard-chat-messages" aria-live="polite"></div>
-
-    <form class="aliboard-chat-input-row" id="aliboard-chat-form" autocomplete="off">
-      <input
-        type="text"
-        id="aliboard-chat-input"
-        class="aliboard-chat-input"
-        placeholder="Napisz wiadomość"
-        maxlength="500"
-      />
-      <button type="submit" class="aliboard-chat-send-btn">
-        Wyślij
-      </button>
-    </form>
-  </section>
+  <form id="aliboard-chat-form" autocomplete="off">
+    <input
+      id="aliboard-chat-input"
+      type="text"
+      placeholder="Napisz wiadomość…"
+    />
+    <button type="submit">Wyślij</button>
+  </form>
 </div>
 <!-- koniec: Aliboard Chat Module -->
 
@@ -4710,6 +4760,99 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
   })();
 </script>
 <script src="{% static 'panel/js/aliboard_realtime.js' %}"></script>
+<script>
+(function(){
+  const logEl  = document.getElementById('aliboard-chat-log');
+  const formEl = document.getElementById('aliboard-chat-form');
+  const inputEl= document.getElementById('aliboard-chat-input');
+
+  if (!logEl || !formEl || !inputEl) {
+    console.warn('[AliboardChat] brak elementów DOM czatu');
+    return;
+  }
+
+  // Upewniamy się, że mamy obiekt globalny
+  window.aliboardChat = window.aliboardChat || {};
+
+  // Pomocniczo – próba odczytu ID użytkownika (może być string)
+  const myIdRaw = window.ALIBOARD_USER_ID;
+  const myId = myIdRaw != null ? Number(myIdRaw) : null;
+
+  function resolveLabel(authorId, authorRole){
+    const isMe = (myId != null && authorId != null && myId === Number(authorId));
+
+    if (isMe) return { label: 'Ty', roleClass: 'chat-author--me' };
+
+    if (authorRole === 'teacher')
+      return { label: 'Nauczyciel', roleClass: 'chat-author--teacher' };
+
+    if (authorRole === 'student')
+      return { label: 'Uczeń', roleClass: 'chat-author--student' };
+
+    return { label: 'Gość', roleClass: '' };
+  }
+
+  function formatTime(date){
+    const d = date instanceof Date ? date : new Date();
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    return `${h}:${m}`;
+  }
+
+  function appendMessage(text, authorId, authorRole){
+    const {label, roleClass} = resolveLabel(authorId, authorRole);
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'chat-msg';
+
+    const headerEl = document.createElement('div');
+    headerEl.className = 'chat-msg-header';
+
+    const authorEl = document.createElement('span');
+    authorEl.className = 'chat-author ' + roleClass;
+    authorEl.textContent = label;
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'chat-time';
+    timeEl.textContent = formatTime(new Date());
+
+    headerEl.appendChild(authorEl);
+    headerEl.appendChild(timeEl);
+
+    const textEl = document.createElement('div');
+    textEl.className = 'chat-text';
+    textEl.textContent = text;
+
+    msgEl.appendChild(headerEl);
+    msgEl.appendChild(textEl);
+
+    logEl.appendChild(msgEl);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // 1) Wyślij wiadomość (używamy sendToServer z aliboard_realtime.js)
+  formEl.addEventListener('submit', function(e){
+    e.preventDefault();
+    const val = (inputEl.value || '').trim();
+    if (!val) return;
+
+    if (window.aliboardChat && typeof window.aliboardChat.sendToServer === 'function') {
+      window.aliboardChat.sendToServer(val);
+    } else {
+      console.warn('[AliboardChat] brak sendToServer – czy aliboard_realtime.js jest załadowany?');
+    }
+
+    // Nie robimy local-echo – serwer i tak odeśle wiadomość z author_id/role
+    inputEl.value = '';
+  });
+
+  // 2) Odbiór z WebSocketu – jedna kolumna, podpisany nadawca
+  window.aliboardChat.onServerMessage = function(text, authorId, authorRole){
+    appendMessage(text, authorId, authorRole);
+  };
+
+})();
+</script>
 </body>
 </html>
 

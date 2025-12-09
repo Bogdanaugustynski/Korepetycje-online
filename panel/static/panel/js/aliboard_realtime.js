@@ -173,7 +173,14 @@
               : authorIdRaw != null
               ? Number(authorIdRaw)
               : null;
-          window.aliboardChat.onServerMessage(data.text || "", authorId);
+          const authorRole = data.author_role || "unknown";
+
+          // teraz przekazujemy też rolę
+          window.aliboardChat.onServerMessage(
+            data.text || "",
+            authorId,
+            authorRole
+          );
         }
         notify("chat_message", data);
         return;
