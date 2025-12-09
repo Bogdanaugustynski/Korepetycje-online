@@ -4172,6 +4172,7 @@ const toolsRow = document.getElementById('tools');
     const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
     let isMicMuted = false;
     let incomingCallBanner = null;
+    let lastCallFromId = null;
     let ringIntervalId = null;
     let isPanelOpen = false;
     let unreadCount = 0;
@@ -4258,13 +4259,16 @@ const toolsRow = document.getElementById('tools');
         acceptBtn.addEventListener('click', ()=>{
           stopRingTone();
           if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
-            window.aliboardVoice.acceptIncomingCall()
+            window.aliboardVoice.acceptIncomingCall(lastCallFromId)
               .catch((err)=>{
                 console.error('[AliboardVoice] acceptIncomingCall error', err);
                 if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
                   window.aliboardVoice.hangupCall(false);
                 }
               });
+          }
+          if(window.aliboardVoice && typeof window.aliboardVoice.connectToPeer === 'function' && lastCallFromId != null){
+            window.aliboardVoice.connectToPeer(lastCallFromId);
           }
         });
       }
@@ -4464,13 +4468,20 @@ const toolsRow = document.getElementById('tools');
       }
 
       if(action === 'ring'){
+        lastCallFromId = fromId != null ? fromId : null;
         setPanelOpen(true);
         showIncomingCallBanner(fromRole);
         if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
-          window.aliboardVoice.acceptIncomingCall();
+          window.aliboardVoice.acceptIncomingCall(lastCallFromId)
+            .catch((err)=>{
+              console.error('[AliboardVoice] acceptIncomingCall error', err);
+              if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                window.aliboardVoice.hangupCall(false);
+              }
+            });
         }
-        if(window.aliboardVoice && typeof window.aliboardVoice.connectToPeer === 'function' && fromId != null){
-          window.aliboardVoice.connectToPeer(fromId);
+        if(window.aliboardVoice && typeof window.aliboardVoice.connectToPeer === 'function' && lastCallFromId != null){
+          window.aliboardVoice.connectToPeer(lastCallFromId);
         }
         return;
       }
@@ -4672,9 +4683,12 @@ const toolsRow = document.getElementById('tools');
       }
     };
 
-    window.aliboardVoice.acceptIncomingCall = async function(){
+    window.aliboardVoice.acceptIncomingCall = async function(targetId){
       isCallActive = true;
       announceJoin();
+      if(targetId != null && typeof window.aliboardVoice.connectToPeer === 'function'){
+        window.aliboardVoice.connectToPeer(targetId);
+      }
     };
 
     window.aliboardVoice.onOffer = function(data){
