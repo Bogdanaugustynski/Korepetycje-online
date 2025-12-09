@@ -107,9 +107,12 @@
     };
     window.aliboardVoice.sendSignal = function (payload) {
       if (!payload || typeof payload !== "object" || !payload.type) return;
-      send({
+      const enriched = {
+        from_id: window.ALIBOARD_USER_ID,
+        from_role: window.ALIBOARD_USER_ROLE || "unknown",
         ...payload,
-      });
+      };
+      send(enriched);
     };
 
     socket.onopen = function () {
