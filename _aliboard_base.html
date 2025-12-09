@@ -3823,13 +3823,12 @@ const toolsRow = document.getElementById('tools');
         acceptBtn.addEventListener('click', ()=>{
           stopRingTone();
           if(window.aliboardVoice && typeof window.aliboardVoice.acceptIncomingCall === 'function'){
-            window.aliboardVoice.acceptIncomingCall()
-              .catch((err)=>{
-                console.error('[AliboardVoice] acceptIncomingCall error', err);
-                if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
-                  window.aliboardVoice.hangupCall(false);
-                }
-              });
+            window.aliboardVoice.acceptIncomingCall().catch((err)=>{
+              console.error('[AliboardVoice] acceptIncomingCall error', err);
+              if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
+                window.aliboardVoice.hangupCall(false);
+              }
+            });
           }
         });
       }
@@ -3845,8 +3844,8 @@ const toolsRow = document.getElementById('tools');
           }
         });
       }
-    }
 
+    }
     function setPanelOpen(isOpen){
       isPanelOpen = !!isOpen;
       if(isOpen){
@@ -4228,13 +4227,6 @@ const toolsRow = document.getElementById('tools');
         window.aliboardChat.sendCallSignal('end');
       }
     };
-
-    window.aliboardVoice.hangupCall(false);
-                }
-              });
-          }
-        });
-      }
 
       if(endBtn){
         endBtn.addEventListener('click', ()=>{
