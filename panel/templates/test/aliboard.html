@@ -622,6 +622,32 @@
   color:#fff;
   border:1px solid #344155;
 }
+.aliboard-chat-row{
+  display:flex;
+  flex-direction:column;
+  margin-bottom:6px;
+  max-width:100%;
+}
+.aliboard-chat-row.mine{
+  align-items:flex-end;
+}
+.aliboard-chat-row.theirs{
+  align-items:flex-start;
+}
+.aliboard-chat-author{
+  font-size:11px;
+  color:var(--aliboard-chat-muted);
+  margin:0 2px 2px;
+}
+.aliboard-chat-row .aliboard-chat-message{
+  max-width:100%;
+}
+.aliboard-chat-row.mine .aliboard-chat-message{
+  align-self:flex-end;
+}
+.aliboard-chat-row.theirs .aliboard-chat-message{
+  align-self:flex-start;
+}
 .aliboard-chat-meta{
   display:block;
   margin-top:2px;
@@ -4305,18 +4331,29 @@ const toolsRow = document.getElementById('tools');
     function appendMessage(opts){
       if(!opts || !opts.text) return;
       const author = opts.author === 'other' ? 'other' : 'me';
+      const label = opts.label || (author === 'me' ? 'Ty' : 'Goœæ');
+
+      const row = document.createElement('div');
+      row.className = `aliboard-chat-row ${author === 'me' ? 'mine' : 'theirs'}`;
+
+      const authorEl = document.createElement('div');
+      authorEl.className = 'aliboard-chat-author';
+      authorEl.textContent = label;
+      row.appendChild(authorEl);
+
       const msgEl = document.createElement('div');
       msgEl.className = `aliboard-chat-message ${author}`;
-      const contentSpan = document.createElement('span');
-      contentSpan.textContent = opts.text.toString();
-      msgEl.appendChild(contentSpan);
+      msgEl.textContent = opts.text.toString();
+      row.appendChild(msgEl);
+
       if(opts.timeString){
         const meta = document.createElement('span');
         meta.className = 'aliboard-chat-meta';
         meta.textContent = opts.timeString;
-        msgEl.appendChild(meta);
+        row.appendChild(meta);
       }
-      messagesEl.appendChild(msgEl);
+
+      messagesEl.appendChild(row);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
@@ -4369,14 +4406,20 @@ const toolsRow = document.getElementById('tools');
       });
     }
 
-    window.aliboardChat.onServerMessage = function (text, authorId) {
-      const myId = window.ALIBOARD_USER_ID;
+    window.aliboardChat.onServerMessage = function (text, authorId, authorName) {
+      const myIdRaw = window.ALIBOARD_USER_ID;
+      const myId = (myIdRaw !== null && myIdRaw !== undefined) ? Number(myIdRaw) : null;
       const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
-      const isMe = (myId !== null && myId !== undefined && serverId !== null && serverId === Number(myId));
+      const isMe = (myId !== null && serverId !== null && serverId === myId);
+      const label = isMe
+        ? 'Ty'
+        : (authorName && authorName.toString().trim()) ||
+          (serverId !== null ? `U¿ytkownik #${serverId}` : 'Goœæ');
 
       appendMessage({
         text: text,
         author: isMe ? "me" : "other",
+        label: label,
         timeString: getTimeString(),
       });
 
