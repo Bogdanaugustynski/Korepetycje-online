@@ -146,12 +146,19 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             )
 
         elif msg_type == "chat_message":
-            text = (content.get("text") or "").strip()
-            if not text:
+            text = (content.get("text") or "")[:500]
+            if not text.strip():
                 return
 
-            user = self.scope["user"]
-            user_id = user.id if user.is_authenticated else None
+            user = self.scope.get("user")
+            if user and getattr(user, "is_authenticated", False):
+                author_id = user.id
+                full_name = (user.get_full_name() or "").strip()
+                author_name = full_name or user.username or "Użytkownik"
+            else:
+                author_id = None
+                author_name = "Gość"
+
             author_role = "teacher" if getattr(user, "is_teacher", False) else "student"
 
             await self.channel_layer.group_send(
@@ -159,7 +166,8 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "board.chat_message",
                     "text": text,
-                    "author_id": user_id,
+                    "author_id": author_id,
+                    "author_name": author_name,
                     "author_role": author_role,
                 },
             )
@@ -319,6 +327,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "type": "chat_message",
                 "text": event.get("text") or "",
                 "author_id": event.get("author_id"),
+                "author_name": event.get("author_name") or "Użytkownik",
                 "author_role": event.get("author_role") or "unknown",
             }
         )

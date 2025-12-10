@@ -254,7 +254,12 @@
               : authorIdRaw != null
               ? Number(authorIdRaw)
               : null;
-          window.aliboardChat.onServerMessage(data.text || "", authorId);
+          const authorName = data.author_name || null;
+          window.aliboardChat.onServerMessage(
+            data.text || "",
+            authorId,
+            authorName
+          );
         }
         notify("chat_message", data);
         return;
