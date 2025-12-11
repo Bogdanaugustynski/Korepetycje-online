@@ -1,8 +1,6 @@
 import json
 
-from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
-from .models import Rezerwacja
 
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
@@ -67,25 +65,9 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
 class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
-        user = self.scope["user"]
-        lesson_id = self._extract_lesson_id(self.room_id)
-
-        if not user.is_authenticated or lesson_id is None:
-            await self.close()
-            return
-
-        try:
-            lekcja = await database_sync_to_async(Rezerwacja.objects.get)(id=lesson_id)
-        except Rezerwacja.DoesNotExist:
-            await self.close()
-            return
-
-        if user != lekcja.uczen and user != lekcja.nauczyciel:
-            await self.close()
-            return
-
         self.group_name = f"aliboard_{self.room_id}"
-        self.user_id = self._normalize_user_id(user.id)
+        user = self.scope["user"]
+        self.user_id = self._normalize_user_id(user.id) if user.is_authenticated else None
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
@@ -401,17 +383,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
 
     async def direct_voice(self, event):
         await self.send_json(event.get("payload") or {})
-
-    def _extract_lesson_id(self, room_id):
-        if room_id is None:
-            return None
-        raw = room_id
-        if isinstance(raw, str) and raw.startswith("room-"):
-            raw = raw.split("room-", 1)[1]
-        try:
-            return int(raw)
-        except (TypeError, ValueError):
-            return None
 
     def _normalize_user_id(self, raw):
         try:
