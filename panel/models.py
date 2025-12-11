@@ -249,6 +249,26 @@ class AliboardSnapshot(models.Model):
         return f"AliboardSnapshot({self.room_id})"
 
 
+class AliboardChatMessage(models.Model):
+    room_id = models.CharField(max_length=255, db_index=True)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="aliboard_messages",
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        who = self.author.get_full_name() or self.author.username if self.author else "Anon"
+        return f"[{self.room_id}] {who}: {self.text[:30]}"
+
+
 # --- Płatności i rachunki ---
 class Payment(models.Model):
     reservation = models.ForeignKey("panel.Rezerwacja", on_delete=models.CASCADE, related_name="payments")

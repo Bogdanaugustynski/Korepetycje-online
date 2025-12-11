@@ -1,6 +1,9 @@
 import json
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
+from django.utils import timezone
+
+from .models import AliboardChatMessage
 
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
@@ -69,9 +72,37 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         user = self.scope["user"]
         self.user_id = self._normalize_user_id(user.id) if user.is_authenticated else None
 
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         self._register_channel()
+
+        history_qs = (
+            AliboardChatMessage.objects.filter(room_id=self.room_id)
+            .select_related("author")
+            .order_by("-created_at")[:100]
+        )
+        history = list(history_qs)
+        history.reverse()
+
+        for msg in history:
+            author = msg.author
+            author_name = None
+            author_id = None
+            if author:
+                author_id = author.id
+                full = (author.get_full_name() or "").strip()
+                author_name = full or author.username
+
+            await self.send_json(
+                {
+                    "type": "chat_message",
+                    "text": msg.text,
+                    "author_id": author_id,
+                    "author_name": author_name,
+                    "created_at": timezone.localtime(msg.created_at).isoformat(),
+                    "is_history": True,
+                }
+            )
 
         state = ROOM_STATE.get(self.room_id)
         if state and state.get("elements"):
@@ -146,31 +177,37 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             )
 
         elif msg_type == "chat_message":
-            text = (content.get("text") or "")[:500]
-            if not text.strip():
+            text = (content.get("text") or "").strip()
+            if not text:
                 return
 
             user = self.scope.get("user")
-            if user and getattr(user, "is_authenticated", False):
-                author_id = user.id
-                full_name = (user.get_full_name() or "").strip()
-                author_name = full_name or user.username or "Użytkownik"
-            else:
-                author_id = None
-                author_name = "Gość"
-
+            author = user if user and getattr(user, "is_authenticated", False) else None
             author_role = "teacher" if getattr(user, "is_teacher", False) else "student"
 
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    "type": "board.chat_message",
-                    "text": text,
-                    "author_id": author_id,
-                    "author_name": author_name,
-                    "author_role": author_role,
-                },
+            msg_obj = AliboardChatMessage.objects.create(
+                room_id=self.room_id,
+                author=author,
+                text=text[:500],
             )
+
+            author_id = author.id if author else None
+            author_name = None
+            if author:
+                full = (author.get_full_name() or "").strip()
+                author_name = full or author.username
+
+            payload = {
+                "type": "broadcast_chat_message",
+                "text": msg_obj.text,
+                "author_id": author_id,
+                "author_name": author_name,
+                "author_role": author_role,
+                "created_at": timezone.localtime(msg_obj.created_at).isoformat(),
+            }
+
+            await self.channel_layer.group_send(self.group_name, payload)
+            return
 
         elif msg_type == "call_signal":
             action = content.get("action") or "ring"
@@ -321,7 +358,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-    async def board_chat_message(self, event):
+    async def broadcast_chat_message(self, event):
         await self.send_json(
             {
                 "type": "chat_message",
@@ -329,6 +366,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "author_id": event.get("author_id"),
                 "author_name": event.get("author_name") or "Użytkownik",
                 "author_role": event.get("author_role") or "unknown",
+                "created_at": event.get("created_at"),
             }
         )
 
