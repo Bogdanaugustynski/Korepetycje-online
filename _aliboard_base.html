@@ -4073,6 +4073,12 @@ const toolsRow = document.getElementById('tools');
     window.aliboardVoice = window.aliboardVoice || {};
     window.aliboardVoice.sendSignal = window.aliboardVoice.sendSignal || function(){};
 
+    function isSafariBrowser() {
+      const ua = navigator.userAgent || "";
+      const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+      return isSafari;
+    }
+
     const voicePeers = new Map(); // peerId -> RTCPeerConnection
     const pendingIce = new Map(); // peerId -> RTCIceCandidate[]
 
@@ -4083,6 +4089,11 @@ const toolsRow = document.getElementById('tools');
     let pendingOffer = null;
 
     const remoteAudio = document.getElementById('aliboard-remote-audio');
+    if(remoteAudio){
+      remoteAudio.autoplay = true;
+      remoteAudio.playsInline = true;
+      remoteAudio.controls = false;
+    }
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     };
@@ -4092,6 +4103,9 @@ const toolsRow = document.getElementById('tools');
       if(localStream) return localStream;
       try{
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if(!localStream.getAudioTracks || localStream.getAudioTracks().length === 0){
+          console.warn("[Voice] No audio tracks in stream – Safari glitch?");
+        }
       }catch(err){
         console.error('[AliboardVoice] getUserMedia error', err);
         throw err;
@@ -4183,14 +4197,28 @@ const toolsRow = document.getElementById('tools');
       pendingOffer = null;
       const desc = new RTCSessionDescription(data.sdp);
       const pc = createPeerConnection(data.from_id);
-      await pc.setRemoteDescription(desc);
-      await flushPendingIce(data.from_id, pc);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      window.aliboardVoice.sendSignal({
-        type: 'webrtc_answer',
-        sdp: pc.localDescription,
-      });
+      if(isSafariBrowser()){
+        await pc.setRemoteDescription(desc);
+        await flushPendingIce(data.from_id, pc);
+        const stream = await ensureLocalStream();
+        stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        window.aliboardVoice.sendSignal({
+          type: 'webrtc_answer',
+          sdp: pc.localDescription,
+        });
+      }else{
+        await addLocalTracks(pc);
+        await pc.setRemoteDescription(desc);
+        await flushPendingIce(data.from_id, pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        window.aliboardVoice.sendSignal({
+          type: 'webrtc_answer',
+          sdp: pc.localDescription,
+        });
+      }
     }
 
     window.aliboardVoice.startOutgoingCall = async function(){
@@ -4198,8 +4226,9 @@ const toolsRow = document.getElementById('tools');
       isCaller = true;
       isCallActive = true;
       pendingOffer = null;
+      const stream = await ensureLocalStream();
       const pc = createPeerConnection();
-      await addLocalTracks(pc);
+      stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       window.aliboardVoice.sendSignal({
@@ -4212,8 +4241,22 @@ const toolsRow = document.getElementById('tools');
       if(isCallActive) return;
       isCaller = false;
       isCallActive = true;
+      if(remoteAudio){
+        try{
+          const playPromise = remoteAudio.play();
+          if(playPromise && typeof playPromise.then === "function"){
+            playPromise.catch((e)=>{
+              console.warn("[Voice] Safari blocked autoplay", e);
+            });
+          }
+        }catch(e){
+          console.warn("[Voice] play() error", e);
+        }
+      }
       const pc = createPeerConnection();
-      await addLocalTracks(pc);
+      if(!pendingOffer){
+        await addLocalTracks(pc);
+      }
       if(pendingOffer){
         try{
           await processOffer(pendingOffer);

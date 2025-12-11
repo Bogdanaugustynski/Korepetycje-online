@@ -8938,12 +8938,23 @@ const toolsRow = document.getElementById('tools');
 
 
 
+    function isSafariBrowser() {
+      const ua = navigator.userAgent || "";
+      const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+      return isSafari;
+    }
+
       const rtcConfig = {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       };
       const voicePeers = new Map();
       const pendingIce = new Map(); // peerId -> RTCIceCandidate[]
       const remoteAudio = document.getElementById('aliboard-remote-audio');
+      if(remoteAudio){
+        remoteAudio.autoplay = true;
+        remoteAudio.playsInline = true;
+        remoteAudio.controls = false;
+      }
       let lastRingFromId = null;
 
       function getPeerKey(peerId){
@@ -8961,6 +8972,7 @@ const toolsRow = document.getElementById('tools');
         au.autoplay = true;
 
         au.playsInline = true;
+        au.controls = false;
 
         au.hidden = true;
 
@@ -8985,6 +8997,12 @@ const toolsRow = document.getElementById('tools');
         video: false
 
       });
+
+      if(!stream.getAudioTracks || stream.getAudioTracks().length === 0){
+
+        console.warn("[Voice] No audio tracks in stream – Safari glitch?");
+
+      }
 
       window.__ALIBOARD_LOCAL_STREAM = stream;
 
@@ -9121,9 +9139,11 @@ const toolsRow = document.getElementById('tools');
 
       if(peerId === undefined || peerId === null) return;
 
+      const stream = await ensureLocalStream();
+
       const pc = createPeer(peerId);
 
-      await addLocalTracks(pc);
+      stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
 
       const offer = await pc.createOffer();
 
@@ -9164,12 +9184,23 @@ const toolsRow = document.getElementById('tools');
       if(!shouldHandleToId(toId)) return;
 
         const pc = createPeer(fromId);
-        await addLocalTracks(pc);
         const desc = new RTCSessionDescription(data.sdp);
-        await pc.setRemoteDescription(desc);
-        await flushPendingIce(fromId, pc);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+
+        if(isSafariBrowser()){
+          await pc.setRemoteDescription(desc);
+          await flushPendingIce(fromId, pc);
+          const stream = await ensureLocalStream();
+          stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+        }else{
+          const stream = await ensureLocalStream();
+          stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
+          await pc.setRemoteDescription(desc);
+          await flushPendingIce(fromId, pc);
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+        }
         if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceAnswer === 'function'){
           window.AliboardRealtime.voiceAnswer(fromId, pc.localDescription);
         }else{
@@ -9291,6 +9322,18 @@ const toolsRow = document.getElementById('tools');
       const target = peerId !== undefined && peerId !== null ? peerId : lastRingFromId;
 
       if(target === undefined || target === null) return;
+
+      const audioEl = buildAudioEl(target);
+      try{
+        const playPromise = audioEl.play();
+        if(playPromise && typeof playPromise.then === "function"){
+          playPromise.catch((e)=>{
+            console.warn("[Voice] Safari blocked autoplay", e);
+          });
+        }
+      }catch(e){
+        console.warn("[Voice] play() error", e);
+      }
 
       await window.aliboardVoice.startCallTo(target);
 
