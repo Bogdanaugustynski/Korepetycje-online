@@ -1079,21 +1079,8 @@
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
           &#128276;
         </button>
-        <button
-          id="aliboard-call-join-btn"
-          type="button"
-          class="aliboard-chat-icon-btn"
-          title="Rozmowa głosowa"
-        >
-          Dołącz
-        </button>
-        <button
-          id="aliboard-call-hangup-btn"
-          type="button"
-          class="hidden aliboard-chat-icon-btn"
-          title="Zakończ rozmowę"
-        >
-          Rozłącz
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
+          &#128222;
         </button>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-mic" title="Wycisz/odcisz mikrofon">
           &#127908;
@@ -1103,6 +1090,22 @@
         </button>
       </div>
     </header>
+    <div class="aliboard-call-actions" style="padding: 8px 10px 0;">
+      <button
+        id="aliboard-call-join-btn"
+        type="button"
+        class="aliboard-call-accept-btn"
+      >
+        Dołącz
+      </button>
+      <button
+        id="aliboard-call-hangup-btn"
+        type="button"
+        class="hidden aliboard-call-end-btn"
+      >
+        Rozłącz
+      </button>
+    </div>
 
     <!-- Audio remote dla WebRTC -->
     <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
@@ -3756,6 +3759,7 @@ const toolsRow = document.getElementById('tools');
     const messagesEl = document.getElementById('aliboard-chat-messages');
     const pingBtn = document.getElementById('aliboard-chat-ping');
     const micBtn = document.getElementById('aliboard-chat-mic');
+    const callBtn = document.getElementById('aliboard-chat-call');
     const joinCallBtn = document.getElementById('aliboard-call-join-btn');
     const hangupBtn = document.getElementById('aliboard-call-hangup-btn');
     const bubbleRoot = bubble ? bubble.closest('.aliboard-chat-root') : null;
@@ -4405,6 +4409,12 @@ const toolsRow = document.getElementById('tools');
     };
 
     document.addEventListener("DOMContentLoaded", () => {
+      if(callBtn){
+        callBtn.addEventListener('click', ()=>{
+          handleJoinCallClick();
+        });
+      }
+
       if(joinCallBtn){
         joinCallBtn.addEventListener('click', ()=>{
           handleJoinCallClick();

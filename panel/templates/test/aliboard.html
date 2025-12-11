@@ -2187,23 +2187,10 @@
           &#128276;
 
         </button>
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
 
-        <button
-          id="aliboard-call-join-btn"
-          type="button"
-          class="aliboard-chat-icon-btn"
-          title="Rozmowa głosowa"
-        >
-          Dołącz
-        </button>
+          &#128222;
 
-        <button
-          id="aliboard-call-hangup-btn"
-          type="button"
-          class="hidden aliboard-chat-icon-btn"
-          title="Zakończ rozmowę"
-        >
-          Rozłącz
         </button>
 
         <select id="aliboard-call-mode" class="aliboard-select" title="Tryb rozmowy">
@@ -2231,6 +2218,24 @@
       </div>
 
     </header>
+
+    <div class="aliboard-call-actions" style="padding: 8px 10px 0;">
+      <button
+        id="aliboard-call-join-btn"
+        type="button"
+        class="aliboard-call-accept-btn"
+      >
+        Dołącz
+      </button>
+
+      <button
+        id="aliboard-call-hangup-btn"
+        type="button"
+        class="hidden aliboard-call-end-btn"
+      >
+        Rozłącz
+      </button>
+    </div>
 
 
 
@@ -8292,6 +8297,8 @@ const toolsRow = document.getElementById('tools');
 
     const micBtn = document.getElementById('aliboard-chat-mic');
 
+    const callBtn = document.getElementById('aliboard-chat-call');
+
     const joinCallBtn = document.getElementById('aliboard-call-join-btn');
 
     const hangupBtn = document.getElementById('aliboard-call-hangup-btn');
@@ -9398,6 +9405,12 @@ const toolsRow = document.getElementById('tools');
     window.aliboardVoice.startOutgoingCall = window.aliboardVoice.startCallTo;
 
     document.addEventListener("DOMContentLoaded", () => {
+      if(callBtn){
+        callBtn.addEventListener('click', ()=>{
+          handleJoinCallClick();
+        });
+      }
+
       if(joinCallBtn){
         joinCallBtn.addEventListener('click', ()=>{
           handleJoinCallClick();
