@@ -1090,23 +1090,6 @@
         </button>
       </div>
     </header>
-    <div class="aliboard-call-actions" style="padding: 8px 10px 0;">
-      <button
-        id="aliboard-call-join-btn"
-        type="button"
-        class="aliboard-call-accept-btn"
-      >
-        Dołącz
-      </button>
-      <button
-        id="aliboard-call-hangup-btn"
-        type="button"
-        class="hidden aliboard-call-end-btn"
-      >
-        Rozłącz
-      </button>
-    </div>
-
     <!-- Audio remote dla WebRTC -->
     <audio id="aliboard-remote-audio" autoplay playsinline style="display:none;"></audio>
 
@@ -4093,12 +4076,14 @@ const toolsRow = document.getElementById('tools');
     };
 
     function aliboardUpdateCallButtons() {
-      if (!joinCallBtn || !hangupBtn) return;
+      const joinBtn = document.getElementById("aliboard-call-join-btn") || document.getElementById("aliboard-accept-call-btn");
+      const hangupBtn = document.getElementById("aliboard-call-hangup-btn") || document.getElementById("aliboard-end-call-btn");
+      if (!joinBtn || !hangupBtn) return;
       if (aliboardCallState.inCall) {
-        joinCallBtn.classList.add("hidden");
+        joinBtn.classList.add("hidden");
         hangupBtn.classList.remove("hidden");
       } else {
-        joinCallBtn.classList.remove("hidden");
+        joinBtn.classList.remove("hidden");
         hangupBtn.classList.add("hidden");
       }
     }
