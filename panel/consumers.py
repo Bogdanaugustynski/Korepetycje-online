@@ -1,5 +1,6 @@
 import json
 
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
 from django.utils import timezone
 
@@ -81,7 +82,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             .select_related("author")
             .order_by("-created_at")[:100]
         )
-        history = list(history_qs)
+        history = await database_sync_to_async(list)(history_qs)
         history.reverse()
 
         for msg in history:
@@ -185,7 +186,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             author = user if user and getattr(user, "is_authenticated", False) else None
             author_role = "teacher" if getattr(user, "is_teacher", False) else "student"
 
-            msg_obj = AliboardChatMessage.objects.create(
+            msg_obj = await database_sync_to_async(AliboardChatMessage.objects.create)(
                 room_id=self.room_id,
                 author=author,
                 text=text[:500],
