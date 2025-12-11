@@ -1,4 +1,4 @@
-ï»¿{% load static %}
+﻿{% load static %}
 
 <!DOCTYPE html>
 
@@ -10,7 +10,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<title>Aliboard 2.5 â PolubiszTo.pl (test)</title>
+<title>Aliboard 2.5 – PolubiszTo.pl (test)</title>
 
 
 
@@ -904,7 +904,7 @@
 
 
 
-/* Aliboard Chat â bazowe zmienne */
+/* Aliboard Chat – bazowe zmienne */
 
 :root{
 
@@ -1706,7 +1706,7 @@
 
 
 
-  /* wszystkie narzÄdzia majÄ byÄ widoczne â wyÅÄczamy overflow na telefonie */
+  /* wszystkie narzędzia mają być widoczne – wyłączamy overflow na telefonie */
 
   #toolsMoreBtn,
 
@@ -1908,7 +1908,7 @@
 
         <div style="font-weight:800">Aliboard</div>
 
-        <div class="state" id="state">Tryb: Kursor â¢ 3px â¢ #0b74ff</div>
+        <div class="state" id="state">Tryb: Kursor • 3px • #0b74ff</div>
 
       </div>
 
@@ -1924,9 +1924,9 @@
 
       </button>
 
-      <button class="btn" type="button" data-tool="pen"    title="OÅÃ³wek (P)">
+      <button class="btn" type="button" data-tool="pen"    title="Ołówek (P)">
 
-        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="OÅÃ³wek">
+        <img src="{% static 'img/icons/pen_ai.png' %}" class="icon-img" alt="Ołówek">
 
       </button>
 
@@ -1948,9 +1948,9 @@
 
       </button>
 
-      <button class="btn text-font-btn" type="button" id="textFontBtn" title="WielkoÅÄ czcionki" data-overflow="1">
+      <button class="btn text-font-btn" type="button" id="textFontBtn" title="Wielkość czcionki" data-overflow="1">
 
-        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="WielkoÅÄ czcionki">
+        <img src="{% static 'img/icons/font_size_ai.png' %}" class="icon-img" alt="Wielkość czcionki">
 
       </button>
 
@@ -1976,9 +1976,9 @@
 
       </label>
 
-      <button class="btn" type="button" id="lineWidthBtn" title="GruboÅÄ linii">
+      <button class="btn" type="button" id="lineWidthBtn" title="Grubość linii">
 
-        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="GruboÅÄ linii">
+        <img src="{% static 'img/icons/size_ai.png' %}" class="icon-img" alt="Grubość linii">
 
       </button>
 
@@ -2044,7 +2044,7 @@
 
 
 
-      <button class="btn is-disabled" type="button" id="deleteSelection" title="UsuÅ zaznaczony obiekt" disabled>
+      <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>
 
         X
 
@@ -2112,11 +2112,11 @@
 
             <button class="drop-item" type="button" data-grid="0">Brak</button>
 
-            <button class="drop-item" type="button" data-grid="16">MaÅa</button>
+            <button class="drop-item" type="button" data-grid="16">Mała</button>
 
-            <button class="drop-item" type="button" data-grid="24">Årednia</button>
+            <button class="drop-item" type="button" data-grid="24">Średnia</button>
 
-            <button class="drop-item" type="button" data-grid="32">DuÅ¼a</button>
+            <button class="drop-item" type="button" data-grid="32">Duża</button>
 
             <button class="drop-item" type="button" data-grid="tech">Papier milimetrowy</button>
 
@@ -2130,7 +2130,7 @@
 
           <div class="drop-row">
 
-            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkÄ A4</button>
+            <button class="drop-item" type="button" id="addPage">+ Dodaj kartkę A4</button>
 
           </div>
 
@@ -2158,7 +2158,7 @@
 
 <div class="aliboard-chat-root">
 
-  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="OtwÃ³rz czat">
+  <button class="aliboard-chat-bubble" id="aliboard-chat-bubble" type="button" aria-label="Otwórz czat">
 
     <img src="{% static 'img/icons/chat_ai.png' %}" class="icon-img" alt="Czat">
 
@@ -2172,7 +2172,7 @@
 
       <div class="aliboard-chat-title">
 
-        <span class="aliboard-chat-title-main">Czat zajÄÄ</span>
+        <span class="aliboard-chat-title-main">Czat zajęć</span>
 
         <span class="aliboard-chat-title-sub">Aliboard</span>
 
@@ -2186,7 +2186,7 @@
 
         </button>
 
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa gÅosowa">
+        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
 
           &#128222;
 
@@ -2240,7 +2240,7 @@
 
         class="aliboard-chat-input"
 
-        placeholder="Napisz wiadomoÅÄ"
+        placeholder="Napisz wiadomość"
 
         maxlength="500"
 
@@ -2248,7 +2248,7 @@
 
       <button type="submit" class="aliboard-chat-send-btn">
 
-        WyÅlij
+        Wyślij
 
       </button>
 
@@ -2274,9 +2274,9 @@
 
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="openBoardTitle">
 
-    <h3 id="openBoardTitle">OtwÃ³rz nowÄ tablicÄ</h3>
+    <h3 id="openBoardTitle">Otwórz nową tablicę</h3>
 
-    <p>UtwÃ³rz pustÄ tablicÄ. Aktualne karty zostanÄ zamkniÄte.</p>
+    <p>Utwórz pustą tablicę. Aktualne karty zostaną zamknięte.</p>
 
     <label>
 
@@ -2290,7 +2290,7 @@
 
       <button type="button" class="btn secondary" id="openBoardCancel">Anuluj</button>
 
-      <button type="button" class="btn primary" id="openBoardCreate">UtwÃ³rz</button>
+      <button type="button" class="btn primary" id="openBoardCreate">Utwórz</button>
 
     </div>
 
@@ -2366,31 +2366,31 @@
 
       <div class="figure-palette-grid">
 
-        <button class="shape-btn" type="button" data-shape="rect" title="ProstokÄt">
+        <button class="shape-btn" type="button" data-shape="rect" title="Prostokąt">
 
           <div class="shape-icon shape-icon--rect"></div>
 
         </button>
 
-        <button class="shape-btn" type="button" data-shape="tri_iso" title="TrÃ³jkÄt rÃ³wnoramienny">
+        <button class="shape-btn" type="button" data-shape="tri_iso" title="Trójkąt równoramienny">
 
           <div class="shape-icon shape-icon--triangle"></div>
 
         </button>
 
-        <button class="shape-btn" type="button" data-shape="tri_right" title="TrÃ³jkÄt prostokÄtny">
+        <button class="shape-btn" type="button" data-shape="tri_right" title="Trójkąt prostokątny">
 
           <div class="shape-icon shape-icon--right"></div>
 
         </button>
 
-        <button class="shape-btn" type="button" data-shape="hex" title="SzeÅciokÄt">
+        <button class="shape-btn" type="button" data-shape="hex" title="Sześciokąt">
 
           <div class="shape-icon shape-icon--hex"></div>
 
         </button>
 
-        <button class="shape-btn" type="button" data-shape="circle" title="KoÅo">
+        <button class="shape-btn" type="button" data-shape="circle" title="Koło">
 
           <div class="shape-icon shape-icon--circle"></div>
 
@@ -3296,7 +3296,7 @@
 
             cached.src = fresh.src;
 
-            cached.img = fresh.img; // jeÅ¼eli ÅºrÃ³dÅo siÄ zmieniÅo, przypnij nowy obraz
+            cached.img = fresh.img; // jeżeli źródło się zmieniło, przypnij nowy obraz
 
           }
 
@@ -3604,7 +3604,7 @@
 
 
 
-  // 3) jeÅli nadal brak â sprÃ³buj z query stringa (?room= / ?room_id=)
+  // 3) jeśli nadal brak — spróbuj z query stringa (?room= / ?room_id=)
 
   if (!roomId) {
 
@@ -3924,7 +3924,7 @@
 
 
 
-  // automatyczne odrysowanie po kaÅ¼dej zmianie modelu (po zainicjalizowaniu PAGES)
+  // automatyczne odrysowanie po każdej zmianie modelu (po zainicjalizowaniu PAGES)
 
   AliboardModel.subscribe(()=> syncAllPagesFromModel());
 
@@ -4988,7 +4988,7 @@
 
     }
 
-    // nie skalujemy gruboÅci linii ani czcionki przy zmianie rozmiaru
+    // nie skalujemy grubości linii ani czcionki przy zmianie rozmiaru
 
     if(stroke.type==='pen' || stroke.type==='line' || stroke.type==='text'){
 
@@ -5116,9 +5116,9 @@
 
     }
 
-    // Gumka nie rusza obrazÃ³w â ich kasowanie zostawiamy selekcji/koszowi.
+    // Gumka nie rusza obrazów – ich kasowanie zostawiamy selekcji/koszowi.
 
-    // (KiedyÅ moÅ¼na dodaÄ tryb, ale domyÅlnie chronimy obrazki przed przypadkowym usuniÄciem.)
+    // (Kiedyś można dodać tryb, ale domyślnie chronimy obrazki przed przypadkowym usunięciem.)
 
     if(removed){
 
@@ -5810,7 +5810,7 @@
 
     const text=document.createElement('p');
 
-    text.textContent='Gdzie umieÅciÄ skopiowany fragment?';
+    text.textContent='Gdzie umieścić skopiowany fragment?';
 
       const actions=document.createElement('div');
 
@@ -7080,13 +7080,13 @@ function textDimensions(s){
 
 
 
-  /* ---------- UI OGÃLNY ---------- */
+  /* ---------- UI OGÓLNY ---------- */
 
   function toolLabel(){
 
     return tool===TOOLS.SELECT?'Kursor':
 
-           tool===TOOLS.PEN?'OÅÃ³wek':
+           tool===TOOLS.PEN?'Ołówek':
 
            tool===TOOLS.LINE?'Linia':
 
@@ -7126,7 +7126,7 @@ function textDimensions(s){
 
     const shapeLabel = tool===TOOLS.FIGURE
 
-      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'TrÃ³jkÄt':currentShape==='tri_right'?'TrÃ³jkÄt 90Â°':currentShape==='hex'?'SzeÅciokÄt':'KoÅo'}`
+      ? `  ${currentShape==='rect'?'Kwadrat':currentShape==='tri_iso'?'Trójkąt':currentShape==='tri_right'?'Trójkąt 90°':currentShape==='hex'?'Sześciokąt':'Koło'}`
 
       : '';
 
@@ -7598,7 +7598,7 @@ const toolsRow = document.getElementById('tools');
 
     }else if(ext==='pdf'){
 
-      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaÅadowany.');
+      const lib = window.jspdf?.jsPDF; if(!lib) return alert('PDF niezaładowany.');
 
       const dataUrl = c.toDataURL('image/png');
 
@@ -7668,11 +7668,11 @@ const toolsRow = document.getElementById('tools');
 
 
 
-  // USUÅ ZAZNACZONY OBIEKT (przycisk "UsuÅ zaznaczony obiekt")
+  // USUŃ ZAZNACZONY OBIEKT (przycisk "Usuń zaznaczony obiekt")
 
   (function setupDeleteSelectionButton(){
 
-    const btn = document.getElementById('deleteSelection'); // â¹ PODMIEÅ ID jeÅli inny
+    const btn = document.getElementById('deleteSelection'); // ‹ PODMIEŃ ID jeśli inny
 
     if (!btn) return;
 
@@ -7694,7 +7694,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-      // 1) Obraz â usuwamy lokalnie i przez CRDT
+      // 1) Obraz – usuwamy lokalnie i przez CRDT
 
       if (sel.kind === 'image') {
 
@@ -7742,7 +7742,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-      // 2) (opcjonalnie) Stroke â na razie moÅ¼na usuwaÄ tylko lokalnie
+      // 2) (opcjonalnie) Stroke – na razie można usuwać tylko lokalnie
 
       /*
 
@@ -7766,7 +7766,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-        // JeÅli kiedyÅ zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
+        // Jeśli kiedyś zrobimy CRDT dla kresek, tu dodamy broadcastElementRemove dla strokes
 
       }
 
@@ -7912,7 +7912,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-  // AUTOSAVE wielostronicowy usuniÄty â stan tylko z serwera i bieÅ¼Äcej sesji
+  // AUTOSAVE wielostronicowy usunięty – stan tylko z serwera i bieżącej sesji
 
 
 
@@ -7958,7 +7958,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-    // 1) UtwÃ³rz przycisk ââ¦â i panel overflow zaraz obok paska narzÄdzi, jeÅ¼eli nie istniejÄ
+    // 1) Utwórz przycisk „…” i panel overflow zaraz obok paska narzędzi, jeżeli nie istnieją
 
     let moreBtn = document.getElementById('toolsMoreBtn');
 
@@ -7976,9 +7976,9 @@ const toolsRow = document.getElementById('tools');
 
       moreBtn.type = 'button';
 
-      moreBtn.title = 'WiÄcej narzÄdzi';
+      moreBtn.title = 'Więcej narzędzi';
 
-      moreBtn.textContent = 'â¦';
+      moreBtn.textContent = '…';
 
     toolsRow.appendChild(moreBtn);
 
@@ -8036,7 +8036,7 @@ const toolsRow = document.getElementById('tools');
 
     function restoreFromOverflow(){
 
-      // przywrÃ³Ä wszystko co byÅo upchniÄte
+      // przywróć wszystko co było upchnięte
 
       [...moreBox.children].forEach(node => toolsRow.appendChild(node));
 
@@ -8044,7 +8044,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-    // 4) Funkcja: wylicz ktÃ³re elementy trzeba schowaÄ do ââ¦â, aÅ¼ przestanie siÄ przelewaÄ
+    // 4) Funkcja: wylicz które elementy trzeba schować do „…”, aż przestanie się przelewać
 
     function rebalanceTools(){
 
@@ -8258,7 +8258,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-  // Aliboard Chat Module â logika czatu
+  // Aliboard Chat Module – logika czatu
 
   (function initAliboardChatModule(){
 
@@ -8499,13 +8499,13 @@ const toolsRow = document.getElementById('tools');
 
       banner.innerHTML = `
 
-        <span>?? PoÅÄczenie gÅosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'UczeÅ'}</strong></span>
+        <span>?? Połączenie głosowe z: <strong>${fromRole === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</strong></span>
 
         <div class="aliboard-call-actions">
 
-          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">DoÅÄcz</button>
+          <button class="aliboard-call-accept-btn" id="aliboard-accept-call-btn">Dołącz</button>
 
-          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">RozÅÄcz</button>
+          <button class="aliboard-call-end-btn" id="aliboard-end-call-btn">Rozłącz</button>
 
         </div>
 
@@ -8706,7 +8706,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-      // Ping tylko wysyÅamy na serwer, bez lokalnego dopisywania
+      // Ping tylko wysyłamy na serwer, bez lokalnego dopisywania
 
       if (window.aliboardChat && typeof window.aliboardChat.sendToServer === "function") {
 
@@ -8738,7 +8738,7 @@ const toolsRow = document.getElementById('tools');
 
         appendMessage({
 
-          text: '?? WysÅaÅeÅ zaczepienie (ping).',
+          text: '?? Wysłałeś zaczepienie (ping).',
 
           author: 'me',
 
@@ -8916,7 +8916,7 @@ const toolsRow = document.getElementById('tools');
 
         appendMessage({
 
-          text: '?? PoÅÄczenie zostaÅo zakoÅczone',
+          text: '?? Połączenie zostało zakończone',
 
           author: 'other',
 
@@ -9306,7 +9306,7 @@ const toolsRow = document.getElementById('tools');
 
         appendMessage({
 
-          text: '?? PrÃ³ba rozpoczÄcia rozmowy gÅosowejâ¦',
+          text: '?? Próba rozpoczęcia rozmowy głosowej…',
 
           author: 'me',
 
@@ -9462,7 +9462,7 @@ const toolsRow = document.getElementById('tools');
 
 
 
-    // PODPINAMY SIÄ DO ALIBOARD REALTIME (jeÅli dostÄpny) â retry aÅ¼ do skutku
+    // PODPINAMY SIĘ DO ALIBOARD REALTIME (jeśli dostępny) – retry aż do skutku
 
   (function attachCursorListener(){
 
@@ -9492,7 +9492,7 @@ const toolsRow = document.getElementById('tools');
 
       }catch(err){
 
-        console.error("[Aliboard][cursor] bÅÄd przy nakÅadaniu zdalnego kursora", err);
+        console.error("[Aliboard][cursor] błąd przy nakładaniu zdalnego kursora", err);
 
       }
 

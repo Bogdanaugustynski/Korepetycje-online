@@ -2375,6 +2375,7 @@ def _extract_text_for_prompt(name: str, mime: str, raw_bytes: bytes) -> str:
     return _summarize_locally(text)
 
 # TABLICA
+@login_required
 def aliboard_view(request, room_id="local-test"):
     # jesli wejdziesz na /aliboard/ -> uzyje "local-test"
     # jesli wejdziesz na /aliboard/abcd1234/ -> uzyje "abcd1234"
