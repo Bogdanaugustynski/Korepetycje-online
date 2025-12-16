@@ -96,6 +96,40 @@ import uuid
 
 log = logging.getLogger("webrtc")
 
+# --- Access helpers ---
+def in_group(group_name: str):
+    def _check(user):
+        return user.is_authenticated and user.groups.filter(name=group_name).exists()
+    return _check
+
+
+def is_legacy_teacher(user):
+    # Legacy = profil/profile.is_teacher True, ale brak w grupie "Nauczyciele"
+    try:
+        if user.groups.filter(name="Nauczyciele").exists():
+            return False
+        profil = getattr(user, "profil", None) or getattr(user, "profile", None)
+        if profil is None:
+            return False
+        return getattr(profil, "is_teacher", False) is True
+    except Exception:
+        return False
+
+
+def add_to_teachers_group(user):
+    g, _ = Group.objects.get_or_create(name="Nauczyciele")
+    user.groups.add(g)
+
+
+def redirect_after_login(user):
+    if user.groups.filter(name="Księgowość").exists():
+        return redirect("panel_ksiegowosc")
+    if user.groups.filter(name="Nauczyciele").exists():
+        return redirect("panel_nauczyciela_v2")
+    if is_legacy_teacher(user):
+        return redirect("panel_nauczyciela")
+    return redirect("panel_ucznia")
+
 
 # --- Proste testy/public ---
 def public_test(request):
@@ -432,12 +466,7 @@ def login_view(request):
         if next_url:
             return redirect(next_url)
 
-        if user_auth.groups.filter(name="KsiÄ™gowoĹ›Ä‡").exists():
-            return redirect("panel_ksiegowosc")
-        elif hasattr(user_auth, "profil") and getattr(user_auth.profil, "is_teacher", False):
-            return redirect("panel_nauczyciela")
-        else:
-            return redirect("panel_ucznia")
+        return redirect_after_login(user_auth)
 
     # GET
     return render(request, "login.html")
@@ -516,6 +545,11 @@ def register_view(request):
     messages.success(request, "Konto zostaĹ‚o utworzone. Zaloguj siÄ™, aby kontynuowaÄ‡.")
     return redirect("login")
 
+
+
+@login_required
+def after_login_redirect(request):
+    return redirect_after_login(request.user)
 
 # ==========================
 #     WIDOK LEKCJI (HTML)
@@ -774,10 +808,19 @@ def wyplaty_nauczycieli_view(request):
 
 
 @login_required
-def panel_nauczyciela_view(request):
-    if not hasattr(request.user, "profil") or not request.user.profil.is_teacher:
-        return redirect("login")
+@user_passes_test(in_group("Nauczyciele"), login_url="login")
+def panel_nauczyciela_v2(request):
+    return render(request, "teacher/panel_nauczyciela_v2.html")
+
+
+@login_required
+@user_passes_test(is_legacy_teacher, login_url="login")
+def panel_nauczyciela_legacy(request):
     return render(request, "panel_nauczyciela.html")
+
+
+# Alias dla zgodności wstecznej
+panel_nauczyciela_view = panel_nauczyciela_legacy
 
 # EDYTUJ CENÄ
 
@@ -948,7 +991,7 @@ def moje_konto_view(request):
         if profil is not None:
             profil.save()
 
-        return redirect("panel_nauczyciela")
+        return redirect_after_login(request.user)
 
     # GET: lista cennikĂłw (jeĹ›li model istnieje)
     cennik = []
@@ -1312,8 +1355,10 @@ def archiwum_rezerwacji_view(request):
 
 @login_required
 def panel_ucznia_view(request):
-    if hasattr(request.user, "profil") and request.user.profil.is_teacher:
-        return redirect("panel_nauczyciela")
+    if request.user.groups.filter(name="Nauczyciele").exists():
+        return redirect("panel_nauczyciela_v2")
+    if is_legacy_teacher(request.user):
+        return redirect_after_login(request.user)
     terminy = WolnyTermin.objects.all().select_related("nauczyciel")
     return render(request, "panel_ucznia.html", {"terminy": terminy})
 
@@ -1490,6 +1535,7 @@ def panel_admina_view(request):
             username=email, email=email, password=password, first_name=first_name, last_name=last_name
         )
         Profil.objects.create(user=user, is_teacher=True, numer_telefonu=numer_telefonu)
+        add_to_teachers_group(user)
 
     nauczyciele = Profil.objects.filter(is_teacher=True)
     return render(request, "admin_panel.html", {"nauczyciele": nauczyciele})
@@ -1631,7 +1677,7 @@ def change_password_view(request):
             form.save()
             update_session_auth_hash(request, form.user)
             messages.success(request, "HasĹ‚o zostaĹ‚o pomyĹ›lnie zmienione.")
-            return redirect("panel_nauczyciela")
+            return redirect_after_login(request.user)
     else:
         form = PasswordChangeForm(user=request.user)
 

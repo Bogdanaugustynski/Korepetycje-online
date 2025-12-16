@@ -24,10 +24,13 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
     path("moje_konto/", views.moje_konto_view, name="moje_konto"),
     path("uczen/moje-konto/", moje_konto_uczen_view, name="moje_konto_uczen"),
+    path("start/", views.after_login_redirect, name="after_login_redirect"),
 
     # Panele
     path("panel_ucznia/", views.panel_ucznia_view, name="panel_ucznia"),
     path("panel_nauczyciela/", views.panel_nauczyciela_view, name="panel_nauczyciela"),
+    path("nauczyciel/", views.panel_nauczyciela_v2, name="panel_nauczyciela_v2"),
+    path("nauczyciel-legacy/", views.panel_nauczyciela_legacy, name="panel_nauczyciela_legacy"),
     path("panel_admina/", views.panel_admina_view, name="panel_admina"),
     path("panel_ksiegowosc/", views.panel_ksiegowosci_view, name="panel_ksiegowosc"),
     path("panel_ksiegowosc/edytuj_cene/", views.edytuj_cene_view, name="edytuj_cene"),
