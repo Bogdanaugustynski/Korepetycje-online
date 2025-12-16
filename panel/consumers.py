@@ -9,7 +9,6 @@ from .models import AliboardChatMessage
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
 ROOM_CHANNELS = {}  # room_id -> {user_id: channel_name}
-ROOM_GRID_STATE = {}  # {room_id: {"gridSize": int, "kind": "grid"|"tech"}}
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -115,16 +114,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 }
             )
 
-        grid_state = ROOM_GRID_STATE.get(self.room_id)
-        if grid_state:
-            await self.send_json(
-                {
-                    "type": "grid_state",
-                    "gridSize": grid_state.get("gridSize"),
-                    "kind": grid_state.get("kind") or "grid",
-                }
-            )
-
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
         self._unregister_channel()
@@ -187,25 +176,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                     "sender_channel": self.channel_name,
                 },
             )
-
-        elif msg_type == "grid_state":
-            grid_size = content.get("gridSize")
-            kind = content.get("kind") or "grid"
-
-            ROOM_GRID_STATE[self.room_id] = {
-                "gridSize": grid_size,
-                "kind": kind,
-            }
-
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    "type": "broadcast_grid_state",
-                    "gridSize": grid_size,
-                    "kind": kind,
-                },
-            )
-            return
 
         elif msg_type == "chat_message":
             text = (content.get("text") or "").strip()
@@ -438,15 +408,6 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-    async def broadcast_grid_state(self, event):
-        await self.send_json(
-            {
-                "type": "grid_state",
-                "gridSize": event.get("gridSize"),
-                "kind": event.get("kind"),
-            }
-        )
-
     async def broadcast_audio_mode(self, event):
         await self.send_json(
             {
@@ -487,3 +448,4 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
     def _get_channel_for_user(self, user_id):
         room_channels = ROOM_CHANNELS.get(self.room_id) or {}
         return room_channels.get(user_id)
+
