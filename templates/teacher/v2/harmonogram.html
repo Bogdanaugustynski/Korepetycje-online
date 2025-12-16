@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harmonogram — Studio Nauczyciela</title>
+  <style>
+  :root{
+    --brand:#0b74ff; --ink:#0b1320; --muted:#5b6777; --bg:#f7f9fe;
+    --line:#e6edff; --maxw:1100px; --shadow:0 12px 36px rgba(11,116,255,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;line-height:1.45}
+  .wrap{max-width:var(--maxw);margin:18px auto 32px;padding:0 18px 24px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
+  h1{margin:0 0 6px;font-size:22px}
+  p{margin:0;color:var(--muted)}
+  .back{display:inline-flex;align-items:center;gap:8px;margin-top:12px;text-decoration:none;color:var(--brand);font-weight:700}
+  </style>
+</head>
+<body>
+  {% include "partials/brand.html" %}
+  <div class="wrap">
+    <div class="card">
+      <h1>Harmonogram Zajęć (v2)</h1>
+      <p>Widok tylko dla grupy „Nauczyciele”. Dodaj tutaj nowy harmonogram.</p>
+      <a class="back" href="{% url 'panel_nauczyciela_v2' %}">← Studio Nauczyciela</a>
+    </div>
+  </div>
+</body>
+</html>

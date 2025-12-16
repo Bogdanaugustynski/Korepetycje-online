@@ -29,7 +29,11 @@ urlpatterns = [
     # Panele
     path("panel_ucznia/", views.panel_ucznia_view, name="panel_ucznia"),
     path("panel_nauczyciela/", views.panel_nauczyciela_view, name="panel_nauczyciela"),
+    path("panel_nauczyciela/moj_plan/", views.moj_plan_zajec_legacy, name="moj_plan_zajec_legacy"),
     path("nauczyciel/", views.panel_nauczyciela_v2, name="panel_nauczyciela_v2"),
+    path("nauczyciel/harmonogram/", views.harmonogram_v2, name="harmonogram_v2"),
+    path("nauczyciel/dostepnosc/", views.dostepnosc_v2, name="dostepnosc_v2"),
+    path("nauczyciel/profil/", views.profil_v2, name="profil_v2"),
     path("nauczyciel-legacy/", views.panel_nauczyciela_legacy, name="panel_nauczyciela_legacy"),
     path("panel_admina/", views.panel_admina_view, name="panel_admina"),
     path("panel_ksiegowosc/", views.panel_ksiegowosci_view, name="panel_ksiegowosc"),

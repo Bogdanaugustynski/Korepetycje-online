@@ -814,6 +814,24 @@ def panel_nauczyciela_v2(request):
 
 
 @login_required
+@user_passes_test(in_group("Nauczyciele"), login_url="login")
+def harmonogram_v2(request):
+    return render(request, "teacher/v2/harmonogram.html")
+
+
+@login_required
+@user_passes_test(in_group("Nauczyciele"), login_url="login")
+def dostepnosc_v2(request):
+    return render(request, "teacher/v2/dostepnosc.html")
+
+
+@login_required
+@user_passes_test(in_group("Nauczyciele"), login_url="login")
+def profil_v2(request):
+    return render(request, "teacher/v2/profil.html")
+
+
+@login_required
 @user_passes_test(is_legacy_teacher, login_url="login")
 def panel_nauczyciela_legacy(request):
     return render(request, "panel_nauczyciela.html")
@@ -821,6 +839,12 @@ def panel_nauczyciela_legacy(request):
 
 # Alias dla zgodności wstecznej
 panel_nauczyciela_view = panel_nauczyciela_legacy
+
+
+@login_required
+@user_passes_test(is_legacy_teacher, login_url="login")
+def moj_plan_zajec_legacy(request):
+    return moj_plan_zajec_view(request)
 
 # EDYTUJ CENÄ
 
