@@ -2559,6 +2559,10 @@
 
     const sizeHint = isObj ? (state.gridSize ?? state.size) : state;
 
+    const sizeNum = typeof sizeHint === 'number' ? sizeHint : (sizeHint != null ? parseInt(sizeHint, 10) : null);
+
+    if(sizeNum === 0){ return TEMPLATE_KINDS.NONE; }
+
     if(rawKind === 'tech' || rawKind === 'grid-tech'){ return TEMPLATE_KINDS.GRID_TECH; }
 
     return normalizeTemplateKind(rawKind, sizeHint);
@@ -7488,6 +7492,16 @@ const toolsRow = document.getElementById('tools');
       const pageIndex = page ? (Number.isFinite(page.index) ? page.index : PAGES.indexOf(page)) : 0;
 
       setTemplateForPage(pageIndex, templateKind, { broadcast:true });
+
+      if(window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
+
+        const gridSize = val === 'tech' ? 0 : parseInt(val, 10) || 0;
+
+        const kind = val === 'tech' ? 'tech' : 'grid';
+
+        window.AliboardRealtime.sendGridState({ gridSize, kind });
+
+      }
 
       toggleMenu(false);
 

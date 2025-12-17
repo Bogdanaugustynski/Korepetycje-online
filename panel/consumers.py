@@ -9,6 +9,7 @@ from .models import AliboardChatMessage
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
 ROOM_CHANNELS = {}  # room_id -> {user_id: channel_name}
+ROOM_GRID_STATE = {}  # { room_id: {"gridSize": int, "kind": "grid"|"tech"} }
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -114,6 +115,16 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 }
             )
 
+        grid_state = ROOM_GRID_STATE.get(self.room_id)
+        if grid_state:
+            await self.send_json(
+                {
+                    "type": "grid_state",
+                    "gridSize": grid_state.get("gridSize"),
+                    "kind": grid_state.get("kind") or "grid",
+                }
+            )
+
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
         self._unregister_channel()
@@ -163,6 +174,24 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                     "type": "board.element_remove",
                     "id": element_id,
                     "sender_channel": self.channel_name,
+                },
+            )
+
+        elif msg_type == "grid_state":
+            grid_size = content.get("gridSize")
+            kind = content.get("kind") or "grid"
+
+            ROOM_GRID_STATE[self.room_id] = {
+                "gridSize": grid_size,
+                "kind": kind,
+            }
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "broadcast_grid_state",
+                    "gridSize": grid_size,
+                    "kind": kind,
                 },
             )
 
@@ -414,6 +443,15 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "type": "audio_mode",
                 "mode": event.get("mode"),
                 "from_id": event.get("from_id"),
+            }
+        )
+
+    async def broadcast_grid_state(self, event):
+        await self.send_json(
+            {
+                "type": "grid_state",
+                "gridSize": event.get("gridSize"),
+                "kind": event.get("kind"),
             }
         )
 
