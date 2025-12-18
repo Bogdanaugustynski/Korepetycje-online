@@ -1213,6 +1213,9 @@
 
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
+  let gridKind = 'grid';
+  let gridBaseWidth = null;
+  let gridStepPx = 0;
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
   let lastBrushSize = size;
   let currentShape = 'rect';
@@ -1812,14 +1815,15 @@
       c2d.setTransform(dpr,0,0,dpr,0,0);
     });
   }
-  function drawGrid(p){
+  function drawGrid(p, customStep){
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
     p.g.clearRect(0,0,w,h);
-    if(!gridSize) return;
+    const step = customStep ?? (typeof gridSize === 'number' ? gridSize : 0);
+    if(!step) return;
     p.g.save(); p.g.strokeStyle='#e6edff'; p.g.lineWidth=1;
-    for(let x=0;x<=w;x+=gridSize){ p.g.beginPath(); p.g.moveTo(x,0); p.g.lineTo(x,h); p.g.stroke(); }
-    for(let y=0;y<=h;y+=gridSize){ p.g.beginPath(); p.g.moveTo(0,y); p.g.lineTo(w,y); p.g.stroke(); }
+    for(let x=0;x<=w;x+=step){ p.g.beginPath(); p.g.moveTo(x,0); p.g.lineTo(x,h); p.g.stroke(); }
+    for(let y=0;y<=h;y+=step){ p.g.beginPath(); p.g.moveTo(0,y); p.g.lineTo(w,y); p.g.stroke(); }
     p.g.restore();
   }
 
@@ -1827,29 +1831,40 @@
   window.aliboardApplyGridState = function(newGridState){
     const isObj = newGridState && typeof newGridState === 'object';
     const kind = isObj ? newGridState.kind : null;
+    const baseWidth = isObj ? newGridState.baseWidth : null;
     const valRaw = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
     const isTech = kind === 'tech';
-    const parsedSize = isTech
-      ? 'tech'
-      : (typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0);
-    gridSize = parsedSize;
+    const rawSizeNum = typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0;
+    gridKind = isTech ? 'tech' : 'grid';
+    gridBaseWidth = baseWidth || null;
     PAGES.forEach(p => {
-      if(isTech){ drawTechGrid(p); }
-      else { drawGrid(p); }
+      const targetWidth = (p?.gridC?.clientWidth) || (p?.drawC?.clientWidth) || (p?.el?.getBoundingClientRect()?.width) || 0;
+      const senderWidth = baseWidth || targetWidth || 1;
+      const scale = targetWidth ? (targetWidth / senderWidth) : 1;
+      const effectiveStep = rawSizeNum ? rawSizeNum * scale : 0;
+      gridStepPx = effectiveStep;
+      gridSize = isTech ? 'tech' : effectiveStep;
+      if(isTech){
+        drawTechGrid(p, effectiveStep);
+      } else if(effectiveStep){
+        drawGrid(p, effectiveStep);
+      } else {
+        drawGrid(p, 0);
+      }
     });
   };
-  function drawTechGrid(p){
+  function drawTechGrid(p, customStep){
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
-    drawTechPattern(p.g, w, h);
+    drawTechPattern(p.g, w, h, customStep);
   }
-  function drawTechPattern(ctx, w, h){
+  function drawTechPattern(ctx, w, h, customStep){
     ctx.clearRect(0,0,w,h);
     ctx.save();
     const thin = '#e0e6f0';
     const mid  = '#b5c0d4';
     const bold = '#7f8ba1';
-    const step = 8;
+    const step = customStep || 8;
     ctx.strokeStyle = thin;
     ctx.lineWidth = 0.5;
     for (let x = 0; x <= w; x += step/2){ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
@@ -1865,8 +1880,8 @@
     ctx.restore();
   }
   function refreshGrid(p){
-    if(gridSize==='tech'){ drawTechGrid(p); }
-    else{ drawGrid(p); }
+    if(gridKind==='tech'){ drawTechGrid(p, gridStepPx); }
+    else{ drawGrid(p, gridStepPx); }
   }
   function resetBoard(){
     PAGES.forEach(p=> p.el.remove());
@@ -2383,13 +2398,16 @@
     theContext = tmp.getContext('2d');
     theContext.scale(dpr, dpr);
 
-    if(gridSize === 'tech'){
-      drawTechPattern(theContext, cssW, cssH);
-    }else if(gridSize){
-      theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
-      for(let x=0;x<=cssW;x+=gridSize){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,cssH); theContext.stroke(); }
-      for(let y=0;y<=cssH;y+=gridSize){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(cssW,y); theContext.stroke(); }
-      theContext.restore();
+    if(gridKind === 'tech'){
+      drawTechPattern(theContext, cssW, cssH, gridStepPx);
+    }else{
+      const step = gridStepPx || (typeof gridSize === 'number' ? gridSize : 0);
+      if(step){
+        theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
+        for(let x=0;x<=cssW;x+=step){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,cssH); theContext.stroke(); }
+        for(let y=0;y<=cssH;y+=step){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(cssW,y); theContext.stroke(); }
+        theContext.restore();
+      }
     }
     await Promise.all(p.state.images.map(im => im.img ? Promise.resolve() : new Promise(res=>{ const el=new Image(); el.onload=()=>{im.img=el; res();}; el.src=im.src; })));
     for(const im of p.state.images){ if(im.img) theContext.drawImage(im.img, im.x, im.y, im.w, im.h); }
@@ -3337,20 +3355,27 @@ const toolsRow = document.getElementById('tools');
       const val = btn.getAttribute('data-grid');
       const isTech = val === 'tech';
       const newSize = isTech ? 'tech' : parseInt(val,10) || 0;
-      gridSize = newSize;
+      const page = currentPage();
+      const baseWidth = (page?.drawC?.clientWidth) || (page?.gridC?.clientWidth) || (page?.el?.getBoundingClientRect()?.width) || (page?.drawC?.width) || 0;
+      const stepPx = typeof newSize === 'number' ? newSize : 0;
+
+      gridKind = isTech ? 'tech' : 'grid';
+      gridBaseWidth = baseWidth || null;
+      gridStepPx = stepPx;
+      gridSize = isTech ? 'tech' : stepPx;
 
       if (isTech){
-        PAGES.forEach(p=> drawTechGrid(p));
+        PAGES.forEach(p=> drawTechGrid(p, stepPx));
       } else {
-        PAGES.forEach(p=> drawGrid(p));
+        PAGES.forEach(p=> drawGrid(p, stepPx));
       }
 
       // realtime broadcast ? je?li dost?pny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
         window.AliboardRealtime.sendGridState(
           isTech
-            ? { gridSize: 0, kind: 'tech' }
-            : { gridSize: newSize, kind: 'grid' }
+            ? { gridSize: stepPx, kind: 'tech', baseWidth: baseWidth }
+            : { gridSize: stepPx, kind: 'grid', baseWidth: baseWidth }
         );
       }
 

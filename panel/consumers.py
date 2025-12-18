@@ -9,7 +9,7 @@ from .models import AliboardChatMessage
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
 ROOM_CHANNELS = {}  # room_id -> {user_id: channel_name}
-ROOM_GRID_STATE = {}  # { room_id: {"gridSize": int, "kind": "grid"|"tech"} }
+ROOM_GRID_STATE = {}  # { room_id: {"gridSize": int, "kind": "grid"|"tech", "baseWidth": int} }
 
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
@@ -122,6 +122,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                     "type": "grid_state",
                     "gridSize": grid_state.get("gridSize"),
                     "kind": grid_state.get("kind") or "grid",
+                    "baseWidth": grid_state.get("baseWidth"),
                 }
             )
 
@@ -180,10 +181,12 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         elif msg_type == "grid_state":
             grid_size = content.get("gridSize")
             kind = content.get("kind") or "grid"
+            base_width = content.get("baseWidth")
 
             ROOM_GRID_STATE[self.room_id] = {
                 "gridSize": grid_size,
                 "kind": kind,
+                "baseWidth": base_width,
             }
 
             await self.channel_layer.group_send(
@@ -192,6 +195,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                     "type": "broadcast_grid_state",
                     "gridSize": grid_size,
                     "kind": kind,
+                    "baseWidth": base_width,
                 },
             )
 
@@ -452,6 +456,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "type": "grid_state",
                 "gridSize": event.get("gridSize"),
                 "kind": event.get("kind"),
+                "baseWidth": event.get("baseWidth"),
             }
         )
 

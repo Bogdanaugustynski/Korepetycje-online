@@ -363,6 +363,7 @@
       const isObj = typeof state === "object";
       const rawSize = isObj ? state.gridSize : state;
       const isTech = rawSize === "tech" || (isObj && state.kind === "tech");
+      const baseWidth = isObj ? state.baseWidth : null;
       const size = isTech
         ? 0
         : typeof rawSize === "number"
@@ -372,6 +373,7 @@
         type: "grid_state",
         gridSize: size,
         kind: isTech ? "tech" : "grid",
+        baseWidth: baseWidth,
       });
     },
     sendChatMessage(text) {

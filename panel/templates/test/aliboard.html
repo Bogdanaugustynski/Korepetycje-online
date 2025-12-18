@@ -2561,9 +2561,9 @@
 
     const sizeNum = typeof sizeHint === 'number' ? sizeHint : (sizeHint != null ? parseInt(sizeHint, 10) : null);
 
-    if(sizeNum === 0){ return TEMPLATE_KINDS.NONE; }
-
     if(rawKind === 'tech' || rawKind === 'grid-tech'){ return TEMPLATE_KINDS.GRID_TECH; }
+
+    if(sizeNum === 0){ return TEMPLATE_KINDS.NONE; }
 
     return normalizeTemplateKind(rawKind, sizeHint);
 
@@ -3915,7 +3915,7 @@
 
   function makeEmptyPageState(){
 
-    return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null, templateKind: TEMPLATE_KINDS.NONE };
+    return { strokes: [], images: [], history: [], redo: [], selection: null, dragging: null, templateKind: TEMPLATE_KINDS.NONE, templateGridSize: null, templateBaseWidth: null, templateStepPx: null };
 
   }
 
@@ -4089,7 +4089,7 @@
 
   }
 
-  function drawTemplateOnContext(ctx, w, h, templateKind){
+  function drawTemplateOnContext(ctx, w, h, templateKind, stepOverride){
 
     const kind = normalizeTemplateKind(templateKind);
 
@@ -4097,11 +4097,11 @@
 
     if(kind === TEMPLATE_KINDS.NONE) return;
 
-    if(kind === TEMPLATE_KINDS.GRID_TECH){ drawTechPattern(ctx, w, h); return; }
+    if(kind === TEMPLATE_KINDS.GRID_TECH){ drawTechPattern(ctx, w, h, stepOverride); return; }
 
     if(kind === TEMPLATE_KINDS.LINED){ drawLinedPattern(ctx, w, h); return; }
 
-    const step = templateKindToStep(kind);
+    const step = stepOverride || templateKindToStep(kind);
 
     if(step){ drawSimpleGrid(ctx, w, h, step); }
 
@@ -4115,15 +4115,38 @@
 
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
 
-    drawTemplateOnContext(p.g, w, h, p.state.templateKind);
+    const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || p.gridC.width;
+    let stepOverride = p.state.templateStepPx;
+    const baseWidth = p.state.templateBaseWidth;
+    if(p.state.templateGridSize !== null && p.state.templateGridSize !== undefined){
+      const rawSize = typeof p.state.templateGridSize === 'number' ? p.state.templateGridSize : parseInt(p.state.templateGridSize, 10) || 0;
+      if(rawSize){
+        const senderWidth = baseWidth || currentWidth || 1;
+        stepOverride = rawSize * (currentWidth / senderWidth);
+      } else {
+        stepOverride = null;
+      }
+    }
+
+    drawTemplateOnContext(p.g, w, h, p.state.templateKind, stepOverride);
 
   }
 
-  function setPageTemplateKind(p, templateKind, forceDraw){
+  function setPageTemplateKind(p, templateKind, forceDraw, meta){
 
     if(!p || !p.state) return;
 
     const next = normalizeTemplateKind(templateKind);
+
+    if(meta){
+      p.state.templateGridSize = meta.gridSize ?? null;
+      p.state.templateBaseWidth = meta.baseWidth ?? null;
+      p.state.templateStepPx = meta.stepPx ?? null;
+    }else{
+      p.state.templateGridSize = null;
+      p.state.templateBaseWidth = null;
+      p.state.templateStepPx = null;
+    }
 
     if(!forceDraw && p.state.templateKind === next) return;
 
@@ -4179,7 +4202,9 @@
 
     const normalized = normalizeTemplateKind(templateKind);
 
-    setPageTemplateKind(p, normalized, true);
+    const meta = opts ? { gridSize: opts.gridSize, baseWidth: opts.baseWidth, stepPx: opts.stepPx } : undefined;
+
+    setPageTemplateKind(p, normalized, true, meta);
 
     const element = buildTemplateElement(pageIndex, normalized);
 
@@ -4193,13 +4218,30 @@
 
   window.aliboardApplyGridState = function(newGridState){
 
-    const templateKind = gridStateToTemplateKind(newGridState);
+    const isObj = newGridState && typeof newGridState === 'object';
+    const rawKind = isObj ? (newGridState.kind || newGridState.templateKind || newGridState.type) : null;
+    const rawSize = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
+    const baseWidth = isObj ? newGridState.baseWidth : null;
+    const sizeNum = typeof rawSize === 'number' ? rawSize : parseInt(rawSize, 10) || 0;
 
-    PAGES.forEach((page, idx)=> setTemplateForPage(idx, templateKind, { broadcast:false }));
+    PAGES.forEach((page, idx)=>{
+      const currentWidth = (page?.el?.getBoundingClientRect()?.width) || (page?.gridC?.clientWidth) || (page?.gridC?.width) || 0;
+      const senderWidth = baseWidth || currentWidth || 1;
+      const scale = currentWidth ? (currentWidth / senderWidth) : 1;
+      const effectiveStep = sizeNum ? sizeNum * scale : 0;
+      const templateKind = gridStateToTemplateKind({ kind: rawKind, gridSize: effectiveStep });
+
+      setTemplateForPage(idx, templateKind, {
+        broadcast:false,
+        gridSize: sizeNum,
+        baseWidth: senderWidth,
+        stepPx: effectiveStep,
+      });
+    });
 
   };
 
-  function drawTechPattern(ctx, w, h){
+  function drawTechPattern(ctx, w, h, customStep){
 
     ctx.clearRect(0,0,w,h);
 
@@ -4211,7 +4253,7 @@
 
     const bold = '#7f8ba1';
 
-    const step = 8;
+    const step = customStep || 8;
 
     ctx.strokeStyle = thin;
 
@@ -5361,7 +5403,20 @@
 
     theContext.scale(dpr, dpr);
 
-    drawTemplateOnContext(theContext, cssW, cssH, p.state.templateKind);
+    const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || p.gridC.width;
+    let stepOverride = p.state.templateStepPx;
+    const baseWidth = p.state.templateBaseWidth;
+    if(p.state.templateGridSize !== null && p.state.templateGridSize !== undefined){
+      const rawSize = typeof p.state.templateGridSize === 'number' ? p.state.templateGridSize : parseInt(p.state.templateGridSize, 10) || 0;
+      if(rawSize){
+        const senderWidth = baseWidth || currentWidth || 1;
+        stepOverride = rawSize * (currentWidth / senderWidth);
+      } else {
+        stepOverride = null;
+      }
+    }
+
+    drawTemplateOnContext(theContext, cssW, cssH, p.state.templateKind, stepOverride);
 
     await Promise.all(p.state.images.map(im => im.img ? Promise.resolve() : new Promise(res=>{ const el=new Image(); el.onload=()=>{im.img=el; res();}; el.src=im.src; })));
 
@@ -7491,15 +7546,18 @@ const toolsRow = document.getElementById('tools');
 
       const pageIndex = page ? (Number.isFinite(page.index) ? page.index : PAGES.indexOf(page)) : 0;
 
-      setTemplateForPage(pageIndex, templateKind, { broadcast:true });
+      const baseWidth = (page?.el?.getBoundingClientRect()?.width) || (page?.gridC?.clientWidth) || (page?.gridC?.width) || 0;
+      const stepPx = val === 'tech' ? 0 : parseInt(val, 10) || 0;
+
+      setTemplateForPage(pageIndex, templateKind, { broadcast:true, gridSize: stepPx, baseWidth: baseWidth, stepPx });
 
       if(window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
 
-        const gridSize = val === 'tech' ? 0 : parseInt(val, 10) || 0;
+        const gridSize = val === 'tech' ? 0 : stepPx;
 
         const kind = val === 'tech' ? 'tech' : 'grid';
 
-        window.AliboardRealtime.sendGridState({ gridSize, kind });
+        window.AliboardRealtime.sendGridState({ gridSize, kind, baseWidth });
 
       }
 
