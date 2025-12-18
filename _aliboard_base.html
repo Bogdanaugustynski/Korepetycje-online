@@ -1212,10 +1212,18 @@
   }
 
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
-  let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 0;
-  let gridKind = 'grid';
-  let gridBaseWidth = null;
+  let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 'md';
+  let gridKind = 'none';
   let gridStepPx = 0;
+
+  const BASE_PHONE_WIDTH_PX = 360;
+  const GRID_STEPS_ON_PHONE = { sm: 18, md: 26, lg: 34 };
+
+  function computeStepPx(gridSizeKey, canvasWidth){
+    const stepOnPhone = GRID_STEPS_ON_PHONE[gridSizeKey] || GRID_STEPS_ON_PHONE.md;
+    const scale = (canvasWidth || BASE_PHONE_WIDTH_PX) / BASE_PHONE_WIDTH_PX;
+    return Math.max(6, Math.round(stepOnPhone * scale));
+  }
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
   let lastBrushSize = size;
   let currentShape = 'rect';
@@ -1819,7 +1827,7 @@
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
     p.g.clearRect(0,0,w,h);
-    const step = customStep ?? (typeof gridSize === 'number' ? gridSize : 0);
+    const step = customStep ?? gridStepPx;
     if(!step) return;
     p.g.save(); p.g.strokeStyle='#e6edff'; p.g.lineWidth=1;
     for(let x=0;x<=w;x+=step){ p.g.beginPath(); p.g.moveTo(x,0); p.g.lineTo(x,h); p.g.stroke(); }
@@ -1830,26 +1838,28 @@
   // --- SYNC GRID: handler dla realtime (wywo?ywany z AliboardRealtime) ---
   window.aliboardApplyGridState = function(newGridState){
     const isObj = newGridState && typeof newGridState === 'object';
-    const kind = isObj ? newGridState.kind : null;
-    const baseWidth = isObj ? newGridState.baseWidth : null;
+    const kind = (isObj ? newGridState.kind : null) || 'grid';
     const valRaw = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
-    const isTech = kind === 'tech';
-    const rawSizeNum = typeof valRaw === 'number' ? valRaw : parseInt(valRaw,10) || 0;
-    gridKind = isTech ? 'tech' : 'grid';
-    gridBaseWidth = baseWidth || null;
+    const sizeKey = typeof valRaw === 'string' ? valRaw : (valRaw === 0 ? 'none' : 'md');
+    if(kind === 'none' || sizeKey === 'none'){
+      gridKind = 'none';
+      gridSize = 'none';
+      gridStepPx = 0;
+      PAGES.forEach(p => drawGrid(p, 0));
+      return;
+    }
+    gridKind = kind;
+    gridSize = sizeKey;
     PAGES.forEach(p => {
       const targetWidth = (p?.gridC?.clientWidth) || (p?.drawC?.clientWidth) || (p?.el?.getBoundingClientRect()?.width) || 0;
-      const senderWidth = baseWidth || targetWidth || 1;
-      const scale = targetWidth ? (targetWidth / senderWidth) : 1;
-      const effectiveStep = rawSizeNum ? rawSizeNum * scale : 0;
+      const effectiveStep = kind === 'tech' ? computeStepPx('md', targetWidth) : computeStepPx(sizeKey, targetWidth);
       gridStepPx = effectiveStep;
-      gridSize = isTech ? 'tech' : effectiveStep;
-      if(isTech){
+      if(kind === 'tech'){
         drawTechGrid(p, effectiveStep);
-      } else if(effectiveStep){
-        drawGrid(p, effectiveStep);
-      } else {
+      } else if(sizeKey === 'none' || valRaw === 0){
         drawGrid(p, 0);
+      } else {
+        drawGrid(p, effectiveStep);
       }
     });
   };
@@ -3354,28 +3364,21 @@ const toolsRow = document.getElementById('tools');
       e.preventDefault();
       const val = btn.getAttribute('data-grid');
       const isTech = val === 'tech';
-      const newSize = isTech ? 'tech' : parseInt(val,10) || 0;
-      const page = currentPage();
-      const baseWidth = (page?.drawC?.clientWidth) || (page?.gridC?.clientWidth) || (page?.el?.getBoundingClientRect()?.width) || (page?.drawC?.width) || 0;
-      const stepPx = typeof newSize === 'number' ? newSize : 0;
+      let sizeKey = 'md';
+      if(val === '0'){ sizeKey = 'none'; }
+      else if(val === '16'){ sizeKey = 'sm'; }
+      else if(val === '24'){ sizeKey = 'md'; }
+      else if(val === '32'){ sizeKey = 'lg'; }
+      gridKind = isTech ? 'tech' : (sizeKey === 'none' ? 'none' : 'grid');
+      gridSize = sizeKey;
 
-      gridKind = isTech ? 'tech' : 'grid';
-      gridBaseWidth = baseWidth || null;
-      gridStepPx = stepPx;
-      gridSize = isTech ? 'tech' : stepPx;
+      aliboardApplyGridState({ gridSize: sizeKey, kind: gridKind });
 
-      if (isTech){
-        PAGES.forEach(p=> drawTechGrid(p, stepPx));
-      } else {
-        PAGES.forEach(p=> drawGrid(p, stepPx));
-      }
-
-      // realtime broadcast ? je?li dost?pny
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
         window.AliboardRealtime.sendGridState(
           isTech
-            ? { gridSize: stepPx, kind: 'tech', baseWidth: baseWidth }
-            : { gridSize: stepPx, kind: 'grid', baseWidth: baseWidth }
+            ? { gridSize: 'md', kind: 'tech' }
+            : { gridSize: sizeKey, kind: gridKind }
         );
       }
 

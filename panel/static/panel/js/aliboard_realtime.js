@@ -362,18 +362,11 @@
       if (!state) return;
       const isObj = typeof state === "object";
       const rawSize = isObj ? state.gridSize : state;
-      const isTech = rawSize === "tech" || (isObj && state.kind === "tech");
-      const baseWidth = isObj ? state.baseWidth : null;
-      const size = isTech
-        ? 0
-        : typeof rawSize === "number"
-        ? rawSize
-        : parseInt(rawSize, 10) || 0;
+      const kind = isObj ? state.kind : "grid";
       send({
         type: "grid_state",
-        gridSize: size,
-        kind: isTech ? "tech" : "grid",
-        baseWidth: baseWidth,
+        gridSize: rawSize,
+        kind: kind || "grid",
       });
     },
     sendChatMessage(text) {
