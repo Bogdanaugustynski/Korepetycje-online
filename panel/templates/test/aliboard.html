@@ -9039,7 +9039,6 @@ const toolsRow = document.getElementById('tools');
       if(window.aliboardChat && typeof window.aliboardChat.sendCallSignal === 'function'){
         window.aliboardChat.sendCallSignal('ring');
       }
-      resumeRemoteAudioPlayback();
     }
 
     function handleHangupClick() {
@@ -9065,13 +9064,10 @@ const toolsRow = document.getElementById('tools');
       const voicePeers = new Map();
       const pendingIce = new Map(); // peerId -> RTCIceCandidate[]
       const remoteAudio = document.getElementById('aliboard-remote-audio');
-      const remoteAudioElementsMap = {};
-      window.aliboardRemoteAudios = remoteAudioElementsMap;
       if(remoteAudio){
         remoteAudio.autoplay = true;
         remoteAudio.playsInline = true;
         remoteAudio.controls = false;
-        remoteAudio.muted = false;
       }
       let lastRingFromId = null;
 
@@ -9079,50 +9075,28 @@ const toolsRow = document.getElementById('tools');
         return peerId !== undefined && peerId !== null ? peerId : 'legacy';
       }
 
-      if(remoteAudio){
-        remoteAudioElementsMap[getPeerKey(null)] = remoteAudio;
-      }
-
       function buildAudioEl(peerId){
-        const key = getPeerKey(peerId);
-        const elId = `aliboard-voice-${key}`;
+        const elId = `aliboard-voice-${peerId}`;
         let au = document.getElementById(elId);
         if(!au){
-          au = document.createElement('audio');
-          au.id = elId;
-          au.hidden = true;
-          document.body.appendChild(au);
-        }
+        au = document.createElement('audio');
+
+        au.id = elId;
+
         au.autoplay = true;
+
         au.playsInline = true;
         au.controls = false;
-        au.muted = false;
-        remoteAudioElementsMap[key] = au;
-        return au;
+
+        au.hidden = true;
+
+        document.body.appendChild(au);
+
       }
 
-      function attachRemoteStream(peerId, stream){
-        if(!stream) return;
-        const key = getPeerKey(peerId);
-        let au = (peerId !== undefined && peerId !== null) ? buildAudioEl(peerId) : remoteAudio;
-        if(!au){
-          au = buildAudioEl(key);
-        }
-        au.srcObject = stream;
-        remoteAudioElementsMap[key] = au;
-      }
+      return au;
 
-      function resumeRemoteAudioPlayback(){
-        setTimeout(()=>{
-          Object.values(remoteAudioElementsMap || {}).forEach((audioEl)=>{
-            if(audioEl && audioEl.srcObject){
-              audioEl.play().catch((err)=>{
-                console.warn("[AliboardVoice] Safari play() blocked", err);
-              });
-            }
-          });
-        }, 0);
-      }
+    }
 
 
 
@@ -9160,14 +9134,11 @@ const toolsRow = document.getElementById('tools');
           voicePeers.delete(key);
         }
         pendingIce.delete(key);
-        const el = remoteAudioElementsMap[key] || document.getElementById(`aliboard-voice-${key}`);
+        const el = document.getElementById(`aliboard-voice-${peerId}`);
         if(el){
           el.srcObject = null;
-          if(el !== remoteAudio && el.parentNode){
-            el.remove();
-          }
+          el.remove();
         }
-        delete remoteAudioElementsMap[key];
     }
 
 
@@ -9187,11 +9158,11 @@ const toolsRow = document.getElementById('tools');
         let pc = voicePeers.get(key);
         if(pc) return pc;
         pc = new RTCPeerConnection(rtcConfig);
-      pc.onicecandidate = (event)=>{
-        if(event.candidate){
-        if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceIce === 'function' && peerId !== undefined && peerId !== null){
+        pc.onicecandidate = (event)=>{
+          if(event.candidate){
+          if(window.AliboardRealtime && typeof window.AliboardRealtime.voiceIce === 'function' && peerId !== undefined && peerId !== null){
 
-          window.AliboardRealtime.voiceIce(peerId, event.candidate);
+            window.AliboardRealtime.voiceIce(peerId, event.candidate);
 
           }else{
 
@@ -9210,31 +9181,26 @@ const toolsRow = document.getElementById('tools');
       };
 
       pc.ontrack = (event)=>{
-        if(isSafariBrowser()){
-          console.log("[Safari Voice] ontrack fired", {
-            streams: event.streams.length,
-            firstHasAudio: event.streams[0]?.getAudioTracks()?.length
-          });
+
+        const au = (peerId !== undefined && peerId !== null) ? buildAudioEl(peerId) : remoteAudio;
+
+        if(au){
+
+          au.srcObject = event.streams[0];
+
         }
-        const [remoteStream] = event.streams;
-        if(!remoteStream) return;
-        attachRemoteStream(peerId, remoteStream);
+
       };
 
       pc.onconnectionstatechange = ()=>{
-        if(isSafariBrowser()){
-          console.log("[Safari Voice] connState", pc.connectionState);
-        }
+
         if(['failed','disconnected','closed'].includes(pc.connectionState)){
+
           destroyPeer(key);
+
         }
 
         };
-      if(isSafariBrowser()){
-        pc.addEventListener("iceconnectionstatechange", ()=>{
-          console.log("[Safari Voice] iceState", pc.iceConnectionState);
-        });
-      }
         voicePeers.set(key, pc);
         return pc;
       }
@@ -9336,10 +9302,10 @@ const toolsRow = document.getElementById('tools');
         const desc = new RTCSessionDescription(data.sdp);
 
         if(isSafariBrowser()){
-          const stream = await ensureLocalStream();
-          stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
           await pc.setRemoteDescription(desc);
           await flushPendingIce(fromId, pc);
+          const stream = await ensureLocalStream();
+          stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
         }else{
@@ -9427,18 +9393,6 @@ const toolsRow = document.getElementById('tools');
         remoteAudio.srcObject = null;
 
       }
-      Object.keys(remoteAudioElementsMap).forEach((key)=>{
-        const audioEl = remoteAudioElementsMap[key];
-        if(!audioEl) return;
-        audioEl.srcObject = null;
-        if(audioEl !== remoteAudio && audioEl.parentNode){
-          audioEl.remove();
-        }
-        delete remoteAudioElementsMap[key];
-      });
-      if(remoteAudio){
-        remoteAudioElementsMap[getPeerKey(null)] = remoteAudio;
-      }
 
       if(incomingCallBanner && incomingCallBanner.parentNode){
 
@@ -9487,8 +9441,17 @@ const toolsRow = document.getElementById('tools');
 
       if(target === undefined || target === null) return;
 
-      buildAudioEl(target);
-      resumeRemoteAudioPlayback();
+      const audioEl = buildAudioEl(target);
+      try{
+        const playPromise = audioEl.play();
+        if(playPromise && typeof playPromise.then === "function"){
+          playPromise.catch((e)=>{
+            console.warn("[Voice] Safari blocked autoplay", e);
+          });
+        }
+      }catch(e){
+        console.warn("[Voice] play() error", e);
+      }
 
       await window.aliboardVoice.startCallTo(target);
 
