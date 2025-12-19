@@ -8428,6 +8428,8 @@ const toolsRow = document.getElementById('tools');
 
     window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
 
+    let isMicMuted = false;
+
     // --- Mute helpers (safe: only toggle track.enabled, no renegotiation) ---
     function updateMuteButtonUI(muted){
       const btn = document.getElementById('aliboard-chat-mic');
@@ -8501,8 +8503,6 @@ const toolsRow = document.getElementById('tools');
 
 
     const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
-
-    let isMicMuted = false;
 
     let incomingCallBanner = null;
 
