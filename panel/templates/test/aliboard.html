@@ -8483,7 +8483,7 @@ const toolsRow = document.getElementById('tools');
     // wire mic button
     const __aliboard_chat_mic_btn = (typeof micBtn !== 'undefined' && micBtn) ? micBtn : document.getElementById('aliboard-chat-mic');
     if(__aliboard_chat_mic_btn){
-      __aliboard_chat_mic_btn.addEventListener('click', ()=>{ setMicMuted(!isMicMuted); });
+      __aliboard_chat_mic_btn.addEventListener('click', (e)=>{ console.debug('[Aliboard] mic click', {isMicMuted}); setMicMuted(!isMicMuted); });
       updateMuteButtonUI(isMicMuted);
     }
 
