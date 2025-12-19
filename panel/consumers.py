@@ -321,6 +321,19 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        elif msg_type == "chat_mic_state":
+            # user toggled local mic mute/unmute – broadcast to room
+            muted = bool(content.get("muted"))
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "broadcast_chat_mic_state",
+                    "muted": muted,
+                    "from_id": self.user_id,
+                },
+            )
+
         elif msg_type and msg_type.startswith("voice:"):
             payload = {**content, "from_id": self.user_id}
             to_id_raw = content.get("to_id")
@@ -443,6 +456,15 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
                 "type": "audio_mode",
                 "mode": event.get("mode"),
                 "from_id": event.get("from_id"),
+            }
+        )
+
+    async def broadcast_chat_mic_state(self, event):
+        await self.send_json(
+            {
+                "type": "chat_mic_state",
+                "muted": event.get("muted", False),
+                "user_id": event.get("from_id"),
             }
         )
 

@@ -8428,6 +8428,74 @@ const toolsRow = document.getElementById('tools');
 
     window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
 
+    // --- Mute helpers (safe: only toggle track.enabled, no renegotiation) ---
+    function updateMuteButtonUI(muted){
+      const btn = document.getElementById('aliboard-chat-mic');
+      if(!btn) return;
+      btn.classList.toggle('is-muted', !!muted);
+      btn.title = muted ? 'Mikrofon wyciszony' : 'Mikrofon włączony';
+    }
+
+    function sendMicMuteState(muted){
+      if(window.AliboardRealtime && typeof window.AliboardRealtime.sendChatMicState === 'function'){
+        window.AliboardRealtime.sendChatMicState(!!muted);
+      }else if(window.aliboardChat && typeof window.aliboardChat.toggleMic === 'function'){
+        window.aliboardChat.toggleMic(!!muted);
+      }
+    }
+
+    function setMicMuted(muted){
+      isMicMuted = !!muted;
+      const stream = window.__ALIBOARD_LOCAL_STREAM;
+      if(!stream || !stream.getAudioTracks) {
+        updateMuteButtonUI(isMicMuted);
+        sendMicMuteState(isMicMuted);
+        return;
+      }
+      stream.getAudioTracks().forEach(track => {
+        try{ track.enabled = !isMicMuted; }catch(_){ }
+      });
+      updateMuteButtonUI(isMicMuted);
+      sendMicMuteState(isMicMuted);
+    }
+
+    function updateRemoteMicIndicator(userId, muted){
+      try{
+        const el = document.querySelector(`[data-aliboard-user-id="${userId}"]`);
+        if(el){
+          el.classList.toggle('remote-mic-muted', !!muted);
+          if(muted){
+            if(!(el._micMutedTooltipModified)){
+              el._micMutedTooltipModified = true;
+              el._micMutedTooltipOrig = el.title || '';
+            }
+            el.title = (el._micMutedTooltipOrig || '') + (el._micMutedTooltipOrig ? ' · ' : '') + 'Uciszony';
+          }else if(el._micMutedTooltipModified){
+            el.title = el._micMutedTooltipOrig || '';
+          }
+        }
+      }catch(_){ }
+      try{ window.dispatchEvent(new CustomEvent('aliboard:remoteMicState', {detail:{user_id:userId, muted:!!muted}})); }catch(_){ }
+    }
+
+    // wire mic button
+    const __aliboard_chat_mic_btn = (typeof micBtn !== 'undefined' && micBtn) ? micBtn : document.getElementById('aliboard-chat-mic');
+    if(__aliboard_chat_mic_btn){
+      __aliboard_chat_mic_btn.addEventListener('click', ()=>{ setMicMuted(!isMicMuted); });
+      updateMuteButtonUI(isMicMuted);
+    }
+
+    // listen for remote mic state via realtime
+    if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
+      window.AliboardRealtime.on('chat_mic_state', (payload)=>{
+        if(!payload) return;
+        const user_id = payload.user_id || payload.from_id || null;
+        const muted = !!payload.muted;
+        if(user_id == null) return;
+        updateRemoteMicIndicator(user_id, muted);
+      });
+    }
+
     window.aliboardChat.sendCallSignal = window.aliboardChat.sendCallSignal || null;
 
 
@@ -8829,19 +8897,7 @@ const toolsRow = document.getElementById('tools');
 
         if(micBtn){
 
-      micBtn.addEventListener('click', ()=>{
-
-        isMicMuted = !isMicMuted;
-
-        micBtn.classList.toggle('is-muted', isMicMuted);
-
-        if(typeof window.aliboardChat.toggleMic === 'function'){
-
-          window.aliboardChat.toggleMic(isMicMuted);
-
-        }
-
-      });
+      micBtn.addEventListener('click', ()=>{ setMicMuted(!isMicMuted); });
 
     }
 
@@ -9119,6 +9175,11 @@ const toolsRow = document.getElementById('tools');
       }
 
       window.__ALIBOARD_LOCAL_STREAM = stream;
+
+      // Respect current mute state immediately on stream acquisition
+      if(typeof isMicMuted !== 'undefined' && isMicMuted){
+        try{ stream.getAudioTracks().forEach(t => { t.enabled = !isMicMuted; }); }catch(_){ }
+      }
 
       return stream;
 
