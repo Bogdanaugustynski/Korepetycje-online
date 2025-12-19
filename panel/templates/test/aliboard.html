@@ -8435,6 +8435,9 @@ const toolsRow = document.getElementById('tools');
     const CHAT_OPEN_KEY = 'aliboard_chat_is_open';
 
     let isMicMuted = false;
+    const remoteMicStates = new Map();
+    const chatSubtitleEl = panel.querySelector('.aliboard-chat-title-sub');
+    const defaultSubtitleText = chatSubtitleEl ? chatSubtitleEl.textContent : '';
 
     let incomingCallBanner = null;
 
@@ -8446,7 +8449,45 @@ const toolsRow = document.getElementById('tools');
 
     let unreadBadgeEl = null;
 
+    function getLocalAudioStream(){
+      return window.__ALIBOARD_LOCAL_STREAM || null;
+    }
 
+    function updateMuteButtonUI(muted) {
+      if(!micBtn) return;
+      micBtn.classList.toggle('is-muted', muted);
+      micBtn.title = muted ? "Mikrofon wyciszony" : "Mikrofon włączony";
+    }
+
+    function sendMicMuteState(muted) {
+      if (!window.AliboardRealtime || typeof window.AliboardRealtime.sendChatMicState !== "function") return;
+      window.AliboardRealtime.sendChatMicState(muted);
+    }
+
+    function setMicMuted(muted) {
+      isMicMuted = !!muted;
+      const stream = getLocalAudioStream();
+      if(stream && stream.getAudioTracks){
+        stream.getAudioTracks().forEach(track => {
+          track.enabled = !isMicMuted;
+        });
+      }
+      updateMuteButtonUI(isMicMuted);
+      sendMicMuteState(isMicMuted);
+    }
+
+    function updateRemoteMicIndicator(userId, muted) {
+      if(!chatSubtitleEl) return;
+      if(userId === undefined || userId === null) return;
+      const myIdRaw = window.ALIBOARD_USER_ID;
+      if(myIdRaw !== undefined && myIdRaw !== null && Number(userId) === Number(myIdRaw)){
+        return;
+      }
+      remoteMicStates.set(userId, !!muted);
+      const anyMuted = Array.from(remoteMicStates.values()).some(Boolean);
+      chatSubtitleEl.textContent = anyMuted ? "Rozmówca wyciszony" : (defaultSubtitleText || chatSubtitleEl.textContent);
+      chatSubtitleEl.title = anyMuted ? "Rozmówca ma wyciszony mikrofon" : "";
+    }
 
     function ensureUnreadBadge(){
 
@@ -8828,21 +8869,13 @@ const toolsRow = document.getElementById('tools');
 
 
         if(micBtn){
-
-      micBtn.addEventListener('click', ()=>{
-
-        isMicMuted = !isMicMuted;
-
-        micBtn.classList.toggle('is-muted', isMicMuted);
-
-        if(typeof window.aliboardChat.toggleMic === 'function'){
-
-          window.aliboardChat.toggleMic(isMicMuted);
-
-        }
-
-      });
-
+      if(!micBtn.dataset.micClickAttached){
+        micBtn.dataset.micClickAttached = '1';
+        micBtn.addEventListener('click', ()=>{
+          setMicMuted(!isMicMuted);
+        });
+        updateMuteButtonUI(isMicMuted);
+      }
     }
 
 
@@ -9146,6 +9179,7 @@ const toolsRow = document.getElementById('tools');
     async function addLocalTracks(pc){
 
       const stream = await ensureLocalStream();
+      setMicMuted(isMicMuted);
 
       stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
 
@@ -9254,6 +9288,7 @@ const toolsRow = document.getElementById('tools');
       if(peerId === undefined || peerId === null) return;
 
       const stream = await ensureLocalStream();
+      setMicMuted(isMicMuted);
 
       const pc = createPeer(peerId);
 
@@ -9305,11 +9340,13 @@ const toolsRow = document.getElementById('tools');
           await pc.setRemoteDescription(desc);
           await flushPendingIce(fromId, pc);
           const stream = await ensureLocalStream();
+          setMicMuted(isMicMuted);
           stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
         }else{
           const stream = await ensureLocalStream();
+          setMicMuted(isMicMuted);
           stream.getTracks().forEach((track)=> pc.addTrack(track, stream));
           await pc.setRemoteDescription(desc);
           await flushPendingIce(fromId, pc);
@@ -9517,7 +9554,7 @@ const toolsRow = document.getElementById('tools');
 
         if(typeof realtime.sendChatMicState === 'function'){
 
-          window.aliboardChat.toggleMic = (muted)=> realtime.sendChatMicState(muted);
+          window.aliboardChat.toggleMic = (muted)=> setMicMuted(muted);
 
         }
 
@@ -9527,10 +9564,22 @@ const toolsRow = document.getElementById('tools');
 
     }
 
+    function attachMicStateListener(){
+      const rt = window.AliboardRealtime;
+      if(!rt || typeof rt.on !== 'function'){
+        setTimeout(attachMicStateListener, 600);
+        return;
+      }
+      if(attachMicStateListener._attached) return;
+      rt.on("chat_mic_state", ({ user_id, muted })=>{
+        updateRemoteMicIndicator(user_id, muted);
+      });
+      attachMicStateListener._attached = true;
+    }
 
 
     wireRealtimeBridge();
-
+    attachMicStateListener();
 
 
     (function enableChatBubbleDrag(){
