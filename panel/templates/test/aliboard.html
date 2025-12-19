@@ -2192,6 +2192,9 @@
           &#128222;
 
         </button>
+        <button type="button" class="aliboard-call-end-btn hidden" id="aliboard-call-hangup-btn" title="Rozłącz połączenie">
+          Rozłącz
+        </button>
 
         <select id="aliboard-call-mode" class="aliboard-select" title="Tryb rozmowy">
 
@@ -8975,6 +8978,7 @@ const toolsRow = document.getElementById('tools');
           timeString: getTimeString(),
 
         });
+        aliboardSetCallState(false);
 
         return;
 
@@ -9047,13 +9051,12 @@ const toolsRow = document.getElementById('tools');
     function aliboardUpdateCallButtons() {
       const joinBtn = document.getElementById("aliboard-call-join-btn") || document.getElementById("aliboard-accept-call-btn");
       const hangupBtn = document.getElementById("aliboard-call-hangup-btn") || document.getElementById("aliboard-end-call-btn");
-      if (!joinBtn || !hangupBtn) return;
       if (aliboardCallState.inCall) {
-        joinBtn.classList.add("hidden");
-        hangupBtn.classList.remove("hidden");
+        if (joinBtn) joinBtn.classList.add("hidden");
+        if (hangupBtn) hangupBtn.classList.remove("hidden");
       } else {
-        joinBtn.classList.remove("hidden");
-        hangupBtn.classList.add("hidden");
+        if (joinBtn) joinBtn.classList.add("hidden");
+        if (hangupBtn) hangupBtn.classList.add("hidden");
       }
     }
 
@@ -9064,6 +9067,7 @@ const toolsRow = document.getElementById('tools');
 
     function handleJoinCallClick() {
       setPanelOpen(true);
+      aliboardSetCallState(true);
       appendMessage({
         text: '?? Próba rozpoczęcia rozmowy głosowej…',
         author: 'me',
