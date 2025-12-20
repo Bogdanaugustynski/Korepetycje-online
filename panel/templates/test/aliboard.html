@@ -9062,6 +9062,10 @@ const toolsRow = document.getElementById('tools');
 
     function aliboardSetCallState(inCall) {
       aliboardCallState.inCall = !!inCall;
+      if (aliboardCallState.inCall && incomingCallBanner && incomingCallBanner.parentNode) {
+        incomingCallBanner.parentNode.removeChild(incomingCallBanner);
+        incomingCallBanner = null;
+      }
       aliboardUpdateCallButtons();
     }
 
