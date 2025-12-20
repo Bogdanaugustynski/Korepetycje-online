@@ -8504,6 +8504,22 @@ const toolsRow = document.getElementById('tools');
 
     let unreadBadgeEl = null;
 
+    function resizeChatPanel(){
+      if(!panel) return;
+      const viewport = window.visualViewport || null;
+      const vh = viewport ? viewport.height : window.innerHeight;
+      if(!vh) return;
+      const margin = window.matchMedia('(max-width: 700px)').matches ? 24 : 80;
+      const maxH = Math.max(200, vh - margin);
+      panel.style.maxHeight = `${maxH}px`;
+    }
+
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', resizeChatPanel);
+    }else{
+      window.addEventListener('resize', resizeChatPanel);
+    }
+
     function getLocalAudioStream(){
       return window.__ALIBOARD_LOCAL_STREAM || null;
     }
@@ -8784,6 +8800,8 @@ const toolsRow = document.getElementById('tools');
       closeBtn.addEventListener('click', ()=> setPanelOpen(false));
 
     }
+
+    resizeChatPanel();
 
     document.addEventListener('click', (e)=>{
       if(!panel.classList.contains('is-open')) return;
