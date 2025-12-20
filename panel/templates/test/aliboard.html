@@ -8445,6 +8445,9 @@ const toolsRow = document.getElementById('tools');
     let incomingCallBanner = null;
 
     let ringIntervalId = null;
+    let callTimerInterval = null;
+    let callStartedAt = null;
+    let callTimerMessageEl = null;
 
     let isPanelOpen = false;
 
@@ -8650,9 +8653,9 @@ const toolsRow = document.getElementById('tools');
               .catch((err)=>{
                 console.error('[AliboardVoice] acceptIncomingCall error', err);
                 if(window.aliboardVoice && typeof window.aliboardVoice.hangupAll === 'function'){
-                  window.aliboardVoice.hangupAll(false);
+                  window.aliboardVoice.hangupAll(false, 'failed');
                 }else if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
-                  window.aliboardVoice.hangupCall(false);
+                  window.aliboardVoice.hangupCall(false, 'failed');
                 }
               });
           }
@@ -8789,6 +8792,8 @@ const toolsRow = document.getElementById('tools');
 
       messagesEl.scrollTop = messagesEl.scrollHeight;
 
+      return { row, messageEl: msgEl };
+
     }
 
 
@@ -8807,6 +8812,59 @@ const toolsRow = document.getElementById('tools');
 
       }
 
+    }
+
+    function formatDuration(ms){
+      if(!ms || ms < 0) ms = 0;
+      const totalSec = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+      const mmss = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+      return hours > 0 ? `${hours}:${mmss}` : mmss;
+    }
+
+    function startCallTimer(){
+      stopCallTimer();
+      callStartedAt = Date.now();
+      const res = appendMessage({
+        text: 'Polaczenie aktywne - czas 00:00',
+        author: 'other',
+        label: 'System',
+        timeString: getTimeString(),
+      }) || {};
+      callTimerMessageEl = res.messageEl || null;
+      callTimerInterval = setInterval(()=>{
+        if(!callTimerMessageEl || !callStartedAt) return;
+        const dur = Date.now() - callStartedAt;
+        callTimerMessageEl.textContent = `Polaczenie aktywne - czas ${formatDuration(dur)}`;
+      }, 1000);
+    }
+
+    function stopCallTimer(reason){
+      if(callTimerInterval){
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+      }
+      const hadStarted = !!callStartedAt;
+      const durationMs = hadStarted ? (Date.now() - callStartedAt) : 0;
+      callStartedAt = null;
+      const finalText = hadStarted
+        ? `Polaczenie zakonczone. Czas: ${formatDuration(durationMs)}`
+        : (reason === 'busy' ? 'Polaczenie nie nawiazane - rozlaczone lub linia zajeta.' : 'Polaczenie przerwane przed zestawieniem.');
+      if(callTimerMessageEl){
+        callTimerMessageEl.textContent = finalText;
+        callTimerMessageEl = null;
+        return;
+      }
+      if(reason){
+        appendMessage({
+          text: finalText,
+          author: 'other',
+          label: 'System',
+          timeString: getTimeString(),
+        });
+      }
     }
 
 
@@ -8978,7 +9036,7 @@ const toolsRow = document.getElementById('tools');
           timeString: getTimeString(),
 
         });
-        aliboardSetCallState(false);
+        aliboardSetCallState(false, { reason: 'busy' });
 
         return;
 
@@ -9012,25 +9070,17 @@ const toolsRow = document.getElementById('tools');
 
         if(window.aliboardVoice && typeof window.aliboardVoice.hangupAll === 'function'){
 
-          window.aliboardVoice.hangupAll(false);
+          window.aliboardVoice.hangupAll(false, 'ended_other');
 
         }else if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
 
-          window.aliboardVoice.hangupCall(false);
+          window.aliboardVoice.hangupCall(false, 'ended_other');
+
+        }else{
+
+          aliboardSetCallState(false, { reason: 'ended' });
 
         }
-
-        aliboardSetCallState(false);
-
-        appendMessage({
-
-          text: '?? Połączenie zostało zakończone',
-
-          author: 'other',
-
-          timeString: getTimeString(),
-
-        });
 
       }
 
@@ -9060,18 +9110,27 @@ const toolsRow = document.getElementById('tools');
       }
     }
 
-    function aliboardSetCallState(inCall) {
+    function aliboardSetCallState(inCall, meta = {}) {
+      const wasInCall = aliboardCallState.inCall;
+      const shouldStartTimer = meta.startTimer !== false;
       aliboardCallState.inCall = !!inCall;
       if (aliboardCallState.inCall && incomingCallBanner && incomingCallBanner.parentNode) {
         incomingCallBanner.parentNode.removeChild(incomingCallBanner);
         incomingCallBanner = null;
+      }
+      if (aliboardCallState.inCall) {
+        if (shouldStartTimer && (!wasInCall || !callStartedAt)) {
+          startCallTimer();
+        }
+      } else if (wasInCall || meta.reason) {
+        stopCallTimer(meta.reason || 'ended');
       }
       aliboardUpdateCallButtons();
     }
 
     function handleJoinCallClick() {
       setPanelOpen(true);
-      aliboardSetCallState(true);
+      aliboardSetCallState(true, { startTimer: false });
       appendMessage({
         text: '?? Próba rozpoczęcia rozmowy głosowej…',
         author: 'me',
@@ -9084,11 +9143,10 @@ const toolsRow = document.getElementById('tools');
 
     function handleHangupClick() {
       if(window.aliboardVoice && typeof window.aliboardVoice.hangupAll === 'function'){
-        window.aliboardVoice.hangupAll();
+        window.aliboardVoice.hangupAll(true, 'ended_by_me');
       }else if(window.aliboardVoice && typeof window.aliboardVoice.hangupCall === 'function'){
-        window.aliboardVoice.hangupCall();
+        window.aliboardVoice.hangupCall(true, 'ended_by_me');
       }
-      aliboardSetCallState(false);
     }
 
 
@@ -9402,7 +9460,7 @@ const toolsRow = document.getElementById('tools');
           aliboardSetCallState(true);
         }catch(err){
           console.error('[AliboardVoice] setRemoteDescription error', err);
-          window.aliboardVoice.hangupAll(false);
+          window.aliboardVoice.hangupAll(false, 'failed');
         }
       };
 
@@ -9420,7 +9478,7 @@ const toolsRow = document.getElementById('tools');
         safeAddIceCandidate(fromId != null ? fromId : 'legacy', data.candidate);
       };
 
-      window.aliboardVoice.hangupAll = function(sendSignal = true){
+      window.aliboardVoice.hangupAll = function(sendSignal = true, reason = 'ended'){
         stopRingTone();
         Array.from(voicePeers.keys()).forEach((pid)=> destroyPeer(pid));
       const ls = window.__ALIBOARD_LOCAL_STREAM;
@@ -9448,7 +9506,7 @@ const toolsRow = document.getElementById('tools');
       }
 
       lastRingFromId = null;
-      aliboardSetCallState(false);
+      aliboardSetCallState(false, { reason });
 
       if(sendSignal){
 
