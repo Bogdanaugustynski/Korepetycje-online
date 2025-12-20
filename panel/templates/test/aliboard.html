@@ -1490,6 +1490,36 @@
 
 }
 
+.aliboard-emoji-wrap{
+  position:relative;
+}
+.aliboard-emoji-menu{
+  position:absolute;
+  top:110%;
+  left:0;
+  display:none;
+  gap:6px;
+  padding:6px;
+  background:#0b1228;
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+}
+.aliboard-emoji-menu.open{ display:flex; }
+.aliboard-emoji-menu button{
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  border:none;
+  background:#11182f;
+  color:#fff;
+  font-size:18px;
+  cursor:pointer;
+}
+.aliboard-emoji-menu button:hover{
+  background:#1b2650;
+}
+
 .aliboard-chat-badge{
 
   position:absolute;
@@ -2182,11 +2212,18 @@
 
       <div class="aliboard-chat-actions">
 
-        <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-ping" title="Zaczep">
-
-          &#128276;
-
-        </button>
+        <div class="aliboard-emoji-wrap">
+          <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-emoji" title="Emotki">
+            Emotki
+          </button>
+          <div class="aliboard-emoji-menu" id="aliboard-emoji-menu">
+            <button type="button" data-emoji="🙂" aria-label="Uśmiech">🙂</button>
+            <button type="button" data-emoji="🙁" aria-label="Smutna">🙁</button>
+            <button type="button" data-emoji="👍" aria-label="Lubię to">👍</button>
+            <button type="button" data-emoji="❤️" aria-label="Serce">❤️</button>
+            <button type="button" data-emoji="👏" aria-label="Brawa">👏</button>
+          </div>
+        </div>
         <button type="button" class="aliboard-chat-icon-btn" id="aliboard-chat-call" title="Rozmowa głosowa">
 
           &#128222;
@@ -8349,7 +8386,8 @@ const toolsRow = document.getElementById('tools');
 
     const messagesEl = document.getElementById('aliboard-chat-messages');
 
-    const pingBtn = document.getElementById('aliboard-chat-ping');
+    const emojiBtn = document.getElementById('aliboard-chat-emoji');
+    const emojiMenu = document.getElementById('aliboard-emoji-menu');
 
     const micBtn = document.getElementById('aliboard-chat-mic');
 
@@ -8903,28 +8941,22 @@ const toolsRow = document.getElementById('tools');
 
 
 
-    if(pingBtn){
-
-      pingBtn.addEventListener('click', ()=>{
-
-        appendMessage({
-
-          text: '?? Wysłałeś zaczepienie (ping).',
-
-          author: 'me',
-
-          timeString: getTimeString()
-
-        });
-
-        if(typeof window.aliboardChat.sendPing === 'function'){
-
-          window.aliboardChat.sendPing();
-
-        }
-
+    if(emojiBtn && emojiMenu){
+      const closeEmojiMenu = ()=> emojiMenu.classList.remove('open');
+      emojiBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        emojiMenu.classList.toggle('open');
       });
-
+      emojiMenu.addEventListener('click', (e)=> e.stopPropagation());
+      document.addEventListener('click', ()=> closeEmojiMenu());
+      emojiMenu.querySelectorAll('button[data-emoji]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const emoji = btn.getAttribute('data-emoji') || '';
+          input.value = (input.value || '') + emoji;
+          input.focus();
+          closeEmojiMenu();
+        });
+      });
     }
 
 
