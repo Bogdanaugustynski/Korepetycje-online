@@ -1050,6 +1050,9 @@
 
   border-bottom:1px solid var(--aliboard-chat-border);
 
+  position:sticky;
+  top:0;
+  z-index:5;
 }
 
 .aliboard-chat-title{
@@ -1520,6 +1523,14 @@
   background:#1b2650;
 }
 
+@media (max-width: 700px){
+  .aliboard-chat-panel{
+    right:8px;
+    bottom:8px;
+    width:min(96vw, 380px);
+    max-height:calc(100vh - 24px);
+  }
+}
 .aliboard-chat-badge{
 
   position:absolute;
