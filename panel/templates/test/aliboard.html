@@ -1290,6 +1290,13 @@
   max-width:100%;
 
 }
+.aliboard-chat-status{
+  font-size:10px;
+  color:var(--aliboard-chat-muted);
+  margin-left:auto;
+  display:block;
+}
+.aliboard-chat-status.is-empty{ display:none; }
 
 .aliboard-chat-row.mine .aliboard-chat-message{
 
@@ -8481,6 +8488,9 @@ const toolsRow = document.getElementById('tools');
     window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
 
     window.aliboardChat.sendCallSignal = window.aliboardChat.sendCallSignal || null;
+    window.aliboardChat.markMessageRead = window.aliboardChat.markMessageRead || markMessageRead;
+    window.aliboardChat.markMessageUnread = window.aliboardChat.markMessageUnread || markMessageUnread;
+    window.aliboardChat.setMessageStatus = window.aliboardChat.setMessageStatus || setMessageStatus;
 
 
 
@@ -8503,6 +8513,16 @@ const toolsRow = document.getElementById('tools');
     let unreadCount = 0;
 
     let unreadBadgeEl = null;
+    const messageStatusMap = new Map();
+
+    function setMessageStatus(msgId, statusText){
+      const statusEl = msgId ? messageStatusMap.get(msgId) : null;
+      if(!statusEl) return;
+      statusEl.textContent = statusText || '';
+      statusEl.classList.toggle('is-empty', !statusText);
+    }
+    function markMessageRead(msgId){ setMessageStatus(msgId, 'Odczytane'); }
+    function markMessageUnread(msgId){ setMessageStatus(msgId, 'Nieodczytane'); }
 
     function resizeChatPanel(){
       if(!panel) return;
@@ -8839,15 +8859,11 @@ const toolsRow = document.getElementById('tools');
 
 
       const msgEl = document.createElement('div');
-
       msgEl.className = `aliboard-chat-message ${author}`;
-
       msgEl.textContent = opts.text.toString();
-
       row.appendChild(msgEl);
-
-
-
+      const msgId = opts.id || `msg-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
+      row.dataset.messageId = msgId;
       if(opts.timeString){
 
         const meta = document.createElement('span');
@@ -8862,11 +8878,17 @@ const toolsRow = document.getElementById('tools');
 
 
 
+      const statusEl = document.createElement('span');
+      statusEl.className = 'aliboard-chat-status';
+      const defaultStatus = opts.status || (author === 'me' ? 'Nieodczytane' : 'Odczytane');
+      statusEl.textContent = defaultStatus;
+      if(!defaultStatus) statusEl.classList.add('is-empty');
+      row.appendChild(statusEl);
+      messageStatusMap.set(msgId, statusEl);
+
       messagesEl.appendChild(row);
-
       messagesEl.scrollTop = messagesEl.scrollHeight;
-
-      return { row, messageEl: msgEl };
+      return { row, messageEl: msgEl, id: msgId, statusEl };
 
     }
 
