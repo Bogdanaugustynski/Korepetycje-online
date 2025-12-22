@@ -2660,14 +2660,6 @@
 
   }
 
-  const TEXT_SCALE_BASE_WIDTH = 380;
-  function getTextScale(){
-    const w = (wrapEl && wrapEl.clientWidth) || window.innerWidth || TEXT_SCALE_BASE_WIDTH;
-    if(!w) return 1;
-    const scale = w / TEXT_SCALE_BASE_WIDTH;
-    return Math.min(1, scale);
-  }
-
   function updateTextFontUI(){
 
     if(!textFontPanel) return;
@@ -4508,8 +4500,7 @@
 
       ctx.save();
 
-      const base = Math.max(14, (t.size || 3) * 6);
-      const pxSize = base * getTextScale();
+      const pxSize = Math.max(14, (t.size || 3) * 6);
 
       ctx.fillStyle = t.color || '#0b1320';
 
@@ -4715,10 +4706,9 @@
 
     }else if(s.type==='text'){
 
-      const base = Math.max(14, s.size*6);
-      const scaled = base * getTextScale();
-      const w = (scaled*0.6)*(s.text?.length||0);
-      const h = scaled;
+      const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
+
+      const h = Math.max(14, s.size*6);
 
       return {x:s.x, y:s.y, w, h};
 
@@ -5310,8 +5300,7 @@
 
     textarea.style.top  = (rect.top  + local.y) + 'px';
 
-    const textScale = getTextScale();
-    textarea.style.fontSize = (Math.max(14, (local.size || 3) * 6) * textScale) + 'px';
+    textarea.style.fontSize = Math.max(14, (local.size || 3) * 6) + 'px';
 
     document.body.appendChild(textarea);
 
@@ -5503,9 +5492,7 @@
 
       }else if(s.type==='text'){
 
-        const base = Math.max(14, s.size*6);
-        const fontPx = base * getTextScale();
-        theContext.save(); theContext.fillStyle=s.color; theContext.font = `${fontPx}px ui-sans-serif, system-ui, Arial`; theContext.textBaseline='top'; theContext.fillText(s.text, s.x, s.y); theContext.restore();
+        theContext.save(); theContext.fillStyle=s.color; theContext.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`; theContext.textBaseline='top'; theContext.fillText(s.text, s.x, s.y); theContext.restore();
 
       }else if(s.type==='poly'){
 
@@ -6247,10 +6234,9 @@ function imageBoundingBox(im){
 
 function textDimensions(s){
 
-  const base = Math.max(14, s.size*6);
-  const scaled = base * getTextScale();
-  const w = (scaled*0.6)*(s.text?.length||0);
-  const h = scaled;
+  const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
+
+  const h = Math.max(14, s.size*6);
 
   return {w,h};
 
