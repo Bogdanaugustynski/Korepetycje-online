@@ -2402,10 +2402,10 @@
   // Zablokuj przewijanie strony i utrzymaj tablicę + header stale widoczne (także przy klawiaturze)
   (function lockBoardToViewport(){
     if(!wrapEl) return;
+    let baseVH = window.innerHeight || 0;
     const applyLayout = ()=>{
       const header = document.querySelector('header');
-      const viewport = window.visualViewport || null;
-      const vh = viewport ? viewport.height : window.innerHeight;
+      const vh = Math.max(baseVH, window.innerHeight || 0); // nie kurcz przy klawiaturze
       const top = header ? header.getBoundingClientRect().bottom : 0;
       const height = Math.max(200, vh - top);
       document.documentElement.style.overflow = 'hidden';
@@ -2418,10 +2418,10 @@
       wrapEl.style.bottom = '0';
     };
     applyLayout();
-    window.addEventListener('resize', applyLayout);
-    if(window.visualViewport){
-      window.visualViewport.addEventListener('resize', applyLayout);
-    }
+    window.addEventListener('resize', ()=>{
+      baseVH = Math.max(baseVH, window.innerHeight || 0);
+      applyLayout();
+    });
   })();
 
   const deleteSelectionBtn = document.getElementById('deleteSelection');
@@ -8553,12 +8553,19 @@ const toolsRow = document.getElementById('tools');
 
     function resizeChatPanel(){
       if(!panel) return;
+      if(typeof resizeChatPanel._baseBottom === 'undefined'){
+        resizeChatPanel._baseBottom = parseInt(window.getComputedStyle(panel).bottom || '0', 10) || 0;
+      }
+      const baseBottom = resizeChatPanel._baseBottom;
+      const vv = window.visualViewport || null;
+      const extraBottom = vv ? vv.offsetTop || 0 : 0;
       const viewport = window.visualViewport || null;
       const vh = viewport ? viewport.height : window.innerHeight;
       if(!vh) return;
       const margin = window.matchMedia('(max-width: 700px)').matches ? 24 : 80;
       const maxH = Math.max(200, (vh - margin) / 2);
       panel.style.maxHeight = `${maxH}px`;
+      panel.style.bottom = `${baseBottom + extraBottom}px`;
     }
 
     if(window.visualViewport){
