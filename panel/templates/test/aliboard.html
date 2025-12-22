@@ -8898,6 +8898,9 @@ const toolsRow = document.getElementById('tools');
 
       messagesEl.appendChild(row);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+      if(author === 'other'){
+        markAllMyMessagesRead();
+      }
       return { row, messageEl: msgEl, id: msgId, statusEl };
 
     }
