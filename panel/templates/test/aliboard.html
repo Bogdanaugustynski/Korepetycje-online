@@ -2415,11 +2415,27 @@
     const vv = window.visualViewport || null;
     let baselineH = vv ? vv.height : window.innerHeight;
     let isLocked = false;
+    let savedScrollY = 0;
     const applyLock = (lock)=>{
       if(isLocked === lock) return;
       isLocked = lock;
       wrapEl.style.overflow = lock ? 'hidden' : '';
       wrapEl.style.touchAction = lock ? 'none' : '';
+      if(lock){
+        savedScrollY = window.scrollY || 0;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.top = `-${savedScrollY}px`;
+      }else{
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        if(savedScrollY) window.scrollTo(0, savedScrollY);
+      }
     };
     const update = ()=>{
       const current = vv ? vv.height : window.innerHeight;
