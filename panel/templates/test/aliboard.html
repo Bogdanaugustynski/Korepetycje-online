@@ -8017,18 +8017,18 @@ const toolsRow = document.getElementById('tools');
 
 
         // AUTODODAWANIE KARTKI przy przewijaniu
-
-  wrapEl.addEventListener('scroll', ()=>{
-
-    const nearBottom = wrapEl.scrollTop + wrapEl.clientHeight >= wrapEl.scrollHeight - 80;
-
+  function maybeAutoAddPage(){
+    if(!wrapEl) return;
+    const nearBottom = wrapEl.scrollTop + wrapEl.clientHeight >= wrapEl.scrollHeight - 120;
     if(nearBottom){
-
       createPage(false);
-
     }
+  }
 
-  }, {passive:true});
+  wrapEl.addEventListener('scroll', maybeAutoAddPage, {passive:true});
+  wrapEl.addEventListener('touchend', maybeAutoAddPage, {passive:true});
+  wrapEl.addEventListener('pointerup', (e)=>{ if(e.pointerType==='touch') maybeAutoAddPage(); }, {passive:true});
+  window.addEventListener('resize', maybeAutoAddPage);
 
 
 
