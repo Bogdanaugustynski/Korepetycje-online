@@ -2399,6 +2399,31 @@
 
   const textFontBtn = document.getElementById('textFontBtn');
 
+  // Zablokuj przewijanie strony i utrzymaj tablicę + header stale widoczne (także przy klawiaturze)
+  (function lockBoardToViewport(){
+    if(!wrapEl) return;
+    const applyLayout = ()=>{
+      const header = document.querySelector('header');
+      const viewport = window.visualViewport || null;
+      const vh = viewport ? viewport.height : window.innerHeight;
+      const top = header ? header.getBoundingClientRect().bottom : 0;
+      const height = Math.max(200, vh - top);
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      wrapEl.style.position = 'fixed';
+      wrapEl.style.left = '0';
+      wrapEl.style.right = '0';
+      wrapEl.style.top = `${top}px`;
+      wrapEl.style.height = `${height}px`;
+      wrapEl.style.bottom = '0';
+    };
+    applyLayout();
+    window.addEventListener('resize', applyLayout);
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', applyLayout);
+    }
+  })();
+
   const deleteSelectionBtn = document.getElementById('deleteSelection');
 
   let textFontPanel = null;
@@ -9020,6 +9045,7 @@ const toolsRow = document.getElementById('tools');
         btn.addEventListener('click', ()=>{
           const emoji = btn.getAttribute('data-emoji') || '';
           input.value = (input.value || '') + emoji;
+          input.focus();
           closeEmojiMenu();
         });
       });
