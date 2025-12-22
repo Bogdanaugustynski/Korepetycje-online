@@ -4052,6 +4052,11 @@
 
   function createPage(scrollTo=true){
 
+    const sourcePage = currentPage() || PAGES[PAGES.length-1] || null;
+    const inheritedTemplate = sourcePage ? sourcePage.state.templateKind : TEMPLATE_KINDS.NONE;
+    const inheritedGridSize = sourcePage ? sourcePage.state.templateGridSize : null;
+    const inheritedStepPx = sourcePage ? sourcePage.state.templateStepPx : null;
+
     const page = document.createElement('div');
 
     page.className = 'page';
@@ -4088,7 +4093,10 @@
 
     resizePage(p);
 
-    setPageTemplateKind(p, p.state.templateKind, true);
+    setPageTemplateKind(p, inheritedTemplate, true, { gridSize: inheritedGridSize, stepPx: inheritedStepPx });
+    if(inheritedTemplate !== TEMPLATE_KINDS.NONE){
+      setTemplateForPage(p.index, inheritedTemplate, { broadcast:true, gridSize: inheritedGridSize, stepPx: inheritedStepPx });
+    }
 
     renderAll(p);
 
