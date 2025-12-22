@@ -7532,8 +7532,6 @@ const toolsRow = document.getElementById('tools');
 
       openBoardInput.value='';
 
-      setTimeout(()=> openBoardInput.focus(), 50);
-
     }
 
   }
@@ -8773,8 +8771,6 @@ const toolsRow = document.getElementById('tools');
 
         try{ localStorage.setItem(CHAT_OPEN_KEY, '1'); }catch(_){}
 
-        setTimeout(()=> input.focus(), 20);
-
         unreadCount = 0;
 
         if(unreadBadgeEl){
@@ -9024,7 +9020,6 @@ const toolsRow = document.getElementById('tools');
         btn.addEventListener('click', ()=>{
           const emoji = btn.getAttribute('data-emoji') || '';
           input.value = (input.value || '') + emoji;
-          input.focus();
           closeEmojiMenu();
         });
       });
