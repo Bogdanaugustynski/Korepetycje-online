@@ -1000,7 +1000,7 @@
 
   width:320px;
 
-  max-height:60vh;
+  max-height:30vh;
 
   display:flex;
 
@@ -1535,7 +1535,7 @@
     right:8px;
     bottom:8px;
     width:min(96vw, 380px);
-    max-height:calc(100vh - 24px);
+    max-height:calc((100vh - 24px)/2);
   }
 }
 .aliboard-chat-badge{
@@ -1608,7 +1608,7 @@
 
     max-width:100%;
 
-    max-height:60vh;
+    max-height:30vh;
 
     border-radius:18px 18px 0 0;
 
@@ -8557,7 +8557,7 @@ const toolsRow = document.getElementById('tools');
       const vh = viewport ? viewport.height : window.innerHeight;
       if(!vh) return;
       const margin = window.matchMedia('(max-width: 700px)').matches ? 24 : 80;
-      const maxH = Math.max(200, vh - margin);
+      const maxH = Math.max(200, (vh - margin) / 2);
       panel.style.maxHeight = `${maxH}px`;
     }
 
