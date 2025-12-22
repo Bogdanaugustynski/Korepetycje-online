@@ -4093,9 +4093,12 @@
 
     resizePage(p);
 
-    setPageTemplateKind(p, inheritedTemplate, true, { gridSize: inheritedGridSize, stepPx: inheritedStepPx });
+    const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || (p?.gridC?.width) || 0;
+    const effectiveStepPx = inheritedGridSize ? computeStepPx(inheritedGridSize, currentWidth) : inheritedStepPx;
+
+    setPageTemplateKind(p, inheritedTemplate, true, { gridSize: inheritedGridSize, stepPx: effectiveStepPx });
     if(inheritedTemplate !== TEMPLATE_KINDS.NONE){
-      setTemplateForPage(p.index, inheritedTemplate, { broadcast:true, gridSize: inheritedGridSize, stepPx: inheritedStepPx });
+      setTemplateForPage(p.index, inheritedTemplate, { broadcast:true, gridSize: inheritedGridSize, stepPx: effectiveStepPx });
     }
 
     renderAll(p);
