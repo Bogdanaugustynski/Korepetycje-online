@@ -2416,12 +2416,18 @@
     let baselineH = vv ? vv.height : window.innerHeight;
     let isLocked = false;
     let savedScrollY = 0;
+    let savedWrapScroll = 0;
     const applyLock = (lock)=>{
       if(isLocked === lock) return;
       isLocked = lock;
-      wrapEl.style.overflow = lock ? 'hidden' : '';
-      wrapEl.style.touchAction = lock ? 'none' : '';
       if(lock){
+        savedWrapScroll = wrapEl.scrollTop || 0;
+        wrapEl.style.overflow = 'hidden';
+        wrapEl.style.touchAction = 'none';
+        wrapEl.style.position = 'fixed';
+        wrapEl.style.width = '100%';
+        wrapEl.style.top = `-${savedWrapScroll}px`;
+        wrapEl.style.maxHeight = '100vh';
         savedScrollY = window.scrollY || 0;
         document.documentElement.style.overflow = 'hidden';
         document.body.style.overflow = 'hidden';
@@ -2429,6 +2435,13 @@
         document.body.style.width = '100%';
         document.body.style.top = `-${savedScrollY}px`;
       }else{
+        wrapEl.style.overflow = '';
+        wrapEl.style.touchAction = '';
+        wrapEl.style.position = '';
+        wrapEl.style.width = '';
+        wrapEl.style.top = '';
+        wrapEl.style.maxHeight = '';
+        if(savedWrapScroll) wrapEl.scrollTop = savedWrapScroll;
         document.documentElement.style.overflow = '';
         document.body.style.overflow = '';
         document.body.style.position = '';
