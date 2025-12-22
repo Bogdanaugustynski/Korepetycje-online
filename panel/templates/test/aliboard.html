@@ -2409,6 +2409,31 @@
 
   const TEXT_FONT_STEP = 2;
 
+  // Blokada przewijania tablicy, gdy otwarta jest klawiatura ekranowa (mobile)
+  (function lockBoardWhileKeyboardOpen(){
+    if(!wrapEl) return;
+    const vv = window.visualViewport || null;
+    let baselineH = vv ? vv.height : window.innerHeight;
+    let isLocked = false;
+    const applyLock = (lock)=>{
+      if(isLocked === lock) return;
+      isLocked = lock;
+      wrapEl.style.overflow = lock ? 'hidden' : '';
+      wrapEl.style.touchAction = lock ? 'none' : '';
+    };
+    const update = ()=>{
+      const current = vv ? vv.height : window.innerHeight;
+      baselineH = Math.max(baselineH, current);
+      const keyboardOpen = baselineH - current > 120; // heurystyka wykrycia klawiatury
+      applyLock(keyboardOpen);
+    };
+    if(vv){
+      vv.addEventListener('resize', update);
+    }else{
+      window.addEventListener('resize', update);
+    }
+  })();
+
 
 
     function ensureFigurePalette(){
