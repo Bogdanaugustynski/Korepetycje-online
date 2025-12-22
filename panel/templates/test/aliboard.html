@@ -2409,60 +2409,6 @@
 
   const TEXT_FONT_STEP = 2;
 
-  // Blokada przewijania tablicy, gdy otwarta jest klawiatura ekranowa (mobile)
-  (function lockBoardWhileKeyboardOpen(){
-    if(!wrapEl) return;
-    const vv = window.visualViewport || null;
-    let baselineH = vv ? vv.height : window.innerHeight;
-    let isLocked = false;
-    let savedScrollY = 0;
-    let savedWrapScroll = 0;
-    const applyLock = (lock)=>{
-      if(isLocked === lock) return;
-      isLocked = lock;
-      if(lock){
-        savedWrapScroll = wrapEl.scrollTop || 0;
-        wrapEl.style.overflow = 'hidden';
-        wrapEl.style.touchAction = 'none';
-        wrapEl.style.position = 'fixed';
-        wrapEl.style.width = '100%';
-        wrapEl.style.top = `-${savedWrapScroll}px`;
-        wrapEl.style.maxHeight = '100vh';
-        savedScrollY = window.scrollY || 0;
-        document.documentElement.style.overflow = 'hidden';
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
-        document.body.style.top = `-${savedScrollY}px`;
-      }else{
-        wrapEl.style.overflow = '';
-        wrapEl.style.touchAction = '';
-        wrapEl.style.position = '';
-        wrapEl.style.width = '';
-        wrapEl.style.top = '';
-        wrapEl.style.maxHeight = '';
-        if(savedWrapScroll) wrapEl.scrollTop = savedWrapScroll;
-        document.documentElement.style.overflow = '';
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
-        document.body.style.top = '';
-        if(savedScrollY) window.scrollTo(0, savedScrollY);
-      }
-    };
-    const update = ()=>{
-      const current = vv ? vv.height : window.innerHeight;
-      baselineH = Math.max(baselineH, current);
-      const keyboardOpen = baselineH - current > 120; // heurystyka wykrycia klawiatury
-      applyLock(keyboardOpen);
-    };
-    if(vv){
-      vv.addEventListener('resize', update);
-    }else{
-      window.addEventListener('resize', update);
-    }
-  })();
-
 
 
     function ensureFigurePalette(){
