@@ -6310,9 +6310,12 @@ function textDimensions(s){
 
     }
 
-
+    const TEXT_TAP_THRESHOLD = 8;
+    let textTapCandidate = null;
 
     function start(x,y){
+
+      textTapCandidate = tool===TOOLS.TEXT ? { x, y, cancelled: false } : null;
 
       if(tool===TOOLS.SELECT){
 
@@ -6399,66 +6402,6 @@ function textDimensions(s){
       }
 
       if(tool===TOOLS.TEXT){
-
-        const hit = hitTest({x,y}, p);
-
-        if(hit && hit.kind === 'stroke'){
-
-          const s = p.state.strokes[hit.index];
-
-          if(s && s.type === 'text'){
-
-            const elId = s.id;
-
-            const el = elId ? AliboardModel.get(elId) : null;
-
-            if(el){ openTextEditorForElement(el, p, false, x, y); }
-
-            return;
-
-          }
-
-        }
-
-        pushHistory(p);
-
-        const dims = getPageDimensions(p);
-
-        const rel = toRelativePoint({x,y}, dims) || { x: 0, y: 0 };
-
-        const id = 'text_' + Date.now() + '_' + Math.random().toString(16).slice(2);
-
-        const newElement = {
-
-          id,
-
-          kind: 'text',
-
-          page: p.index,
-
-          pageIndex: p.index,
-
-          data: { x: rel.x, y: rel.y, text: '', color, size },
-
-          text: '',
-
-          color,
-
-          size
-
-        };
-
-        AliboardModel.upsert(newElement);
-
-        if(window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === 'function'){
-
-          window.AliboardRealtime.broadcastElementAdd(newElement);
-
-        }
-
-        renderAll(p);
-
-        openTextEditorForElement(AliboardModel.get(id) || newElement, p, true, x, y);
 
         return;
 
@@ -6742,6 +6685,14 @@ function textDimensions(s){
 
       }
 
+      if(tool===TOOLS.TEXT && textTapCandidate){
+        const dx = x - textTapCandidate.x;
+        const dy = y - textTapCandidate.y;
+        if(Math.hypot(dx, dy) > TEXT_TAP_THRESHOLD){
+          textTapCandidate.cancelled = true;
+        }
+      }
+
       if(tool===TOOLS.CROP && cropping){ updateCrop(x,y,p); return; }
 
       if(tool===TOOLS.ERASER){
@@ -6882,6 +6833,45 @@ function textDimensions(s){
 
       if(tool===TOOLS.CROP && cropping){ cropping=false; finalizeCrop(x,y,p); return; }
 
+      if(tool===TOOLS.TEXT){
+        const candidate = textTapCandidate;
+        textTapCandidate = null;
+        if(!candidate || candidate.cancelled){ return; }
+
+        const hit = hitTest({x,y}, p);
+        if(hit && hit.kind === 'stroke'){
+          const s = p.state.strokes[hit.index];
+          if(s && s.type === 'text'){
+            const elId = s.id;
+            const el = elId ? AliboardModel.get(elId) : null;
+            if(el){ openTextEditorForElement(el, p, false, x, y); }
+            return;
+          }
+        }
+
+        pushHistory(p);
+        const dims = getPageDimensions(p);
+        const rel = toRelativePoint({x,y}, dims) || { x: 0, y: 0 };
+        const id = 'text_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+        const newElement = {
+          id,
+          kind: 'text',
+          page: p.index,
+          pageIndex: p.index,
+          data: { x: rel.x, y: rel.y, text: '', color, size },
+          text: '',
+          color,
+          size
+        };
+        AliboardModel.upsert(newElement);
+        if(window.AliboardRealtime && typeof window.AliboardRealtime.broadcastElementAdd === 'function'){
+          window.AliboardRealtime.broadcastElementAdd(newElement);
+        }
+        renderAll(p);
+        openTextEditorForElement(AliboardModel.get(id) || newElement, p, true, x, y);
+        return;
+      }
+
       if(tool===TOOLS.ERASER){
 
         drawing=false;
@@ -6999,6 +6989,8 @@ function textDimensions(s){
         multiPan = true;
 
         drawing = false;
+
+        if(textTapCandidate){ textTapCandidate.cancelled = true; }
 
         activePointers.clear();
 
