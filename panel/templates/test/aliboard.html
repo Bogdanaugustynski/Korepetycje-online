@@ -8532,7 +8532,7 @@ const toolsRow = document.getElementById('tools');
       const vh = viewport ? viewport.height : window.innerHeight;
       if(!vh) return;
       const margin = window.matchMedia('(max-width: 700px)').matches ? 24 : 80;
-      const maxH = Math.max(200, vh - margin);
+      const maxH = Math.max(200, (vh - margin) * 0.5); // limit to half of available space
       panel.style.maxHeight = `${maxH}px`;
     }
 
