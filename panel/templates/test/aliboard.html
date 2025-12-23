@@ -2528,7 +2528,14 @@
     if(gridSizeKey === 'none' || gridSizeKey === 0){
       return 0;
     }
-    const stepOnPhone = GRID_STEPS_ON_PHONE[gridSizeKey] || GRID_STEPS_ON_PHONE.md;
+    let key = gridSizeKey;
+    if(typeof key === 'number'){
+      if(key <= 18){ key = 'sm'; }
+      else if(key <= 26){ key = 'md'; }
+      else { key = 'lg'; }
+    }
+    if(key === 'grid-tech' || key === 'tech'){ key = 'md'; }
+    const stepOnPhone = GRID_STEPS_ON_PHONE[key] || GRID_STEPS_ON_PHONE.md;
     const width = canvasWidth || BASE_PHONE_WIDTH_PX;
     const scale = width / BASE_PHONE_WIDTH_PX;
     return Math.max(6, Math.round(stepOnPhone * scale));
@@ -2640,17 +2647,44 @@
 
   }
 
-  function templateElementKind(el){
+  function templateElementMeta(el){
 
-    if(!el) return TEMPLATE_KINDS.NONE;
+    if(!el) return { templateKind: TEMPLATE_KINDS.NONE, gridSize: null, stepPx: null };
 
     const data = el.data || {};
 
     const rawKind = data.templateKind ?? el.templateKind ?? data.kind ?? el.kind;
 
-    const sizeHint = data.gridSize ?? data.size ?? el.gridSize ?? el.size;
+    let sizeHint = data.gridSize ?? data.size ?? el.gridSize ?? el.size;
 
-    return normalizeTemplateKind(rawKind, sizeHint);
+    const stepPx = data.stepPx ?? el.stepPx ?? null;
+
+    const normalizedKind = normalizeTemplateKind(rawKind, sizeHint);
+    if(sizeHint == null){
+      if(normalizedKind === TEMPLATE_KINDS.GRID_SMALL) sizeHint = 'sm';
+      else if(normalizedKind === TEMPLATE_KINDS.GRID_MEDIUM) sizeHint = 'md';
+      else if(normalizedKind === TEMPLATE_KINDS.GRID_LARGE) sizeHint = 'lg';
+      else if(normalizedKind === TEMPLATE_KINDS.GRID_TECH) sizeHint = 'tech';
+    }
+    let normalizedSizeKey = sizeHint;
+    if(typeof normalizedSizeKey === 'number'){
+      if(normalizedSizeKey === 0) normalizedSizeKey = 'none';
+      else if(normalizedSizeKey <= 18) normalizedSizeKey = 'sm';
+      else if(normalizedSizeKey <= 26) normalizedSizeKey = 'md';
+      else normalizedSizeKey = 'lg';
+    }
+
+    return {
+      templateKind: normalizedKind,
+      gridSize: normalizedSizeKey ?? null,
+      stepPx: stepPx ?? null,
+    };
+
+  }
+
+  function templateElementKind(el){
+
+    return templateElementMeta(el).templateKind;
 
   }
 
@@ -3340,13 +3374,13 @@
 
     const nextImages = [];
 
-    let nextTemplateKind = TEMPLATE_KINDS.NONE;
+    let nextTemplateMeta = { templateKind: TEMPLATE_KINDS.NONE, gridSize: null, stepPx: null };
 
     elements.forEach(el=>{
 
       if(el.kind === 'template'){
 
-        nextTemplateKind = templateElementKind(el);
+        nextTemplateMeta = templateElementMeta(el);
 
         return;
 
@@ -3396,7 +3430,10 @@
 
     page.state.images = nextImages;
 
-    setPageTemplateKind(page, nextTemplateKind);
+    setPageTemplateKind(page, nextTemplateMeta.templateKind, true, {
+      gridSize: nextTemplateMeta.gridSize,
+      stepPx: nextTemplateMeta.stepPx,
+    });
 
   }
 
@@ -3722,7 +3759,11 @@
 
       if((raw.kind === 'template' || raw.type === 'template') && (raw.templateKind || raw.gridSize || raw.size)){
 
-        return { templateKind: normalizeTemplateKind(raw.templateKind || raw.kind || raw.type, raw.gridSize ?? raw.size) };
+        return {
+          templateKind: normalizeTemplateKind(raw.templateKind || raw.kind || raw.type, raw.gridSize ?? raw.size),
+          gridSize: raw.gridSize ?? raw.size ?? null,
+          stepPx: raw.stepPx ?? null,
+        };
 
       }
 
@@ -3772,15 +3813,19 @@
 
       if(kind === 'template'){
 
-        const templateKind = normalizeTemplateKind(
+      const templateKind = normalizeTemplateKind(
 
-          raw.templateKind ?? data.templateKind ?? data.kind ?? raw.kind,
+        raw.templateKind ?? data.templateKind ?? data.kind ?? raw.kind,
 
-          data.gridSize ?? data.size ?? raw.gridSize ?? raw.size
+        data.gridSize ?? data.size ?? raw.gridSize ?? raw.size
 
-        );
+      );
 
-        data = { templateKind };
+        data = {
+          templateKind,
+          gridSize: data.gridSize ?? data.size ?? raw.gridSize ?? raw.size ?? null,
+          stepPx: data.stepPx ?? raw.stepPx ?? null,
+        };
 
       }else if(kind === 'text'){
 
@@ -4129,6 +4174,9 @@
       c2d.setTransform(dpr,0,0,dpr,0,0);
 
     });
+    if(p.state.templateGridSize){
+      p.state.templateStepPx = computeStepPx(p.state.templateGridSize, rect.width || BASE_PHONE_WIDTH_PX);
+    }
 
     renderTemplateLayer(p);
 
@@ -4209,6 +4257,11 @@
       p.state.templateGridSize = null;
       p.state.templateStepPx = null;
     }
+    if(p.state.templateStepPx == null && p.state.templateGridSize){
+      const rect = p.el?.getBoundingClientRect?.();
+      const currentWidth = (rect?.width) || (p?.gridC?.clientWidth) || (p?.gridC?.width) || BASE_PHONE_WIDTH_PX;
+      p.state.templateStepPx = computeStepPx(p.state.templateGridSize, currentWidth);
+    }
 
     if(!forceDraw && p.state.templateKind === next) return;
 
@@ -4218,7 +4271,7 @@
 
   }
 
-  function buildTemplateElement(pageIndex, templateKind){
+  function buildTemplateElement(pageIndex, templateKind, meta){
 
     return {
 
@@ -4232,7 +4285,11 @@
 
       pageIndex,
 
-      data: { templateKind: normalizeTemplateKind(templateKind) }
+      data: {
+        templateKind: normalizeTemplateKind(templateKind),
+        gridSize: meta?.gridSize ?? null,
+        stepPx: meta?.stepPx ?? null,
+      }
 
     };
 
@@ -4263,18 +4320,18 @@
     const p = ensurePage(pageIndex);
 
     const normalized = normalizeTemplateKind(templateKind);
-    const gridSize = opts?.gridSize ?? null;
-    let stepPx = opts?.stepPx ?? null;
+    const gridSize = opts?.gridSize ?? p.state.templateGridSize ?? null;
+    let stepPx = opts?.stepPx ?? p.state.templateStepPx ?? null;
     if(stepPx == null && gridSize){
       const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || (p?.gridC?.width) || BASE_PHONE_WIDTH_PX;
       stepPx = computeStepPx(gridSize, currentWidth);
     }
 
-    const meta = opts ? { gridSize, stepPx } : undefined;
+    const meta = { gridSize, stepPx };
 
     setPageTemplateKind(p, normalized, true, meta);
 
-    const element = buildTemplateElement(pageIndex, normalized);
+    const element = buildTemplateElement(pageIndex, normalized, meta);
 
     AliboardModel.upsertElement(element);
 
