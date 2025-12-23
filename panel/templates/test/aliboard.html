@@ -4096,6 +4096,10 @@
     const drawC = document.createElement('canvas'); drawC.className='board';
 
     const ovlC  = document.createElement('canvas'); ovlC.className='overlay';
+    const pageIdx = PAGES.length;
+    gridC.id = `aliboard-grid-${pageIdx}`;
+    drawC.id = `aliboard-draw-${pageIdx}`;
+    ovlC.id  = `aliboard-overlay-${pageIdx}`;
 
 
 
@@ -6386,6 +6390,9 @@ function textDimensions(s){
     let textTapCandidate = null;
 
     function start(x,y){
+      if(window.__ALIBOARD_DEBUG_CANVAS){
+        console.log('[draw start]', 'activeCanvasId:', p.drawC?.id, 'ctxCanvasId:', p.ctx?.canvas?.id);
+      }
 
       textTapCandidate = tool===TOOLS.TEXT ? { x, y, cancelled: false } : null;
 

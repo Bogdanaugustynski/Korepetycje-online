@@ -1816,6 +1816,10 @@
     const gridC = document.createElement('canvas'); gridC.className='grid';
     const drawC = document.createElement('canvas'); drawC.className='board';
     const ovlC  = document.createElement('canvas'); ovlC.className='overlay';
+    const pageIdx = PAGES.length;
+    gridC.id = `aliboard-grid-${pageIdx}`;
+    drawC.id = `aliboard-draw-${pageIdx}`;
+    ovlC.id  = `aliboard-overlay-${pageIdx}`;
 
     page.appendChild(gridC); page.appendChild(drawC); page.appendChild(ovlC);
     pagesEl.appendChild(page);
@@ -2890,6 +2894,9 @@ function textDimensions(s){
     }
 
     function start(x,y){
+      if(window.__ALIBOARD_DEBUG_CANVAS){
+        console.log('[draw start]', 'activeCanvasId:', p.drawC?.id, 'ctxCanvasId:', p.ctx?.canvas?.id);
+      }
       if(tool===TOOLS.SELECT){
         const pt={x,y};
         if(p.state.selection){
