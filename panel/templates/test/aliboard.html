@@ -8478,6 +8478,7 @@ const toolsRow = document.getElementById('tools');
     window.aliboardChat.toggleMic = window.aliboardChat.toggleMic || null;
 
     window.aliboardChat.sendCallSignal = window.aliboardChat.sendCallSignal || null;
+    window.aliboardChat.sendChatRead = window.aliboardChat.sendChatRead || null;
     window.aliboardChat.markMessageRead = window.aliboardChat.markMessageRead || markMessageRead;
     window.aliboardChat.markMessageUnread = window.aliboardChat.markMessageUnread || markMessageUnread;
     window.aliboardChat.setMessageStatus = window.aliboardChat.setMessageStatus || setMessageStatus;
@@ -8500,10 +8501,14 @@ const toolsRow = document.getElementById('tools');
     let callTimerMessageEl = null;
 
     let isPanelOpen = false;
+    let chatIsOpen = false;
 
     let unreadCount = 0;
 
     let unreadBadgeEl = null;
+    let chatMessages = [];
+    let myLastReadAt = null;
+    let theirLastReadAt = null;
     const messageStatusMap = new Map();
 
     function setMessageStatus(msgId, statusText){
@@ -8588,6 +8593,84 @@ const toolsRow = document.getElementById('tools');
 
       bubble.appendChild(unreadBadgeEl);
 
+    }
+
+    function parseIsoDate(value){
+      if(!value) return null;
+      try{
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d;
+      }catch(_){
+        return null;
+      }
+    }
+
+    function formatTime(value){
+      try{
+        const d = value instanceof Date ? value : new Date(value);
+        if(isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      }catch(_){
+        return '';
+      }
+    }
+
+    function getLastMessageRow(){
+      const rows = messagesEl.querySelectorAll('.aliboard-chat-row');
+      if(!rows || !rows.length) return null;
+      return rows[rows.length - 1];
+    }
+
+    function getLastMessageId(){
+      const row = getLastMessageRow();
+      if(!row) return null;
+      const raw = row.dataset.messageId;
+      const num = Number(raw);
+      return Number.isFinite(num) ? num : (raw || null);
+    }
+
+    function getLastMessageCreatedAt(){
+      const row = getLastMessageRow();
+      if(!row) return null;
+      const iso = row.dataset.createdAt;
+      return parseIsoDate(iso);
+    }
+
+    function recordChatMessage(msg){
+      if(!msg || !msg.created_at) return;
+      chatMessages.push(msg);
+    }
+
+    function recomputeUnreadBadge(){
+      ensureUnreadBadge();
+      if(!unreadBadgeEl) return;
+      if(!myLastReadAt){
+        unreadCount = 0;
+        unreadBadgeEl.textContent = '';
+        unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
+        return;
+      }
+      const cutoff = myLastReadAt.getTime();
+      let unread = 0;
+      for(const m of chatMessages){
+        if(!m) continue;
+        const rawAuthor = m.author_id;
+        const authorId = (rawAuthor !== null && rawAuthor !== undefined) ? Number(rawAuthor) : null;
+        if(authorId !== null && Number(window.ALIBOARD_USER_ID) === authorId) continue;
+        const created = m.created_at instanceof Date ? m.created_at : parseIsoDate(m.created_at);
+        if(!created) continue;
+        if(created.getTime() > cutoff){
+          unread += 1;
+        }
+      }
+      unreadCount = unread;
+      if(unread > 0){
+        unreadBadgeEl.textContent = unread.toString();
+        unreadBadgeEl.classList.remove('aliboard-chat-badge-hidden');
+      }else{
+        unreadBadgeEl.textContent = '';
+        unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
+      }
     }
 
 
@@ -8754,6 +8837,7 @@ const toolsRow = document.getElementById('tools');
     function setPanelOpen(isOpen){
 
       isPanelOpen = !!isOpen;
+      chatIsOpen = isPanelOpen;
 
       if(isOpen){
 
@@ -8763,15 +8847,8 @@ const toolsRow = document.getElementById('tools');
 
         try{ localStorage.setItem(CHAT_OPEN_KEY, '1'); }catch(_){}
 
-        unreadCount = 0;
-
-        if(unreadBadgeEl){
-
-          unreadBadgeEl.textContent = '';
-
-          unreadBadgeEl.classList.add('aliboard-chat-badge-hidden');
-
-        }
+        setTimeout(()=> input.focus(), 20);
+        maybeSendChatRead();
 
       }else{
 
@@ -8782,6 +8859,8 @@ const toolsRow = document.getElementById('tools');
         try{ localStorage.setItem(CHAT_OPEN_KEY, '0'); }catch(_){}
 
       }
+
+      recomputeUnreadBadge();
 
     }
 
@@ -8813,6 +8892,12 @@ const toolsRow = document.getElementById('tools');
 
     }
 
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.visibilityState === 'visible'){
+        maybeSendChatRead();
+      }
+    });
+
     resizeChatPanel();
 
     document.addEventListener('click', (e)=>{
@@ -8831,12 +8916,21 @@ const toolsRow = document.getElementById('tools');
       const author = opts.author === 'other' ? 'other' : 'me';
 
       const label = opts.label || (author === 'me' ? 'Ty' : 'Gość');
+      const createdIso = opts.createdAt || null;
+      const messageId = opts.id;
+      const timeLabel = opts.timeString || formatTime(createdIso || new Date());
 
 
 
       const row = document.createElement('div');
 
       row.className = `aliboard-chat-row ${author === 'me' ? 'mine' : 'theirs'}`;
+      if(messageId !== undefined && messageId !== null){
+        row.dataset.messageId = String(messageId);
+      }
+      if(createdIso){
+        row.dataset.createdAt = createdIso;
+      }
 
 
 
@@ -8854,18 +8948,14 @@ const toolsRow = document.getElementById('tools');
       msgEl.className = `aliboard-chat-message ${author}`;
       msgEl.textContent = opts.text.toString();
       row.appendChild(msgEl);
-      let msgId = null;
-      if(author === 'me'){
-        msgId = opts.id || `msg-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
-        row.dataset.messageId = msgId;
-      }
-      if(opts.timeString){
+
+      if(timeLabel){
 
         const meta = document.createElement('span');
 
         meta.className = 'aliboard-chat-meta';
 
-        meta.textContent = opts.timeString;
+        meta.textContent = timeLabel;
 
         row.appendChild(meta);
 
@@ -8881,7 +8971,7 @@ const toolsRow = document.getElementById('tools');
         statusEl.textContent = defaultStatus;
         if(!defaultStatus) statusEl.classList.add('is-empty');
         row.appendChild(statusEl);
-        if(msgId) messageStatusMap.set(msgId, statusEl);
+        if(messageId !== undefined && messageId !== null) messageStatusMap.set(messageId, statusEl);
       }
 
       messagesEl.appendChild(row);
@@ -8889,7 +8979,7 @@ const toolsRow = document.getElementById('tools');
       if(author === 'other'){
         markAllMyMessagesRead();
       }
-      return { row, messageEl: msgEl, id: msgId, statusEl };
+      return { row, messageEl: msgEl, id: messageId, statusEl };
 
     }
 
@@ -8909,6 +8999,24 @@ const toolsRow = document.getElementById('tools');
 
       }
 
+    }
+
+    function sendChatRead(){
+      if(!window.aliboardChat || typeof window.aliboardChat.sendChatRead !== 'function') return;
+      const lastId = getLastMessageId();
+      if(lastId === null) return;
+      window.aliboardChat.sendChatRead(lastId);
+      const lastCreated = getLastMessageCreatedAt();
+      if(lastCreated){
+        myLastReadAt = lastCreated;
+        recomputeUnreadBadge();
+      }
+    }
+
+    function maybeSendChatRead(){
+      if(!chatIsOpen) return;
+      if(document.visibilityState !== 'visible') return;
+      sendChatRead();
     }
 
     function formatDuration(ms){
@@ -9032,55 +9140,95 @@ const toolsRow = document.getElementById('tools');
 
 
 
-    window.aliboardChat.onServerMessage = function (text, authorId, authorName) {
+    window.aliboardChat.onServerMessage = function (text, authorId, authorName, createdAtRaw, messageId, isHistory) {
 
-      const myIdRaw = window.ALIBOARD_USER_ID;
+  const myIdRaw = window.ALIBOARD_USER_ID;
 
-      const myId = (myIdRaw !== null && myIdRaw !== undefined) ? Number(myIdRaw) : null;
+  const myId = (myIdRaw !== null && myIdRaw !== undefined) ? Number(myIdRaw) : null;
 
-      const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
+  const serverId = (authorId !== null && authorId !== undefined) ? Number(authorId) : null;
 
-      const isMe = (myId !== null && serverId !== null && serverId === myId);
+  const isMe = (myId !== null && serverId !== null && serverId === myId);
 
-      const label = isMe
+  const label = isMe
 
-        ? 'Ty'
+    ? 'Ty'
 
-        : (authorName && authorName.toString().trim()) ||
+    : (authorName && authorName.toString().trim()) ||
 
-          (serverId !== null ? `Użytkownik #${serverId}` : 'Gość');
+      (serverId !== null ? `Uzytkownik #${serverId}` : 'Gosc');
 
+  const isHistoryMsg = !!isHistory;
+  const createdAt = parseIsoDate(createdAtRaw) || new Date();
+  const createdIso = createdAt.toISOString();
+  const timeString = formatTime(createdAt);
 
+  recordChatMessage({
+    id: messageId || null,
+    author_id: serverId,
+    created_at: createdAt,
+  });
 
-      appendMessage({
+  appendMessage({
+    text: text,
+    author: isMe ? "me" : "other",
+    label: label,
+    timeString: timeString,
+    createdAt: createdIso,
+    id: messageId,
+  });
 
-        text: text,
+  recomputeUnreadBadge();
 
-        author: isMe ? "me" : "other",
+  if(!isMe && !isHistoryMsg){
 
-        label: label,
+    if(!chatIsOpen || document.visibilityState !== 'visible'){
 
-        timeString: getTimeString(),
+      ensureUnreadBadge();
 
-      });
+      playMessageBeep();
 
+    }else{
 
+      requestAnimationFrame(()=> maybeSendChatRead());
 
-      if(!isPanelOpen && !isMe){
+    }
 
-        ensureUnreadBadge();
+  }
 
-        unreadCount += 1;
+};
 
-        unreadBadgeEl.textContent = unreadCount.toString();
-
-        unreadBadgeEl.classList.remove('aliboard-chat-badge-hidden');
-
-        playMessageBeep();
-
+    window.aliboardChat.onChatRead = function(payload){
+      if(!payload) return;
+      const ts = parseIsoDate(payload.last_read_at);
+      if(!ts) return;
+      const userIdRaw = payload.user_id;
+      const userId = (userIdRaw !== null && userIdRaw !== undefined) ? Number(userIdRaw) : null;
+      if(userId !== null && Number(window.ALIBOARD_USER_ID) === userId){
+        myLastReadAt = ts;
+        recomputeUnreadBadge();
+        return;
       }
-
+      theirLastReadAt = ts;
     };
+
+    window.aliboardChat.onChatReadState = function(payload){
+      const states = Array.isArray(payload && payload.states) ? payload.states : [];
+      states.forEach((st)=>{
+        if(!st) return;
+        const ts = parseIsoDate(st.last_read_at);
+        const uid = (st.user_id !== null && st.user_id !== undefined) ? Number(st.user_id) : null;
+        if(!ts || uid === null) return;
+        if(uid === Number(window.ALIBOARD_USER_ID)){
+          myLastReadAt = ts;
+        }else{
+          theirLastReadAt = ts;
+        }
+      });
+      recomputeUnreadBadge();
+    };
+
+
 
 
 
@@ -9714,6 +9862,9 @@ const toolsRow = document.getElementById('tools');
           window.aliboardChat.toggleMic = (muted)=> setMicMuted(muted);
 
         }
+        if(typeof realtime.sendChatRead === 'function'){
+          window.aliboardChat.sendChatRead = (lastMessageId)=> realtime.sendChatRead(lastMessageId);
+        }
 
       };
 
@@ -9734,9 +9885,29 @@ const toolsRow = document.getElementById('tools');
       attachMicStateListener._attached = true;
     }
 
-
     wireRealtimeBridge();
     attachMicStateListener();
+    function attachChatReadListener(){
+      const rt = window.AliboardRealtime;
+      if(!rt || typeof rt.on !== 'function'){
+        setTimeout(attachChatReadListener, 600);
+        return;
+      }
+      if(attachChatReadListener._attached) return;
+      rt.on("chat_read", (payload)=>{
+        if(window.aliboardChat && typeof window.aliboardChat.onChatRead === 'function'){
+          window.aliboardChat.onChatRead(payload);
+        }
+      });
+      rt.on("chat_read_state", (payload)=>{
+        if(window.aliboardChat && typeof window.aliboardChat.onChatReadState === 'function'){
+          window.aliboardChat.onChatReadState(payload);
+        }
+      });
+      attachChatReadListener._attached = true;
+    }
+
+    attachChatReadListener();
 
 
     (function enableChatBubbleDrag(){
