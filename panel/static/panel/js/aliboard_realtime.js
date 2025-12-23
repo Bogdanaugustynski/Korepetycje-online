@@ -26,9 +26,6 @@
   const CURSOR_THROTTLE_MS = 80;
   const messageQueue = [];
 
-  // Legacy grid sync potrafił przywracać stary szablon kratki. Wyłączone domyślnie dla wariantu 5".
-  const ALLOW_GRID_STATE_SYNC = false;
-
   const loc = window.location;
   const scheme = loc.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${scheme}://${loc.host}/ws/aliboard/${roomId}/`;
@@ -246,15 +243,13 @@
       }
 
       if (data.type === "grid_state") {
-        if (ALLOW_GRID_STATE_SYNC) {
-          if (typeof window.aliboardApplyGridState === "function") {
-            window.aliboardApplyGridState({
-              gridSize: data.gridSize,
-              kind: data.kind,
-            });
-          }
-          notify("grid_state", data);
+        if (typeof window.aliboardApplyGridState === "function") {
+          window.aliboardApplyGridState({
+            gridSize: data.gridSize,
+            kind: data.kind,
+          });
         }
+        notify("grid_state", data);
         return;
       }
 
@@ -400,7 +395,6 @@
     },
     // --- SYNC kratki (grid) ---
     sendGridState(state) {
-      if (!ALLOW_GRID_STATE_SYNC) return;
       if (!state) return;
       const isObj = typeof state === "object";
       const rawSize = isObj ? state.gridSize : state;
