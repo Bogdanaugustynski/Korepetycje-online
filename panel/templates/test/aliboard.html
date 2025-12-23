@@ -2522,12 +2522,13 @@
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
 
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3;
-  const BASE_PHONE_WIDTH_PX = 360;
   const GRID_STEPS_ON_PHONE = { sm: 18, md: 26, lg: 34 };
-  function computeStepPx(gridSizeKey, canvasWidth) {
+  function computeStepPx(gridSizeKey) {
+    if(gridSizeKey === 'none' || gridSizeKey === 0){
+      return 0;
+    }
     const stepOnPhone = GRID_STEPS_ON_PHONE[gridSizeKey] || GRID_STEPS_ON_PHONE.md;
-    const scale = (canvasWidth || BASE_PHONE_WIDTH_PX) / BASE_PHONE_WIDTH_PX;
-    return Math.max(6, Math.round(stepOnPhone * scale));
+    return Math.max(6, Math.round(stepOnPhone));
   }
 
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
@@ -4181,11 +4182,10 @@
     const dpr = window.devicePixelRatio || 1;
 
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
-
-    const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || p.gridC.width;
     let stepOverride = p.state.templateStepPx;
-    if(p.state.templateGridSize){
-      stepOverride = computeStepPx(p.state.templateGridSize, currentWidth);
+    if(stepOverride == null && p.state.templateGridSize){
+      stepOverride = computeStepPx(p.state.templateGridSize);
+      p.state.templateStepPx = stepOverride;
     }
 
     drawTemplateOnContext(p.g, w, h, p.state.templateKind, stepOverride);
@@ -4259,8 +4259,13 @@
     const p = ensurePage(pageIndex);
 
     const normalized = normalizeTemplateKind(templateKind);
+    const gridSize = opts?.gridSize ?? null;
+    let stepPx = opts?.stepPx ?? null;
+    if(stepPx == null && gridSize){
+      stepPx = computeStepPx(gridSize);
+    }
 
-    const meta = opts ? { gridSize: opts.gridSize, stepPx: opts.stepPx } : undefined;
+    const meta = opts ? { gridSize, stepPx } : undefined;
 
     setPageTemplateKind(p, normalized, true, meta);
 
@@ -4287,8 +4292,7 @@
     }
 
     PAGES.forEach((page, idx)=>{
-      const currentWidth = (page?.el?.getBoundingClientRect()?.width) || (page?.gridC?.clientWidth) || (page?.gridC?.width) || 0;
-      const effectiveStep = computeStepPx(sizeKey, currentWidth);
+      const effectiveStep = computeStepPx(sizeKey);
       const templateKind = gridStateToTemplateKind({ kind: rawKind, gridSize: sizeKey });
 
       setTemplateForPage(idx, templateKind, {
@@ -5461,11 +5465,10 @@
     theContext = tmp.getContext('2d');
 
     theContext.scale(dpr, dpr);
-
-    const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || p.gridC.width;
     let stepOverride = p.state.templateStepPx;
-    if(p.state.templateGridSize){
-      stepOverride = computeStepPx(p.state.templateGridSize, currentWidth);
+    if(stepOverride == null && p.state.templateGridSize){
+      stepOverride = computeStepPx(p.state.templateGridSize);
+      p.state.templateStepPx = stepOverride;
     }
 
     drawTemplateOnContext(theContext, cssW, cssH, p.state.templateKind, stepOverride);
@@ -7592,8 +7595,7 @@ const toolsRow = document.getElementById('tools');
       else if(val === '24'){ sizeKey = 'md'; }
       else if(val === '32'){ sizeKey = 'lg'; }
 
-      const currentWidth = (page?.el?.getBoundingClientRect()?.width) || (page?.gridC?.clientWidth) || (page?.gridC?.width) || 0;
-      const stepPx = computeStepPx(sizeKey, currentWidth);
+      const stepPx = computeStepPx(sizeKey);
       const templateKind = val === 'tech'
         ? TEMPLATE_KINDS.GRID_TECH
         : gridStateToTemplateKind({ kind: 'grid', gridSize: sizeKey });
