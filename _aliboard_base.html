@@ -3927,6 +3927,21 @@ const toolsRow = document.getElementById('tools');
         return null;
       }
     }
+    function attachAudioResumeOnGesture(){
+      if(attachAudioResumeOnGesture._attached) return;
+      const handler = ()=>{
+        try{
+          const ctx = getAudioCtx();
+          if(ctx && ctx.state === 'suspended'){
+            ctx.resume().catch(()=>{});
+          }
+        }catch(_){}
+      };
+      document.addEventListener('pointerdown', handler, { once:true });
+      document.addEventListener('touchstart', handler, { once:true });
+      attachAudioResumeOnGesture._attached = true;
+    }
+    attachAudioResumeOnGesture();
 
     function playCallBeepOnce(){
       try{

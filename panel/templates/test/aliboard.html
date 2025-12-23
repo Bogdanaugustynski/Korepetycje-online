@@ -8673,12 +8673,46 @@ const toolsRow = document.getElementById('tools');
     }
 
 
+    let audioCtx = null;
+    function getAudioCtx(){
+      if(audioCtx) return audioCtx;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function ensureAudioContext(){
+      try{
+        const ctx = getAudioCtx();
+        if(ctx && ctx.state === 'suspended'){
+          ctx.resume();
+        }
+        return ctx;
+      }catch(_){
+        return null;
+      }
+    }
+    function attachAudioResumeOnGesture(){
+      if(attachAudioResumeOnGesture._attached) return;
+      const handler = ()=>{
+        try{
+          const ctx = getAudioCtx();
+          if(ctx && ctx.state === 'suspended'){
+            ctx.resume().catch(()=>{});
+          }
+        }catch(_){}
+      };
+      document.addEventListener('pointerdown', handler, { once:true });
+      document.addEventListener('touchstart', handler, { once:true });
+      attachAudioResumeOnGesture._attached = true;
+    }
+    attachAudioResumeOnGesture();
+
 
     function playCallBeepOnce(){
 
       try{
 
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = ensureAudioContext();
+        if(!ctx) return;
 
         const osc = ctx.createOscillator();
 
@@ -8738,7 +8772,8 @@ const toolsRow = document.getElementById('tools');
 
       try{
 
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = ensureAudioContext();
+        if(!ctx) return;
 
         const osc = ctx.createOscillator();
 
