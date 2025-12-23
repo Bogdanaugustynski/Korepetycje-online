@@ -2897,6 +2897,9 @@ function textDimensions(s){
       if(window.__ALIBOARD_DEBUG_CANVAS){
         console.log('[draw start]', 'activeCanvasId:', p.drawC?.id, 'ctxCanvasId:', p.ctx?.canvas?.id);
       }
+      if(p.ctx?.canvas?.id && p.ctx.canvas.id.includes('grid')){
+        console.error('FATAL: drawing on grid layer');
+      }
       if(tool===TOOLS.SELECT){
         const pt={x,y};
         if(p.state.selection){
