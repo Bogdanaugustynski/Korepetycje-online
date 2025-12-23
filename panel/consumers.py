@@ -4,7 +4,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
 from django.utils import timezone
 
-from .models import AliboardChatMessage
+from .models import AliboardChatMessage, AliboardChatReadState
 
 # Prosty magazyn elementĂłw tablicy (na potrzeby pojedynczej instancji)
 ROOM_STATE = {}  # room_id -> {"elements": {element_id: element_json}}
@@ -98,11 +98,32 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json(
                 {
                     "type": "chat_message",
+                    "id": msg.id,
                     "text": msg.text,
                     "author_id": author_id,
                     "author_name": author_name,
                     "created_at": timezone.localtime(msg.created_at).isoformat(),
                     "is_history": True,
+                }
+            )
+
+        read_states_qs = (
+            AliboardChatReadState.objects.filter(room_id=self.room_id)
+            .select_related("user")
+        )
+        read_states = await database_sync_to_async(list)(read_states_qs)
+        if read_states:
+            await self.send_json(
+                {
+                    "type": "chat_read_state",
+                    "states": [
+                        {
+                            "user_id": state.user_id,
+                            "last_read_at": timezone.localtime(state.last_read_at).isoformat(),
+                        }
+                        for state in read_states
+                        if state.last_read_at
+                    ],
                 }
             )
 
@@ -229,6 +250,7 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
 
             payload = {
                 "type": "broadcast_chat_message",
+                "id": msg_obj.id,
                 "text": msg_obj.text,
                 "author_id": author_id,
                 "author_name": author_name,
@@ -237,6 +259,46 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
             }
 
             await self.channel_layer.group_send(self.group_name, payload)
+            return
+
+        elif msg_type == "chat_read":
+            user = self.scope.get("user")
+            if not user or not getattr(user, "is_authenticated", False):
+                return
+
+            last_message_id_raw = content.get("last_message_id")
+            try:
+                last_message_id = int(last_message_id_raw)
+            except (TypeError, ValueError):
+                return
+
+            def get_message():
+                return (
+                    AliboardChatMessage.objects.filter(
+                        id=last_message_id, room_id=self.room_id
+                    ).first()
+                )
+
+            msg_obj = await database_sync_to_async(get_message)()
+            if not msg_obj:
+                return
+
+            read_at = msg_obj.created_at
+
+            await database_sync_to_async(AliboardChatReadState.objects.update_or_create)(
+                room_id=self.room_id,
+                user=user,
+                defaults={"last_read_at": read_at},
+            )
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "broadcast.chat_read",
+                    "user_id": user.id,
+                    "last_read_at": timezone.localtime(read_at).isoformat(),
+                },
+            )
             return
 
         elif msg_type == "chat_mic_state":
@@ -404,11 +466,21 @@ class AliboardConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json(
             {
                 "type": "chat_message",
+                "id": event.get("id"),
                 "text": event.get("text") or "",
                 "author_id": event.get("author_id"),
-                "author_name": event.get("author_name") or "Użytkownik",
+                "author_name": event.get("author_name") or "Uzytkownik",
                 "author_role": event.get("author_role") or "unknown",
                 "created_at": event.get("created_at"),
+            }
+        )
+
+    async def broadcast_chat_read(self, event):
+        await self.send_json(
+            {
+                "type": "chat_read",
+                "user_id": event.get("user_id"),
+                "last_read_at": event.get("last_read_at"),
             }
         )
 

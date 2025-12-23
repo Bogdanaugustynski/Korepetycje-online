@@ -41,6 +41,8 @@
     close: [],
     chat_message: [],
     call_signal: [],
+    chat_read: [],
+    chat_read_state: [],
   };
 
   function notify(event, payload) {
@@ -98,6 +100,15 @@
         author_role: window.ALIBOARD_USER_ROLE || "unknown",
       };
       socket.send(JSON.stringify(payload));
+    };
+    window.aliboardChat.sendChatRead = function (lastMessageId) {
+      if (lastMessageId === undefined || lastMessageId === null) return;
+      const idNum = Number(lastMessageId);
+      if (!Number.isFinite(idNum)) return;
+      send({
+        type: "chat_read",
+        last_message_id: idNum,
+      });
     };
     window.aliboardChat.sendCallSignal = function (action) {
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -242,6 +253,28 @@
         return;
       }
 
+      if (data.type === "chat_read") {
+        if (
+          window.aliboardChat &&
+          typeof window.aliboardChat.onChatRead === "function"
+        ) {
+          window.aliboardChat.onChatRead(data);
+        }
+        notify("chat_read", data);
+        return;
+      }
+
+      if (data.type === "chat_read_state") {
+        if (
+          window.aliboardChat &&
+          typeof window.aliboardChat.onChatReadState === "function"
+        ) {
+          window.aliboardChat.onChatReadState(data);
+        }
+        notify("chat_read_state", data);
+        return;
+      }
+
       if (data.type === "chat_message") {
         if (
           window.aliboardChat &&
@@ -258,7 +291,10 @@
           window.aliboardChat.onServerMessage(
             data.text || "",
             authorId,
-            authorName
+            authorName,
+            data.created_at,
+            data.id,
+            data.is_history
           );
         }
         notify("chat_message", data);
@@ -377,6 +413,15 @@
       send({
         type: "chat_message",
         text: payload,
+      });
+    },
+    sendChatRead(lastMessageId) {
+      if (lastMessageId === undefined || lastMessageId === null) return;
+      const idNum = Number(lastMessageId);
+      if (!Number.isFinite(idNum)) return;
+      send({
+        type: "chat_read",
+        last_message_id: idNum,
       });
     },
     sendCallSignal(action) {

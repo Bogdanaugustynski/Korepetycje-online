@@ -17,6 +17,8 @@ def invoice_upload_path(instance, filename):
     return f"invoices/{filename}" if instance.id is None else f"invoices/{instance.id}_{filename}"
 
 
+
+
 # --- Profil / dane użytkownika ---
 class Profil(models.Model):
     # ----- podstawowe -----
@@ -268,6 +270,24 @@ class AliboardChatMessage(models.Model):
         who = self.author.get_full_name() or self.author.username if self.author else "Anon"
         return f"[{self.room_id}] {who}: {self.text[:30]}"
 
+
+class AliboardChatReadState(models.Model):
+    room_id = models.CharField(max_length=255, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="aliboard_read_states",
+    )
+    last_read_at = models.DateTimeField()
+
+    class Meta:
+        unique_together = ("room_id", "user")
+        indexes = [
+            models.Index(fields=["room_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.room_id} - {self.user_id} @ {self.last_read_at}"
 
 # --- Płatności i rachunki ---
 class Payment(models.Model):
