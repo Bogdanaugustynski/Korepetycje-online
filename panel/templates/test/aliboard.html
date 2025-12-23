@@ -2530,30 +2530,6 @@
     return Math.max(6, Math.round(stepOnPhone * scale));
   }
 
-  function debounce(fn, wait){
-    let t;
-    return (...args)=>{
-      clearTimeout(t);
-      t = setTimeout(()=> fn.apply(null, args), wait);
-    };
-  }
-
-  window.ALIBOARD_TEMPLATE = window.ALIBOARD_TEMPLATE || { kind: 'none', gridSize: 'none' };
-  function getTemplateState(){
-    const tpl = window.ALIBOARD_TEMPLATE || {};
-    const kind = (tpl.kind === 'tech') ? 'tech' : (tpl.kind === 'grid' ? 'grid' : 'none');
-    const gridSize = tpl.gridSize || (kind === 'none' ? 'none' : 'md');
-    return { kind, gridSize };
-  }
-  function setTemplateState(kind, gridSizeKey){
-    const normalizedKind = kind === 'tech' ? 'tech' : (kind === 'grid' ? 'grid' : 'none');
-    const normalizedSize = gridSizeKey || (normalizedKind === 'none' ? 'none' : 'md');
-    window.ALIBOARD_TEMPLATE = {
-      kind: normalizedKind,
-      gridSize: normalizedKind === 'none' ? 'none' : normalizedSize
-    };
-  }
-
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
 
   let lastBrushSize = size;
@@ -2658,15 +2634,6 @@
 
     return TEMPLATE_KINDS.GRID_MEDIUM;
 
-  }
-
-  function templateKindToGridSize(kind, sizeHint){
-    const normalized = normalizeTemplateKind(kind, sizeHint);
-    if(normalized === TEMPLATE_KINDS.GRID_SMALL) return 'sm';
-    if(normalized === TEMPLATE_KINDS.GRID_LARGE) return 'lg';
-    if(normalized === TEMPLATE_KINDS.GRID_TECH) return 'md';
-    if(normalized === TEMPLATE_KINDS.NONE) return 'none';
-    return 'md';
   }
 
   function templateElementKind(el){
@@ -4096,10 +4063,6 @@
     const drawC = document.createElement('canvas'); drawC.className='board';
 
     const ovlC  = document.createElement('canvas'); ovlC.className='overlay';
-    const pageIdx = PAGES.length;
-    gridC.id = `aliboard-grid-${pageIdx}`;
-    drawC.id = `aliboard-draw-${pageIdx}`;
-    ovlC.id  = `aliboard-overlay-${pageIdx}`;
 
 
 
@@ -4126,8 +4089,6 @@
     resizePage(p);
 
     setPageTemplateKind(p, p.state.templateKind, true);
-
-    scheduleGridRender();
 
     renderAll(p);
 
@@ -4222,45 +4183,13 @@
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
 
     const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || p.gridC.width;
-    const state = getTemplateState();
-    const gridSizeKey = p.state.templateGridSize || state.gridSize;
-    let stepOverride = null;
-    if(p.state.templateKind === TEMPLATE_KINDS.GRID_TECH){
-      stepOverride = computeStepPx('md', currentWidth);
-    }else if(gridSizeKey && gridSizeKey !== 'none'){
-      stepOverride = computeStepPx(gridSizeKey, currentWidth);
+    let stepOverride = p.state.templateStepPx;
+    if(p.state.templateGridSize){
+      stepOverride = computeStepPx(p.state.templateGridSize, currentWidth);
     }
 
     drawTemplateOnContext(p.g, w, h, p.state.templateKind, stepOverride);
 
-  }
-
-  function renderGridFromState(){
-    const state = getTemplateState();
-    const templateKind = gridStateToTemplateKind(state);
-    PAGES.forEach(p=>{
-      p.state.templateKind = templateKind;
-      p.state.templateGridSize = state.gridSize;
-      p.state.templateStepPx = null;
-      renderTemplateLayer(p);
-    });
-  }
-
-  function scheduleGridRender(){
-    requestAnimationFrame(()=> requestAnimationFrame(()=>{
-      renderGridFromState();
-      debugLogGrid('double-raf');
-    }));
-  }
-
-  function debugLogGrid(tag){
-    if(!window.__ALIBOARD_DEBUG_GRID) return;
-    const page = PAGES[0];
-    if(!page || !page.gridC) return;
-    const dpr = window.devicePixelRatio || 1;
-    const rect = page.gridC.getBoundingClientRect ? page.gridC.getBoundingClientRect() : { width: page.gridC.width / dpr };
-    const sizeLabel = page.state.templateGridSize || getTemplateState().gridSize;
-    console.log(`[grid render ${tag}] canvasW:`, page.gridC.width / dpr, 'clientW:', rect.width, 'gridSize:', sizeLabel);
   }
 
   function setPageTemplateKind(p, templateKind, forceDraw, meta){
@@ -4268,21 +4197,20 @@
     if(!p || !p.state) return;
 
     const next = normalizeTemplateKind(templateKind);
-    const prevKind = p.state.templateKind;
-    const prevGridSize = p.state.templateGridSize;
-    const gridSizeKey = meta?.gridSize ?? prevGridSize ?? templateKindToGridSize(next);
 
-    const shouldSkip = !forceDraw && prevKind === next && prevGridSize === gridSizeKey;
-    if(shouldSkip) return;
+    if(meta){
+      p.state.templateGridSize = meta.gridSize ?? null;
+      p.state.templateStepPx = meta.stepPx ?? null;
+    }else{
+      p.state.templateGridSize = null;
+      p.state.templateStepPx = null;
+    }
 
-    p.state.templateGridSize = gridSizeKey;
-    p.state.templateStepPx = null;
+    if(!forceDraw && p.state.templateKind === next) return;
+
     p.state.templateKind = next;
-    const stateKind = next === TEMPLATE_KINDS.GRID_TECH ? 'tech' : (next === TEMPLATE_KINDS.NONE ? 'none' : 'grid');
-    setTemplateState(stateKind, gridSizeKey);
 
     renderTemplateLayer(p);
-    debugLogGrid('immediate');
 
   }
 
@@ -4332,7 +4260,7 @@
 
     const normalized = normalizeTemplateKind(templateKind);
 
-    const meta = opts ? { gridSize: opts.gridSize } : undefined;
+    const meta = opts ? { gridSize: opts.gridSize, stepPx: opts.stepPx } : undefined;
 
     setPageTemplateKind(p, normalized, true, meta);
 
@@ -4352,24 +4280,23 @@
     const rawKind = isObj ? (newGridState.kind || newGridState.templateKind || newGridState.type) : null;
     const rawSize = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
     const sizeKey = typeof rawSize === 'string' ? rawSize : (rawSize === 0 ? 'none' : 'md');
-    const resolvedKind = (rawKind === 'tech') ? 'tech' : (rawKind === 'none' || sizeKey === 'none') ? 'none' : 'grid';
-    setTemplateState(resolvedKind, sizeKey);
-
-    if(resolvedKind === 'none' || sizeKey === 'none'){
-      setTemplateForPage(0, TEMPLATE_KINDS.NONE, { broadcast:false, gridSize: 'none' });
-      PAGES.forEach((page, idx)=> setTemplateForPage(idx, TEMPLATE_KINDS.NONE, { broadcast:false, gridSize: 'none' }));
-      scheduleGridRender();
+    if(rawKind === 'none' || sizeKey === 'none'){
+      setTemplateForPage(0, TEMPLATE_KINDS.NONE, { broadcast:false, gridSize: 'none', stepPx: 0 });
+      PAGES.forEach((page, idx)=> setTemplateForPage(idx, TEMPLATE_KINDS.NONE, { broadcast:false, gridSize: 'none', stepPx: 0 }));
       return;
     }
 
-    const templateKind = gridStateToTemplateKind({ kind: resolvedKind, gridSize: sizeKey });
     PAGES.forEach((page, idx)=>{
+      const currentWidth = (page?.el?.getBoundingClientRect()?.width) || (page?.gridC?.clientWidth) || (page?.gridC?.width) || 0;
+      const effectiveStep = computeStepPx(sizeKey, currentWidth);
+      const templateKind = gridStateToTemplateKind({ kind: rawKind, gridSize: sizeKey });
+
       setTemplateForPage(idx, templateKind, {
         broadcast:false,
         gridSize: sizeKey,
+        stepPx: effectiveStep,
       });
     });
-    scheduleGridRender();
 
   };
 
@@ -4425,13 +4352,13 @@
 
   }
 
-  const handleResize = debounce(()=>{
+  window.addEventListener('resize', ()=>{
+
     PAGES.forEach(p=>{ resizePage(p); renderAll(p); drawSelection(p); });
-    debugLogGrid('immediate');
-    scheduleGridRender();
+
     if(textFontPanel?.classList.contains('open')){ positionTextFontPanel(); }
-  }, 80);
-  window.addEventListener('resize', handleResize);
+
+  });
 
 
 
@@ -5536,12 +5463,9 @@
     theContext.scale(dpr, dpr);
 
     const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || p.gridC.width;
-    const gridSizeKey = p.state.templateGridSize || getTemplateState().gridSize;
-    let stepOverride = null;
-    if(p.state.templateKind === TEMPLATE_KINDS.GRID_TECH){
-      stepOverride = computeStepPx('md', currentWidth);
-    }else if(gridSizeKey && gridSizeKey !== 'none'){
-      stepOverride = computeStepPx(gridSizeKey, currentWidth);
+    let stepOverride = p.state.templateStepPx;
+    if(p.state.templateGridSize){
+      stepOverride = computeStepPx(p.state.templateGridSize, currentWidth);
     }
 
     drawTemplateOnContext(theContext, cssW, cssH, p.state.templateKind, stepOverride);
@@ -6390,12 +6314,6 @@ function textDimensions(s){
     let textTapCandidate = null;
 
     function start(x,y){
-      if(window.__ALIBOARD_DEBUG_CANVAS){
-        console.log('[draw start]', 'activeCanvasId:', p.drawC?.id, 'ctxCanvasId:', p.ctx?.canvas?.id);
-      }
-      if(p.ctx?.canvas?.id && p.ctx.canvas.id.includes('grid')){
-        console.error('FATAL: drawing on grid layer');
-      }
 
       textTapCandidate = tool===TOOLS.TEXT ? { x, y, cancelled: false } : null;
 
@@ -7674,13 +7592,13 @@ const toolsRow = document.getElementById('tools');
       else if(val === '24'){ sizeKey = 'md'; }
       else if(val === '32'){ sizeKey = 'lg'; }
 
+      const currentWidth = (page?.el?.getBoundingClientRect()?.width) || (page?.gridC?.clientWidth) || (page?.gridC?.width) || 0;
+      const stepPx = computeStepPx(sizeKey, currentWidth);
       const templateKind = val === 'tech'
         ? TEMPLATE_KINDS.GRID_TECH
         : gridStateToTemplateKind({ kind: 'grid', gridSize: sizeKey });
 
-      setTemplateState(val === 'tech' ? 'tech' : 'grid', sizeKey);
-      setTemplateForPage(pageIndex, templateKind, { broadcast:true, gridSize: sizeKey });
-      scheduleGridRender();
+      setTemplateForPage(pageIndex, templateKind, { broadcast:true, gridSize: sizeKey, stepPx });
 
       if(window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function'){
 
@@ -8673,46 +8591,12 @@ const toolsRow = document.getElementById('tools');
     }
 
 
-    let audioCtx = null;
-    function getAudioCtx(){
-      if(audioCtx) return audioCtx;
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      return audioCtx;
-    }
-    function ensureAudioContext(){
-      try{
-        const ctx = getAudioCtx();
-        if(ctx && ctx.state === 'suspended'){
-          ctx.resume();
-        }
-        return ctx;
-      }catch(_){
-        return null;
-      }
-    }
-    function attachAudioResumeOnGesture(){
-      if(attachAudioResumeOnGesture._attached) return;
-      const handler = ()=>{
-        try{
-          const ctx = getAudioCtx();
-          if(ctx && ctx.state === 'suspended'){
-            ctx.resume().catch(()=>{});
-          }
-        }catch(_){}
-      };
-      document.addEventListener('pointerdown', handler, { once:true });
-      document.addEventListener('touchstart', handler, { once:true });
-      attachAudioResumeOnGesture._attached = true;
-    }
-    attachAudioResumeOnGesture();
-
 
     function playCallBeepOnce(){
 
       try{
 
-        const ctx = ensureAudioContext();
-        if(!ctx) return;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
         const osc = ctx.createOscillator();
 
@@ -8772,8 +8656,7 @@ const toolsRow = document.getElementById('tools');
 
       try{
 
-        const ctx = ensureAudioContext();
-        if(!ctx) return;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
         const osc = ctx.createOscillator();
 
