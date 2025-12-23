@@ -2536,6 +2536,10 @@
 
   let currentShape = 'rect';
 
+  // Legacy sync siatki (grid_state) potrafił przywracać stary układ kratki.
+  // Na wariancie 5" domyślnie wyłączamy odbieranie tych zdarzeń; w razie potrzeby ustaw na true.
+  const ALLOW_GRID_STATE_SYNC = false;
+
   const TEMPLATE_KINDS = {
 
     NONE: 'none',
@@ -4275,6 +4279,7 @@
   // --- LEGACY GRID EVENT: mapuj na element template ---
 
   window.aliboardApplyGridState = function(newGridState){
+    if(!ALLOW_GRID_STATE_SYNC) return;
 
     const isObj = newGridState && typeof newGridState === 'object';
     const rawKind = isObj ? (newGridState.kind || newGridState.templateKind || newGridState.type) : null;
@@ -8047,6 +8052,8 @@ const toolsRow = document.getElementById('tools');
   if(window.AliboardRealtime && typeof window.AliboardRealtime.on === 'function'){
 
     window.AliboardRealtime.on('grid_state', (payload)=>{
+
+      if(!ALLOW_GRID_STATE_SYNC) return;
 
       if(typeof window.aliboardApplyGridState === 'function'){
 
