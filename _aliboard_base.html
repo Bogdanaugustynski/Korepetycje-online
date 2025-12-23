@@ -1214,7 +1214,6 @@
   const TOOLS = { SELECT:'select', PEN:'pen', LINE:'line', ERASER:'eraser', TEXT:'text', CROP:'crop', FIGURE:'figure' };
   let tool = TOOLS.SELECT, color = '#0b74ff', size = 3, gridSize = 'md';
   let gridKind = 'none';
-  let gridStepPx = 0;
 
   const BASE_PHONE_WIDTH_PX = 360;
   const GRID_STEPS_ON_PHONE = { sm: 18, md: 26, lg: 34 };
@@ -1223,6 +1222,32 @@
     const stepOnPhone = GRID_STEPS_ON_PHONE[gridSizeKey] || GRID_STEPS_ON_PHONE.md;
     const scale = (canvasWidth || BASE_PHONE_WIDTH_PX) / BASE_PHONE_WIDTH_PX;
     return Math.max(6, Math.round(stepOnPhone * scale));
+  }
+
+  function debounce(fn, wait){
+    let t;
+    return (...args)=>{
+      clearTimeout(t);
+      t = setTimeout(()=> fn.apply(null, args), wait);
+    };
+  }
+
+  window.ALIBOARD_TEMPLATE = window.ALIBOARD_TEMPLATE || { kind: 'none', gridSize: 'none' };
+  function getTemplateState(){
+    const tpl = window.ALIBOARD_TEMPLATE || {};
+    const kind = tpl.kind === 'tech' ? 'tech' : (tpl.kind === 'grid' ? 'grid' : 'none');
+    const sizeKey = tpl.gridSize || (kind === 'none' ? 'none' : 'md');
+    return { kind, gridSize: sizeKey };
+  }
+  function setTemplateState(kind, sizeKey){
+    const normalizedKind = kind === 'tech' ? 'tech' : (kind === 'grid' ? 'grid' : 'none');
+    const normalizedSize = sizeKey || (normalizedKind === 'none' ? 'none' : 'md');
+    window.ALIBOARD_TEMPLATE = {
+      kind: normalizedKind,
+      gridSize: normalizedKind === 'none' ? 'none' : normalizedSize,
+    };
+    gridKind = window.ALIBOARD_TEMPLATE.kind;
+    gridSize = window.ALIBOARD_TEMPLATE.gridSize;
   }
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
   let lastBrushSize = size;
@@ -1804,6 +1829,8 @@
     p.index = PAGES.length - 1;
     resizePage(p);
     refreshGrid(p);
+    debugLogGrid('immediate');
+    scheduleGridRender();
     renderAll(p);
     bindPage(p);
     if(scrollTo) page.scrollIntoView({behavior:'smooth', block:'center'});
@@ -1827,7 +1854,7 @@
     const dpr = window.devicePixelRatio || 1;
     const w = p.gridC.width / dpr, h = p.gridC.height / dpr;
     p.g.clearRect(0,0,w,h);
-    const step = customStep ?? gridStepPx;
+    const step = customStep || 0;
     if(!step) return;
     p.g.save(); p.g.strokeStyle='#e6edff'; p.g.lineWidth=1;
     for(let x=0;x<=w;x+=step){ p.g.beginPath(); p.g.moveTo(x,0); p.g.lineTo(x,h); p.g.stroke(); }
@@ -1841,27 +1868,17 @@
     const kind = (isObj ? newGridState.kind : null) || 'grid';
     const valRaw = isObj ? (newGridState.gridSize ?? newGridState.size) : newGridState;
     const sizeKey = typeof valRaw === 'string' ? valRaw : (valRaw === 0 ? 'none' : 'md');
-    if(kind === 'none' || sizeKey === 'none'){
-      gridKind = 'none';
-      gridSize = 'none';
-      gridStepPx = 0;
-      PAGES.forEach(p => drawGrid(p, 0));
+    const resolvedKind = kind === 'tech' ? 'tech' : (kind === 'none' || sizeKey === 'none') ? 'none' : 'grid';
+    setTemplateState(resolvedKind, sizeKey);
+    if(resolvedKind === 'none' || sizeKey === 'none'){
+      renderGridFromState();
+      debugLogGrid('immediate');
+      scheduleGridRender();
       return;
     }
-    gridKind = kind;
-    gridSize = sizeKey;
-    PAGES.forEach(p => {
-      const targetWidth = (p?.gridC?.clientWidth) || (p?.drawC?.clientWidth) || (p?.el?.getBoundingClientRect()?.width) || 0;
-      const effectiveStep = kind === 'tech' ? computeStepPx('md', targetWidth) : computeStepPx(sizeKey, targetWidth);
-      gridStepPx = effectiveStep;
-      if(kind === 'tech'){
-        drawTechGrid(p, effectiveStep);
-      } else if(sizeKey === 'none' || valRaw === 0){
-        drawGrid(p, 0);
-      } else {
-        drawGrid(p, effectiveStep);
-      }
-    });
+    renderGridFromState();
+    debugLogGrid('immediate');
+    scheduleGridRender();
   };
   function drawTechGrid(p, customStep){
     const dpr = window.devicePixelRatio || 1;
@@ -1890,18 +1907,47 @@
     ctx.restore();
   }
   function refreshGrid(p){
-    if(gridKind==='tech'){ drawTechGrid(p, gridStepPx); }
-    else{ drawGrid(p, gridStepPx); }
+    const state = getTemplateState();
+    const targetWidth = (p?.gridC?.clientWidth) || (p?.drawC?.clientWidth) || (p?.el?.getBoundingClientRect()?.width) || 0;
+    if(state.kind === 'none' || state.gridSize === 'none'){
+      drawGrid(p, 0);
+      return;
+    }
+    const step = state.kind === 'tech' ? computeStepPx('md', targetWidth) : computeStepPx(state.gridSize, targetWidth);
+    if(state.kind==='tech'){ drawTechGrid(p, step); }
+    else{ drawGrid(p, step); }
+  }
+  function renderGridFromState(){
+    PAGES.forEach(p=> refreshGrid(p));
+  }
+  function scheduleGridRender(){
+    requestAnimationFrame(()=> requestAnimationFrame(()=>{
+      renderGridFromState();
+      debugLogGrid('double-raf');
+    }));
+  }
+  function debugLogGrid(tag){
+    if(!window.__ALIBOARD_DEBUG_GRID) return;
+    const page = PAGES[0];
+    if(!page || !page.gridC) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = page.gridC.getBoundingClientRect ? page.gridC.getBoundingClientRect() : { width: page.gridC.width / dpr };
+    const sizeLabel = getTemplateState().gridSize;
+    console.log(`[grid render ${tag}] canvasW:`, page.gridC.width / dpr, 'clientW:', rect.width, 'gridSize:', sizeLabel);
   }
   function resetBoard(){
     PAGES.forEach(p=> p.el.remove());
     PAGES.length = 0;
     pagesEl.innerHTML = '';
   }
-  window.addEventListener('resize', ()=>{
-    PAGES.forEach(p=>{ resizePage(p); refreshGrid(p); renderAll(p); drawSelection(p); });
+  const handleResize = debounce(()=>{
+    PAGES.forEach(p=>{ resizePage(p); renderAll(p); drawSelection(p); });
+    renderGridFromState();
+    debugLogGrid('immediate');
+    scheduleGridRender();
     if(textFontPanel?.classList.contains('open')){ positionTextFontPanel(); }
-  });
+  }, 80);
+  window.addEventListener('resize', handleResize);
 
   /* ---------- RENDER ---------- */
   function renderAll(p){
@@ -2408,11 +2454,14 @@
     theContext = tmp.getContext('2d');
     theContext.scale(dpr, dpr);
 
-    if(gridKind === 'tech'){
-      drawTechPattern(theContext, cssW, cssH, gridStepPx);
+    const state = getTemplateState();
+    if(state.kind === 'tech'){
+      const step = computeStepPx('md', cssW);
+      drawTechPattern(theContext, cssW, cssH, step);
     }else{
-      const step = gridStepPx || (typeof gridSize === 'number' ? gridSize : 0);
-      if(step){
+      const sizeKey = state.gridSize;
+      if(sizeKey && sizeKey !== 'none'){
+        const step = computeStepPx(sizeKey, cssW);
         theContext.save(); theContext.strokeStyle='#e6edff'; theContext.lineWidth=1;
         for(let x=0;x<=cssW;x+=step){ theContext.beginPath(); theContext.moveTo(x,0); theContext.lineTo(x,cssH); theContext.stroke(); }
         for(let y=0;y<=cssH;y+=step){ theContext.beginPath(); theContext.moveTo(0,y); theContext.lineTo(cssW,y); theContext.stroke(); }
@@ -3369,16 +3418,16 @@ const toolsRow = document.getElementById('tools');
       else if(val === '16'){ sizeKey = 'sm'; }
       else if(val === '24'){ sizeKey = 'md'; }
       else if(val === '32'){ sizeKey = 'lg'; }
-      gridKind = isTech ? 'tech' : (sizeKey === 'none' ? 'none' : 'grid');
-      gridSize = sizeKey;
+      const kind = isTech ? 'tech' : (sizeKey === 'none' ? 'none' : 'grid');
+      setTemplateState(kind, sizeKey);
 
-      aliboardApplyGridState({ gridSize: sizeKey, kind: gridKind });
+      aliboardApplyGridState({ gridSize: sizeKey, kind });
 
       if (window.AliboardRealtime && typeof window.AliboardRealtime.sendGridState === 'function') {
         window.AliboardRealtime.sendGridState(
           isTech
             ? { gridSize: 'md', kind: 'tech' }
-            : { gridSize: sizeKey, kind: gridKind }
+            : { gridSize: sizeKey, kind }
         );
       }
 
