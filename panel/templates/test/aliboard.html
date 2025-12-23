@@ -2526,8 +2526,8 @@
   const GRID_STEPS_ON_PHONE = { sm: 18, md: 26, lg: 34 };
   function computeStepPx(gridSizeKey, canvasWidth) {
     const stepOnPhone = GRID_STEPS_ON_PHONE[gridSizeKey] || GRID_STEPS_ON_PHONE.md;
-    const scale = (canvasWidth || BASE_PHONE_WIDTH_PX) / BASE_PHONE_WIDTH_PX;
-    return Math.max(6, Math.round(stepOnPhone * scale));
+    // Jedno źródło prawdy: docelowy rozmiar dla 5"
+    return Math.max(6, Math.round(stepOnPhone));
   }
 
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
@@ -4052,11 +4052,6 @@
 
   function createPage(scrollTo=true){
 
-    const sourcePage = currentPage() || PAGES[PAGES.length-1] || null;
-    const inheritedTemplate = sourcePage ? sourcePage.state.templateKind : TEMPLATE_KINDS.NONE;
-    const inheritedGridSize = sourcePage ? sourcePage.state.templateGridSize : null;
-    const inheritedStepPx = sourcePage ? sourcePage.state.templateStepPx : null;
-
     const page = document.createElement('div');
 
     page.className = 'page';
@@ -4093,13 +4088,7 @@
 
     resizePage(p);
 
-    const currentWidth = (p?.el?.getBoundingClientRect()?.width) || (p?.gridC?.clientWidth) || (p?.gridC?.width) || 0;
-    const effectiveStepPx = inheritedGridSize ? computeStepPx(inheritedGridSize, currentWidth) : inheritedStepPx;
-
-    setPageTemplateKind(p, inheritedTemplate, true, { gridSize: inheritedGridSize, stepPx: effectiveStepPx });
-    if(inheritedTemplate !== TEMPLATE_KINDS.NONE){
-      setTemplateForPage(p.index, inheritedTemplate, { broadcast:true, gridSize: inheritedGridSize, stepPx: effectiveStepPx });
-    }
+    setPageTemplateKind(p, p.state.templateKind, true);
 
     renderAll(p);
 
