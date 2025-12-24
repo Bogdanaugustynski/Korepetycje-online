@@ -4054,12 +4054,31 @@
   // ZDALNE KURSORY: klientId -> { el, dot, label, pageIndex }
 
   const REMOTE_CURSORS = new Map();
+  const REMOTE_CURSOR_TIMERS = new Map();
+  const REMOTE_CURSOR_INACTIVITY_MS = 5000;
+
+  function hideRemoteCursor(id){
+    const item = REMOTE_CURSORS.get(id);
+    if(item?.el?.parentNode){
+      item.el.parentNode.removeChild(item.el);
+    }
+    REMOTE_CURSORS.delete(id);
+    if(REMOTE_CURSOR_TIMERS.has(id)){
+      clearTimeout(REMOTE_CURSOR_TIMERS.get(id));
+      REMOTE_CURSOR_TIMERS.delete(id);
+    }
+  }
 
   function clearRemoteCursors(){
-    REMOTE_CURSORS.forEach(({ el })=>{
-      if(el?.parentNode){ el.parentNode.removeChild(el); }
-    });
-    REMOTE_CURSORS.clear();
+    Array.from(REMOTE_CURSORS.keys()).forEach(hideRemoteCursor);
+  }
+
+  function bumpRemoteCursorActivity(id){
+    if(REMOTE_CURSOR_TIMERS.has(id)){
+      clearTimeout(REMOTE_CURSOR_TIMERS.get(id));
+    }
+    const t = setTimeout(()=> hideRemoteCursor(id), REMOTE_CURSOR_INACTIVITY_MS);
+    REMOTE_CURSOR_TIMERS.set(id, t);
   }
 
   const PAGES = [];
@@ -5941,6 +5960,8 @@
     item.el.style.left = (nx * 100) + '%';
 
     item.el.style.top  = (ny * 100) + '%';
+
+    bumpRemoteCursorActivity(cursor.id);
 
   }
 
@@ -10147,6 +10168,8 @@ const toolsRow = document.getElementById('tools');
       clearRemoteCursors();
     }
   });
+
+  window.addEventListener('beforeunload', clearRemoteCursors);
 
 
 
