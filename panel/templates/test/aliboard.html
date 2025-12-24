@@ -2541,6 +2541,13 @@
     return Math.max(6, Math.round(stepOnPhone * scale));
   }
 
+  function computeTextPx(sizeUnits, canvasWidth){
+    const basePx = clampTextFont((sizeUnits || 3) * 6);
+    const width = canvasWidth || BASE_PHONE_WIDTH_PX;
+    const scale = width / BASE_PHONE_WIDTH_PX;
+    return clampTextFont(Math.round(basePx * scale));
+  }
+
   let textFontSizePx = Math.max(TEXT_FONT_MIN, size*6);
 
   let lastBrushSize = size;
@@ -3366,6 +3373,9 @@
 
     if(pageIndex < 0) return;
 
+    const dims = getPageDimensions(page);
+    const pageWidth = dims.width || BASE_PHONE_WIDTH_PX;
+
     const existingImages = new Map((page.state.images || []).map(im=>[im.__elementId, im]));
 
     const elements = AliboardModel.getAllElements().filter(el => el.page === pageIndex);
@@ -3420,7 +3430,13 @@
 
         const st = elementToLocalStroke(el, page);
 
-        if(st){ nextStrokes.push(st); }
+        if(st){
+          if(st.type === 'text'){
+            st.__pageWidth = pageWidth;
+            st.fontPx = computeTextPx(st.size || 3, pageWidth);
+          }
+          nextStrokes.push(st);
+        }
 
       }
 
@@ -4436,6 +4452,15 @@
     const dpr = window.devicePixelRatio || 1;
 
     const w = p.drawC.width / dpr, h = p.drawC.height / dpr;
+    const pageWidth = (p?.el?.getBoundingClientRect()?.width) || w;
+
+    // aktualizuj przeliczoną wielkość czcionki dla hit-testów/selection
+    p.state.strokes.forEach(s=>{
+      if(s.type==='text'){
+        s.fontPx = computeTextPx(s.size || 3, pageWidth);
+        s.__pageWidth = pageWidth;
+      }
+    });
 
     const ctx = p.ctx;
 
@@ -4567,7 +4592,8 @@
 
       ctx.save();
 
-      const pxSize = Math.max(14, (t.size || 3) * 6);
+      const pxSize = computeTextPx(t.size || 3, pageWidth);
+      t.fontPx = pxSize;
 
       ctx.fillStyle = t.color || '#0b1320';
 
@@ -4773,9 +4799,11 @@
 
     }else if(s.type==='text'){
 
-      const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
+      const fontPx = s.fontPx || computeTextPx(s.size || 3, s.__pageWidth || BASE_PHONE_WIDTH_PX);
 
-      const h = Math.max(14, s.size*6);
+      const w = (fontPx*0.6)*(s.text?.length||0);
+
+      const h = fontPx;
 
       return {x:s.x, y:s.y, w, h};
 
@@ -5367,7 +5395,8 @@
 
     textarea.style.top  = (rect.top  + local.y) + 'px';
 
-    textarea.style.fontSize = Math.max(14, (local.size || 3) * 6) + 'px';
+    const fontPx = computeTextPx(local.size || 3, rect.width);
+    textarea.style.fontSize = fontPx + 'px';
 
     document.body.appendChild(textarea);
 
@@ -5559,7 +5588,8 @@
 
       }else if(s.type==='text'){
 
-        theContext.save(); theContext.fillStyle=s.color; theContext.font = `${Math.max(14, s.size*6)}px ui-sans-serif, system-ui, Arial`; theContext.textBaseline='top'; theContext.fillText(s.text, s.x, s.y); theContext.restore();
+        const fontPx = computeTextPx(s.size || 3, currentWidth);
+        theContext.save(); theContext.fillStyle=s.color; theContext.font = `${fontPx}px ui-sans-serif, system-ui, Arial`; theContext.textBaseline='top'; theContext.fillText(s.text, s.x, s.y); theContext.restore();
 
       }else if(s.type==='poly'){
 
@@ -6301,9 +6331,11 @@ function imageBoundingBox(im){
 
 function textDimensions(s){
 
-  const w = (Math.max(14, s.size*6)*0.6)*(s.text?.length||0);
+  const fontPx = s.fontPx || computeTextPx(s.size || 3, s.__pageWidth || BASE_PHONE_WIDTH_PX);
 
-  const h = Math.max(14, s.size*6);
+  const w = (fontPx*0.6)*(s.text?.length||0);
+
+  const h = fontPx;
 
   return {w,h};
 
