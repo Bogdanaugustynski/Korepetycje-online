@@ -636,6 +636,13 @@
 
 }
 
+/* FOLLOW TEACHER - active state */
+.tool-btn.is-active{
+  outline: 2px solid rgba(0,0,0,0.25);
+  box-shadow: 0 0 0 4px rgba(0,0,0,0.06);
+  border-radius: 10px;
+}
+
 
 
 /* cia?niejszy pasek narz?dzi na telefonie */
@@ -2093,6 +2100,10 @@
       </label>
 
 
+
+      <button id="btnFollowTeacher" class="btn tool-btn" type="button" title="Do nauczyciela / Pod??aj">
+        <span class="tool-ico">??</span>
+      </button>
 
       <button class="btn is-disabled" type="button" id="deleteSelection" title="Usuń zaznaczony obiekt" disabled>
 
@@ -10231,6 +10242,193 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 
 <script>
 
+/********************************************************************
+ * FOLLOW TEACHER / GO TO TEACHER
+ * - click: jump once to teacher viewport
+ * - double click: toggle follow ON/OFF (continuous tracking)
+ * - auto OFF if student manually pans/zooms
+ ********************************************************************/
+
+(function FollowTeacherModule() {
+  const wrapEl = document.getElementById('wrap');
+  const btn = document.getElementById('btnFollowTeacher');
+  if (!btn || !wrapEl) return;
+
+  // normalize USER_ROLE (teacher/student)
+  const rootEl = document.getElementById('aliboard-root');
+  const USER_ROLE = String(window.USER_ROLE || window.ALIBOARD_USER_ROLE || (rootEl?.dataset?.userRole) || '').toLowerCase();
+
+  const followState = {
+    enabled: false,
+    lastTeacherViewport: null, // { cx, cy, zoom, ts }
+    lastJumpTs: 0,
+    clickTimer: null,
+  };
+
+  const FOLLOW_TICK_MS = 120; // ~8 fps
+  const SELF_APPLY_GRACE_MS = 350;
+
+  function setBtnActive(isActive) {
+    btn.classList.toggle('is-active', !!isActive);
+  }
+
+  function jumpToTeacherOnce() {
+    const v = followState.lastTeacherViewport;
+    if (!v) return;
+    followState.lastJumpTs = Date.now();
+    applyViewportToLocalBoard(v.cx, v.cy, v.zoom, { animate: true });
+  }
+
+  function toggleFollow() {
+    followState.enabled = !followState.enabled;
+    setBtnActive(followState.enabled);
+    if (followState.enabled) {
+      jumpToTeacherOnce();
+    }
+  }
+
+  function autoDisableFollow() {
+    if (!followState.enabled) return;
+    followState.enabled = false;
+    setBtnActive(false);
+  }
+
+  btn.addEventListener("click", () => {
+    if (followState.clickTimer) {
+      clearTimeout(followState.clickTimer);
+      followState.clickTimer = null;
+      toggleFollow();
+      return;
+    }
+    followState.clickTimer = setTimeout(() => {
+      followState.clickTimer = null;
+      jumpToTeacherOnce();
+    }, 220);
+  });
+
+  setInterval(() => {
+    if (!followState.enabled) return;
+    const v = followState.lastTeacherViewport;
+    if (!v) return;
+    followState.lastJumpTs = Date.now();
+    applyViewportToLocalBoard(v.cx, v.cy, v.zoom, { animate: false });
+  }, FOLLOW_TICK_MS);
+
+  // manual interaction (pan/zoom)
+  wrapEl.addEventListener("pointerdown", () => {
+    if (Date.now() - followState.lastJumpTs < SELF_APPLY_GRACE_MS) return;
+    autoDisableFollow();
+  }, { passive: true });
+  wrapEl.addEventListener("wheel", () => {
+    if (Date.now() - followState.lastJumpTs < SELF_APPLY_GRACE_MS) return;
+    autoDisableFollow();
+  }, { passive: true });
+  wrapEl.addEventListener("scroll", () => {
+    if (Date.now() - followState.lastJumpTs < SELF_APPLY_GRACE_MS) return;
+    autoDisableFollow();
+  }, { passive: true });
+
+  function getBoardDomElement() {
+    return wrapEl;
+  }
+
+  function readLocalBoardViewport() {
+    const el = getBoardDomElement();
+    if (!el) return null;
+    const cx = el.scrollLeft + el.clientWidth / 2;
+    const cy = el.scrollTop + el.clientHeight / 2;
+    return { cx, cy, zoom: 1 };
+  }
+
+  function applyViewportToLocalBoard(cx, cy, zoom, opts) {
+    const el = getBoardDomElement();
+    if (!el) return;
+    const left = cx - el.clientWidth / 2;
+    const top = cy - el.clientHeight / 2;
+    const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+    const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+    const nextLeft = Math.min(maxLeft, Math.max(0, left));
+    const nextTop = Math.min(maxTop, Math.max(0, top));
+    el.scrollTo({
+      left: nextLeft,
+      top: nextTop,
+      behavior: opts && opts.animate ? 'smooth' : 'auto',
+    });
+  }
+
+  function safeWsSend(obj) {
+    try {
+      if (window.AliboardRealtime && typeof window.AliboardRealtime.send === 'function') {
+        window.AliboardRealtime.send(obj);
+        return;
+      }
+      const ws = window.ws || window.socket || null;
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify(obj));
+      }
+    } catch (e) {}
+  }
+
+  function onWsMessageParsed(msg) {
+    if (!msg || msg.type !== "board_viewport") return;
+    if (msg.role === "teacher") {
+      followState.lastTeacherViewport = {
+        cx: msg.cx,
+        cy: msg.cy,
+        zoom: msg.zoom,
+        ts: msg.ts || Date.now(),
+      };
+    }
+  }
+
+  (function attachReceiveHooks(){
+    const rt = window.AliboardRealtime;
+    if(rt && typeof rt.on === 'function'){
+      rt.on('board_viewport', onWsMessageParsed);
+    }
+    const ws = window.ws || window.socket || null;
+    if(ws){
+      const prev = ws.onmessage;
+      ws.onmessage = function(ev){
+        try{
+          const msg = JSON.parse(ev.data);
+          onWsMessageParsed(msg);
+        }catch(_){}
+        if(typeof prev === 'function') prev.call(this, ev);
+      };
+    }
+  })();
+
+  function broadcastTeacherViewport() {
+    const v = readLocalBoardViewport();
+    if (!v) return;
+    safeWsSend({
+      type: "board_viewport",
+      role: "teacher",
+      cx: v.cx,
+      cy: v.cy,
+      zoom: v.zoom,
+      ts: Date.now(),
+    });
+  }
+
+  let lastSent = null;
+  setInterval(() => {
+    if (USER_ROLE !== "teacher") return;
+    const v = readLocalBoardViewport();
+    if (!v) return;
+    const key = `${Math.round(v.cx)}|${Math.round(v.cy)}|${Math.round(v.zoom * 1000)}`;
+    if (key === lastSent) return;
+    lastSent = key;
+    broadcastTeacherViewport();
+  }, 180);
+
+})();
+
+</script>
+
+<script>
+
   (function(){
 
     const root = document.getElementById('aliboard-root');
@@ -10276,7 +10474,6 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 </body>
 
 </html>
-
 
 
 
