@@ -10284,7 +10284,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
     const v = followState.lastTeacherViewport;
     if (!v) return;
     followState.lastJumpTs = Date.now();
-    applyViewportToLocalBoard(v.cx, v.cy, v.zoom, { animate: true });
+    applyViewportToLocalBoard(v.cx, v.cy, v.zoom, { animate: true, pageIndex: v.pageIndex });
   }
 
   function toggleFollow() {
@@ -10319,7 +10319,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
     const v = followState.lastTeacherViewport;
     if (!v) return;
     followState.lastJumpTs = Date.now();
-    applyViewportToLocalBoard(v.cx, v.cy, v.zoom, { animate: false });
+    applyViewportToLocalBoard(v.cx, v.cy, v.zoom, { animate: false, pageIndex: v.pageIndex });
   }, FOLLOW_TICK_MS);
 
   // manual interaction (pan/zoom)
@@ -10343,14 +10343,23 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
   function readLocalBoardViewport() {
     const el = getBoardDomElement();
     if (!el) return null;
+    const page = currentPage();
     const cx = el.scrollLeft + el.clientWidth / 2;
     const cy = el.scrollTop + el.clientHeight / 2;
-    return { cx, cy, zoom: 1 };
+    const pageIndex = page ? (Number.isFinite(page.index) ? page.index : PAGES.indexOf(page)) : 0;
+    return { cx, cy, zoom: 1, pageIndex };
   }
 
   function applyViewportToLocalBoard(cx, cy, zoom, opts) {
     const el = getBoardDomElement();
     if (!el) return;
+    let targetPage = null;
+    if(typeof opts?.pageIndex === 'number'){
+      targetPage = ensurePage(opts.pageIndex);
+      if(targetPage?.el){
+        targetPage.el.scrollIntoView({ behavior: opts && opts.animate ? 'smooth' : 'auto', block:'center' });
+      }
+    }
     const left = cx - el.clientWidth / 2;
     const top = cy - el.clientHeight / 2;
     const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
@@ -10384,6 +10393,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
         cx: msg.cx,
         cy: msg.cy,
         zoom: msg.zoom,
+        pageIndex: typeof msg.pageIndex === 'number' ? msg.pageIndex : null,
         ts: msg.ts || Date.now(),
       };
     }
@@ -10416,6 +10426,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
       cx: v.cx,
       cy: v.cy,
       zoom: v.zoom,
+      pageIndex: v.pageIndex,
       ts: Date.now(),
     });
   }
@@ -10425,7 +10436,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
     if (USER_ROLE !== "teacher") return;
     const v = readLocalBoardViewport();
     if (!v) return;
-    const key = `${Math.round(v.cx)}|${Math.round(v.cy)}|${Math.round(v.zoom * 1000)}`;
+    const key = `${Math.round(v.cx)}|${Math.round(v.cy)}|${Math.round(v.zoom * 1000)}|${v.pageIndex}`;
     if (key === lastSent) return;
     lastSent = key;
     broadcastTeacherViewport();
