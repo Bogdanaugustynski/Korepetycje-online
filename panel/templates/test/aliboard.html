@@ -10276,6 +10276,11 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
   const FOLLOW_TICK_MS = 120; // ~8 fps
   const SELF_APPLY_GRACE_MS = 350;
 
+  function isTeacherRole(){
+    const role = (USER_ROLE || '').toLowerCase();
+    return role.includes('teacher') || role.includes('nauczyciel') || role === 'tutor' || role === 'instruktor';
+  }
+
   function setBtnActive(isActive) {
     btn.classList.toggle('is-active', !!isActive);
   }
@@ -10375,9 +10380,10 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 
   function safeWsSend(obj) {
     try {
-      if (window.AliboardRealtime && typeof window.AliboardRealtime.send === 'function') {
-        window.AliboardRealtime.send(obj);
-        return;
+      const rt = window.AliboardRealtime;
+      if(rt){
+        if(typeof rt.send === 'function'){ rt.send(obj); return; }
+        if(typeof rt.broadcast === 'function'){ rt.broadcast(obj); return; }
       }
       const ws = window.ws || window.socket || null;
       if (ws && ws.readyState === 1) {
@@ -10403,6 +10409,8 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
     const rt = window.AliboardRealtime;
     if(rt && typeof rt.on === 'function'){
       rt.on('board_viewport', onWsMessageParsed);
+    }else{
+      setTimeout(attachReceiveHooks, 600);
     }
     const ws = window.ws || window.socket || null;
     if(ws){
@@ -10433,7 +10441,7 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
 
   let lastSent = null;
   setInterval(() => {
-    if (USER_ROLE !== "teacher") return;
+    if (!isTeacherRole()) return;
     const v = readLocalBoardViewport();
     if (!v) return;
     const key = `${Math.round(v.cx)}|${Math.round(v.cy)}|${Math.round(v.zoom * 1000)}|${v.pageIndex}`;
