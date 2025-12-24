@@ -4055,6 +4055,13 @@
 
   const REMOTE_CURSORS = new Map();
 
+  function clearRemoteCursors(){
+    REMOTE_CURSORS.forEach(({ el })=>{
+      if(el?.parentNode){ el.parentNode.removeChild(el); }
+    });
+    REMOTE_CURSORS.clear();
+  }
+
   const PAGES = [];
 
 
@@ -10134,6 +10141,12 @@ const toolsRow = document.getElementById('tools');
     attachCursorListener._attached = true;
 
   })();
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible'){
+      clearRemoteCursors();
+    }
+  });
 
 
 
