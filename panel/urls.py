@@ -11,6 +11,7 @@ from .views import (
     podwyzki_nauczyciele_view,
     virtual_room,
     zajecia_online_view,
+    otworz_tablice_view,
     dodaj_material_po_zajeciach,
 )
 
@@ -61,6 +62,11 @@ urlpatterns = [
     # Wirtualny pokój i zajęcia on-line
     path("wirtualny_pokoj/", virtual_room, name="virtual_room"),
     path("zajecia_online/<int:rezerwacja_id>/", zajecia_online_view, name="zajecia_online"),
+    path(
+        "zajecia_online/<int:rezerwacja_id>/otworz_tablice/",
+        otworz_tablice_view,
+        name="otworz_tablice",
+    ),
     path("dodaj_material/<int:rezerwacja_id>/", dodaj_material_po_zajeciach, name="dodaj_material"),
 
     # Presence + pobieranie materiałów

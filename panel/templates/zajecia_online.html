@@ -62,14 +62,18 @@
   <!-- Karta główna -->
   <div class="card">
     <div class="row">
-      <a class="cta" target="_blank" href="{{ rezerwacja.excalidraw_link|default:'#' }}">✏️ Otwórz tablicę</a>
-      <div class="hint">Rozmowa głosowa odbywa się w Excalidraw.</div>
+      <a class="cta"
+         target="_blank"
+         href="{% url 'otworz_tablice' rezerwacja.id %}">
+        ✏️ Otwórz tablicę
+      </a>
+      <div class="hint">Tablica i rozmowa głosowa otworzą się w nowym oknie.</div>
     </div>
 
     {% if is_teacher %}
     <form method="POST" class="row">
       {% csrf_token %}
-      <input type="url" name="excalidraw_link" placeholder="https://excalidraw.com/#room=..." required>
+      <input type="url" name="excalidraw_link" placeholder="Wklej link do tablicy (Aliboard / Excalidraw)..." required>
       <button class="pill" type="submit">💾 Zapisz link</button>
     </form>
     {% endif %}

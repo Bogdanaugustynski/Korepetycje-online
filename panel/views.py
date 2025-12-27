@@ -602,6 +602,48 @@ def zajecia_online_view(request, rezerwacja_id):
     )
 
 
+@login_required
+def otworz_tablice_view(request, rezerwacja_id):
+    rezerwacja = get_object_or_404(Rezerwacja, id=rezerwacja_id)
+    user = request.user
+    teraz = timezone.now()
+
+    # Te same zasady dostępu co w zajecia_online_view
+    if rezerwacja.id != 1:
+        if user == rezerwacja.uczen:
+            start = rezerwacja.termin
+            koniec = start + timedelta(minutes=55)
+            okno_start = start - timedelta(minutes=5)
+            if not (okno_start <= teraz <= koniec):
+                return HttpResponseForbidden("Dostęp tylko w czasie trwania zajęć.")
+        elif user != rezerwacja.nauczyciel:
+            return HttpResponseForbidden("Brak dostępu do tej tablicy.")
+    else:
+        if user not in (rezerwacja.uczen, rezerwacja.nauczyciel):
+            return HttpResponseForbidden("Brak dostępu do tej tablicy.")
+
+    # 1) Jeśli link już istnieje – używamy go
+    board_url = rezerwacja.excalidraw_link
+
+    # 2) Jeśli linku nie ma – tworzymy nową tablicę Aliboard
+    if not board_url:
+        base_url = getattr(settings, "ALIBOARD_BASE_URL", "").rstrip("/")
+        if not base_url:
+            return HttpResponse(
+                "Brak skonfigurowanego ALIBOARD_BASE_URL w settings.py",
+                status=500,
+            )
+
+        room_id = f"r-{rezerwacja.id}-{secrets.token_urlsafe(8)}"
+        board_url = f"{base_url}?room={room_id}"
+
+        rezerwacja.excalidraw_link = board_url
+        rezerwacja.save(update_fields=["excalidraw_link"])
+
+    # 3) Otwieramy tablicę
+    return redirect(board_url)
+
+
 # ==========================
 #     SYNC (opcjonalne)
 # ==========================

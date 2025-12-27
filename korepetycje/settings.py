@@ -258,3 +258,7 @@ DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "PLN")
 
 # (opcjonalnie) e-mail nadawcy
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "PolubiszTo.pl <no-reply@polubiszto.pl>")
+
+# === ALIBOARD (produkcja) ===
+# Używane do automatycznego generowania linku tablicy w otworz_tablice_view.
+ALIBOARD_BASE_URL = os.getenv("ALIBOARD_BASE_URL", "https://aliboard.polubiszto.pl/board")
