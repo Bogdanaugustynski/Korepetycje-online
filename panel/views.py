@@ -2527,6 +2527,21 @@ def aliboard_prod_view(request, room_id="prod-default"):
             lesson_end = rez.termin + timedelta(minutes=55)
         except (Rezerwacja.DoesNotExist, ValueError, TypeError):
             pass
+    # Fallback: gdy brak ?rez= spróbuj dopasować rezerwację po room_id z linku
+    if not lesson_start and room_id:
+        try:
+            rez = (
+                Rezerwacja.objects
+                .filter(excalidraw_link__icontains=room_id)
+                .order_by("-termin")
+                .first()
+            )
+            if rez:
+                lesson_rez_id = rez.id
+                lesson_start = rez.termin
+                lesson_end = rez.termin + timedelta(minutes=55)
+        except Exception:
+            pass
     context = {
         "room_id": room_id,
         "user_role": user_role,
