@@ -636,6 +636,7 @@ def otworz_tablice_view(request, rezerwacja_id):
     if not board_url:
         room_id = uuid.uuid4().hex[:8]
         board_path = reverse("aliboard_prod_room", args=[room_id])
+        board_path = f"{board_path}?rez={rezerwacja.id}"
         board_url = request.build_absolute_uri(board_path)
 
         rezerwacja.excalidraw_link = board_url
@@ -2514,9 +2515,24 @@ def aliboard_prod_view(request, room_id="prod-default"):
             user_role = "teacher"
         else:
             user_role = "student"
+    lesson_start = None
+    lesson_end = None
+    lesson_rez_id = None
+    rez_param = request.GET.get("rez")
+    if rez_param:
+        try:
+            rez = Rezerwacja.objects.get(id=int(rez_param))
+            lesson_rez_id = rez.id
+            lesson_start = rez.termin
+            lesson_end = rez.termin + timedelta(minutes=55)
+        except (Rezerwacja.DoesNotExist, ValueError, TypeError):
+            pass
     context = {
         "room_id": room_id,
         "user_role": user_role,
+        "lesson_start": lesson_start,
+        "lesson_end": lesson_end,
+        "lesson_rez_id": lesson_rez_id,
     }
     return render(request, "aliboard.html", context)
 
