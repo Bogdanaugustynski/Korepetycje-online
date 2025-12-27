@@ -28,7 +28,7 @@
 
   const loc = window.location;
   const scheme = loc.protocol === "https:" ? "wss" : "ws";
-  const wsUrl = `${scheme}://${loc.host}/ws/aliboard/${roomId}/`;
+  const wsUrl = `${scheme}://${loc.host}/ws/aliboard-test/${roomId}/`;
 
   const listeners = {
     snapshot: [],

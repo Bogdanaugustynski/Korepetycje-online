@@ -21,7 +21,7 @@
   }
 
   const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const socketUrl = `${scheme}://${window.location.host}/ws/aliboard/${roomId}/`;
+  const socketUrl = `${scheme}://${window.location.host}/ws/aliboard-test/${roomId}/`;
 
   console.log("[Aliboard] connecting to", socketUrl);
 
@@ -80,4 +80,3 @@
   };
 
 })();
-

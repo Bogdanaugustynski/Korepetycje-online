@@ -111,17 +111,17 @@ urlpatterns = [
     path("ai_chat/", views.ai_chat, name="ai_chat"),
 
     #Tablica
-    path("aliboard/", views.aliboard_view, name="aliboard"),
-    path("aliboard1/", views.aliboard_prod_view, name="aliboard_prod"),
+    path("aliboard-test/", views.aliboard_view, name="aliboard"),
+    path("aliboard/", views.aliboard_prod_view, name="aliboard_prod"),
     # ŚCIEŻKI DO NOWEGO SYSTEMU POKOI ALIBOARD – NA RAZIE WYŁĄCZONE,
     # BO WIDOKI SĄ NIEDOSTĘPNE NA PRODUKCJI (ŻEBY NIE BLOKOWAĆ DEPLOYU)
     # path("aliboard/nowy/", aliboard_views.aliboard_nowy_pokój, name="aliboard_nowy_pokój"),
     # path("aliboard/pokoj/<slug:room_id>/", aliboard_views.aliboard_pokój, name="aliboard_pokój"),
     # path("aliboard/dolacz/", aliboard_views.aliboard_dolacz, name="aliboard_dolacz"),
-    path("aliboard/nowy/", views.aliboard_new_room, name="aliboard_new_room"),
-    path("aliboard/<str:room_id>/", views.aliboard_view, name="aliboard_room"),
-    path("aliboard1/nowy/", views.aliboard_prod_new_room, name="aliboard_prod_new_room"),
-    path("aliboard1/<str:room_id>/", views.aliboard_prod_view, name="aliboard_prod_room"),
+    path("aliboard-test/nowy/", views.aliboard_new_room, name="aliboard_new_room"),
+    path("aliboard-test/<str:room_id>/", views.aliboard_view, name="aliboard_room"),
+    path("aliboard/nowy/", views.aliboard_prod_new_room, name="aliboard_prod_new_room"),
+    path("aliboard/<str:room_id>/", views.aliboard_prod_view, name="aliboard_prod_room"),
 
 
 ]

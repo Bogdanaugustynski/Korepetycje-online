@@ -21,7 +21,7 @@
   }
 
   const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const socketUrl = `${scheme}://${window.location.host}/ws/aliboard1/${roomId}/`;
+  const socketUrl = `${scheme}://${window.location.host}/ws/aliboard/${roomId}/`;
 
   console.log("[Aliboard] connecting to", socketUrl);
 
