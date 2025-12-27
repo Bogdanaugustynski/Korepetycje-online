@@ -73,7 +73,7 @@ class AudioSignalingConsumer(AsyncWebsocketConsumer):
 class AliboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
-        self.group_name = f"aliboard_{self.room_id}"
+        self.group_name = f"aliboard1_{self.room_id}"
         user = self.scope["user"]
         self.user_id = self._normalize_user_id(user.id) if user.is_authenticated else None
 

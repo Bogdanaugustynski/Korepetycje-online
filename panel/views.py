@@ -2462,7 +2462,25 @@ def aliboard_view(request, room_id="local-test"):
     }
     return render(request, "test/aliboard.html", context)
 
+@login_required
+def aliboard_prod_view(request, room_id="prod-default"):
+    user_role = "guest"
+    user = getattr(request, "user", None)
+    if getattr(user, "is_authenticated", False):
+        if getattr(user, "is_teacher", False) or getattr(user, "is_staff", False):
+            user_role = "teacher"
+        else:
+            user_role = "student"
+    context = {
+        "room_id": room_id,
+        "user_role": user_role,
+    }
+    return render(request, "aliboard.html", context)
 
 def aliboard_new_room(request):
     room_id = uuid.uuid4().hex[:8]  # np. "a3f9c2b1"
     return redirect("aliboard_room", room_id=room_id)
+
+def aliboard_prod_new_room(request):
+    room_id = uuid.uuid4().hex[:8]
+    return redirect("aliboard_prod_room", room_id=room_id)
