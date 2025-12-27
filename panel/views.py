@@ -607,7 +607,6 @@ def otworz_tablice_view(request, rezerwacja_id):
     rezerwacja = get_object_or_404(Rezerwacja, id=rezerwacja_id)
     user = request.user
     teraz = timezone.now()
-    base_url = getattr(settings, "ALIBOARD_BASE_URL", "").rstrip("/")
 
     # Te same zasady dostępu co w zajecia_online_view
     if rezerwacja.id != 1:
@@ -625,7 +624,7 @@ def otworz_tablice_view(request, rezerwacja_id):
 
     # 1) Jeśli link już istnieje – używamy go
     board_url = rezerwacja.excalidraw_link
-    if board_url and base_url:
+    if board_url:
         default_excal = ""
         if rezerwacja.excalidraw_room_id and rezerwacja.excalidraw_room_key:
             default_excal = f"https://excalidraw.com/#room={rezerwacja.excalidraw_room_id},{rezerwacja.excalidraw_room_key}"
@@ -635,14 +634,9 @@ def otworz_tablice_view(request, rezerwacja_id):
 
     # 2) Jeśli linku nie ma – tworzymy nową tablicę Aliboard
     if not board_url:
-        if not base_url:
-            return HttpResponse(
-                "Brak skonfigurowanego ALIBOARD_BASE_URL w settings.py",
-                status=500,
-            )
-
-        room_id = f"r-{rezerwacja.id}-{secrets.token_urlsafe(8)}"
-        board_url = f"{base_url}?room={room_id}"
+        room_id = uuid.uuid4().hex[:8]
+        board_path = reverse("aliboard_prod_room", args=[room_id])
+        board_url = request.build_absolute_uri(board_path)
 
         rezerwacja.excalidraw_link = board_url
         rezerwacja.save(update_fields=["excalidraw_link"])
