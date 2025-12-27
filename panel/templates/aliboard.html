@@ -1618,6 +1618,7 @@
 }
 .lesson-timer.upcoming{background:rgba(11,116,255,0.16); color:#0b1320; border-color:rgba(11,116,255,0.5);}
 .lesson-timer.live{background:rgba(34,197,94,0.18); color:#0b1320; border-color:rgba(34,197,94,0.5);}
+.lesson-timer.live.warning{background:rgba(239,68,68,0.2); color:#7f1d1d; border-color:rgba(239,68,68,0.5);}
 .lesson-timer.ended{background:rgba(15,23,42,0.85); color:#e2e8f0;}
 
 @media (max-width:768px){
@@ -10507,15 +10508,21 @@ document.querySelectorAll('#tools .btn[data-tool]').forEach(btn=>{
       const now = new Date();
       if (now < startAt) {
         box.classList.add("upcoming");
-        box.classList.remove("live", "ended");
+        box.classList.remove("live", "ended", "warning");
         box.textContent = `Start za ${fmt(startAt - now)}`;
       } else if (now <= endAt) {
+        const remainingMs = endAt - now;
         box.classList.add("live");
         box.classList.remove("upcoming", "ended");
-        box.textContent = `Pozostało ${fmt(endAt - now)}`;
+        if (remainingMs <= 5 * 60 * 1000) {
+          box.classList.add("warning");
+        } else {
+          box.classList.remove("warning");
+        }
+        box.textContent = `Pozostało ${fmt(remainingMs)}`;
       } else {
         box.classList.add("ended");
-        box.classList.remove("upcoming", "live");
+        box.classList.remove("upcoming", "live", "warning");
         box.textContent = "Czas minął (55 min)";
         clearInterval(intervalId);
       }
